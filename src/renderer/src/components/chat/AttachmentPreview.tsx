@@ -1,0 +1,120 @@
+import { File as FileIcon, FileCode, FileText, Image as ImageIcon, Loader2, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import type { DraftAttachment } from '@/lib/electron';
+
+type Props = {
+  attachments: DraftAttachment[];
+  onRemove: (index: number) => void;
+  /** Show this many spinner-bubbles after the existing items. */
+  loadingCount?: number;
+  disabled?: boolean;
+};
+
+/**
+ * ChatGPT-style strip of attachment chips, sits above the textarea.
+ *  - 56×56px image thumbnails.
+ *  - File chips with icon + 2-line filename + type label for non-images.
+ *  - X button on hover.
+ */
+export function AttachmentPreview({
+  attachments,
+  onRemove,
+  loadingCount = 0,
+  disabled,
+}: Props) {
+  if (attachments.length === 0 && loadingCount === 0) return null;
+  return (
+    <div className="scroll-thin flex gap-2 overflow-x-auto border-b border-border/50 px-3 py-2.5">
+      {attachments.map((att, i) => (
+        <Bubble
+          key={`${att.path}-${i}`}
+          att={att}
+          onRemove={() => onRemove(i)}
+          disabled={disabled}
+        />
+      ))}
+      {Array.from({ length: loadingCount }, (_, i) => (
+        <LoadingBubble key={`loading-${i}`} />
+      ))}
+    </div>
+  );
+}
+
+function LoadingBubble() {
+  return (
+    <div className="grid h-14 w-14 shrink-0 place-items-center rounded-lg bg-elevated">
+      <Loader2 className="h-4 w-4 animate-spin text-fg-subtle" strokeWidth={1.75} />
+    </div>
+  );
+}
+
+function Bubble({
+  att,
+  onRemove,
+  disabled,
+}: {
+  att: DraftAttachment;
+  onRemove: () => void;
+  disabled?: boolean;
+}) {
+  const isImage = att.type === 'image';
+  const src = isImage && att.base64 ? `data:${att.mimeType};base64,${att.base64}` : null;
+
+  return (
+    <div className="group relative shrink-0 select-none">
+      {!disabled && (
+        <button
+          onClick={onRemove}
+          aria-label={`Remove ${att.name}`}
+          className={cn(
+            'absolute -right-1.5 -top-1.5 z-10 grid h-5 w-5 place-items-center rounded-full',
+            'bg-fg/80 text-app opacity-0 transition-opacity group-hover:opacity-100 hover:bg-fg',
+          )}
+        >
+          <X className="h-3 w-3" strokeWidth={2.25} />
+        </button>
+      )}
+
+      {isImage ? (
+        <div className="h-14 w-14 overflow-hidden rounded-lg bg-elevated">
+          {src ? (
+            <img src={src} alt={att.name} className="h-full w-full object-cover" />
+          ) : (
+            <div className="grid h-full w-full place-items-center">
+              <ImageIcon className="h-5 w-5 text-fg-subtle" strokeWidth={1.75} />
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="flex h-14 items-center gap-2.5 rounded-lg bg-elevated px-2 pr-3">
+          <div className="grid h-10 w-8 shrink-0 place-items-center rounded-md bg-panel">
+            <FileBadgeIcon att={att} />
+          </div>
+          <div className="flex max-w-[140px] min-w-0 flex-col">
+            <span className="line-clamp-2 break-all text-xs font-medium text-fg" title={att.name}>
+              {att.name}
+            </span>
+            <span className="text-[10px] text-fg-subtle">{labelFor(att)}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FileBadgeIcon({ att }: { att: DraftAttachment }) {
+  if (att.type === 'pdf') {
+    return <FileText className="h-4 w-4 text-fg-muted" strokeWidth={1.75} />;
+  }
+  if (att.mimeType.startsWith('text/') || /\.(ts|tsx|js|jsx|py|go|rs|cpp|c|h|java|json|ya?ml|html|css|scss|md)$/i.test(att.name)) {
+    return <FileCode className="h-4 w-4 text-fg-muted" strokeWidth={1.75} />;
+  }
+  return <FileIcon className="h-4 w-4 text-fg-muted" strokeWidth={1.75} />;
+}
+
+function labelFor(att: DraftAttachment): string {
+  if (att.type === 'pdf') return 'PDF';
+  if (att.mimeType.startsWith('image/')) return att.mimeType.split('/')[1].toUpperCase();
+  const ext = att.name.split('.').pop();
+  return ext ? ext.toUpperCase() : 'FILE';
+}

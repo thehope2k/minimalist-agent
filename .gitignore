@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build output
+out/
+dist/
+dist-electron/
+release/
+*.local
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+logs/
+*.log
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Bun / pnpm / npm caches
+.bun/
+.pnpm-store/
+
+# TypeScript
+*.tsbuildinfo
+
+# Electron-builder
+app-builds/

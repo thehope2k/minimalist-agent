@@ -1,0 +1,141 @@
+@import "tailwindcss";
+
+/* =============================================================================
+   Color system — two base colors (--background, --foreground) plus an --accent.
+   Everything else is derived via OKLCH + color-mix.
+============================================================================= */
+
+:root {
+  /* "Onyx" theme — deeper blacks, sharper panel separation, stronger text.
+     Goal: premium / Linear-Raycast feel without changing brand or tokens. */
+  --background: oklch(0.07 0.004 270);   /* outer app frame                 */
+  --panel:      oklch(0.13 0.004 270);   /* card surface                    */
+  --foreground: oklch(0.97 0.003 270);   /* text                            */
+  --accent:     oklch(0.63 0.24 290);    /* brand purple, slightly deeper   */
+  --accent-fg:  oklch(0.98 0 0);
+
+  /* Surfaces above the panel — explicit OKLCH stops, not foreground mixes,
+     so they keep their dark character instead of getting milky.
+     Bumped so active/selected rows read clearly against the deep panel. */
+  --elevated:   oklch(0.22 0.004 270);   /* hover / secondary surfaces */
+  --elevated-2: oklch(0.28 0.004 270);   /* selected / pressed         */
+
+  /* Text tones — pure neutral grays, not panel-tinted */
+  --fg-muted:   oklch(0.74 0.004 270);
+  --fg-subtle:  oklch(0.60 0.004 270);
+
+  /* Borders — translucent foreground. `--border` is for in-content separators
+     (inputs, bubbles, list dividers); `--border-strong` is for panel outlines
+     and emphasised states where the line needs to read against the deep app
+     frame. */
+  --border:        oklch(from var(--foreground) l c h / 0.16);
+  --border-strong: oklch(from var(--foreground) l c h / 0.36);
+}
+
+/* Expose tokens to Tailwind v4 (so utilities like bg-panel, text-fg work). */
+@theme inline {
+  --color-app: var(--background);
+  --color-panel: var(--panel);
+  --color-rail: var(--panel);
+  --color-canvas: var(--panel);
+  --color-elevated: var(--elevated);
+  --color-elevated-2: var(--elevated-2);
+
+  --color-fg: var(--foreground);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
+
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: color-mix(in oklch, white 10%, var(--accent));
+  --color-accent-fg: var(--accent-fg);
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-sans), serif;
+  font-feature-settings: "cv11", "ss01";
+  overflow: hidden;
+}
+
+.scroll-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+}
+.scroll-thin::-webkit-scrollbar-track { background: transparent; }
+
+.titlebar-drag { -webkit-app-region: drag; }
+.titlebar-no-drag { -webkit-app-region: no-drag; }
+
+/* ----- Markdown prose typography (assistant messages) -----
+ *
+ * Tight vertical rhythm tuned for chat. We don't use @tailwindcss/typography
+ * — its defaults are sized for full-width docs, not chat bubbles.
+ *
+ * The first/last child margin reset prevents the bubble from gaining
+ * unwanted top/bottom whitespace from leading/trailing block elements.
+ */
+.markdown { line-height: 1.55; }
+.markdown > *:first-child { margin-top: 0; }
+.markdown > *:last-child { margin-bottom: 0; }
+
+.markdown p { margin: 0.5em 0; }
+.markdown h1, .markdown h2, .markdown h3, .markdown h4 {
+  font-weight: 600;
+  line-height: 1.25;
+  margin: 1em 0 0.4em;
+  color: var(--color-fg);
+}
+.markdown h1 { font-size: 1.25em; }
+.markdown h2 { font-size: 1.15em; }
+.markdown h3 { font-size: 1.05em; }
+.markdown h4 { font-size: 1em; color: var(--color-fg-muted); }
+
+.markdown ul, .markdown ol {
+  margin: 0.5em 0;
+  padding-left: 1.4em;
+}
+.markdown ul { list-style: disc; }
+.markdown ol { list-style: decimal; }
+.markdown li { margin: 0.15em 0; }
+.markdown li > p { margin: 0.15em 0; }
+
+/* GFM task lists */
+.markdown li > input[type="checkbox"] {
+  margin-right: 0.4em;
+  accent-color: var(--color-accent);
+}
+
+.markdown strong { font-weight: 600; color: var(--color-fg); }
+.markdown em { font-style: italic; }
+
+.markdown kbd {
+  font-family: var(--font-mono), serif;
+  font-size: 0.85em;
+  padding: 0.05em 0.35em;
+  border-radius: 0.25em;
+  border: 1px solid var(--color-border);
+  background: var(--color-elevated);
+  color: var(--color-fg);
+}
+
+/* Shiki host: keep our own padding/scrolling, drop default <pre> margins */
+.shiki-host pre, .shiki-host code {
+  background: transparent !important;
+  margin: 0;
+  font-family: var(--font-mono), serif;
+}
+

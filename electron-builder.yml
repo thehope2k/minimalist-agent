@@ -1,0 +1,63 @@
+appId: do.thehope.minimalist-agent
+productName: Minimalist Agent
+copyright: Copyright © 2026 The Hope
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - out/**/*
+  - package.json
+  - "!**/*.map"
+
+# Auto-update reads update manifests (latest-mac.yml / latest.yml / latest-linux.yml)
+# from the GitHub Releases of this repo.
+publish:
+  provider: github
+  owner: thehope2k
+  repo: minimalist-agent
+
+mac:
+  category: public.app-category.developer-tools
+  target:
+    # zip is REQUIRED by electron-updater for macOS auto-update.
+    # dmg is shipped for first-time install convenience.
+    - target: zip
+      arch:
+        - arm64
+        - x64
+    - target: dmg
+      arch:
+        - arm64
+        - x64
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  artifactName: "Minimalist-Agent-${arch}.${ext}"
+  # Code signing & notarization disabled — see README. Set CSC_LINK + APPLE_ID
+  # + APPLE_APP_SPECIFIC_PASSWORD + APPLE_TEAM_ID to enable; auto-update on
+  # macOS will not work end-to-end until then.
+  identity: null
+
+dmg:
+  artifactName: "Minimalist-Agent-${arch}.dmg"
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  artifactName: "Minimalist-Agent-${arch}.${ext}"
+
+nsis:
+  oneClick: true
+  perMachine: false
+  deleteAppDataOnUninstall: false
+
+linux:
+  category: Development
+  target:
+    - target: AppImage
+      arch:
+        - x64
+  artifactName: "Minimalist-Agent-${arch}.${ext}"

@@ -1,0 +1,73 @@
+{
+  "name": "minimalist-agent",
+  "productName": "Minimalist Agent",
+  "description": "A focused AI coding agent for software engineers who value simplicity — Anthropic API, Claude OAuth, and GitHub Copilot in one quiet, distraction-free desktop app.",
+  "version": "0.1.0",
+  "license": "MIT",
+  "author": {
+    "name": "The Hope",
+    "url": "https://github.com/thehope2k"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thehope2k/minimalist-agent.git"
+  },
+  "homepage": "https://github.com/thehope2k/minimalist-agent#readme",
+  "bugs": {
+    "url": "https://github.com/thehope2k/minimalist-agent/issues"
+  },
+  "private": true,
+  "type": "module",
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "pack": "electron-vite build && electron-builder --publish never",
+    "release": "electron-vite build && electron-builder --publish always",
+    "release:patch": "bash scripts/release.sh patch",
+    "release:minor": "bash scripts/release.sh minor",
+    "release:major": "bash scripts/release.sh major"
+  },
+  "overrides": {
+    "@anthropic-ai/sdk": "^0.92.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.126",
+    "@mariozechner/pi-agent-core": "^0.72.1",
+    "@mariozechner/pi-ai": "^0.72.1",
+    "@mariozechner/pi-coding-agent": "^0.72.1",
+    "@radix-ui/react-popover": "^1.1.15",
+    "clsx": "^2.1.1",
+    "electron-updater": "^6.8.3",
+    "gray-matter": "^4.0.3",
+    "ignore": "^7.0.5",
+    "lucide-react": "^0.469.0",
+    "mermaid": "^11.14.0",
+    "react": "^18.3.1",
+    "react-diff-viewer-continued": "^4.2.2",
+    "react-dom": "^18.3.1",
+    "react-markdown": "^10.1.0",
+    "react-resizable-panels": "^2.1.9",
+    "rehype-raw": "^7.0.0",
+    "remark-gfm": "^4.0.1",
+    "sharp": "^0.34.5",
+    "shiki": "^4.0.2",
+    "tailwind-merge": "^3.5.0",
+    "zod": "^4.4.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
+    "@types/node": "^22.10.5",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^5.2.0",
+    "electron": "^41.5.0",
+    "electron-builder": "^26.8.1",
+    "electron-vite": "^5.0.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.7.3",
+    "vite": "^7.3.2"
+  }
+}

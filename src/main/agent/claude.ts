@@ -1,0 +1,96 @@
+// Public agent entry point. Dispatches to a provider-specific backend
+// based on the resolved auth shape.
+//
+//   anthropic_api_key | anthropic_oauth → backends/anthropic.ts
+//   copilot_oauth                       → backends/pi/agent.ts
+
+import type { CanUseTool } from '@anthropic-ai/claude-agent-sdk';
+import type { StoredAttachment } from '../storage/sessions';
+import { sessionPath } from '../storage/sessions';
+import type { AgentChatEvent } from './events';
+import type { PermissionMode } from './permissions';
+import { runAnthropicChat, type AnthropicAuth } from './backends/anthropic';
+import { runPiChat, type PiPermissionAsk } from './backends/pi/agent';
+import type { ResolvedAuth } from './backends/types';
+
+export type { AgentChatEvent };
+export type { AnthropicAuth };
+export type { ResolvedAuth };
+export type { PiPermissionAsk };
+
+export interface AgentChatRequest {
+  /**
+   * Resolved, fresh auth produced by `auth/resolve.ts`. The shape's
+   * discriminator picks the backend.
+   */
+  auth: ResolvedAuth;
+  /** Pi sub-provider — required when `auth.type === 'copilot_oauth'`. */
+  piAuthProvider?: 'github-copilot';
+  /**
+   * Connection slug — needed by the Pi backend so it can mutex token
+   * refresh against the same connection across concurrent turns.
+   */
+  connectionSlug?: string;
+  /** Caller-side correlation id (renderer message id). */
+  turnId: string;
+  /** Owning chat session id — required for Pi (anchors Pi's session log). */
+  chatSessionId?: string;
+  model: string;
+  prompt: string;
+  attachments?: StoredAttachment[];
+  cwd?: string;
+  resumeSessionId?: string;
+  maxTurns?: number;
+  permissionMode?: PermissionMode;
+  /** Anthropic-only: SDK callback for tool-use prompts. */
+  canUseTool?: CanUseTool;
+  /** Pi-only: renderer-side permission prompt callback. */
+  ask?: PiPermissionAsk;
+  signal?: AbortSignal;
+}
+
+/** Run one chat turn. Yields events ending with `turn_done` or `error`. */
+export function runAgentChat(
+  req: AgentChatRequest,
+): AsyncGenerator<AgentChatEvent> {
+  if (req.auth.type === 'copilot_oauth') {
+    if (!req.chatSessionId) {
+      throw new Error(
+        'runAgentChat: chatSessionId is required for Pi/Copilot connections.',
+      );
+    }
+    if (!req.connectionSlug) {
+      throw new Error(
+        'runAgentChat: connectionSlug is required for Pi/Copilot connections.',
+      );
+    }
+    return runPiChat({
+      connectionSlug: req.connectionSlug,
+      auth: req.auth,
+      piAuthProvider: req.piAuthProvider ?? 'github-copilot',
+      turnId: req.turnId,
+      chatSessionId: req.chatSessionId,
+      chatSessionPath: sessionPath(req.chatSessionId),
+      model: req.model,
+      prompt: req.prompt,
+      attachments: req.attachments,
+      cwd: req.cwd,
+      permissionMode: req.permissionMode,
+      ask: req.ask,
+      signal: req.signal,
+    });
+  }
+  return runAnthropicChat({
+    auth: req.auth,
+    turnId: req.turnId,
+    model: req.model,
+    prompt: req.prompt,
+    attachments: req.attachments,
+    cwd: req.cwd,
+    resumeSessionId: req.resumeSessionId,
+    maxTurns: req.maxTurns,
+    permissionMode: req.permissionMode,
+    canUseTool: req.canUseTool,
+    signal: req.signal,
+  });
+}
