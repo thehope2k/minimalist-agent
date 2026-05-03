@@ -14,19 +14,28 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { File as FileIcon, Folder as FolderIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { FileSearchEntry, LoadedSkill } from '@/lib/electron';
+import type {
+  FileSearchEntry,
+  LoadedExtension,
+  LoadedSkill,
+} from '@/lib/electron';
 import { scoreEntry, searchFiles } from '@/lib/files';
+import { displayDescription, displayName, isEnabled } from '@/lib/extensions';
 import { SkillAvatar } from '../skills/SkillAvatar';
+import { ExtensionAvatar } from '../extensions/ExtensionAvatar';
 
 /** Discriminated union of pickable items. */
 export type MentionItem =
   | { kind: 'skill'; skill: LoadedSkill }
+  | { kind: 'extension'; extension: LoadedExtension }
   | { kind: 'file'; entry: FileSearchEntry };
 
 export interface MentionMenuProps {
   open: boolean;
   query: string;
   skills: LoadedSkill[];
+  /** Only enabled extensions are pickable — disabled ones can't act anyway. */
+  extensions: LoadedExtension[];
   /** Working directory to search files under. Empty = no file results. */
   cwd?: string;
   onSelect: (item: MentionItem) => void;
@@ -48,7 +57,7 @@ export const MentionMenu = function MentionMenuImpl(
     handleRef?: React.MutableRefObject<MentionMenuHandle | null>;
   },
 ) {
-  const { open, query, skills, cwd, onSelect, onClose, handleRef } = props;
+  const { open, query, skills, extensions, cwd, onSelect, onClose, handleRef } = props;
 
   const [activeIdx, setActiveIdx] = useState(0);
   const [files, setFiles] = useState<FileSearchEntry[]>([]);
@@ -66,6 +75,17 @@ export const MentionMenu = function MentionMenuImpl(
       .sort((a, b) => b.score - a.score);
     return ranked.map((r) => r.skill);
   }, [skills, query]);
+
+  /* ---------- extension scoring ---------- */
+  const filteredExtensions = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return extensions
+      .filter(isEnabled)
+      .map((e) => ({ extension: e, score: scoreExtension(e, q) }))
+      .filter((x) => x.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map((r) => r.extension);
+  }, [extensions, query]);
 
   /* ---------- file search (debounced IPC) ---------- */
   useEffect(() => {
@@ -101,11 +121,14 @@ export const MentionMenu = function MentionMenuImpl(
       ...filteredSkills.map(
         (skill) => ({ kind: 'skill', skill }) as const,
       ),
+      ...filteredExtensions.map(
+        (extension) => ({ kind: 'extension', extension }) as const,
+      ),
       ...filteredFiles.map(
         (entry) => ({ kind: 'file', entry }) as const,
       ),
     ];
-  }, [filteredSkills, filteredFiles]);
+  }, [filteredSkills, filteredExtensions, filteredFiles]);
 
   // Reset selection on items change.
   useEffect(() => {
@@ -187,11 +210,32 @@ export const MentionMenu = function MentionMenuImpl(
           );
         })}
 
+        {filteredExtensions.length > 0 && (
+          <SectionHeader label="Extensions" />
+        )}
+        {filteredExtensions.map((extension, i) => {
+          const idx = filteredSkills.length + i;
+          return (
+            <ExtensionRow
+              key={extension.slug}
+              extension={extension}
+              active={idx === activeIdx}
+              dataIdx={idx}
+              onMouseEnter={() => setActiveIdx(idx)}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onSelect({ kind: 'extension', extension });
+              }}
+            />
+          );
+        })}
+
         {filteredFiles.length > 0 && (
           <SectionHeader label="Files" />
         )}
         {filteredFiles.map((entry, i) => {
-          const idx = filteredSkills.length + i;
+          const idx =
+            filteredSkills.length + filteredExtensions.length + i;
           return (
             <FileRow
               key={entry.absolutePath}
@@ -337,5 +381,55 @@ function scoreSkill(skill: LoadedSkill, q: string): number {
   if (slug.includes(q) || name.includes(q)) return 2;
   if (desc.includes(q)) return 1;
   return 0;
+}
+
+function scoreExtension(extension: LoadedExtension, q: string): number {
+  if (!q) return 1;
+  const slug = extension.slug.toLowerCase();
+  const name = displayName(extension).toLowerCase();
+  const desc = displayDescription(extension).toLowerCase();
+  if (slug.startsWith(q) || name.startsWith(q)) return 3;
+  if (slug.includes(q) || name.includes(q)) return 2;
+  if (desc.includes(q)) return 1;
+  return 0;
+}
+
+function ExtensionRow({
+  extension,
+  active,
+  dataIdx,
+  onMouseEnter,
+  onMouseDown,
+}: {
+  extension: LoadedExtension;
+  active: boolean;
+  dataIdx: number;
+  onMouseEnter: () => void;
+  onMouseDown: (e: React.MouseEvent) => void;
+}) {
+  return (
+    <li
+      data-idx={dataIdx}
+      onMouseEnter={onMouseEnter}
+      onMouseDown={onMouseDown}
+      className={cn(
+        'flex cursor-pointer items-start gap-2 px-3 py-1.5 text-sm',
+        active ? 'bg-elevated' : 'hover:bg-elevated/60',
+      )}
+    >
+      <ExtensionAvatar extension={extension} size="sm" />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span className="truncate text-fg">{displayName(extension)}</span>
+          <span className="ml-auto shrink-0 font-mono text-[10px] text-fg-subtle">
+            {extension.slug}
+          </span>
+        </div>
+        <div className="truncate text-xs text-fg-subtle">
+          {displayDescription(extension)}
+        </div>
+      </div>
+    </li>
+  );
 }
 

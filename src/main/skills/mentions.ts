@@ -22,7 +22,9 @@ const MENTION_RE = /(^|\s)@([\w./-]+)/g;
 export interface ParsedMentions {
   /** Skill slugs that are present in `availableSkillSlugs`. */
   skills: string[];
-  /** `@…` tokens that look like a skill mention but didn't match. */
+  /** Extension slugs that are present in `availableExtensionSlugs`. */
+  extensions: string[];
+  /** `@…` tokens that look like a slug mention but didn't match anything. */
   invalidSkills: string[];
   /** File paths (relative or absolute) that exist on disk under `cwd`. */
   files: string[];
@@ -31,17 +33,21 @@ export interface ParsedMentions {
 }
 
 /**
- * Pull all mention tokens out of `text`. Skill matching is name-based
- * (caller passes in the installed slug list). File / folder matching
- * checks for actual existence under `cwd`.
+ * Pull all mention tokens out of `text`. Resolution priority on a slug-
+ * shaped token: skill → extension → folder → file. Skills win over
+ * extensions on slug collision (existing behavior; users should keep
+ * unique slugs to avoid surprises). File / folder matching checks for
+ * actual existence under `cwd`.
  */
 export function parseMentions(
   text: string,
   availableSkillSlugs: string[],
+  availableExtensionSlugs: string[],
   cwd: string | undefined,
 ): ParsedMentions {
   const result: ParsedMentions = {
     skills: [],
+    extensions: [],
     invalidSkills: [],
     files: [],
     folders: [],
@@ -51,6 +57,10 @@ export function parseMentions(
     const token = match[2]!.replace(/\/$/, '');
     if (availableSkillSlugs.includes(token)) {
       if (!result.skills.includes(token)) result.skills.push(token);
+      continue;
+    }
+    if (availableExtensionSlugs.includes(token)) {
+      if (!result.extensions.includes(token)) result.extensions.push(token);
       continue;
     }
 
@@ -83,18 +93,30 @@ export function parseMentions(
  * Tokens that don't match anything are left unchanged.
  *
  *   @weather              → [Mentioned skill: Weather (slug: weather)]
+ *   @gh                   → [Mentioned extension: GitHub (slug: gh)]
  *   @src/x.ts             → [Mentioned file: x.ts (at /abs/src/x.ts)]
  *   @src/components/      → [Mentioned folder: components (at /abs/src/components)]
+ *
+ * Skill names take priority over extension names on slug collision —
+ * matches `parseMentions`.
  */
 export function resolveMentions(
   text: string,
-  ctx: { skillNames: Map<string, string>; cwd: string | undefined },
+  ctx: {
+    skillNames: Map<string, string>;
+    extensionNames: Map<string, string>;
+    cwd: string | undefined;
+  },
 ): string {
   return text.replace(MENTION_RE, (whole, leading: string, raw: string) => {
     const token = raw.replace(/\/$/, '');
     const skillName = ctx.skillNames.get(token);
     if (skillName !== undefined) {
       return `${leading}[Mentioned skill: ${skillName} (slug: ${token})]`;
+    }
+    const extensionName = ctx.extensionNames.get(token);
+    if (extensionName !== undefined) {
+      return `${leading}[Mentioned extension: ${extensionName} (slug: ${token})]`;
     }
     const abs = absolutize(token, ctx.cwd);
     if (abs && existsSync(abs)) {

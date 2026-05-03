@@ -12,6 +12,7 @@ import { ContextBadge } from './ContextBadge';
 import { CompactionNotice } from './CompactionNotice';
 import { useAiData } from '@/hooks/useAiData';
 import { useSkills } from '@/hooks/useSkills';
+import { useExtensions } from '@/hooks/useExtensions';
 import { useInlineMention } from '@/hooks/useInlineMention';
 import {
   fileToDraft,
@@ -105,10 +106,12 @@ export function MessageInput({
   const dragDepth = useRef(0);
   const data = useAiData();
 
-  // Mention picker — gated to skills only in v1.
+  // Mention picker — surfaces installed skills, enabled extensions, and
+  // project files.
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const skills = useSkills() ?? [];
+  const extensions = useExtensions() ?? [];
   const {
     state: mention,
     recompute: recomputeMention,
@@ -128,6 +131,8 @@ export function MessageInput({
     let token: string;
     if (item.kind === 'skill') {
       token = `@${item.skill.slug}`;
+    } else if (item.kind === 'extension') {
+      token = `@${item.extension.slug}`;
     } else {
       // Folders get a trailing slash so the resolver can prefer the
       // directory marker over the file marker on the same name.
@@ -461,6 +466,7 @@ export function MessageInput({
             open={mention.active}
             query={mention.query}
             skills={skills}
+            extensions={extensions}
             cwd={cwd}
             onSelect={insertMention}
             onClose={resetMention}

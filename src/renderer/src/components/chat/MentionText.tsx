@@ -13,8 +13,11 @@
 import { Fragment, useMemo } from 'react';
 import { File as FileIcon, Folder as FolderIcon } from 'lucide-react';
 import { useSkills } from '@/hooks/useSkills';
+import { useExtensions } from '@/hooks/useExtensions';
+import { displayName as extensionDisplayName } from '@/lib/extensions';
 import { SkillAvatar } from '../skills/SkillAvatar';
-import type { LoadedSkill } from '@/lib/electron';
+import { ExtensionAvatar } from '../extensions/ExtensionAvatar';
+import type { LoadedExtension, LoadedSkill } from '@/lib/electron';
 
 const MENTION_RE = /(^|\s)@([\w./-]+)/g;
 
@@ -45,9 +48,14 @@ function tokenize(text: string): Run[] {
 
 export function MentionText({ text }: { text: string }) {
   const skills = useSkills() ?? [];
-  const bySlug = useMemo(
+  const extensions = useExtensions() ?? [];
+  const skillBySlug = useMemo(
     () => new Map(skills.map((s) => [s.slug, s])),
     [skills],
+  );
+  const extensionBySlug = useMemo(
+    () => new Map(extensions.map((e) => [e.slug, e])),
+    [extensions],
   );
 
   const runs = useMemo(() => tokenize(text), [text]);
@@ -58,7 +66,12 @@ export function MentionText({ text }: { text: string }) {
         r.kind === 'text' ? (
           <Fragment key={i}>{r.value}</Fragment>
         ) : (
-          <MentionChip key={i} token={r.token} skill={bySlug.get(stripSlash(r.token))} />
+          <MentionChip
+            key={i}
+            token={r.token}
+            skill={skillBySlug.get(stripSlash(r.token))}
+            extension={extensionBySlug.get(stripSlash(r.token))}
+          />
         ),
       )}
     </>
@@ -78,11 +91,14 @@ function basename(p: string): string {
 function MentionChip({
   token,
   skill,
+  extension,
 }: {
   token: string;
   skill?: LoadedSkill;
+  extension?: LoadedExtension;
 }) {
-  // Skill match → avatar + display name.
+  // Skill takes priority over extension on slug collision — matches the
+  // backend resolution rules in `parseMentions` / `resolveMentions`.
   if (skill) {
     return (
       <span
@@ -91,6 +107,21 @@ function MentionChip({
       >
         <SkillAvatar skill={skill} size="sm" className="!h-3.5 !w-3.5 !text-[10px]" />
         <span>{skill.metadata.name}</span>
+      </span>
+    );
+  }
+  if (extension) {
+    return (
+      <span
+        className="mx-0.5 inline-flex items-center gap-1 rounded-md border border-border/60 bg-elevated/80 px-1.5 py-px align-baseline text-[0.9em] text-fg"
+        title={`@${extension.slug}`}
+      >
+        <ExtensionAvatar
+          extension={extension}
+          size="sm"
+          className="!h-3.5 !w-3.5 !text-[10px]"
+        />
+        <span>{extensionDisplayName(extension)}</span>
       </span>
     );
   }

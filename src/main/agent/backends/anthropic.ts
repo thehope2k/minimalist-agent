@@ -315,27 +315,25 @@ export async function* runAnthropicChat(
 
   const prefix = buildPromptPrefix({ cwd: req.cwd });
 
-  // Resolve [skill:slug] mentions: replace with semantic markers and
-  // (if any) prepend a "Read SKILL.md first" directive. See
+  // Resolve `@slug` mentions: replace with semantic markers and (if any)
+  // prepend a "Read SKILL.md / guide.md first" directive. See
   // `src/main/skills/directive.ts` for the rules.
-  const { skillPaths, cleanMessage, missingSkills } = extractSkillPaths(
-    req.prompt,
-    req.cwd,
-  );
+  const { skillPaths, extensionGuidePaths, cleanMessage, missingSkills } =
+    extractSkillPaths(req.prompt, req.cwd);
   if (missingSkills.length > 0) {
     yield {
       type: 'error',
       error: parseError(
         new Error(
-          `Skill(s) not found: ${missingSkills.join(', ')}. ` +
-            `Install them under ~/.agents/skills/<slug>/ or ` +
-            `<cwd>/.agents/skills/<slug>/.`,
+          `Mention(s) not found: ${missingSkills.join(', ')}. ` +
+            `Skills live under ~/.agents/skills/<slug>/ or <cwd>/.agents/skills/<slug>/. ` +
+            `Extensions must be installed and enabled.`,
         ),
       ),
     };
     return;
   }
-  const directive = formatSkillDirective(skillPaths);
+  const directive = formatSkillDirective(skillPaths, extensionGuidePaths);
   const finalPrompt = [prefix, directive, cleanMessage]
     .filter(Boolean)
     .join('\n\n');
