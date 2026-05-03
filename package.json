@@ -2,7 +2,7 @@
   "name": "minimalist-agent",
   "productName": "Minimalist Agent",
   "description": "A focused AI coding agent for software engineers who value simplicity — Anthropic API, Claude OAuth, and GitHub Copilot in one quiet, distraction-free desktop app.",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "license": "MIT",
   "author": {
     "name": "The Hope",
