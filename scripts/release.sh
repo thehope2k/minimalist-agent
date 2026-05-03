@@ -35,12 +35,12 @@ npm run typecheck
 echo "→ Bumping version ($BUMP)…"
 NEW_VERSION="$(npm version "$BUMP" -m "release: v%s")"
 
-echo "→ Pushing commit + tag $NEW_VERSION…"
+echo "→ Pushing commit + tag ${NEW_VERSION}…"
 git push
 git push --tags
 
 echo
-echo "✓ Pushed $NEW_VERSION."
+echo "✓ Pushed ${NEW_VERSION}."
 echo "  GitHub Actions is now building macOS/Windows/Linux artifacts."
 echo "  Watch: https://github.com/thehope2k/minimalist-agent/actions"
 echo "  When the workflow finishes, publish the draft release at:"
