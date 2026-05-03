@@ -114,7 +114,7 @@ const ERROR_DEFINITIONS: Record<ErrorCode, ErrorDef> = {
   network_error: {
     title: 'Connection error',
     message:
-      'Could not reach the Anthropic API. Check your internet connection or VPN.',
+      'Could not reach the provider API. Check your internet connection, VPN, or firewall.',
     canRetry: true,
     retryDelayMs: 1000,
   },
@@ -390,6 +390,23 @@ export function parseError(error: unknown): AgentError {
     lower.includes('etimedout') ||
     lower.includes('fetch failed')
   ) {
+    // Provider-aware copy. "Copilot token refresh failed: fetch failed"
+    // means we couldn't reach GitHub to renew the OAuth token — the token
+    // itself isn't necessarily expired, the refresh call just couldn't
+    // complete (DNS, VPN, firewall, captive portal, offline).
+    if (lower.includes('copilot') && lower.includes('token refresh')) {
+      return buildError('network_error', original, {
+        title: 'Could not refresh Copilot token',
+        message:
+          "Couldn't reach GitHub to renew your Copilot OAuth token. Your token isn't necessarily expired — the refresh request itself failed. Check your internet connection, VPN, or firewall and retry.",
+      });
+    }
+    if (lower.includes('copilot')) {
+      return buildError('network_error', original, {
+        message:
+          "Couldn't reach the Copilot gateway (api.githubcopilot.com). Check your internet connection, VPN, or firewall.",
+      });
+    }
     return buildError('network_error', original);
   }
 
@@ -446,10 +463,4 @@ export function summarizeSdkResultError(r: SDKResultError): AgentError {
     retryDelayMs: def.retryDelayMs,
     originalError: `result.subtype=${r.subtype}; stop_reason=${r.stop_reason ?? 'null'}`,
   };
-}
-
-/* ---------- pure helpers used by callers ------------------------ */
-
-export function canAutoRetry(err: AgentError): boolean {
-  return err.canRetry && typeof err.retryDelayMs === 'number';
 }
