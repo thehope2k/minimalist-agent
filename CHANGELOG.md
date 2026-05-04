@@ -5,6 +5,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.1.4] — 2026-05-04
+
+### Fixed
+
+**Pi-server sessions — false "Turn was interrupted" on reload**
+
+- `event-adapter.ts` now emits `{ type: 'turn_done', stopReason: 'stop' }` for
+  `agent_end` events; previously the bare `turn_done` (no `stopReason`) caused
+  every completed pi-server turn to be flagged as a zombie on next load
+- `applyEvent` uses `stopReason: evt.stopReason ?? 'stop'` as a defensive
+  fallback so sessions already on disk without a `stopReason` are also healed
+
+**Session list reordering after visiting an old session**
+
+- The zombie-correction path now preserves the original `createdAt` timestamp
+  when calling `replaceLastMessage`, preventing `meta.lastMessageAt` from being
+  bumped to `Date.now()` and causing the session to jump to the top of the list
+- `ChatMessage` now carries an optional `createdAt` field (threaded through
+  `chatFromStored`) so the round-trip has access to the original timestamp
+
+---
+
 ## [0.1.3] — 2026-05-04
 
 ### Added

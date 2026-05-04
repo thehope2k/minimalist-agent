@@ -68,6 +68,12 @@ export interface ChatMessage {
     postTokens?: number;
     durationMs?: number;
   };
+  /**
+   * Original creation timestamp from StoredMessage — preserved so that the
+   * zombie-correction path can write it back without bumping meta.lastMessageAt
+   * to Date.now() and causing the session to jump in the sorted list.
+   */
+  createdAt?: number;
 }
 
 export function newId(): string {
@@ -99,6 +105,7 @@ export function chatFromStored(stored: StoredMessage): ChatMessage {
     attachments: stored.attachments,
     markerKind: stored.markerKind,
     compactionMeta: stored.compactionMeta,
+    createdAt: stored.createdAt,
   };
 }
 

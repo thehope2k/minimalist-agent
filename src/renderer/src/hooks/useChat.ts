@@ -145,7 +145,10 @@ function applyEvent(msg: ChatMessage, evt: ChatStreamEvent): ChatMessage {
       return {
         ...msg,
         isStreaming: false,
-        stopReason: evt.stopReason,
+        // Defensive fallback: pi-server's agent_end historically emitted turn_done
+        // without a stopReason field. Guard here so a missing stopReason never
+        // leaves the message in a zombie state that the interrupt detector fires on.
+        stopReason: evt.stopReason ?? 'stop',
         usage: evt.usage,
       };
     }
@@ -405,6 +408,12 @@ export function useChat(
         // Persist the recovery so the disk reflects the same state on next
         // load and downstream readers (e.g. title gen) see a closed turn.
         const stored = chatToStored(fixed);
+        // Preserve the original createdAt so replaceLastMessage does not bump
+        // meta.lastMessageAt to Date.now(), which would re-sort the session list
+        // and cause the session to jump position after every app restart.
+        // Fall back to chatToStored's Date.now() only for very old messages
+        // that predate the createdAt-in-ChatMessage field.
+        if (last.createdAt != null) stored.createdAt = last.createdAt;
         if (!stored.content) stored.content = partsToContent(fixed.parts);
         void replaceLastMessage(sessionId, stored);
       }

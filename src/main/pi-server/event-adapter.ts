@@ -354,7 +354,9 @@ export function adaptPiEvent(event: AgentSessionEvent): AgentChatEvent[] {
 
     case 'agent_end': {
       // No usage info on AgentEvent's agent_end today; emit a bare done.
-      out.push({ type: 'turn_done' });
+      // Explicitly set stopReason so downstream zombie-detection (!last.stopReason)
+      // does not falsely flag completed pi-server turns as interrupted.
+      out.push({ type: 'turn_done', stopReason: 'stop' });
       return out;
     }
 
