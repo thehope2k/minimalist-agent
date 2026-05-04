@@ -5,6 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.1.6] — 2026-05-04
+
+### Fixed
+
+**Scroll arrows**
+
+- Arrows no longer overlap message content at any panel width — a reserved
+  `pr-12` right margin on both the message list and the composer creates a
+  dedicated gutter, and the arrow position tracks the message column edge via
+  a CSS `calc` formula so the gap stays consistent whether the sidebar is
+  collapsed or expanded
+
+---
+
 ## [0.1.5] — 2026-05-04
 
 ### Added
