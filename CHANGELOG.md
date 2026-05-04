@@ -5,6 +5,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.1.7] — 2026-05-04
+
+### Fixed
+
+**Check for Updates**
+
+- The "Check Now" button was a stub (fake 800ms spinner, no real check) —
+  it now calls the actual update API which queries GitHub Releases
+- Update errors were silently hidden; the banner now shows an amber
+  "Update check failed" notice with a direct link to the GitHub Releases
+  page so users can download manually (relevant on macOS without code
+  signing where `electron-updater` cannot install updates automatically)
+
+---
+
 ## [0.1.6] — 2026-05-04
 
 ### Fixed
