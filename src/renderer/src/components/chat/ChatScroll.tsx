@@ -130,7 +130,7 @@ export function ChatScroll({ sessionId, contentSignal, children }: Props) {
             gutter to the right of the message column without overlapping. */}
       <div
         className="pointer-events-none absolute bottom-3 z-10 flex flex-col items-end gap-1.5"
-        style={{ right: 'calc(1.25rem + max(0rem, (100% - 62rem) / 2))' }}
+        style={{ right: 'calc(1rem + max(0rem, (100% - 64rem) / 2))' }}
       >
         <div
           className={cn(

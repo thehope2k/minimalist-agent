@@ -289,7 +289,7 @@ export function ChatArea({
         {messages.length === 0 ? (
           <EmptyState />
         ) : (
-          <div className="px-4">
+          <div className="pl-4 pr-12">
             <MessageList
               messages={messages}
               onRetry={handleRetry}
@@ -300,11 +300,12 @@ export function ChatArea({
         )}
       </ChatScroll>
 
-      <div className="shrink-0 px-4 pb-4 pt-2 relative">
+      <div className="shrink-0 pb-4 pt-2 relative">
         <div
           aria-hidden
           className="pointer-events-none absolute -top-6 left-0 right-0 h-6 bg-linear-to-b from-transparent to-canvas"
         />
+        <div className="pl-4 pr-12">
         <MessageInput
           isStreaming={isStreaming}
           streamingTurnId={streamingTurnId}
@@ -338,6 +339,7 @@ export function ChatArea({
           sessionModel={sessionModel || undefined}
           loadedSessionPickId={loadedSessionPickId}
         />
+        </div>
       </div>
 
       {/* Mounted once at the chat-area level so it survives session
