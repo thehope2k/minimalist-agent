@@ -5,6 +5,46 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.1.5] — 2026-05-04
+
+### Added
+
+**Expand to fullscreen**
+
+- Shared `ExpandModal` primitive — code blocks, images, and tool results can
+  now be expanded to a full-screen overlay (click the expand icon or press Esc
+  to close)
+- Mermaid diagrams get their own expand button; the modal fills the viewport
+  and supports zoom + pan (pinch / scroll to zoom, drag to pan)
+- Zoom + pan also applies to images in the expanded view
+- KaTeX math rendering for `$$…$$` and `$…$` expressions in assistant replies
+- JSON tree viewer for tool results that contain raw JSON — collapsible nodes,
+  copy-to-clipboard
+- System prompt guidance for diagrams injected automatically
+
+### Changed
+
+- **Plan mode block message** is now tool-aware: when `bash` is blocked, the
+  model is told which read-only tools to use instead and how to switch modes —
+  reducing dead-end loops where the agent just repeated the error
+- **Session title** capped at 7 words (down from 8) — keeps titles snappier in
+  the sidebar
+- **Session list** padding slightly reduced (`py-3` → `py-2.5` on rows,
+  `py-2` → `py-1.5` on date headers) — saves ~4 px per row without feeling cramped
+
+### Fixed
+
+- **Scroll arrows** — multiple rounds of anchoring fixes; arrows now sit
+  precisely on the right edge of the message content column with no overlap
+  and no layout shift when the panel is resized
+- **Code block syntax highlighting** — full language names (`typescript`,
+  `python`, `bash`, etc.) now resolve correctly in addition to short aliases
+- **Sidebar panel sizes** — minimum sizes relaxed for more flexible
+  narrow-window layouts; `maxSize` tightened from 45 → 38 to prevent the
+  sidebar from dominating on wide screens
+
+---
+
 ## [0.1.4] — 2026-05-04
 
 ### Fixed
