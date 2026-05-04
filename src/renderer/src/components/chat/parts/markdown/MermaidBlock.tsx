@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { ChevronDown, Maximize2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -42,6 +43,7 @@ export function MermaidBlock({ code }: { code: string }) {
   const [svg, setSvg] = useState<string | null>(null);
   const [errored, setErrored] = useState(false);
   const [showSource, setShowSource] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const mounted = useRef(true);
 
   useEffect(() => {
@@ -82,6 +84,19 @@ export function MermaidBlock({ code }: { code: string }) {
     };
   }, [code]);
 
+  // Escape closes the expanded overlay.
+  useEffect(() => {
+    if (!expanded) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        setExpanded(false);
+      }
+    };
+    window.addEventListener('keydown', onKey, { capture: true });
+    return () => window.removeEventListener('keydown', onKey, { capture: true });
+  }, [expanded]);
+
   if (errored || svg === null) {
     // Either still loading on the very first paint, or the diagram is
     // partial / broken. Show the raw source — also lets the user copy
@@ -116,9 +131,62 @@ export function MermaidBlock({ code }: { code: string }) {
   }
 
   return (
-    <div
-      className="my-2 flex justify-center overflow-x-auto rounded-md border border-border bg-panel p-3"
-      dangerouslySetInnerHTML={{ __html: svg }}
-    />
+    <>
+      <div className="group relative my-2 overflow-x-auto rounded-md border border-border bg-panel p-3">
+        <div className="flex justify-center" dangerouslySetInnerHTML={{ __html: svg }} />
+        {/* Expand button — fades in on hover */}
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          title="Expand diagram"
+          aria-label="Expand diagram"
+          className={cn(
+            'absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-md',
+            'text-fg-subtle opacity-0 transition-opacity',
+            'hover:bg-elevated hover:text-fg',
+            'group-hover:opacity-100',
+          )}
+        >
+          <Maximize2 className="h-3.5 w-3.5" strokeWidth={1.75} />
+        </button>
+      </div>
+
+      {expanded &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            onClick={() => setExpanded(false)}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Diagram"
+              className="relative flex max-h-[90vh] w-[min(90vw,1200px)] flex-col overflow-hidden rounded-xl border border-border bg-panel shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex shrink-0 items-center justify-between border-b border-border/60 px-4 py-2">
+                <span className="text-[11px] font-medium uppercase tracking-wide text-fg-subtle">
+                  Diagram
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setExpanded(false)}
+                  aria-label="Close"
+                  className="grid h-7 w-7 place-items-center rounded-md text-fg-muted hover:bg-elevated hover:text-fg"
+                >
+                  <X className="h-4 w-4" strokeWidth={1.75} />
+                </button>
+              </div>
+              {/* SVG — scrollable both axes; force it to fill the modal width */}
+              <div
+                className="scroll-thin flex-1 overflow-auto p-6 [&_svg]:h-auto [&_svg]:max-w-full"
+                dangerouslySetInnerHTML={{ __html: svg }}
+              />
+            </div>
+          </div>,
+          document.body,
+        )}
+    </>
   );
 }
