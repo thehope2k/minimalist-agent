@@ -122,11 +122,16 @@ export function ChatScroll({ sessionId, contentSignal, children }: Props) {
         {children}
       </div>
 
-      {/* Floating scroll buttons — stacked in the bottom-right corner.
-          ArrowUp: visible once scrolled meaningfully away from the top.
-          ArrowDown: visible once scrolled away from the bottom (useful when
-          reading history while a stream is running at the tail). */}
-      <div className="pointer-events-none absolute right-4 bottom-3 z-10 flex flex-col items-end gap-1.5">
+      {/* Scroll buttons — positioned just outside the message content column.
+          Formula: right = 1.25rem + max(0, (panel − content − px-4-padding) / 2)
+          where content = 60rem (max-w-240) and px-4 = 2×1rem = 62rem total.
+          • Panel ≤ 62rem: right = 1.25rem (gutter-less, near edge)
+          • Panel > 62rem: right grows so arrows always sit in the empty
+            gutter to the right of the message column without overlapping. */}
+      <div
+        className="pointer-events-none absolute bottom-3 z-10 flex flex-col items-end gap-1.5"
+        style={{ right: 'calc(1.25rem + max(0rem, (100% - 62rem) / 2))' }}
+      >
         <div
           className={cn(
             'transition-opacity duration-150',
