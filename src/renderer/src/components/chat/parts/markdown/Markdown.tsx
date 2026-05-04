@@ -10,7 +10,7 @@ import { CodeBlock } from './CodeBlock';
 import { MermaidBlock } from './MermaidBlock';
 import { JsonBlock } from './JsonBlock';
 import { MathBlock } from './MathBlock';
-import { ExpandModal } from '@/components/ui';
+import { ExpandModal, ZoomPan } from '@/components/ui';
 
 /**
  * Assistant-prose renderer.
@@ -79,14 +79,17 @@ function InlineImage({ src, alt }: { src?: string; alt?: string }) {
       />
       {open && (
         <ExpandModal title={alt || 'Image'} onClose={() => setOpen(false)}>
-          <div className="scroll-thin flex flex-1 items-center justify-center overflow-auto p-6">
-            <img
-              src={src}
-              alt={alt}
-              className="max-w-full rounded-md"
-              style={{ maxHeight: 'calc(90vh - 80px)' }}
-            />
-          </div>
+          <ZoomPan className="flex-1">
+            <div className="flex items-center justify-center p-6">
+              <img
+                src={src}
+                alt={alt}
+                className="max-w-full rounded-md"
+                style={{ maxHeight: 'calc(90vh - 80px)' }}
+                draggable={false}
+              />
+            </div>
+          </ZoomPan>
         </ExpandModal>
       )}
     </>

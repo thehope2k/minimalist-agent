@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, Maximize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ExpandModal } from '@/components/ui';
+import { ExpandModal, ZoomPan } from '@/components/ui';
 
 /**
  * Lazy-loaded Mermaid renderer. Mermaid pulls ~1MB of JS so we only
@@ -142,11 +142,13 @@ export function MermaidBlock({ code }: { code: string }) {
 
       {expanded && (
         <ExpandModal title="Diagram" onClose={() => setExpanded(false)}>
-          {/* SVG — scrollable both axes; force it to fill the modal width */}
-          <div
-            className="scroll-thin flex-1 overflow-auto p-6 [&_svg]:h-auto [&_svg]:max-w-full"
-            dangerouslySetInnerHTML={{ __html: svg }}
-          />
+          <ZoomPan className="flex-1">
+            {/* SVG — rendered at natural size inside the zoom container */}
+            <div
+              className="flex items-center justify-center p-6 [&_svg]:h-auto [&_svg]:max-w-full"
+              dangerouslySetInnerHTML={{ __html: svg }}
+            />
+          </ZoomPan>
         </ExpandModal>
       )}
     </>
