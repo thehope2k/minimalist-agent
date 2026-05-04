@@ -22,12 +22,20 @@ const LANGS = [
 ] as const;
 
 const LANG_ALIASES: Record<string, string> = {
+  // Short aliases
   shell: 'bash',
   console: 'bash',
   yml: 'yaml',
   py: 'python',
   rs: 'rust',
   golang: 'go',
+  // Full language names the AI commonly writes that aren't in LANGS directly
+  typescript: 'ts',
+  javascript: 'js',
+  typescriptreact: 'tsx',
+  javascriptreact: 'jsx',
+  plaintext: 'text',
+  txt: 'text',
 };
 
 const THEME = 'github-dark-default';
@@ -59,7 +67,10 @@ function normalizeLang(raw?: string): string {
   const lower = raw.toLowerCase();
   if (LANG_ALIASES[lower]) return LANG_ALIASES[lower];
   if ((LANGS as readonly string[]).includes(lower)) return lower;
-  return 'text';
+  // Unknown language: pass through to Shiki — it knows many more aliases
+  // (e.g. 'c', 'cpp', 'java', 'kotlin'…). The async effect's catch block
+  // falls back to plain text if Shiki doesn't recognise it.
+  return lower;
 }
 
 interface CodeBlockProps {
