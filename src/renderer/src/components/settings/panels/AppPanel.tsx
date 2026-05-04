@@ -38,8 +38,7 @@ export function AppPanel() {
 
   const handleCheckUpdates = async () => {
     setChecking(true);
-    // Stubbed: no auto-updater wired yet. Mimic the spinner so the UX is honest.
-    await new Promise((r) => setTimeout(r, 800));
+    await window.api.update.check();
     setChecking(false);
   };
 
