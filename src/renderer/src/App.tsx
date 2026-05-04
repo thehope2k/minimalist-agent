@@ -189,7 +189,7 @@ export default function App() {
             ref={listPanelRef}
             defaultSize={layout[0]}
             minSize={14}
-            maxSize={45}
+            maxSize={38}
             collapsible
             collapsedSize={0}
             onCollapse={() => setSidebarCollapsed(true)}
