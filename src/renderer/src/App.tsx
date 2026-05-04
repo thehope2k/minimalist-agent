@@ -188,7 +188,7 @@ export default function App() {
           <ResizablePanel
             ref={listPanelRef}
             defaultSize={layout[0]}
-            minSize={18}
+            minSize={14}
             maxSize={45}
             collapsible
             collapsedSize={0}
@@ -229,7 +229,7 @@ export default function App() {
 
           <ResizableHandle />
 
-          <ResizablePanel defaultSize={layout[1]} minSize={35}>
+          <ResizablePanel defaultSize={layout[1]} minSize={30}>
             <div className={PANEL_CARD}>
               <div
                 className="h-full w-full"
