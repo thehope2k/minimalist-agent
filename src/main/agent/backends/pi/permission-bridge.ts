@@ -57,11 +57,27 @@ export async function decidePiPermission(
 
   if (args.mode === 'plan') {
     if (isReadOnly) return { action: 'allow' };
-    return {
-      action: 'block',
-      reason:
-        'Plan mode is active — only read-only tools may run. Reply with the plan as text instead of calling this tool.',
-    };
+
+    const toolName = args.toolName.toLowerCase();
+    let reason: string;
+
+    if (toolName === 'bash') {
+      const inp = args.input as Record<string, unknown> | null | undefined;
+      const command = typeof inp?.command === 'string' ? inp.command : '';
+      reason =
+        `Plan mode is active — the bash tool is not available. ` +
+        (command
+          ? `Instead of \`${command}\`, use the read / grep / find / ls / glob tools for exploration. `
+          : `Use the read / grep / find / ls / glob tools for exploration. `) +
+        `Switch to Ask mode if you need to run shell commands.`;
+    } else {
+      reason =
+        `Plan mode is active — "${args.toolName}" is not available. ` +
+        `Only read / grep / find / ls / glob / web_fetch / web_search may run. ` +
+        `Reply with the plan as text instead of calling this tool.`;
+    }
+
+    return { action: 'block', reason };
   }
 
   // ask
