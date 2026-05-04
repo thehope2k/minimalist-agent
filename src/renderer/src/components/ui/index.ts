@@ -2,6 +2,7 @@
 // See AGENTS.md "Shared UI components" for when to add a new one.
 export { Badge } from './Badge';
 export { Button } from './Button';
+export { ExpandModal, type ExpandModalProps } from './ExpandModal';
 export { IconButton } from './IconButton';
 export { Input, Textarea, FIELD_CHROME } from './Input';
 export { Menu, type MenuItem } from './Menu';

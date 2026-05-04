@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, Copy } from 'lucide-react';
+import { Check, Copy, Maximize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ExpandModal } from '@/components/ui';
 
 /**
  * Lazy-loaded Shiki highlighter. We keep a singleton across the app so
@@ -75,6 +76,7 @@ interface CodeBlockProps {
 export function CodeBlock({ code, language }: CodeBlockProps) {
   const lang = normalizeLang(language);
   const [html, setHtml] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
   const mounted = useRef(true);
 
   useEffect(() => {
@@ -108,23 +110,56 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
   }, [code, lang]);
 
   return (
-    <div className="group relative my-2 overflow-hidden rounded-md border border-border bg-[#0d1117]">
-      <div className="flex items-center justify-between border-b border-border/60 px-3 py-1 text-[10px] uppercase tracking-wide text-fg-subtle">
-        <span>{language || 'text'}</span>
-        <CopyButton text={code} />
+    <>
+      <div className="group relative my-2 overflow-hidden rounded-md border border-border bg-[#0d1117]">
+        <div className="flex items-center justify-between border-b border-border/60 px-3 py-1 text-[10px] uppercase tracking-wide text-fg-subtle">
+          <span>{language || 'text'}</span>
+          <div className="flex items-center gap-0.5">
+            <button
+              type="button"
+              onClick={() => setExpanded(true)}
+              title="Expand"
+              aria-label="Expand code"
+              className={cn(
+                'flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px]',
+                'text-fg-subtle opacity-0 transition-opacity hover:bg-elevated hover:text-fg group-hover:opacity-100',
+              )}
+            >
+              <Maximize2 className="h-3 w-3" strokeWidth={1.75} />
+              Expand
+            </button>
+            <CopyButton text={code} />
+          </div>
+        </div>
+        {html ? (
+          <div
+            className="shiki-host scroll-thin overflow-x-auto px-3 py-2 text-[12.5px] leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
+        ) : (
+          <pre className="scroll-thin m-0 overflow-x-auto px-3 py-2 font-mono text-[12.5px] leading-relaxed text-fg">
+            <code>{code}</code>
+          </pre>
+        )}
       </div>
-      {html ? (
-        <div
-          className="shiki-host scroll-thin overflow-x-auto px-3 py-2 text-[12.5px] leading-relaxed"
-          // Shiki output is a sanitized <pre><code> tree we generated ourselves.
-          dangerouslySetInnerHTML={{ __html: html }}
-        />
-      ) : (
-        <pre className="scroll-thin m-0 overflow-x-auto px-3 py-2 font-mono text-[12.5px] leading-relaxed text-fg">
-          <code>{code}</code>
-        </pre>
+
+      {expanded && (
+        <ExpandModal title={language || 'text'} onClose={() => setExpanded(false)}>
+          <div className="scroll-thin flex-1 overflow-auto bg-[#0d1117]">
+            {html ? (
+              <div
+                className="shiki-host px-4 py-3 text-[12.5px] leading-relaxed"
+                dangerouslySetInnerHTML={{ __html: html }}
+              />
+            ) : (
+              <pre className="m-0 px-4 py-3 font-mono text-[12.5px] leading-relaxed text-fg">
+                <code>{code}</code>
+              </pre>
+            )}
+          </div>
+        </ExpandModal>
       )}
-    </div>
+    </>
   );
 }
 

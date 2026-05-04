@@ -9,8 +9,7 @@
 // Edit input:  { file_path, old_string, new_string, replace_all? }
 // Write input: { file_path, content }   (treated as full-file addition)
 
-import { useEffect, useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useMemo, useState } from 'react';
 import ReactDiffViewer, { DiffMethod } from 'react-diff-viewer-continued';
 import {
   AlertCircle,
@@ -20,9 +19,9 @@ import {
   FileText,
   Loader2,
   Maximize2,
-  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ExpandModal } from '@/components/ui';
 
 interface DiffPartProps {
   name: string;
@@ -200,57 +199,33 @@ function DiffModal({
   name: string;
   onClose: () => void;
 }) {
-  // Esc to close — same contract as any modal in the app.
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  const isWrite = name.toLowerCase() === 'write';
+  const Icon = isWrite ? FileText : FilePenLine;
 
-  const Icon = name.toLowerCase() === 'write' ? FileText : FilePenLine;
+  const title = (
+    <>
+      <Icon className="h-4 w-4 text-accent" strokeWidth={1.75} />
+      <span className="text-sm font-medium text-fg">{name}</span>
+      <span className="text-fg-subtle">·</span>
+      <span className="min-w-0 flex-1 truncate font-mono text-xs text-fg-muted">
+        {shortenPath(parsed.filePath)}
+      </span>
+    </>
+  );
 
-  // Portaled to body so the modal escapes any `overflow:hidden` ancestor
-  // (we have a few — chat scroll, assistant card, etc.).
-  return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        className="flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl border border-border bg-panel text-fg shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center gap-2 border-b border-border px-4 py-2.5 text-sm">
-          <Icon className="h-4 w-4 text-accent" strokeWidth={1.75} />
-          <span className="font-medium text-fg">{name}</span>
-          <span className="text-fg-subtle">·</span>
-          <span className="min-w-0 flex-1 truncate font-mono text-xs text-fg-muted">
-            {shortenPath(parsed.filePath)}
-          </span>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close diff"
-            className="rounded p-1 text-fg-muted hover:bg-elevated hover:text-fg focus-visible:bg-elevated focus-visible:outline-none"
-          >
-            <X className="h-4 w-4" strokeWidth={2} />
-          </button>
-        </div>
-        <div className="scroll-thin flex-1 overflow-auto bg-panel">
-          <ReactDiffViewer
-            oldValue={parsed.oldValue}
-            newValue={parsed.newValue}
-            splitView={true}
-            compareMethod={DiffMethod.WORDS}
-            useDarkTheme={true}
-            styles={diffViewerStyles}
-          />
-        </div>
+  return (
+    <ExpandModal title={title} onClose={onClose} className="max-w-6xl">
+      <div className="scroll-thin flex-1 overflow-auto bg-panel">
+        <ReactDiffViewer
+          oldValue={parsed.oldValue}
+          newValue={parsed.newValue}
+          splitView={true}
+          compareMethod={DiffMethod.WORDS}
+          useDarkTheme={true}
+          styles={diffViewerStyles}
+        />
       </div>
-    </div>,
-    document.body,
+    </ExpandModal>
   );
 }
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { ChevronDown, Maximize2, X } from 'lucide-react';
+import { ChevronDown, Maximize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ExpandModal } from '@/components/ui';
 
 /**
  * Lazy-loaded Mermaid renderer. Mermaid pulls ~1MB of JS so we only
@@ -84,18 +84,7 @@ export function MermaidBlock({ code }: { code: string }) {
     };
   }, [code]);
 
-  // Escape closes the expanded overlay.
-  useEffect(() => {
-    if (!expanded) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation();
-        setExpanded(false);
-      }
-    };
-    window.addEventListener('keydown', onKey, { capture: true });
-    return () => window.removeEventListener('keydown', onKey, { capture: true });
-  }, [expanded]);
+  // Escape closes the expanded overlay — delegated to ExpandModal.
 
   if (errored || svg === null) {
     // Either still loading on the very first paint, or the diagram is
@@ -151,42 +140,15 @@ export function MermaidBlock({ code }: { code: string }) {
         </button>
       </div>
 
-      {expanded &&
-        createPortal(
+      {expanded && (
+        <ExpandModal title="Diagram" onClose={() => setExpanded(false)}>
+          {/* SVG — scrollable both axes; force it to fill the modal width */}
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-            onClick={() => setExpanded(false)}
-          >
-            <div
-              role="dialog"
-              aria-modal="true"
-              aria-label="Diagram"
-              className="relative flex max-h-[90vh] w-[min(90vw,1200px)] flex-col overflow-hidden rounded-xl border border-border bg-panel shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header */}
-              <div className="flex shrink-0 items-center justify-between border-b border-border/60 px-4 py-2">
-                <span className="text-[11px] font-medium uppercase tracking-wide text-fg-subtle">
-                  Diagram
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setExpanded(false)}
-                  aria-label="Close"
-                  className="grid h-7 w-7 place-items-center rounded-md text-fg-muted hover:bg-elevated hover:text-fg"
-                >
-                  <X className="h-4 w-4" strokeWidth={1.75} />
-                </button>
-              </div>
-              {/* SVG — scrollable both axes; force it to fill the modal width */}
-              <div
-                className="scroll-thin flex-1 overflow-auto p-6 [&_svg]:h-auto [&_svg]:max-w-full"
-                dangerouslySetInnerHTML={{ __html: svg }}
-              />
-            </div>
-          </div>,
-          document.body,
-        )}
+            className="scroll-thin flex-1 overflow-auto p-6 [&_svg]:h-auto [&_svg]:max-w-full"
+            dangerouslySetInnerHTML={{ __html: svg }}
+          />
+        </ExpandModal>
+      )}
     </>
   );
 }

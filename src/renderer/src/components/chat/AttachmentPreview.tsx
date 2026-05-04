@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { File as FileIcon, FileCode, FileText, Image as ImageIcon, Loader2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { DraftAttachment } from '@/lib/electron';
+import { ExpandModal } from '@/components/ui';
 
 type Props = {
   attachments: DraftAttachment[];
@@ -57,6 +59,7 @@ function Bubble({
   onRemove: () => void;
   disabled?: boolean;
 }) {
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const isImage = att.type === 'image';
   const src = isImage && att.base64 ? `data:${att.mimeType};base64,${att.base64}` : null;
 
@@ -76,15 +79,34 @@ function Bubble({
       )}
 
       {isImage ? (
-        <div className="h-14 w-14 overflow-hidden rounded-lg bg-elevated">
-          {src ? (
-            <img src={src} alt={att.name} className="h-full w-full object-cover" />
-          ) : (
-            <div className="grid h-full w-full place-items-center">
-              <ImageIcon className="h-5 w-5 text-fg-subtle" strokeWidth={1.75} />
-            </div>
+        <>
+          <div
+            className={cn(
+              'h-14 w-14 overflow-hidden rounded-lg bg-elevated',
+              src && 'cursor-zoom-in',
+            )}
+            onClick={() => src && setLightboxOpen(true)}
+          >
+            {src ? (
+              <img src={src} alt={att.name} className="h-full w-full object-cover" />
+            ) : (
+              <div className="grid h-full w-full place-items-center">
+                <ImageIcon className="h-5 w-5 text-fg-subtle" strokeWidth={1.75} />
+              </div>
+            )}
+          </div>
+          {lightboxOpen && src && (
+            <ExpandModal title={att.name} onClose={() => setLightboxOpen(false)}>
+              <div className="scroll-thin flex-1 overflow-auto p-4">
+                <img
+                  src={src}
+                  alt={att.name}
+                  className="mx-auto block max-w-full rounded"
+                />
+              </div>
+            </ExpandModal>
           )}
-        </div>
+        </>
       ) : (
         <div className="flex h-14 items-center gap-2.5 rounded-lg bg-elevated px-2 pr-3">
           <div className="grid h-10 w-8 shrink-0 place-items-center rounded-md bg-panel">
