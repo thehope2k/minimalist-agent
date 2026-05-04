@@ -122,40 +122,44 @@ export function ChatScroll({ sessionId, contentSignal, children }: Props) {
         {children}
       </div>
 
-      {/* Floating scroll buttons — stacked in the bottom-right corner.
-          ArrowUp: visible once scrolled meaningfully away from the top.
-          ArrowDown: visible once scrolled away from the bottom (useful when
-          reading history while a stream is running at the tail). */}
-      <div className="pointer-events-none absolute right-4 bottom-3 z-10 flex flex-col items-end gap-1.5">
-        <div
-          className={cn(
-            'transition-opacity duration-150',
-            atTop ? 'opacity-0' : 'opacity-100',
-          )}
-          aria-hidden={atTop}
-        >
-          <IconButton
-            icon={ArrowUp}
-            label="Scroll to top"
-            onClick={scrollToTop}
-            disabled={atTop}
-            className="pointer-events-auto rounded-full border border-border bg-panel shadow-md hover:bg-elevated"
-          />
-        </div>
-        <div
-          className={cn(
-            'transition-opacity duration-150',
-            atBottom ? 'opacity-0' : 'opacity-100',
-          )}
-          aria-hidden={atBottom}
-        >
-          <IconButton
-            icon={ArrowDown}
-            label="Scroll to latest"
-            onClick={scrollToBottom}
-            disabled={atBottom}
-            className="pointer-events-auto rounded-full border border-border bg-panel shadow-md hover:bg-elevated"
-          />
+      {/* Floating scroll buttons — anchored to the right edge of the content
+          column (max-w-240, centred) rather than the panel edge. This keeps
+          them visually adjacent to messages regardless of how wide the panel
+          is or how far the sidebar is dragged. */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10">
+        <div className="mx-auto flex w-full max-w-240 justify-end px-4">
+          <div className="flex flex-col items-end gap-1.5">
+            <div
+              className={cn(
+                'transition-opacity duration-150',
+                atTop ? 'opacity-0' : 'opacity-100',
+              )}
+              aria-hidden={atTop}
+            >
+              <IconButton
+                icon={ArrowUp}
+                label="Scroll to top"
+                onClick={scrollToTop}
+                disabled={atTop}
+                className="pointer-events-auto rounded-full border border-border bg-panel shadow-md hover:bg-elevated"
+              />
+            </div>
+            <div
+              className={cn(
+                'transition-opacity duration-150',
+                atBottom ? 'opacity-0' : 'opacity-100',
+              )}
+              aria-hidden={atBottom}
+            >
+              <IconButton
+                icon={ArrowDown}
+                label="Scroll to latest"
+                onClick={scrollToBottom}
+                disabled={atBottom}
+                className="pointer-events-auto rounded-full border border-border bg-panel shadow-md hover:bg-elevated"
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>
