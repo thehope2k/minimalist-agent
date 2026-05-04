@@ -1,5 +1,6 @@
 import { memo, useState, type ReactNode } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
+import type { PluggableList } from 'unified';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeRaw from 'rehype-raw';
@@ -42,8 +43,8 @@ import { ExpandModal, ZoomPan } from '@/components/ui';
 // text. Double-dollar ($$...$$) still works for real math expressions.
 const MATH_OPTIONS = { singleDollarTextMath: false } as const;
 
-const REMARK_PLUGINS = [remarkGfm, [remarkMath, MATH_OPTIONS]] as const;
-const REHYPE_PLUGINS = [rehypeRaw, rehypeKatex] as const;
+const REMARK_PLUGINS: PluggableList = [remarkGfm, [remarkMath, MATH_OPTIONS]];
+const REHYPE_PLUGINS: PluggableList = [rehypeRaw, rehypeKatex];
 
 // ── Helper ──────────────────────────────────────────────────────────────────
 function extractText(children: ReactNode): string {
