@@ -1,26 +1,51 @@
-import { memo, type ReactNode } from 'react';
+import { memo, useState, type ReactNode } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
 import rehypeRaw from 'rehype-raw';
+import rehypeKatex from 'rehype-katex';
+// KaTeX CSS — required for math symbols and layout to render correctly.
+import 'katex/dist/katex.min.css';
 import { CodeBlock } from './CodeBlock';
 import { MermaidBlock } from './MermaidBlock';
+import { JsonBlock } from './JsonBlock';
+import { MathBlock } from './MathBlock';
+import { ExpandModal } from '@/components/ui';
 
 /**
  * Assistant-prose renderer.
  *
- * Pipeline: react-markdown + remark-gfm (tables / task lists / strike) +
- * rehype-raw (allow inline HTML). We do not run rehype-sanitize: the
- * model writes the markdown, not the user, so XSS isn't a threat inside
- * an assistant bubble. This keeps the output crisp and lets simple
- * <kbd>, <sub>, <sup>, <details> just work.
+ * Pipeline:
+ *   react-markdown
+ *   + remark-gfm       (tables / task lists / strike)
+ *   + remark-math      ($$...$$ block math, disabled single-$ to keep
+ *                       currency strings like $100 as plain text)
+ *   + rehype-raw       (allow inline HTML from the model)
+ *   + rehype-katex     (render math nodes to HTML via KaTeX)
+ *
+ * Custom fenced-code handlers (matched on the language tag):
+ *   mermaid        → animated SVG via MermaidBlock (+ expand button)
+ *   json           → interactive collapse/expand tree via JsonBlock
+ *   latex / math   → KaTeX display-mode block via MathBlock
+ *   everything else → Shiki syntax-highlighted CodeBlock (+ expand button)
+ *
+ * Custom element overrides:
+ *   img  → click-to-expand lightbox via ExpandModal
  *
  * Streaming-safe: react-markdown is pure and re-runs cleanly on every
- * delta, so we just call it on whatever partial text we have.
+ * delta. JsonBlock / MathBlock fall back to raw text when the fence is
+ * still incomplete, so no crash during streaming.
  */
 
-const REMARK_PLUGINS = [remarkGfm];
-const REHYPE_PLUGINS = [rehypeRaw];
+// ── remark-math options ─────────────────────────────────────────────────────
+// Disable single-dollar inline math so currency like $2M–$4M stays plain
+// text. Double-dollar ($$...$$) still works for real math expressions.
+const MATH_OPTIONS = { singleDollarTextMath: false } as const;
 
+const REMARK_PLUGINS = [remarkGfm, [remarkMath, MATH_OPTIONS]] as const;
+const REHYPE_PLUGINS = [rehypeRaw, rehypeKatex] as const;
+
+// ── Helper ──────────────────────────────────────────────────────────────────
 function extractText(children: ReactNode): string {
   if (children == null) return '';
   if (typeof children === 'string') return children;
@@ -38,9 +63,39 @@ function extractText(children: ReactNode): string {
   return '';
 }
 
+// ── InlineImage ─────────────────────────────────────────────────────────────
+// Wraps <img> tags in the markdown with a click-to-expand lightbox.
+// Defined as a proper component so it can hold local state.
+function InlineImage({ src, alt }: { src?: string; alt?: string }) {
+  const [open, setOpen] = useState(false);
+  if (!src) return null;
+  return (
+    <>
+      <img
+        src={src}
+        alt={alt}
+        className="my-2 max-w-full cursor-zoom-in rounded-md border border-border"
+        onClick={() => setOpen(true)}
+      />
+      {open && (
+        <ExpandModal title={alt || 'Image'} onClose={() => setOpen(false)}>
+          <div className="scroll-thin flex flex-1 items-center justify-center overflow-auto p-6">
+            <img
+              src={src}
+              alt={alt}
+              className="max-w-full rounded-md"
+              style={{ maxHeight: 'calc(90vh - 80px)' }}
+            />
+          </div>
+        </ExpandModal>
+      )}
+    </>
+  );
+}
+
+// ── Component map ────────────────────────────────────────────────────────────
 const COMPONENTS: Components = {
-  // Headings — keep the `markdown` typography pass in globals.css doing
-  // the heavy lifting; just render plain tags so they pick it up.
+  // Headings — let globals.css typography do the heavy lifting.
   h1: ({ children }) => <h1>{children}</h1>,
   h2: ({ children }) => <h2>{children}</h2>,
   h3: ({ children }) => <h3>{children}</h3>,
@@ -57,11 +112,18 @@ const COMPONENTS: Components = {
     </a>
   ),
 
-  // Inline + fenced code share the `code` element. Inline code has no
-  // language class; fenced code (under a `pre`) gets `language-xxx`.
+  // Images — click to expand via ExpandModal lightbox.
+  img: ({ src, alt }) => <InlineImage src={src} alt={alt} />,
+
+  /**
+   * Inline + fenced code share the `code` element.
+   *   - Inline code: no language class → styled <code> tag.
+   *   - Fenced code: dispatched by language tag to the right renderer.
+   */
   code: ({ className, children, ...rest }) => {
     const match = /language-([\w-]+)/.exec(className ?? '');
     const isInline = !match && !className;
+
     if (isInline) {
       return (
         <code
@@ -72,17 +134,28 @@ const COMPONENTS: Components = {
         </code>
       );
     }
+
     const code = extractText(children).replace(/\n$/, '');
     const lang = match?.[1];
+
+    // ── Fenced block dispatch ──────────────────────────────────────────
     if (lang === 'mermaid') {
       return <MermaidBlock code={code} />;
+    }
+    if (lang === 'json') {
+      // Interactive tree viewer; falls back to Shiki for invalid JSON.
+      return <JsonBlock code={code} />;
+    }
+    if (lang === 'latex' || lang === 'math') {
+      // Explicit fenced-block LaTeX (in addition to $$...$$ auto-handled
+      // by rehype-katex in the remark pipeline).
+      return <MathBlock code={code} />;
     }
     return <CodeBlock code={code} language={lang} />;
   },
 
-  // We render fenced code fully inside our `code` handler above, so
-  // suppress the surrounding `pre` element react-markdown would emit
-  // (it'd nest our styled CodeBlock inside an unstyled <pre>).
+  // Suppress the <pre> wrapper — our CodeBlock / MermaidBlock already add
+  // their own containers.
   pre: ({ children }) => <>{children}</>,
 
   table: ({ children }) => (
@@ -113,6 +186,8 @@ const COMPONENTS: Components = {
   hr: () => <hr className="my-3 border-border" />,
 };
 
+// ── Public component ─────────────────────────────────────────────────────────
+
 interface MarkdownProps {
   text: string;
 }
@@ -132,8 +207,8 @@ function MarkdownInner({ text }: MarkdownProps) {
 }
 
 /**
- * Memoize on text equality. ReactMarkdown isn't cheap on huge inputs
- * (tens of KB), and assistant text-deltas otherwise force a full
+ * Memoize on text equality. ReactMarkdown + the math/KaTeX pipeline is not
+ * cheap on huge inputs — assistant text-deltas would otherwise force a full
  * re-parse on every keystroke from the model.
  */
 export const Markdown = memo(MarkdownInner, (a, b) => a.text === b.text);

@@ -139,3 +139,19 @@ body {
   font-family: var(--font-mono), serif;
 }
 
+/* ── KaTeX math overrides ──────────────────────────────────────────────
+ *
+ * KaTeX ships its own CSS (imported in Markdown.tsx via
+ * 'katex/dist/katex.min.css'). The overrides below make math output
+ * blend with the app's dark OKLCH token palette instead of rendering
+ * with KaTeX's default light-mode colours.
+ */
+.katex { color: var(--color-fg); font-size: 1em; }
+.katex-display { margin: 0.6em 0; overflow-x: auto; }
+
+/* Inline math sits on the text baseline without extra spacing */
+.markdown .katex-html { vertical-align: baseline; }
+
+/* Display-mode container added by MathBlock (explicit ```latex blocks) */
+.katex-display-block .katex { color: var(--color-fg); }
+
