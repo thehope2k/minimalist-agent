@@ -120,7 +120,7 @@ function SessionRow({
       <button
         onClick={onClick}
         className={cn(
-          'flex w-full items-center gap-3 px-3 py-3 text-left transition-colors',
+          'flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors',
           active ? 'bg-elevated' : 'hover:bg-elevated/60',
         )}
       >
@@ -294,7 +294,7 @@ export function SessionsPanel({
             {groupByDate(items, view === 'archived').map(([label, group]) => (
               <div key={label}>
                 {view !== 'archived' && (
-                  <div className="px-2 py-2 text-[11px] font-medium uppercase tracking-wider text-fg-subtle">
+                  <div className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wider text-fg-subtle">
                     {label}
                   </div>
                 )}
@@ -325,7 +325,7 @@ function NewSessionRow() {
   return (
     <div className="relative">
       <span className="absolute inset-y-1.5 left-0 z-10 w-0.5 rounded-r-sm bg-accent" />
-      <div className="flex w-full items-center gap-3 rounded-lg bg-elevated px-3 py-3">
+      <div className="flex w-full items-center gap-3 rounded-lg bg-elevated px-3 py-2.5">
         <Circle
           className="h-4 w-4 shrink-0 text-fg-subtle"
           strokeWidth={1.75}
