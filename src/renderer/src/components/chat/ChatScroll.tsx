@@ -110,33 +110,25 @@ export function ChatScroll({ sessionId, contentSignal, children }: Props) {
   };
 
   return (
-    // `relative` so the floating button positions against this container,
-    // not the page. `min-h-0 flex-1` lets it actually shrink inside the
-    // chat column's flex layout (otherwise it'd push the composer off).
-    <div className="relative min-h-0 flex-1">
+    // `min-h-0 flex-1` lets this shrink inside the chat column's flex layout.
+    // Flex-row so the arrow column sits beside the scroll area — never over it.
+    <div className="flex min-h-0 flex-1">
       <div
         ref={scrollRef}
         onScroll={onScroll}
-        className="scroll-thin h-full overflow-y-auto overscroll-contain"
+        className="scroll-thin min-w-0 flex-1 overflow-y-auto overscroll-contain"
       >
         {children}
       </div>
 
-      {/* Floating scroll buttons — positioned just outside the right edge of
-          the content column (max-w-240 = 60rem). Uses CSS max() to track the
-          column edge as the panel resizes:
-            • Panel < 60rem  → 1rem from panel right (normal minimum)
-            • Panel > 60rem  → 1rem beyond the content column's right edge
-          This prevents them from either overlapping messages or drifting to
-          the far panel edge when the sidebar is collapsed. */}
-      <div
-        className="pointer-events-none absolute bottom-3 z-10 flex flex-col items-end gap-1.5"
-        style={{ right: 'max(1rem, calc((100% - 60rem) / 2 + 1rem))' }}
-      >
+      {/* Arrow column — a fixed-width strip beside (not over) the scroll area.
+          Arrows fade in/out; the column always reserves its space so content
+          never shifts when they appear or disappear. */}
+      <div className="flex w-9 shrink-0 flex-col items-center justify-end gap-1.5 pb-3">
         <div
           className={cn(
             'transition-opacity duration-150',
-            atTop ? 'opacity-0' : 'opacity-100',
+            atTop ? 'pointer-events-none opacity-0' : 'opacity-100',
           )}
           aria-hidden={atTop}
         >
@@ -145,13 +137,13 @@ export function ChatScroll({ sessionId, contentSignal, children }: Props) {
             label="Scroll to top"
             onClick={scrollToTop}
             disabled={atTop}
-            className="pointer-events-auto rounded-full border border-border bg-panel shadow-md hover:bg-elevated"
+            className="rounded-full border border-border bg-panel shadow-md hover:bg-elevated"
           />
         </div>
         <div
           className={cn(
             'transition-opacity duration-150',
-            atBottom ? 'opacity-0' : 'opacity-100',
+            atBottom ? 'pointer-events-none opacity-0' : 'opacity-100',
           )}
           aria-hidden={atBottom}
         >
@@ -160,7 +152,7 @@ export function ChatScroll({ sessionId, contentSignal, children }: Props) {
             label="Scroll to latest"
             onClick={scrollToBottom}
             disabled={atBottom}
-            className="pointer-events-auto rounded-full border border-border bg-panel shadow-md hover:bg-elevated"
+            className="rounded-full border border-border bg-panel shadow-md hover:bg-elevated"
           />
         </div>
       </div>
