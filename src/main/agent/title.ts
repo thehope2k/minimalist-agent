@@ -16,11 +16,11 @@ import {sessionPath} from '../storage/sessions';
 const ANTHROPIC_HAIKU = 'claude-haiku-4-5-20251001';
 const PI_DEFAULT_MINI = 'claude-haiku-4.5';
 const TITLE_MAX_TOKENS = 256;
-const TITLE_MAX_WORDS = 8;
+const TITLE_MAX_WORDS = 7;
 
 const SYSTEM_PROMPT = [
   'You generate concise titles for chat conversations.',
-  'Reply with ONLY the title — 3 to 8 words, plain text.',
+  'Reply with ONLY the title — 3 to 7 words, plain text.',
   'No markdown, no quotes, no preamble like "Title:". No trailing punctuation.',
   'Examples: React state debugging plan | Postgres migration rollout strategy | Setup CI for monorepo.',
 ].join(' ');
