@@ -126,7 +126,11 @@ const COMPONENTS: Components = {
    */
   code: ({ className, children, ...rest }) => {
     const match = /language-([\w-]+)/.exec(className ?? '');
-    const isInline = !match && !className;
+    const rawCode = extractText(children);
+    // react-markdown always appends a trailing \n to fenced-block code but
+    // never to inline code. This is the most reliable way to tell them apart
+    // when no language tag is present (className would be undefined for both).
+    const isInline = !match && !rawCode.endsWith('\n');
 
     if (isInline) {
       return (
@@ -139,7 +143,7 @@ const COMPONENTS: Components = {
       );
     }
 
-    const code = extractText(children).replace(/\n$/, '');
+    const code = rawCode.replace(/\n$/, '');
     const lang = match?.[1];
 
     // ── Fenced block dispatch ──────────────────────────────────────────
