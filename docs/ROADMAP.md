@@ -42,6 +42,38 @@ These are understood, scoped, and on the roadmap — just not shipped yet.
 
 ---
 
+## SpecKit / Spec-Driven Development (SDD)
+
+GitHub Spec Kit (v0.8.5, 92.5K stars) is a mature SDD toolkit that already works
+with Minimalist Agent today via the `AGENTS.md` auto-discovery bridge. The items
+below are native improvements that would make MA a first-class SDD environment
+rather than a generic host for an external CLI.
+
+### Level 1 — Packaging (days)
+
+| What                            | Notes                                                                                                                                                                                                                                                                       |
+|---------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **SpecKit CLI-bound Extension** | Ship a `speckit` extension under `<userData>/extensions/` that surfaces the `specify` CLI to agent sessions. Lets users run `specify init .` and `specify extension add` from within MA without manual terminal setup.                                                      |
+| **`@speckit` Skill**            | A global `SKILL.md` that teaches both backends (Claude + Pi) the full v0.8.5 command syntax: `/speckit.constitution`, `/speckit.specify`, `/speckit.plan`, `/speckit.tasks`, `/speckit.implement` — phase gates, constitution-first approach, and when to use each command. |
+
+### Level 2 — UX Polish (weeks)
+
+| What                            | Notes                                                                                                                                                                                        |
+|---------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **`.specify/` directory panel** | Side panel that lists features (`001-kanban`, `002-auth`…), shows artifact status per feature (spec ✅ plan ✅ tasks ✅ implemented ⏳), and renders `tasks.md` as a real interactive checklist. |
+| **Phase indicator**             | Detect current SDD phase from file system state (which artifacts exist under `.specify/specs/`) and show a progress badge in the session header.                                             |
+| **Spec file viewer**            | Structured rendering for `spec.md`, `plan.md`, `tasks.md`, and `constitution.md` — not just generic markdown, but with section highlighting and checkbox tracking.                           |
+| **SDD project wizard**          | "New SDD Project" dialog: pick directory → runs `specify init . --integration <backend>` internally → sets working directory → opens session in Specify phase.                               |
+
+### Level 3 — Native Power (months)
+
+| What                      | Notes                                                                                                                                                                                                        |
+|---------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Task → Session queue**  | Parse `tasks.md` checkboxes and offer "Spawn sessions for all tasks" — each unchecked task becomes a child session pre-loaded with `spec.md` + `plan.md` context. Checks the box when the session completes. |
+| **Multi-model per phase** | UI affordance to assign a model per SDD phase. Only meaningful with the Pi backend (cross-provider: GPT-4.1, Gemini 2.5, o3, Claude). E.g. Gemini 2.5 for Specify, o3 for Plan, Claude Sonnet for Implement. |
+
+---
+
 ## What's intentionally out of scope
 
 These are explicit non-goals — they belong to a different product surface.
