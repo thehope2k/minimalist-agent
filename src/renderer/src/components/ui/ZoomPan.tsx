@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils';
  *     intercept drag events (`onMouseDown` with stopPropagation).
  */
 
-const MIN_ZOOM = 0.1;
+const MIN_ZOOM = 0.05;
 const MAX_ZOOM = 8;
 
 function clamp(v: number, lo: number, hi: number) {
@@ -27,9 +27,14 @@ function clamp(v: number, lo: number, hi: number) {
 interface ZoomPanProps {
   children: ReactNode;
   className?: string;
+  /**
+   * Auto-scale content to fill the container on first render (like object-fit: contain).
+   * The reset button will return to this fitted zoom rather than 100%.
+   */
+  fitOnMount?: boolean;
 }
 
-export function ZoomPan({ children, className }: ZoomPanProps) {
+export function ZoomPan({ children, className, fitOnMount }: ZoomPanProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
 
@@ -39,6 +44,9 @@ export function ZoomPan({ children, className }: ZoomPanProps) {
   // React state — only for things that trigger visible re-renders.
   const [zoom, setZoomDisplay] = useState(1);
   const [dragging, setDragging] = useState(false);
+
+  // The "home" zoom level: 1 normally, or the fit-to-container zoom when fitOnMount is set.
+  const homeZoomRef = useRef(1);
 
   /** Apply transform to the DOM and sync the % readout. */
   const apply = useCallback((zoom: number, x: number, y: number) => {
@@ -51,7 +59,28 @@ export function ZoomPan({ children, className }: ZoomPanProps) {
     setZoomDisplay(zoom);
   }, []);
 
-  const reset = useCallback(() => apply(1, 0, 0), [apply]);
+  const reset = useCallback(() => apply(homeZoomRef.current, 0, 0), [apply]);
+
+  /** On mount, compute and apply a fit-to-container zoom so the content fills the space. */
+  useEffect(() => {
+    if (!fitOnMount) return;
+    // rAF ensures the browser has laid out the SVG at natural dimensions first.
+    const raf = requestAnimationFrame(() => {
+      const container = containerRef.current;
+      const inner = innerRef.current;
+      if (!container || !inner) return;
+      const cw = container.clientWidth;
+      const ch = container.clientHeight;
+      const iw = inner.scrollWidth;
+      const ih = inner.scrollHeight;
+      if (iw === 0 || ih === 0) return;
+      // Scale to fill ~90 % of the shorter axis (like object-fit: contain with padding).
+      const fitZoom = clamp(Math.min(cw / iw, ch / ih) * 0.92, MIN_ZOOM, MAX_ZOOM);
+      homeZoomRef.current = fitZoom;
+      apply(fitZoom, 0, 0);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [fitOnMount, apply]);
 
   /** Wheel zoom — centred on cursor position relative to container. */
   useEffect(() => {
@@ -123,7 +152,7 @@ export function ZoomPan({ children, className }: ZoomPanProps) {
     <div
       ref={containerRef}
       className={cn(
-        'relative overflow-hidden select-none',
+        'relative flex items-center justify-center overflow-hidden select-none',
         dragging ? 'cursor-grabbing' : 'cursor-grab',
         className,
       )}
@@ -156,7 +185,7 @@ export function ZoomPan({ children, className }: ZoomPanProps) {
         <button
           type="button"
           onClick={onReset}
-          title="Reset view"
+          title="Reset to fit"
           className="min-w-[3rem] rounded-full px-1.5 py-0.5 text-center font-mono text-[10px] text-fg-muted transition-colors hover:bg-elevated hover:text-fg"
         >
           {Math.round(zoom * 100)}%

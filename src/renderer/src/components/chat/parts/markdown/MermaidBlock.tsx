@@ -23,10 +23,14 @@ async function getMermaid() {
   if (!initialized) {
     mermaid.initialize({
       startOnLoad: false,
-      securityLevel: 'strict',
+      // 'antiscript' sanitizes <script> tags but allows <br/> and other safe
+      // HTML in labels — needed for our \n → <br/> preprocessing below.
+      // 'strict' would block all HTML and make multiline labels impossible.
+      securityLevel: 'antiscript',
       theme: 'dark',
       fontFamily:
         '-apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif',
+      flowchart: { htmlLabels: true },
     });
     initialized = true;
   }
@@ -37,6 +41,18 @@ let renderCounter = 0;
 function nextRenderId(): string {
   renderCounter += 1;
   return `mermaid-r${renderCounter}-${Date.now().toString(36)}`;
+}
+
+/**
+ * Normalise common model-generated Mermaid quirks before handing to the parser.
+ *
+ * Models frequently write `\n` as a literal backslash-n inside node labels
+ * (e.g. `A[line one\nline two]`). That is not valid Mermaid syntax — the
+ * correct form for multiline HTML labels is `<br/>`.  We replace them here
+ * so diagrams render instead of falling back to the error state.
+ */
+function preprocessMermaid(code: string): string {
+  return code.replace(/\\n/g, '<br/>');
 }
 
 export function MermaidBlock({ code }: { code: string }) {
@@ -68,7 +84,7 @@ export function MermaidBlock({ code }: { code: string }) {
         if (cancelled || !mounted.current) return;
         // mermaid.render appends a temp node to the DOM under the hood —
         // its render ids must be unique per call.
-        const { svg: rendered } = await mermaid.render(nextRenderId(), code);
+        const { svg: rendered } = await mermaid.render(nextRenderId(), preprocessMermaid(code));
         if (!cancelled && mounted.current) {
           setSvg(rendered);
           setErrored(false);
@@ -141,11 +157,11 @@ export function MermaidBlock({ code }: { code: string }) {
       </div>
 
       {expanded && (
-        <ExpandModal title="Diagram" onClose={() => setExpanded(false)}>
-          <ZoomPan className="flex-1">
-            {/* SVG — rendered at natural size inside the zoom container */}
+        <ExpandModal title="Diagram" onClose={() => setExpanded(false)} className="w-[min(95vw,1800px)] h-[90vh]">
+          <ZoomPan className="flex-1" fitOnMount>
+            {/* SVG rendered at its natural dimensions — ZoomPan scales to fit on open */}
             <div
-              className="flex items-center justify-center p-6 [&_svg]:h-auto [&_svg]:max-w-full"
+              className="flex items-center justify-center p-6"
               dangerouslySetInnerHTML={{ __html: svg }}
             />
           </ZoomPan>
