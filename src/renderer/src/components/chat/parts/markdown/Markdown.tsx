@@ -159,6 +159,23 @@ const COMPONENTS: Components = {
       // by rehype-katex in the remark pipeline).
       return <MathBlock code={code} />;
     }
+    if (lang === 'md' || lang === 'markdown' || lang === 'mdx') {
+      // Models frequently wrap documentation / file contents in a ```md fence.
+      // Render it as formatted markdown rather than syntax-highlighted source.
+      // COMPONENTS is referenced inside a closure so it's fully initialised
+      // by the time this runs — no circular-ref issue at module scope.
+      return (
+        <div className="my-2 rounded-md border border-border bg-elevated/20 px-3 py-2">
+          <ReactMarkdown
+            remarkPlugins={REMARK_PLUGINS}
+            rehypePlugins={REHYPE_PLUGINS}
+            components={COMPONENTS}
+          >
+            {code}
+          </ReactMarkdown>
+        </div>
+      );
+    }
     return <CodeBlock code={code} language={lang} />;
   },
 
