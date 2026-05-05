@@ -47,12 +47,22 @@ function nextRenderId(): string {
  * Normalise common model-generated Mermaid quirks before handing to the parser.
  *
  * Models frequently write `\n` as a literal backslash-n inside node labels
- * (e.g. `A[line one\nline two]`). That is not valid Mermaid syntax — the
- * correct form for multiline HTML labels is `<br/>`.  We replace them here
- * so diagrams render instead of falling back to the error state.
+ * (e.g. `A[line one\nline two]`). That is not valid Mermaid syntax.
+ * The fix is two-fold:
+ *   1. Replace `\n` with `<br/>` so HTML line-breaks are used.
+ *   2. Wrap the bracket content in double-quotes (`["..."]`) so the Mermaid
+ *      parser accepts the `<` / `>` angle-bracket characters without choking.
  */
 function preprocessMermaid(code: string): string {
-  return code.replace(/\\n/g, '<br/>');
+  // Match bracket node labels: [content] or ["content"] — no nested brackets.
+  return code.replace(/\[([^\[\]]*)\]/g, (match, inner) => {
+    // Only touch labels that contain a literal backslash-n.
+    if (!inner.includes('\\n')) return match;
+    // Strip existing surrounding quotes (if any), replace \n, re-quote.
+    const unquoted = inner.replace(/^"(.*)"$/s, '$1');
+    const processed = unquoted.replace(/\\n/g, '<br/>');
+    return `["${processed}"]`;
+  });
 }
 
 export function MermaidBlock({ code }: { code: string }) {
