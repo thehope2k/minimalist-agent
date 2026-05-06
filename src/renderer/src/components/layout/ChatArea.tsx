@@ -56,6 +56,7 @@ export function ChatArea({
   const [sddMode, setSddMode] = useState<'auto' | 'off'>('auto');
   const [sddPanelOpen, setSddPanelOpen] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
+  const [pendingMessage, setPendingMessage] = useState<string | undefined>(undefined);
   // Persist the chat/SDD split ratio; only meaningful when panel is open.
   const { layout: workspaceLayout, onLayoutChange: onWorkspaceLayout } =
     useResizablePanels('workspace-sdd-v1', [68, 32]);
@@ -322,6 +323,8 @@ export function ChatArea({
                 entityName={entity.name}
                 blockingFeatureName={blockingFeature?.slug}
                 blockingProgress={blockingProgress}
+                blockingFeature={blockingFeature}
+                onPhaseAction={(text) => setPendingMessage(text)}
               />
             );
           })()}
@@ -403,6 +406,8 @@ export function ChatArea({
                   sessionConnectionSlug={sessionConnectionSlug || undefined}
                   sessionModel={sessionModel || undefined}
                   loadedSessionPickId={loadedSessionPickId}
+                  pendingMessage={pendingMessage}
+                  onPendingMessageConsumed={() => setPendingMessage(undefined)}
                 />
               </div>
             </div>
@@ -433,6 +438,8 @@ export function ChatArea({
                 }
                 onNewProject={() => setShowWizard(true)}
                 onClose={() => setSddPanelOpen(false)}
+                onPinFeature={(slug) => void sdd.setActiveFeature(slug)}
+                onSendMessage={(text) => setPendingMessage(text)}
               />
             </ResizablePanel>
           </>

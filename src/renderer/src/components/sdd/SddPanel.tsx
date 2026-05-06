@@ -13,6 +13,8 @@ export function SddPanel({
   onFeatureOpen,
   onConstitutionOpen,
   onNewProject,
+  onPinFeature,
+  onPhaseAction,
 }: SddPanelProps) {
   // SDD is turned off — state will be null because useSdd clears it on Off.
   // Show a distinct message so the user knows specs exist but SDD is disabled.
@@ -89,9 +91,12 @@ export function SddPanel({
             entity={entity}
             mapping={mapping}
             allEntities={state.entities}
+            activeFeatureSlug={state.activeFeatureSlug}
             onFeatureOpen={onFeatureOpen}
             onMappingChange={onMappingChange}
             onConstitutionOpen={onConstitutionOpen}
+            onPinFeature={onPinFeature}
+            onPhaseAction={onPhaseAction}
           />
         );
       })}

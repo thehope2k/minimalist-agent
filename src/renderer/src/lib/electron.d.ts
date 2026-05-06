@@ -716,6 +716,10 @@ export interface AppApi {
       sessionId: string,
       mode: 'auto' | 'off',
     ) => Promise<import('./sdd').SddSessionState | null>;
+    setActiveFeature: (
+      sessionId: string,
+      slug: string | null,
+    ) => Promise<import('./sdd').SddSessionState | null>;
     readArtifact: (absolutePath: string) => Promise<string>;
     toggleTaskCheckbox: (absolutePath: string, checkboxIndex: number) => Promise<void>;
     runInit: (targetDir: string) => Promise<{ success: boolean; error?: string; installCmd?: string }>;

@@ -78,6 +78,12 @@ export interface SddEntity {
   hasConstitution: boolean;
   /** mtime (ms) of constitution.md; absent when file is missing or stat fails. */
   constitutionMtime?: number;
+  /**
+   * Active feature slug read from `.specify/feature.json` at scan time.
+   * Set by the `specify` CLI when the user selects a working feature.
+   * Used as the default active feature for new sessions (session pin wins).
+   */
+  defaultFeatureSlug: string | null;
 }
 
 // ── Mapping ──────────────────────────────────────────────────────────────────
@@ -114,6 +120,19 @@ export interface SddSessionState {
   scannedDepth: number;
   /** Version string from `specify version`, or null when CLI is missing. */
   cliVersion: string | null;
+  /**
+   * Slug of the feature pinned as active for this session, or null when no
+   * feature is pinned. When set, only this feature's data is injected into
+   * the system prompt and lazy rule injection is enabled.
+   */
+  activeFeatureSlug: string | null;
+  /**
+   * Number of agent turns that have run in this session. Reset to 0 on
+   * initState. Incremented by buildSddPromptBlock on each turn. Used to
+   * always inject the full SDD rules block on the first turn even when
+   * lazy injection is active.
+   */
+  turnCount: number;
 }
 
 // ── Scan result ───────────────────────────────────────────────────────────────

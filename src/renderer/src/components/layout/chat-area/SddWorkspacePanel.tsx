@@ -18,6 +18,8 @@ interface Props {
   onMappingChange: (svcPath: string, entityRoot: string | null) => void;
   onNewProject: () => void;
   onClose: () => void;
+  onPinFeature: (slug: string | null) => void;
+  onSendMessage: (text: string) => void;
 }
 
 // Discriminated union so the panel knows what to show in the viewer slot.
@@ -45,6 +47,8 @@ export function SddWorkspacePanel({
   onMappingChange,
   onNewProject,
   onClose,
+  onPinFeature,
+  onSendMessage,
 }: Props) {
   const [viewerKey, setViewerKey] = useState<ViewerKey | null>(null);
 
@@ -121,7 +125,6 @@ export function SddWorkspacePanel({
         ) : (
           <div className="h-full overflow-y-auto scroll-thin">
             <SddPanel
-              sessionId={activeSession}
               state={sddState}
               loading={sddLoading}
               sddMode={sddMode}
@@ -134,6 +137,8 @@ export function SddWorkspacePanel({
                 setViewerKey({ kind: 'constitution', entityRootPath })
               }
               onNewProject={onNewProject}
+              onPinFeature={onPinFeature}
+              onPhaseAction={onSendMessage}
             />
           </div>
         )}

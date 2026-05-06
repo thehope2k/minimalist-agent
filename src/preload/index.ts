@@ -529,6 +529,8 @@ const api = {
       ipcRenderer.invoke('sdd:setMapping', sessionId, patch),
     setMode: (sessionId: string, mode: 'auto' | 'off') =>
       ipcRenderer.invoke('sdd:setMode', sessionId, mode),
+    setActiveFeature: (sessionId: string, slug: string | null) =>
+      ipcRenderer.invoke('sdd:setActiveFeature', sessionId, slug),
     readArtifact: (absolutePath: string) =>
       ipcRenderer.invoke('sdd:readArtifact', absolutePath),
     toggleTaskCheckbox: (absolutePath: string, checkboxIndex: number) =>

@@ -17,11 +17,15 @@ export function EntityCard({
   entity,
   mapping,
   allEntities,
+  activeFeatureSlug,
   onFeatureOpen,
   onMappingChange,
   onConstitutionOpen,
+  onPinFeature,
+  onPhaseAction,
 }: EntityCardProps) {
   const entityPhase = deriveEntityPhase(entity.features, entity.hasConstitution);
+  const isSingleFeature = entity.features.length === 1;
 
   return (
     <div className="border border-border rounded-md overflow-hidden mb-2">
@@ -74,7 +78,20 @@ export function EntityCard({
             <FeatureRow
               key={f.path}
               feature={f}
+              isActive={f.name === activeFeatureSlug || f.slug === activeFeatureSlug}
+              isSingleFeature={isSingleFeature}
               onOpen={() => onFeatureOpen(f, entity.rootPath)}
+              onPin={() => {
+                const isCurrentlyActive = f.name === activeFeatureSlug || f.slug === activeFeatureSlug;
+                onPinFeature(isCurrentlyActive ? null : f.name);
+              }}
+              onPhaseAction={(message) => {
+                // Auto-pin the feature when a phase action is triggered so the
+                // agent gets the lean focused context instead of all features.
+                const isCurrentlyActive = f.name === activeFeatureSlug || f.slug === activeFeatureSlug;
+                if (!isCurrentlyActive) onPinFeature(f.name);
+                onPhaseAction(message);
+              }}
             />
           ))
         )}

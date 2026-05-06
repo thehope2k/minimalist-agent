@@ -139,6 +139,12 @@ export interface SessionMeta {
    * Defaults to 'auto' when absent.
    */
   sddMode?: 'auto' | 'off';
+  /**
+   * Slug of the feature pinned as active for this session. When set, only
+   * that feature's context is injected into the system prompt and lazy rule
+   * injection is enabled. Added in v7. Defaults to null when absent.
+   */
+  activeFeatureSlug?: string | null;
 }
 
 export type SessionSummary = SessionMeta;
@@ -154,20 +160,24 @@ const META_DEFAULT_FACTORY = (): SessionMeta => ({
 function metaSchema(id: string): FileSchema<SessionMeta> {
   return {
     path: join(Paths.sessionsDir(), id, 'session.json'),
-    currentVersion: 5,
+    currentVersion: 6,
     defaultValue: META_DEFAULT_FACTORY(),
     // Index 0 → v0 (legacy/unset). Index 1 → v1 (no usage field).
     // Index 2 → v2 (no permissionMode field). Index 3 → v3 (no projectId).
     // Index 4 → v4 (no connectionSlug/model). All migrations are additive
     // and idempotent: missing fields stay missing and are filled at use
     // sites with sensible defaults.
-    // NOTE: sddMode (added in this branch) is a fully optional field that
-    // defaults to 'auto' at every call-site — no migration step needed.
+    // NOTE: sddMode (added in v6) is a fully optional field that defaults
+    // to 'auto' at every call-site — no migration step needed.
+    // NOTE: activeFeatureSlug (added in v7) is a fully optional field that
+    // defaults to null at every call-site — no migration step needed.
     migrations: [
       (prev) => ({ ...META_DEFAULT_FACTORY(), ...(prev as object) }) as SessionMeta,
       (prev) => ({ ...(prev as SessionMeta) }),
       (prev) => ({ ...(prev as SessionMeta) }),
       (prev) => ({ ...(prev as SessionMeta), projectId: null }) as SessionMeta,
+      (prev) => ({ ...(prev as SessionMeta) }),
+      // v5 → v6: adds activeFeatureSlug (optional field, no-op migration).
       (prev) => ({ ...(prev as SessionMeta) }),
     ],
   };

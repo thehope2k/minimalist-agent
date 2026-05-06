@@ -1,4 +1,4 @@
-import type { SddArtifactSet, SddPhase } from '../../../shared/sdd-types';
+import type { SddArtifactSet, SddFeature, SddPhase } from '../../../shared/sdd-types';
 
 // Re-export shared SDD types needed by the renderer.
 export type {
@@ -35,6 +35,36 @@ const PHASE_NEXT: Record<SddPhase, string> = {
   implement: 'Implement tasks',
   complete: 'All done',
 };
+
+// ── Phase action helpers ─────────────────────────────────────────────────────
+
+/** Maps each phase to the `/speckit.*` CLI directive that drives it. */
+const PHASE_COMMANDS: Record<SddPhase, string> = {
+  constitution: '/speckit.constitution',
+  specify: '/speckit.specify',
+  plan: '/speckit.plan',
+  tasks: '/speckit.tasks',
+  implement: '/speckit.implement',
+  complete: '',
+};
+
+/**
+ * Build the pre-composed chat message sent when a phase action button is
+ * clicked. Returns an empty string when the feature is complete.
+ */
+export function phaseActionMessage(feature: SddFeature): string {
+  const cmd = PHASE_COMMANDS[feature.currentPhase];
+  if (!cmd) return '';
+  if (feature.currentPhase === 'implement') {
+    const p = taskProgress(feature.artifacts);
+    const progress = p ? ` (${p.checked}/${p.total} tasks done)` : '';
+    // Use a relative @mention path — renders as a file pill in the chat bubble
+    // and gives the agent an unambiguous path to read without a discovery step.
+    const tasksRef = `.specify/specs/${feature.name}/tasks.md`;
+    return `Let's run ${cmd} for ${feature.name}${progress}. Open @${tasksRef} to find the next unchecked task.`;
+  }
+  return `Let's run ${cmd} for ${feature.name}.`;
+}
 
 export function phaseLabel(phase: SddPhase): string {
   return PHASE_LABELS[phase];

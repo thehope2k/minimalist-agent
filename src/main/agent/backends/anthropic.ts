@@ -303,7 +303,7 @@ export async function* runAnthropicChat(
     systemPrompt: {
       type: 'preset',
       preset: 'claude_code',
-      append: buildSystemPromptAppend({ cwd: req.cwd, sessionId: req.chatSessionId }),
+      append: buildSystemPromptAppend({ cwd: req.cwd, sessionId: req.chatSessionId, userMessage: req.prompt }),
     },
 
     settingSources: ['user', 'project', 'local'],

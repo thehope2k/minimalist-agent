@@ -512,7 +512,7 @@ export async function* runPiChat(
   req: PiChatRequest,
 ): AsyncGenerator<AgentChatEvent> {
   // Same system-prompt assembly as the Anthropic backend.
-  const append = buildSystemPromptAppend({ cwd: req.cwd, sessionId: req.chatSessionId });
+  const append = buildSystemPromptAppend({ cwd: req.cwd, sessionId: req.chatSessionId, userMessage: req.prompt });
   const prefix = buildPromptPrefix({ cwd: req.cwd });
 
   let handle: SubprocessHandle;

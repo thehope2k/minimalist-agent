@@ -210,7 +210,29 @@ async function inferRole(
   return 'embedded';
 }
 
-// ── Main walk ────────────────────────────────────────────────────────────────
+// ── feature.json helpers ─────────────────────────────────────────────────────
+
+/**
+ * Read .specify/feature.json and extract the active feature slug.
+ * Returns null when the file is absent, malformed, or has no feature_directory.
+ * The CLI writes this file when the user runs `specify feature set <slug>`.
+ */
+async function readDefaultFeatureSlug(specifyPath: string): Promise<string | null> {
+  try {
+    const raw = await fsp.readFile(join(specifyPath, 'feature.json'), 'utf-8');
+    const parsed = JSON.parse(raw) as unknown;
+    if (typeof parsed !== 'object' || parsed === null) return null;
+    const dir = (parsed as Record<string, unknown>).feature_directory;
+    if (typeof dir !== 'string' || !dir) return null;
+    // feature_directory is like ".specify/specs/003-smart-sdd-context"
+    // Extract just the folder name (last segment).
+    return dir.split('/').at(-1) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// ── Main walk ─────────────────────────────────────────────────────────────────
 
 async function walk(
   dir: string,
@@ -224,9 +246,10 @@ async function walk(
   const specifyPath = join(dir, '.specify');
   if (await isDirectory(specifyPath)) {
     const constitutionPath = join(specifyPath, 'memory', 'constitution.md');
-    const [features, hasConstitution] = await Promise.all([
+    const [features, hasConstitution, defaultFeatureSlug] = await Promise.all([
       scanFeatures(join(specifyPath, 'specs')),
       checkHasConstitution(constitutionPath),
+      readDefaultFeatureSlug(specifyPath),
     ]);
 
     // Collect constitution mtime for stale-detection in the viewer.
@@ -243,6 +266,7 @@ async function walk(
       features,
       hasConstitution,
       constitutionMtime,
+      defaultFeatureSlug,
     });
     // Don't descend further into a repo that already has .specify/
     return;

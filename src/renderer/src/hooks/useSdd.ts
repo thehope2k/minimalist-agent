@@ -104,6 +104,15 @@ export function useSdd(
     [sessionId],
   );
 
+  const setActiveFeature = useCallback(
+    async (slug: string | null) => {
+      if (!sessionId) return;
+      const updated = await window.api.sdd.setActiveFeature(sessionId, slug);
+      if (updated) setState(updated);
+    },
+    [sessionId],
+  );
+
   const setMode = useCallback(
     async (mode: 'auto' | 'off') => {
       if (!sessionId) return;
@@ -125,5 +134,5 @@ export function useSdd(
     void runScan(sessionId, cwd, sddMode);
   }, [sessionId, cwd, sddMode, runScan]);
 
-  return { state, loading, setMapping, setMode, refreshScan };
+  return { state, loading, setMapping, setMode, setActiveFeature, refreshScan };
 }

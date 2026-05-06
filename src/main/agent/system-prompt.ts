@@ -397,6 +397,12 @@ export interface SystemPromptOptions {
    * coaching skill and phase context are appended automatically.
    */
   sessionId?: string;
+  /**
+   * The raw user message text for this turn. Used by lazy rule injection —
+   * when an active feature is pinned, the full SDD rules block is only
+   * injected when the message contains an SDD keyword or it's the first turn.
+   */
+  userMessage?: string;
 }
 
 /**
@@ -417,7 +423,7 @@ export function getSystemPrompt(opts: SystemPromptOptions = {}): string {
   // SDD coaching + phase context — injected when session has active entities.
   let sddBlock = '';
   if (opts.sessionId) {
-    sddBlock = buildSddPromptBlock(opts.sessionId);
+    sddBlock = buildSddPromptBlock(opts.sessionId, opts.userMessage);
   }
 
   return `${basePrompt}${userPreferences}${projectContextFiles}${sddBlock ? `\n\n${sddBlock}` : ''}`;
@@ -432,11 +438,13 @@ export function buildSystemPromptAppend(input: {
   cwd?: string;
   includeCoAuthoredBy?: boolean;
   sessionId?: string;
+  userMessage?: string;
 }): string {
   return getSystemPrompt({
     workingDirectory: input.cwd,
     includeCoAuthoredBy: input.includeCoAuthoredBy,
     sessionId: input.sessionId,
+    userMessage: input.userMessage,
   });
 }
 

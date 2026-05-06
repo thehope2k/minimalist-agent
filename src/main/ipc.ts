@@ -120,6 +120,7 @@ import {
   isPathInKnownEntity as sddIsPathInKnownEntity,
   patchMapping as sddPatchMapping,
   setMode as sddSetMode,
+  setActiveFeature as sddSetActiveFeature,
 } from './sdd/session-state';
 import { scanForEntities as sddScanForEntities } from './sdd/scan';
 import { watchEntity as sddWatchEntity, unwatchEntity as sddUnwatchEntity } from './sdd/watcher';
@@ -422,7 +423,8 @@ export function registerIpc(): void {
             // sdd:initSessionState. Watchers are NOT started here — the renderer
             // initiates the full setup (with watchers) via sdd:initSessionState.
             const { entities, cliMissing, scannedDepth, cliVersion } = await sddScanForEntities(req.cwd);
-            sddInitState(req.sessionId, entities, req.cwd, mode, cliMissing, scannedDepth, cliVersion);
+            const pinnedSlug = sessionMeta?.activeFeatureSlug ?? null;
+            sddInitState(req.sessionId, entities, req.cwd, mode, cliMissing, scannedDepth, cliVersion, pinnedSlug);
           }
         }
       }
@@ -1004,7 +1006,8 @@ export function registerIpc(): void {
       mode: 'auto' | 'off',
     ) => {
       const { entities, cliMissing, scannedDepth, cliVersion } = await sddScanForEntities(cwd);
-      const state = sddInitState(sessionId, entities, cwd, mode, cliMissing, scannedDepth, cliVersion);
+      const sessionPinnedSlug = loadSession(sessionId)?.meta?.activeFeatureSlug ?? null;
+      const state = sddInitState(sessionId, entities, cwd, mode, cliMissing, scannedDepth, cliVersion, sessionPinnedSlug);
 
       // Named callback so it can self-referentially add watchers for newly
       // discovered entities (BUG-SDD-04: entities created after init never watched).
@@ -1017,6 +1020,9 @@ export function registerIpc(): void {
           );
 
           // Reinit, preserving confidence='manual' mappings (BUG-SDD-02).
+          // Re-read session pin from disk so feature.json changes are picked up
+          // when the user has not explicitly pinned a feature.
+          const pinnedSlug = loadSession(sessionId)?.meta?.activeFeatureSlug ?? null;
           sddReinitPreservingManual(
             sessionId,
             fresh.entities,
@@ -1025,6 +1031,7 @@ export function registerIpc(): void {
             fresh.cliMissing,
             fresh.scannedDepth,
             fresh.cliVersion,
+            pinnedSlug,
           );
 
           // Start watchers for any entities that weren't known at init time.
@@ -1058,6 +1065,15 @@ export function registerIpc(): void {
     'sdd:setMode',
     (_e, sessionId: string, mode: 'auto' | 'off') => {
       return sddSetMode(sessionId, mode);
+    },
+  );
+
+  ipcMain.handle(
+    'sdd:setActiveFeature',
+    (_e, sessionId: string, slug: string | null) => {
+      // Persist to session metadata so it survives session close/re-open.
+      updateSessionMeta(sessionId, { activeFeatureSlug: slug });
+      return sddSetActiveFeature(sessionId, slug);
     },
   );
 

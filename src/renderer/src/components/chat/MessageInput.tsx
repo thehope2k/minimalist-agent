@@ -77,6 +77,12 @@ type Props = {
   sessionConnectionSlug?: string;
   sessionModel?: string;
   loadedSessionPickId?: string | null;
+  /**
+   * Pre-composed text to fill into the editor (e.g. from phase action buttons).
+   * Once consumed the parent should clear it via onPendingMessageConsumed.
+   */
+  pendingMessage?: string;
+  onPendingMessageConsumed?: () => void;
 };
 
 export function MessageInput({
@@ -98,8 +104,24 @@ export function MessageInput({
   sessionConnectionSlug,
   sessionModel,
   loadedSessionPickId,
+  pendingMessage,
+  onPendingMessageConsumed,
 }: Props) {
   const [value, setValue] = useState('');
+  // Consume pendingMessage (set from phase action buttons) into the editor.
+  // The effect runs once when pendingMessage becomes non-empty, sets the
+  // editor text, and immediately notifies the parent so it can clear the
+  // pending state.
+  const prevPendingRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (pendingMessage && pendingMessage !== prevPendingRef.current) {
+      prevPendingRef.current = pendingMessage;
+      setValue(pendingMessage);
+      onPendingMessageConsumed?.();
+      // Focus the textarea so the user can review and press Enter.
+      requestAnimationFrame(() => textareaRef.current?.focus());
+    }
+  }, [pendingMessage, onPendingMessageConsumed]);
   const [attachments, setAttachments] = useState<DraftAttachment[]>([]);
   const [loadingCount, setLoadingCount] = useState(0);
   const [dragging, setDragging] = useState(false);

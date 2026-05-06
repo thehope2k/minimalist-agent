@@ -1,4 +1,3 @@
-import { join } from 'node:path';
 import type { SddEntity, SddMappingPatch, SddSessionState } from './types';
 import { autoMap, applyMappingPatch } from './mapper';
 import { resolveActiveEntity } from './scan';
@@ -18,9 +17,16 @@ export function initState(
   cliMissing: boolean,
   scannedDepth = 3,
   cliVersion: string | null = null,
+  /** Explicit session pin from SessionMeta — overrides feature.json default. */
+  sessionPinnedSlug: string | null = null,
 ): SddSessionState {
   const { mappings, unmappedServices, unmappedEntities } = autoMap(entities, cwd);
   const activeEntityRootPath = resolveActiveEntity(entities, cwd);
+  const activeEntity = entities.find((e) => e.rootPath === activeEntityRootPath);
+
+  // Hybrid resolution: explicit session pin wins; fall back to feature.json default.
+  const activeFeatureSlug = sessionPinnedSlug ?? activeEntity?.defaultFeatureSlug ?? null;
+
   const state: SddSessionState = {
     entities,
     mappings,
@@ -31,6 +37,8 @@ export function initState(
     cliMissing,
     scannedDepth,
     cliVersion,
+    activeFeatureSlug,
+    turnCount: 0,
   };
   store.set(sessionId, state);
   return state;
@@ -51,13 +59,20 @@ export function reinitPreservingManual(
   cliMissing: boolean,
   scannedDepth = 3,
   cliVersion: string | null = null,
+  /**
+   * Explicit session pin from SessionMeta — passed in from the IPC layer
+   * which has access to the persisted metadata. Kept separate from the
+   * resolved activeFeatureSlug so feature.json changes are picked up on
+   * re-scans when the user has not explicitly pinned a feature.
+   */
+  sessionPinnedSlug: string | null = null,
 ): SddSessionState {
   // Snapshot manual overrides before initState wipes them.
-  const manualMappings =
-    store.get(sessionId)?.mappings.filter((m) => m.confidence === 'manual') ?? [];
+  const prev = store.get(sessionId);
+  const manualMappings = prev?.mappings.filter((m) => m.confidence === 'manual') ?? [];
 
-  // Fresh auto-map.
-  initState(sessionId, entities, cwd, mode, cliMissing, scannedDepth, cliVersion);
+  // Fresh auto-map — re-resolves activeFeatureSlug from sessionPinnedSlug + feature.json.
+  initState(sessionId, entities, cwd, mode, cliMissing, scannedDepth, cliVersion, sessionPinnedSlug);
 
   // Re-apply manual overrides on top of the fresh auto-map.
   for (const manual of manualMappings) {
@@ -151,6 +166,17 @@ export function patchMapping(
     (s) => !mappedServicePaths.has(s),
   );
 
+  store.set(sessionId, state);
+  return state;
+}
+
+export function setActiveFeature(
+  sessionId: string,
+  slug: string | null,
+): SddSessionState | null {
+  const state = store.get(sessionId);
+  if (!state) return null;
+  state.activeFeatureSlug = slug;
   store.set(sessionId, state);
   return state;
 }
