@@ -166,10 +166,47 @@ body {
   margin: 0.5rem 0;
 }
 
+/* Custom checkboxes — full accent control, both checked and unchecked states */
 .sdd-task-list input[type='checkbox'] {
-  accent-color: var(--color-accent);
-  width: 0.85rem;
-  height: 0.85rem;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 0.875rem;
+  height: 0.875rem;
+  border: 1.5px solid var(--color-border-strong);
+  border-radius: 3px;
+  background: transparent;
   cursor: pointer;
+  flex-shrink: 0;
+  vertical-align: middle;
+  position: relative;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.sdd-task-list input[type='checkbox']:hover {
+  border-color: oklch(0.72 0.19 150);
+}
+
+.sdd-task-list input[type='checkbox']:checked {
+  background: oklch(0.72 0.19 150);
+  border-color: oklch(0.72 0.19 150);
+}
+
+/* Checkmark drawn via clip-path — sharp, no pseudo-element sizing hacks */
+.sdd-task-list input[type='checkbox']:checked::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: white;
+  clip-path: polygon(14% 44%, 0% 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+
+/* Task list items — full brightness */
+.sdd-task-list li:has(input[type='checkbox']) {
+  color: var(--color-fg);
+}
+
+/* Completed tasks — dim the label, leave the checkbox itself at full color */
+.sdd-task-list li:has(input[type='checkbox']:checked) {
+  color: var(--color-fg-muted);
 }
 
