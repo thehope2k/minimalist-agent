@@ -9,22 +9,22 @@ export function FeatureRow({ feature, onOpen }: FeatureRowProps) {
   return (
     <button
       onClick={onOpen}
-      className="w-full text-left flex items-start gap-2 py-1.5 px-2 rounded hover:bg-elevated-2 transition-colors group"
+      className="w-full text-left flex flex-col py-1.5 px-2 rounded hover:bg-elevated-2 transition-colors group"
     >
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 mb-1">
-          <span className="text-sm font-medium text-fg truncate">{feature.slug}</span>
-          <span className="text-xs text-fg-subtle shrink-0">#{feature.number}</span>
-        </div>
-        <div className="flex gap-1">
-          {badges.map((b) => (
-            <ArtifactBadge key={b.label} label={b.label} done={b.done} tooltip={b.tooltip} />
-          ))}
-        </div>
+      {/* Slug row — phase label lives here so it doesn't steal width from the badge row */}
+      <div className="flex items-center gap-1.5 mb-1 min-w-0">
+        <span className="text-sm font-medium text-fg truncate flex-1 min-w-0">{feature.slug}</span>
+        <span className="text-xs text-fg-subtle shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+          {phase} →
+        </span>
+        <span className="text-xs text-fg-subtle shrink-0">#{feature.number}</span>
       </div>
-      <span className="text-xs text-fg-subtle shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-        {phase} →
-      </span>
+      {/* Badge row — uses full available width; flex-wrap as safety for very narrow panels */}
+      <div className="flex flex-wrap gap-1">
+        {badges.map((b) => (
+          <ArtifactBadge key={b.label} label={b.label} done={b.done} tooltip={b.tooltip} />
+        ))}
+      </div>
     </button>
   );
 }
