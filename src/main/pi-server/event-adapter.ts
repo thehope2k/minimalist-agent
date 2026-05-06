@@ -353,10 +353,10 @@ export function adaptPiEvent(event: AgentSessionEvent): AgentChatEvent[] {
     }
 
     case 'agent_end': {
-      // No usage info on AgentEvent's agent_end today; emit a bare done.
-      // Explicitly set stopReason so downstream zombie-detection (!last.stopReason)
-      // does not falsely flag completed pi-server turns as interrupted.
-      out.push({ type: 'turn_done', stopReason: 'stop' });
+      // Use 'end_turn' (the Anthropic convention for a normal stop) so the
+      // renderer's showStopBadge check (!== 'end_turn') doesn't render an
+      // amber badge on every successfully completed Pi turn.
+      out.push({ type: 'turn_done', stopReason: 'end_turn' });
       return out;
     }
 
