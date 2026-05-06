@@ -14,6 +14,8 @@ import {hostname, release} from 'node:os';
 import {join, sep} from 'node:path';
 import {formatPreferencesForPrompt, getCoAuthorPreference,} from '../storage/preferences';
 import {formatExtensionsAwareness} from '../extensions/directive';
+import { buildSddPromptBlock } from '../sdd/system-prompt';
+import { getSettings, DEFAULT_CONTEXT_FILE_NAMES } from '../storage/settings';
 
 /* ===================================================================== *
  * Project context-file discovery (AGENTS.md / CLAUDE.md)
@@ -74,6 +76,8 @@ export function invalidateContextFileCache(directory?: string): void {
  * need to add a `glob` dependency.)
  */
 function walkForContextFiles(root: string): string[] {
+  const configuredNames = getSettings().contextFileNames ?? DEFAULT_CONTEXT_FILE_NAMES;
+  const fileSet = new Set(configuredNames.map((n) => n.toLowerCase()));
   const matches: string[] = [];
   const visit = (dir: string, depth: number): void => {
     if (matches.length >= MAX_CONTEXT_FILES) return;
@@ -86,8 +90,7 @@ function walkForContextFiles(root: string): string[] {
     }
     for (const e of entries) {
       if (!e.isFile()) continue;
-      const lower = e.name.toLowerCase();
-      if (lower === 'agents.md' || lower === 'claude.md') {
+      if (fileSet.has(e.name.toLowerCase())) {
         const abs = join(dir, e.name);
         const rel = abs === join(root, e.name)
           ? e.name
@@ -388,6 +391,12 @@ export interface SystemPromptOptions {
    * back to the user's stored preference (default: true).
    */
   includeCoAuthoredBy?: boolean;
+  /**
+   * Session ID used to look up the session's SDD state for prompt injection.
+   * When provided and the session has active SDD entities, the bundled SDD
+   * coaching skill and phase context are appended automatically.
+   */
+  sessionId?: string;
 }
 
 /**
@@ -399,26 +408,19 @@ export interface SystemPromptOptions {
  * stays static and cacheable.
  */
 export function getSystemPrompt(opts: SystemPromptOptions = {}): string {
-  // Fall back to the user's stored preference when callers don't pin/pass
-  // a value, so forgetting the argument can't silently re-enable the
-  // trailer.
   const includeCoAuthoredBy = opts.includeCoAuthoredBy ?? getCoAuthorPreference();
-
-  // Per-user customization slot — structured `## User Preferences` block
-  // (Name / Timezone / Location / Preferred language) with a free-form
-  // `### Notes about this user` subsection. Returns '' when nothing set.
   const preferences = formatPreferencesForPrompt();
   const userPreferences = preferences ? `\n\n${preferences}` : '';
-
-  // Get project context files for monorepo support (lives in system prompt
-  // for persistence across compaction).
   const projectContextFiles = getProjectContextFilesPrompt(opts.workingDirectory);
-
-  // Note: Date/time context is added to user messages instead of the system
-  // prompt to enable prompt caching. The system prompt stays static and
-  // cacheable.
   const basePrompt = getAssistantPrompt(includeCoAuthoredBy);
-  return `${basePrompt}${userPreferences}${projectContextFiles}`;
+
+  // SDD coaching + phase context — injected when session has active entities.
+  let sddBlock = '';
+  if (opts.sessionId) {
+    sddBlock = buildSddPromptBlock(opts.sessionId);
+  }
+
+  return `${basePrompt}${userPreferences}${projectContextFiles}${sddBlock ? `\n\n${sddBlock}` : ''}`;
 }
 
 /**
@@ -429,10 +431,12 @@ export function getSystemPrompt(opts: SystemPromptOptions = {}): string {
 export function buildSystemPromptAppend(input: {
   cwd?: string;
   includeCoAuthoredBy?: boolean;
+  sessionId?: string;
 }): string {
   return getSystemPrompt({
     workingDirectory: input.cwd,
     includeCoAuthoredBy: input.includeCoAuthoredBy,
+    sessionId: input.sessionId,
   });
 }
 

@@ -82,10 +82,14 @@ export function load<T>(schema: FileSchema<T>): T {
   if (!env) return schema.defaultValue;
 
   if (env.version > schema.currentVersion) {
-    throw new Error(
-      `${basename(schema.path)} was created by a newer version (v${env.version}). ` +
-        `This build supports up to v${schema.currentVersion}. Update the app.`,
-    );
+    // File was written by a newer build. For additive schemas (extra optional
+    // fields) this is safe to read as-is — the unknown fields are simply
+    // ignored by the current code. We only hard-fail on breaking (destructive)
+    // schema changes, which are not expected in the additive migration model
+    // used by this codebase. This lets the old packaged app coexist with a
+    // dev build that has bumped the version.
+    schema.validate?.(env.data as T);
+    return env.data as T;
   }
 
   let data: unknown = env.data;

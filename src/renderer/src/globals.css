@@ -155,3 +155,21 @@ body {
 /* Display-mode container added by MathBlock (explicit ```latex blocks) */
 .katex-display-block .katex { color: var(--color-fg); }
 
+/* ── SDD Artifact Viewer ───────────────────────────────────────
+ * Visual treatment for spec.md acceptance scenario blocks and task checkboxes.
+ */
+.sdd-acceptance-block {
+  border-left: 2px solid color-mix(in oklch, var(--color-accent) 60%, transparent);
+  background: color-mix(in oklch, var(--color-accent) 6%, transparent);
+  padding: 0.4rem 0.75rem;
+  border-radius: 0 0.25rem 0.25rem 0;
+  margin: 0.5rem 0;
+}
+
+.sdd-task-list input[type='checkbox'] {
+  accent-color: var(--color-accent);
+  width: 0.85rem;
+  height: 0.85rem;
+  cursor: pointer;
+}
+

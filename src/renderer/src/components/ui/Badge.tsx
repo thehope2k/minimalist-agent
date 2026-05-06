@@ -12,13 +12,16 @@ export function Badge({
   children,
   variant = 'default',
   className,
+  title,
 }: {
   children: React.ReactNode;
   variant?: Variant;
   className?: string;
+  title?: string;
 }) {
   return (
     <span
+      title={title}
       className={cn(
         'rounded-sm border px-1 text-[10px] uppercase tracking-wider',
         VARIANT_CLASS[variant],

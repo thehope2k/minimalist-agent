@@ -132,6 +132,18 @@ export async function setMaxTurns(value: number | undefined): Promise<void> {
   await reload();
 }
 
+export async function setContextFileNames(names: string[]): Promise<void> {
+  const next = { ...snapshot().settings, contextFileNames: names };
+  await window.api.settings.save(next);
+  await reload();
+}
+
+export async function setSddScanDepth(depth: number): Promise<void> {
+  const next = { ...snapshot().settings, sddScanDepth: depth };
+  await window.api.settings.save(next);
+  await reload();
+}
+
 export async function setDefaultPermissionMode(
   mode: PermissionMode,
 ): Promise<void> {
@@ -161,10 +173,6 @@ export async function removeRecentFolder(folder: string): Promise<void> {
   } else {
     await reload();
   }
-}
-
-export async function getCredential(slug: string): Promise<Credential | null> {
-  return window.api.connections.getCredential(slug);
 }
 
 /** Slug helper — used by Add Connection forms. */

@@ -55,6 +55,8 @@ export interface AnthropicChatRequest {
    * omitted, the turn is not steerable.
    */
   turnId?: string;
+  /** DB-level session identifier forwarded to the system prompt builder. */
+  chatSessionId?: string;
 }
 
 /**
@@ -301,7 +303,7 @@ export async function* runAnthropicChat(
     systemPrompt: {
       type: 'preset',
       preset: 'claude_code',
-      append: buildSystemPromptAppend({ cwd: req.cwd }),
+      append: buildSystemPromptAppend({ cwd: req.cwd, sessionId: req.chatSessionId }),
     },
 
     settingSources: ['user', 'project', 'local'],

@@ -230,6 +230,7 @@ export function SessionsPanel({
 }: Props) {
   const sessions = useSessions();
   const projects = useProjects() ?? [];
+
   const heading =
     view === 'archived'
       ? 'Archived'
@@ -264,7 +265,7 @@ export function SessionsPanel({
     });
 
   return (
-    <section className="flex h-full w-full flex-col bg-panel">
+    <section className="relative flex h-full w-full flex-col bg-panel">
       <header className="flex h-10 shrink-0 items-center justify-between border-b border-border px-3">
         <h2 className="text-[15px] font-semibold text-fg">{heading}</h2>
         {view === 'all' && onNewSession && (

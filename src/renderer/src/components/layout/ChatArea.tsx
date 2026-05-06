@@ -1,19 +1,26 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { X, Share2 } from 'lucide-react';
+import { X, PanelRight } from 'lucide-react';
 import { ChatScroll } from '../chat/ChatScroll';
 import { MessageInput } from '../chat/MessageInput';
 import { MessageList } from '../chat/MessageList';
 import { EmptyState } from '../chat/EmptyState';
 import { PermissionPrompt } from '../chat/PermissionPrompt';
 import { IconButton } from '../ui';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '../ui';
+import { useResizablePanels } from '@/hooks/useResizablePanels';
 import { useChat } from '@/hooks/useChat';
 import { useAiData } from '@/hooks/useAiData';
-import { loadFullSession, setSessionPermissionMode } from '@/lib/sessions';
+import { loadFullSession, setSessionPermissionMode, updateSessionMeta } from '@/lib/sessions';
 import { findProject } from '@/lib/projects';
 import { useProjects } from '@/hooks/useProjects';
 import { homedir } from '@/lib/path';
 import type { PermissionMode } from '@/lib/electron';
 import type { SeedSubmit } from '@/App';
+import { useSdd } from '@/hooks/useSdd';
+import { SddPhaseBadge } from '@/components/sdd/SddPhaseBadge';
+import { SddWizardDialog } from '@/components/sdd/SddWizardDialog';
+import { SddWorkspacePanel } from './chat-area/SddWorkspacePanel';
+import { deriveEntityPhase, taskProgress } from '@/lib/sdd';
 
 type Props = {
   sessionId: string | null;
@@ -46,6 +53,15 @@ export function ChatArea({
   /** Per-session working directory; rehydrated from session metadata on switch. */
   const [cwd, setCwd] = useState<string | undefined>(undefined);
   const [title, setTitle] = useState<string>('New session');
+  const [sddMode, setSddMode] = useState<'auto' | 'off'>('auto');
+  const [sddPanelOpen, setSddPanelOpen] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
+  // Persist the chat/SDD split ratio; only meaningful when panel is open.
+  const { layout: workspaceLayout, onLayoutChange: onWorkspaceLayout } =
+    useResizablePanels('workspace-sdd-v1', [68, 32]);
+
+  // SDD state for the active session — drives phase badge
+  const sdd = useSdd(activeSessionId ?? sessionId, cwd, sddMode);
   /**
    * Project-level default connection slug to seed MessageInput's resolver.
    * Re-derived on session switch (loaded session's projectId) and on filter
@@ -131,6 +147,7 @@ export function ChatArea({
       if (cancelled || !data) return;
       setCwd(data.meta.workingDirectory);
       setTitle(data.meta.title);
+      setSddMode(data.meta.sddMode ?? 'auto');
       const project = findProject(data.meta.projectId);
       setPermissionMode(
         data.meta.permissionMode ??
@@ -268,83 +285,171 @@ export function ChatArea({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seedSubmit, aiData, isStreaming, messages.length]);
 
+  const activeSession = activeSessionId ?? sessionId;
+
+  const handleSddModeChange = (next: 'auto' | 'off') => {
+    setSddMode(next);
+    void sdd.setMode(next);
+    if (activeSession) {
+      void updateSessionMeta(activeSession, { sddMode: next });
+    }
+  };
+
   return (
-    // `min-h-0` + `overflow-hidden` together force this column to never
-    // grow past its parent. Without them, `flex-1` items default to
-    // `min-height: auto` and let long messages push the input below the
-    // viewport instead of scrolling internally.
     <main className="flex h-full min-h-0 flex-col overflow-hidden bg-canvas">
+      {/* ── Header ── */}
       <header className="flex h-10 shrink-0 items-center justify-between border-b border-border px-4">
         <div className="flex-1" />
-        <h2 className="max-w-120 truncate text-[15px] font-semibold text-fg">
-          {title}
-        </h2>
+        <div className="flex items-center gap-2 max-w-120">
+          {(() => {
+            if (!sdd.state || sdd.state.mode === 'off') return null;
+            const entity = sdd.state.entities.length === 1
+              ? sdd.state.entities[0]
+              : sdd.state.entities.find(
+                  (e) => e.rootPath === sdd.state?.activeEntityRootPath,
+                );
+            if (!entity) return null;
+            const phase = deriveEntityPhase(entity.features, entity.hasConstitution);
+            // Find the feature that's setting the current phase for the tooltip.
+            const blockingFeature = entity.features.find((f) => f.currentPhase === phase);
+            const progress = blockingFeature ? taskProgress(blockingFeature.artifacts) : null;
+            const blockingProgress = progress
+              ? `${progress.checked}/${progress.total} tasks`
+              : undefined;
+            return (
+              <SddPhaseBadge
+                phase={phase}
+                entityName={entity.name}
+                blockingFeatureName={blockingFeature?.slug}
+                blockingProgress={blockingProgress}
+              />
+            );
+          })()}
+          <h2 className="truncate text-[15px] font-semibold text-fg">
+            {title}
+          </h2>
+        </div>
         <div className="flex flex-1 items-center justify-end gap-1">
-          <IconButton icon={Share2} label="Share" disabled />
+          {activeSession && (
+            <IconButton
+              icon={PanelRight}
+              label={sddPanelOpen ? 'Close workspace panel' : 'Open workspace panel'}
+              onClick={() => setSddPanelOpen((v) => !v)}
+              className={sddPanelOpen ? 'text-accent' : ''}
+            />
+          )}
           <IconButton icon={X} label="New" onClick={onNewSession} />
         </div>
       </header>
 
-      <ChatScroll sessionId={activeSessionId ?? sessionId} contentSignal={contentSignal}>
-        {messages.length === 0 ? (
-          <EmptyState />
-        ) : (
-          <div className="pl-4 pr-12">
-            <MessageList
-              messages={messages}
-              onRetry={handleRetry}
-              isStreaming={isStreaming}
-              onContinue={isStreaming ? undefined : handleContinue}
-            />
+      {/* ── Body: resizable chat + optional SDD right panel ── */}
+      <ResizablePanelGroup
+        direction="horizontal"
+        className="flex-1 min-h-0"
+        onLayout={sddPanelOpen ? onWorkspaceLayout : undefined}
+      >
+        {/* Chat column */}
+        <ResizablePanel
+          defaultSize={sddPanelOpen ? workspaceLayout[0] : 100}
+          minSize={40}
+        >
+          <div className="flex h-full min-h-0 flex-col">
+            <ChatScroll sessionId={activeSessionId ?? sessionId} contentSignal={contentSignal}>
+              {messages.length === 0 ? (
+                <EmptyState />
+              ) : (
+                <div className="pl-4 pr-12">
+                  <MessageList
+                    messages={messages}
+                    onRetry={handleRetry}
+                    isStreaming={isStreaming}
+                    onContinue={isStreaming ? undefined : handleContinue}
+                  />
+                </div>
+              )}
+            </ChatScroll>
+
+            <div className="shrink-0 pb-4 pt-2 relative">
+              <div
+                aria-hidden
+                className="pointer-events-none absolute -top-6 left-0 right-0 h-6 bg-linear-to-b from-transparent to-canvas"
+              />
+              <div className="pl-4 pr-12">
+                <MessageInput
+                  isStreaming={isStreaming}
+                  streamingTurnId={streamingTurnId}
+                  cwd={cwd}
+                  onChangeCwd={setCwd}
+                  cwdLocked={messages.length > 0}
+                  permissionMode={permissionMode}
+                  onChangePermissionMode={(mode) => {
+                    setPermissionMode(mode);
+                    if (activeSessionId) {
+                      void setSessionPermissionMode(activeSessionId, mode);
+                    }
+                  }}
+                  onSend={(args) =>
+                    send({ ...args, cwd: cwd ?? (homedir() || undefined) })
+                  }
+                  onAbort={abort}
+                  onSteer={steer}
+                  sessionId={activeSessionId ?? sessionId}
+                  title={title}
+                  messages={messages}
+                  lastCompaction={lastCompaction}
+                  projectDefaultConnectionSlug={
+                    projectDefaultConnectionSlug || undefined
+                  }
+                  sessionConnectionSlug={sessionConnectionSlug || undefined}
+                  sessionModel={sessionModel || undefined}
+                  loadedSessionPickId={loadedSessionPickId}
+                />
+              </div>
+            </div>
+
+            <PermissionPrompt />
           </div>
+        </ResizablePanel>
+
+        {/* SDD right panel */}
+        {sddPanelOpen && activeSession && (
+          <>
+            <ResizableHandle />
+            <ResizablePanel
+              defaultSize={workspaceLayout[1]}
+              minSize={20}
+              maxSize={55}
+            >
+              <SddWorkspacePanel
+                activeSession={activeSession}
+                sddMode={sddMode}
+                sddState={sdd.state}
+                sddLoading={sdd.loading}
+                isStreaming={isStreaming}
+                onModeChange={handleSddModeChange}
+                onRefreshScan={sdd.refreshScan}
+                onMappingChange={(svcPath, entityRoot) =>
+                  void sdd.setMapping({ servicePath: svcPath, entityRootPath: entityRoot })
+                }
+                onNewProject={() => setShowWizard(true)}
+                onClose={() => setSddPanelOpen(false)}
+              />
+            </ResizablePanel>
+          </>
         )}
-      </ChatScroll>
+      </ResizablePanelGroup>
 
-      <div className="shrink-0 pb-4 pt-2 relative">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -top-6 left-0 right-0 h-6 bg-linear-to-b from-transparent to-canvas"
-        />
-        <div className="pl-4 pr-12">
-        <MessageInput
-          isStreaming={isStreaming}
-          streamingTurnId={streamingTurnId}
-          cwd={cwd}
-          onChangeCwd={setCwd}
-          cwdLocked={messages.length > 0}
-          permissionMode={permissionMode}
-          onChangePermissionMode={(mode) => {
-            setPermissionMode(mode);
-            // Persist if we already have a session; otherwise the next
-            // send will create one and `useChat` will surface it via
-            // `onSessionCreated`, at which point the persisted mode
-            // doesn't matter — the in-flight send already carries it.
-            if (activeSessionId) {
-              void setSessionPermissionMode(activeSessionId, mode);
-            }
+      {/* SDD Wizard dialog */}
+      {showWizard && (
+        <SddWizardDialog
+          onClose={() => setShowWizard(false)}
+          onSuccess={(newSessionId) => {
+            setShowWizard(false);
+            onSessionCreated(newSessionId);
+            sdd.refreshScan();
           }}
-          onSend={(args) =>
-            send({ ...args, cwd: cwd ?? (homedir() || undefined) })
-          }
-          onAbort={abort}
-          onSteer={steer}
-          sessionId={activeSessionId ?? sessionId}
-          title={title}
-          messages={messages}
-          lastCompaction={lastCompaction}
-          projectDefaultConnectionSlug={
-            projectDefaultConnectionSlug || undefined
-          }
-          sessionConnectionSlug={sessionConnectionSlug || undefined}
-          sessionModel={sessionModel || undefined}
-          loadedSessionPickId={loadedSessionPickId}
         />
-        </div>
-      </div>
-
-      {/* Mounted once at the chat-area level so it survives session
-          switches; the prompt subscribes to a global IPC channel. */}
-      <PermissionPrompt />
+      )}
     </main>
   );
 }

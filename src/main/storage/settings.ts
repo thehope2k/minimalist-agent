@@ -23,8 +23,25 @@ export interface AiSettings {
   maxTurns?: number;
   /** Permission mode applied to brand-new sessions. Defaults to 'ask'. */
   defaultPermissionMode?: PermissionMode;
+  /**
+   * Filenames (case-insensitive) that MA treats as project context files and
+   * lists in the system prompt for the AI to read each turn.
+   * Defaults to ['agents.md', 'claude.md', 'copilot-instructions.md'].
+   */
+  contextFileNames?: string[];
+  /**
+   * How many directory levels deep MA walks when scanning for .specify/
+   * entities. Defaults to 3. Increase for deeply nested monorepos.
+   */
+  sddScanDepth?: number;
 }
 
+export const DEFAULT_CONTEXT_FILE_NAMES: readonly string[] = [
+  'agents.md',
+  'claude.md',
+  'copilot-instructions.md', // GitHub Copilot Workspace standard
+];
+export const DEFAULT_SDD_SCAN_DEPTH = 3;
 export const DEFAULT_MAX_TURNS = 50;
 export const DEFAULT_PERMISSION_MODE: PermissionMode = 'ask';
 

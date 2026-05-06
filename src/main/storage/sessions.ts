@@ -133,6 +133,12 @@ export interface SessionMeta {
    */
   connectionSlug?: string;
   model?: string;
+  /**
+   * Per-session SDD mode. 'auto' = scan and inject coaching when entities found.
+   * 'off' = skip scan entirely, no panel, no prompt injection. Added in v6.
+   * Defaults to 'auto' when absent.
+   */
+  sddMode?: 'auto' | 'off';
 }
 
 export type SessionSummary = SessionMeta;
@@ -155,6 +161,8 @@ function metaSchema(id: string): FileSchema<SessionMeta> {
     // Index 4 → v4 (no connectionSlug/model). All migrations are additive
     // and idempotent: missing fields stay missing and are filled at use
     // sites with sensible defaults.
+    // NOTE: sddMode (added in this branch) is a fully optional field that
+    // defaults to 'auto' at every call-site — no migration step needed.
     migrations: [
       (prev) => ({ ...META_DEFAULT_FACTORY(), ...(prev as object) }) as SessionMeta,
       (prev) => ({ ...(prev as SessionMeta) }),

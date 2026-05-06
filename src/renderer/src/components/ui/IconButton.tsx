@@ -13,10 +13,12 @@ type Props = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   size?: Size;
   /** Optional tooltip via the native title attribute. */
   label?: string;
+  /** Extra className forwarded to the rendered icon element. */
+  iconClassName?: string;
 };
 
 export const IconButton = forwardRef<HTMLButtonElement, Props>(
-  ({ icon: Icon, size = 'sm', label, className, ...rest }, ref) => (
+  ({ icon: Icon, size = 'sm', label, className, iconClassName, ...rest }, ref) => (
     <button
       ref={ref}
       title={label}
@@ -30,7 +32,7 @@ export const IconButton = forwardRef<HTMLButtonElement, Props>(
       )}
       {...rest}
     >
-      <Icon className="h-4 w-4" strokeWidth={1.75} />
+      <Icon className={cn('h-4 w-4', iconClassName)} strokeWidth={1.75} />
     </button>
   ),
 );

@@ -7,6 +7,8 @@ import { installSkillsReferenceDoc } from './skills/install-reference';
 import { installExtensionsReferenceDoc } from './extensions/install-reference';
 import { getAppIcon } from './app-icon';
 import { checkOnLaunch } from './auto-update';
+import { unwatchAll } from './sdd/watcher';
+import { clearAll as sddClearAll } from './sdd/session-state';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -95,6 +97,9 @@ app.on('before-quit', async (e) => {
 
 app.on('will-quit', () => {
   cleanupPower();
+  // Stop all SDD file-system watchers and clear in-memory session state.
+  unwatchAll();
+  sddClearAll();
   // Best-effort SIGTERM/KILL to any running Pi subprocesses so they don't
   // outlive the parent.
   void import('./agent/backends/pi/agent').then((m) => m.shutdownAllPiSubprocesses());
