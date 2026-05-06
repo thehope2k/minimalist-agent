@@ -5,6 +5,37 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.3.0] — 2026-05-06
+
+SDD workspace panel improvements and bug fixes. Adds entity-level constitution view, polished artifact rendering with syntax highlighting and custom checkboxes, and fixes two SDD reliability issues.
+
+### Added
+
+**SDD entity-level constitution view**
+
+- Constitution is now a first-class entry in the entity card, above the features list — click to open a dedicated viewer without needing to open a feature first
+- `ConstitutionViewer` reloads live when `constitution.md` changes on disk
+- Constitution tab removed from per-feature artifact viewer (now lives at entity level only)
+
+**SDD artifact viewer polish**
+
+- Fenced code blocks in spec/plan/tasks now render with full Shiki syntax highlighting
+- Inline code styled as accent-tinted pill to stand out from surrounding prose
+- Improved typographic hierarchy: h1/h2/h3 at full brightness, body at muted, `strong` pops from text
+- Task checkboxes fully custom-styled (appearance: none); checked state uses green to distinguish from accent purple
+
+### Changed
+
+- **Artifact badges redesigned**: emoji (✅ ⏳) replaced with compact text symbols (✓ ○); feature slug bumped to `text-sm`; badges no longer wrap in narrow panels
+- **SDD markdown rendering extracted** to `SddMarkdown.tsx` shared module — `SddArtifactViewer` now only owns interactive checkbox logic
+
+### Fixed
+
+- **SDD session switch empty panel**: switching A → new session → back to A would show “No SDD specs found” — `useSdd` refs are now reset on session clear so the re-scan fires correctly on return
+- **macOS bundled app “CLI missing” warning**: when launched from Dock/Finder, macOS strips PATH to `/usr/bin:/bin:/usr/sbin:/sbin`; main process now prepends `~/.local/bin`, `/opt/homebrew/bin`, `/usr/local/bin` at startup so `specify`, `gh`, and other user-installed tools are found
+
+---
+
 ## [0.2.0] — 2026-05-06
 
 Adds native Spec-Driven Development (SDD) support and Copilot quota tracking. Quality of life improvements and several Pi/Copilot reliability bug fixes.
