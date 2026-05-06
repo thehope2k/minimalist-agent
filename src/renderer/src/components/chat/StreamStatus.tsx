@@ -16,6 +16,10 @@ import type { MessagePart } from '@/lib/chat';
 export function StreamStatus({ parts }: { parts: MessagePart[] }) {
   const elapsed = useElapsed();
   const label = deriveLabel(parts);
+  // Show a subtle warning after 90 s — at this point the turn is taking
+  // longer than any normal response and is likely retrying a transient
+  // network error internally (the Pi/Copilot SDK auto-retries silently).
+  const isStalled = elapsed > 90_000;
 
   return (
     <div className="mt-2 flex items-center gap-2 text-xs text-fg-subtle">
@@ -24,7 +28,15 @@ export function StreamStatus({ parts }: { parts: MessagePart[] }) {
         <span className="text-fg-muted">{label}</span>
         <span className="opacity-60">…</span>
       </span>
-      <span className="ml-auto shrink-0 tabular-nums opacity-70">
+      <span className="ml-auto shrink-0 flex items-center gap-1.5 tabular-nums opacity-70">
+        {isStalled && (
+          <span
+            className="text-amber-400/80"
+            title="Turn is taking longer than usual — may be retrying a connection error"
+          >
+            ⚠️
+          </span>
+        )}
         {formatElapsed(elapsed)}
       </span>
     </div>
