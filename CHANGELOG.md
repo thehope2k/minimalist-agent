@@ -5,6 +5,52 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.1.8] — 2026-05-06
+
+Adds native Spec-Driven Development (SDD) support and Copilot quota tracking. Quality of life improvements and several Pi/Copilot reliability bug fixes.
+
+### Added
+
+**Spec-Driven Development (SDD)**
+
+- Native SDD workspace panel in the chat layout — auto-detects `.specify/` entities in the working directory and displays a resizable side panel with entity cards, phase badges, and an artifact viewer
+- Artifact viewer opens the live spec file for each SDD entity with a per-phase default tab; checkboxes in task lists are toggleable directly from the panel
+- Phase badge derives the current phase from the artifact state and shows it on each entity card
+- SDD mode toggle (auto / off) persisted per session; init wizard launches `specify init` from inside the app when no `.specify/` directory is found
+- File-system watchers keep the panel in sync as spec files change on disk
+- SDD context injected into the agent system prompt automatically when active
+- SDD scan depth configurable in Settings → AI
+
+**Copilot quota tracking**
+
+- Premium request quota usage shown for Copilot connections — displays remaining requests and resets when the billing cycle rolls over
+
+**Other**
+
+- Brief "Already on latest version" toast when checking for updates and no newer release exists
+
+### Fixed
+
+**Pi / Copilot reliability**
+
+- "Agent is already processing" error after a turn ended: a race between the Pi SDK’s subscription events firing before `session.prompt()` resolved caused the next send to fail with a double-send workaround required. A new `activePromptPromise` guard ensures the previous call settles before the next begins
+- Sessions continuously reordered in the sidebar while multiple turns ran simultaneously: `replaceLastMessage` was bumping `lastMessageAt` on every 1-second checkpoint write and triggering a full list reload, causing sessions to leapfrog each other. Checkpoint writes are now metadata-silent and don’t re-sort the list
+- "terminated" HTTP/2 errors from the Copilot gateway now surface as a clear "Connection terminated" message with a Retry button instead of the generic "Something went wrong" fallback
+- "Anthropic stream ended before message_stop" errors shown on Copilot connections (the word "Anthropic" referred to the wire protocol, not the connection) — now shown as "Stream interrupted" with neutral copy
+- All successfully completed Pi/Copilot turns no longer show a spurious amber "stop" badge; the badge is now suppressed for normal completions the same way it is for Anthropic turns
+- Streaming spinner shows a subtle ⚠️ warning after 90 seconds to indicate the turn may be silently retrying a connection error
+
+**Markdown rendering**
+
+- Fenced code blocks without a language tag were rendered as inline `code` instead of a proper code block
+
+**Mermaid diagrams**
+
+- Diagrams containing `\n` escape sequences in node labels now render correctly instead of showing a parse error
+- Expand-to-fullscreen modal fits the diagram to the window on open
+
+---
+
 ## [0.1.7] — 2026-05-04
 
 ### Fixed
