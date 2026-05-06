@@ -224,8 +224,9 @@ async function readDefaultFeatureSlug(specifyPath: string): Promise<string | nul
     if (typeof parsed !== 'object' || parsed === null) return null;
     const dir = (parsed as Record<string, unknown>).feature_directory;
     if (typeof dir !== 'string' || !dir) return null;
-    // feature_directory is like ".specify/specs/003-smart-sdd-context"
-    // Extract just the folder name (last segment).
+    // feature_directory is like "specs/003-smart-sdd-context" (speckit convention:
+    // specs live at $repo_root/specs/, not inside .specify/).
+    // Extract just the folder name (last segment) to match against scanned features.
     return dir.split('/').at(-1) ?? null;
   } catch {
     return null;
@@ -246,8 +247,14 @@ async function walk(
   const specifyPath = join(dir, '.specify');
   if (await isDirectory(specifyPath)) {
     const constitutionPath = join(specifyPath, 'memory', 'constitution.md');
+    // speckit convention: specs live at $repo_root/specs/, not inside .specify/.
+    // Also check .specify/specs/ as a fallback for projects created before this
+    // was corrected (backward-compat — will be removed in a future release).
+    const specsDir = join(dir, 'specs');
+    const legacySpecsDir = join(specifyPath, 'specs');
+    const useLegacy = !(await isDirectory(specsDir)) && (await isDirectory(legacySpecsDir));
     const [features, hasConstitution, defaultFeatureSlug] = await Promise.all([
-      scanFeatures(join(specifyPath, 'specs')),
+      scanFeatures(useLegacy ? legacySpecsDir : specsDir),
       checkHasConstitution(constitutionPath),
       readDefaultFeatureSlug(specifyPath),
     ]);
