@@ -5,6 +5,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.3.1] — 2026-05-06
+
+SDD panel quality-of-life improvements. Adds active feature pinning, lazy rule injection, and phase action buttons; fixes badge layout and number alignment.
+
+### Added
+
+**SDD panel interactions**
+
+- Active feature is now pinned at the top of the entity card so it stays visible when the list is long
+- Phase action buttons surface the most relevant next action (e.g. run the next phase) directly in the panel without opening a separate dialog
+- Rule injection is now lazy — SDD context rules are only added to the system prompt when the relevant feature is active, reducing prompt bloat
+
+### Fixed
+
+- **FeatureRow badge layout**: badge pills and task-count numbers were misaligned in narrow panel widths; layout is now stable across all widths
+
+---
+
 ## [0.3.0] — 2026-05-06
 
 SDD workspace panel improvements and bug fixes. Adds entity-level constitution view, polished artifact rendering with syntax highlighting and custom checkboxes, and fixes two SDD reliability issues.
