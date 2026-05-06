@@ -428,6 +428,42 @@ export function parseError(error: unknown): AgentError {
     return buildError('service_error', original);
   }
 
+  // HTTP/2 / SSE stream truncation from the Copilot gateway.
+  // pi-ai's anthropic.js provider (used for Copilot Claude models) throws
+  // "Anthropic stream ended before message_stop" when the Copilot SSE
+  // stream closes without the final message_stop event. The word "Anthropic"
+  // refers to the API wire format, not the connection — map it to a clear
+  // network error without the confusing brand name.
+  if (
+    lower.includes('stream ended before') ||
+    lower.includes('stream ended without') ||
+    lower.includes('before message_stop')
+  ) {
+    return buildError('network_error', original, {
+      title: 'Stream interrupted',
+      message:
+        'The response stream was cut off before it completed. ' +
+        'This is usually a transient gateway issue — retry to continue.',
+    });
+  }
+
+  // HTTP/2 connection terminated by the Copilot gateway. The pi SDK
+  // auto-retries these internally; this classifier handles the case where
+  // all retries are exhausted and the final "terminated" error surfaces.
+  if (
+    lower.includes('terminated') ||
+    lower.includes('http2') ||
+    lower.includes('stream was reset') ||
+    lower.includes('connection closed')
+  ) {
+    return buildError('network_error', original, {
+      title: 'Connection terminated',
+      message:
+        'The connection to the API was interrupted. ' +
+        'This is usually transient — retry to continue.',
+    });
+  }
+
   return buildError('unknown_error', original);
 }
 

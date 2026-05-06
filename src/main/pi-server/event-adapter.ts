@@ -285,7 +285,13 @@ export function adaptPiEvent(event: AgentSessionEvent): AgentChatEvent[] {
       // pi-server/index.ts before the adapter runs.
       const m = msg as { stopReason?: string; errorMessage?: string };
       if (m.stopReason === 'error' && m.errorMessage) {
-        out.push({ type: 'error', error: parseError(new Error(m.errorMessage)) });
+        // Strip "Anthropic" brand prefix from pi-ai's internal error strings.
+        // Copilot Claude models use the Anthropic API wire format, so pi-ai's
+        // anthropic.js provider is used under the hood. Its error messages
+        // start with "Anthropic ..." but the connection is Copilot — replace
+        // the prefix so the raw diagnostics string isn't misleading.
+        const sanitized = m.errorMessage.replace(/^Anthropic\s+/i, 'API ');
+        out.push({ type: 'error', error: parseError(new Error(sanitized)) });
         reset();
         return out;
       }
