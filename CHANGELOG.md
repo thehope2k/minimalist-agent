@@ -7,31 +7,37 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [0.3.1] — 2026-05-06
 
-SDD panel quality-of-life improvements. Adds active feature pinning, lazy rule injection, and phase action buttons; fixes badge layout and number alignment.
+SDD panel quality-of-life improvements. Adds active feature pinning, lazy rule injection, and phase action buttons;
+fixes badge layout and number alignment.
 
 ### Added
 
 **SDD panel interactions**
 
 - Active feature is now pinned at the top of the entity card so it stays visible when the list is long
-- Phase action buttons surface the most relevant next action (e.g. run the next phase) directly in the panel without opening a separate dialog
-- Rule injection is now lazy — SDD context rules are only added to the system prompt when the relevant feature is active, reducing prompt bloat
+- Phase action buttons surface the most relevant next action (e.g. run the next phase) directly in the panel without
+  opening a separate dialog
+- Rule injection is now lazy — SDD context rules are only added to the system prompt when the relevant feature is
+  active, reducing prompt bloat
 
 ### Fixed
 
-- **FeatureRow badge layout**: badge pills and task-count numbers were misaligned in narrow panel widths; layout is now stable across all widths
+- **FeatureRow badge layout**: badge pills and task-count numbers were misaligned in narrow panel widths; layout is now
+  stable across all widths
 
 ---
 
 ## [0.3.0] — 2026-05-06
 
-SDD workspace panel improvements and bug fixes. Adds entity-level constitution view, polished artifact rendering with syntax highlighting and custom checkboxes, and fixes two SDD reliability issues.
+SDD workspace panel improvements and bug fixes. Adds entity-level constitution view, polished artifact rendering with
+syntax highlighting and custom checkboxes, and fixes two SDD reliability issues.
 
 ### Added
 
 **SDD entity-level constitution view**
 
-- Constitution is now a first-class entry in the entity card, above the features list — click to open a dedicated viewer without needing to open a feature first
+- Constitution is now a first-class entry in the entity card, above the features list — click to open a dedicated viewer
+  without needing to open a feature first
 - `ConstitutionViewer` reloads live when `constitution.md` changes on disk
 - Constitution tab removed from per-feature artifact viewer (now lives at entity level only)
 
@@ -44,35 +50,45 @@ SDD workspace panel improvements and bug fixes. Adds entity-level constitution v
 
 ### Changed
 
-- **Artifact badges redesigned**: emoji (✅ ⏳) replaced with compact text symbols (✓ ○); feature slug bumped to `text-sm`; badges no longer wrap in narrow panels
-- **SDD markdown rendering extracted** to `SddMarkdown.tsx` shared module — `SddArtifactViewer` now only owns interactive checkbox logic
+- **Artifact badges redesigned**: emoji (✅ ⏳) replaced with compact text symbols (✓ ○); feature slug bumped to
+  `text-sm`; badges no longer wrap in narrow panels
+- **SDD markdown rendering extracted** to `SddMarkdown.tsx` shared module — `SddArtifactViewer` now only owns
+  interactive checkbox logic
 
 ### Fixed
 
-- **SDD session switch empty panel**: switching A → new session → back to A would show “No SDD specs found” — `useSdd` refs are now reset on session clear so the re-scan fires correctly on return
-- **macOS bundled app “CLI missing” warning**: when launched from Dock/Finder, macOS strips PATH to `/usr/bin:/bin:/usr/sbin:/sbin`; main process now prepends `~/.local/bin`, `/opt/homebrew/bin`, `/usr/local/bin` at startup so `specify`, `gh`, and other user-installed tools are found
+- **SDD session switch empty panel**: switching A → new session → back to A would show “No SDD specs found” — `useSdd`
+  refs are now reset on session clear so the re-scan fires correctly on return
+- **macOS bundled app “CLI missing” warning**: when launched from Dock/Finder, macOS strips PATH to
+  `/usr/bin:/bin:/usr/sbin:/sbin`; main process now prepends `~/.local/bin`, `/opt/homebrew/bin`, `/usr/local/bin` at
+  startup so `specify`, `gh`, and other user-installed tools are found
 
 ---
 
 ## [0.2.0] — 2026-05-06
 
-Adds native Spec-Driven Development (SDD) support and Copilot quota tracking. Quality of life improvements and several Pi/Copilot reliability bug fixes.
+Adds native Spec-Driven Development (SDD) support and Copilot quota tracking. Quality of life improvements and several
+Pi/Copilot reliability bug fixes.
 
 ### Added
 
 **Spec-Driven Development (SDD)**
 
-- Native SDD workspace panel in the chat layout — auto-detects `.specify/` entities in the working directory and displays a resizable side panel with entity cards, phase badges, and an artifact viewer
-- Artifact viewer opens the live spec file for each SDD entity with a per-phase default tab; checkboxes in task lists are toggleable directly from the panel
+- Native SDD workspace panel in the chat layout — auto-detects `.specify/` entities in the working directory and
+  displays a resizable side panel with entity cards, phase badges, and an artifact viewer
+- Artifact viewer opens the live spec file for each SDD entity with a per-phase default tab; checkboxes in task lists
+  are toggleable directly from the panel
 - Phase badge derives the current phase from the artifact state and shows it on each entity card
-- SDD mode toggle (auto / off) persisted per session; init wizard launches `specify init` from inside the app when no `.specify/` directory is found
+- SDD mode toggle (auto / off) persisted per session; init wizard launches `specify init` from inside the app when no
+  `.specify/` directory is found
 - File-system watchers keep the panel in sync as spec files change on disk
 - SDD context injected into the agent system prompt automatically when active
 - SDD scan depth configurable in Settings → AI
 
 **Copilot quota tracking**
 
-- Premium request quota usage shown for Copilot connections — displays remaining requests and resets when the billing cycle rolls over
+- Premium request quota usage shown for Copilot connections — displays remaining requests and resets when the billing
+  cycle rolls over
 
 **Other**
 
@@ -82,12 +98,20 @@ Adds native Spec-Driven Development (SDD) support and Copilot quota tracking. Qu
 
 **Pi / Copilot reliability**
 
-- "Agent is already processing" error after a turn ended: a race between the Pi SDK’s subscription events firing before `session.prompt()` resolved caused the next send to fail with a double-send workaround required. A new `activePromptPromise` guard ensures the previous call settles before the next begins
-- Sessions continuously reordered in the sidebar while multiple turns ran simultaneously: `replaceLastMessage` was bumping `lastMessageAt` on every 1-second checkpoint write and triggering a full list reload, causing sessions to leapfrog each other. Checkpoint writes are now metadata-silent and don’t re-sort the list
-- "terminated" HTTP/2 errors from the Copilot gateway now surface as a clear "Connection terminated" message with a Retry button instead of the generic "Something went wrong" fallback
-- "Anthropic stream ended before message_stop" errors shown on Copilot connections (the word "Anthropic" referred to the wire protocol, not the connection) — now shown as "Stream interrupted" with neutral copy
-- All successfully completed Pi/Copilot turns no longer show a spurious amber "stop" badge; the badge is now suppressed for normal completions the same way it is for Anthropic turns
-- Streaming spinner shows a subtle ⚠️ warning after 90 seconds to indicate the turn may be silently retrying a connection error
+- "Agent is already processing" error after a turn ended: a race between the Pi SDK’s subscription events firing before
+  `session.prompt()` resolved caused the next send to fail with a double-send workaround required. A new
+  `activePromptPromise` guard ensures the previous call settles before the next begins
+- Sessions continuously reordered in the sidebar while multiple turns ran simultaneously: `replaceLastMessage` was
+  bumping `lastMessageAt` on every 1-second checkpoint write and triggering a full list reload, causing sessions to
+  leapfrog each other. Checkpoint writes are now metadata-silent and don’t re-sort the list
+- "terminated" HTTP/2 errors from the Copilot gateway now surface as a clear "Connection terminated" message with a
+  Retry button instead of the generic "Something went wrong" fallback
+- "Anthropic stream ended before message_stop" errors shown on Copilot connections (the word "Anthropic" referred to the
+  wire protocol, not the connection) — now shown as "Stream interrupted" with neutral copy
+- All successfully completed Pi/Copilot turns no longer show a spurious amber "stop" badge; the badge is now suppressed
+  for normal completions the same way it is for Anthropic turns
+- Streaming spinner shows a subtle ⚠️ warning after 90 seconds to indicate the turn may be silently retrying a
+  connection error
 
 **Markdown rendering**
 
