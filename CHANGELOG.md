@@ -5,7 +5,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
-## [0.1.8] — 2026-05-06
+## [0.2.0] — 2026-05-06
 
 Adds native Spec-Driven Development (SDD) support and Copilot quota tracking. Quality of life improvements and several Pi/Copilot reliability bug fixes.
 
