@@ -11,6 +11,7 @@ export function SddPanel({
   onRefreshScan,
   onMappingChange,
   onFeatureOpen,
+  onConstitutionOpen,
   onNewProject,
 }: SddPanelProps) {
   // SDD is turned off — state will be null because useSdd clears it on Off.
@@ -90,6 +91,7 @@ export function SddPanel({
             allEntities={state.entities}
             onFeatureOpen={onFeatureOpen}
             onMappingChange={onMappingChange}
+            onConstitutionOpen={onConstitutionOpen}
           />
         );
       })}

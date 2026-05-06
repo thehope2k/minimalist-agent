@@ -14,6 +14,29 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 app.setName('Minimalist Agent');
 
+// ── PATH fix for macOS bundled app ───────────────────────────────────────────
+// When launched from the Dock or Finder, macOS strips PATH down to
+// /usr/bin:/bin:/usr/sbin:/sbin. Augment with the locations where user-installed
+// CLIs live (Homebrew, uv/pipx, nvm, etc.) so tools like `specify` and `gh`
+// are found the same way they are in a terminal session.
+if (process.platform === 'darwin') {
+  const home = process.env.HOME ?? '';
+  const extras = [
+    `${home}/.local/bin`,       // uv / pipx tool installs (specify lives here)
+    '/opt/homebrew/bin',         // Apple Silicon Homebrew
+    '/opt/homebrew/sbin',
+    '/usr/local/bin',            // Intel Homebrew / manually installed tools
+    '/usr/local/sbin',
+    `${home}/.nvm/versions/node/current/bin`, // nvm default symlink (rare)
+  ];
+  const current = new Set((process.env.PATH ?? '').split(':'));
+  const toAdd = extras.filter((p) => p && !current.has(p));
+  if (toAdd.length > 0) {
+    process.env.PATH = [...toAdd, process.env.PATH].filter(Boolean).join(':');
+  }
+}
+
+
 function createWindow(icon?: Electron.NativeImage | null) {
   const win = new BrowserWindow({
     width: 1440,

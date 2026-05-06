@@ -40,6 +40,12 @@ export function useSdd(
   useEffect(() => {
     if (!sessionId || !cwd) {
       setState(null);
+      // Reset refs so that when a real session resumes, sessionChanged is true
+      // and the scan re-runs. Without this, switching A → new → A would leave
+      // lastSessionId as 'A', making sessionChanged false on return and
+      // skipping the scan — leaving the panel in the empty state (BUG-SDD-06).
+      lastSessionId.current = null;
+      lastCwd.current = undefined;
       return;
     }
     const cwdChanged = cwd !== lastCwd.current;

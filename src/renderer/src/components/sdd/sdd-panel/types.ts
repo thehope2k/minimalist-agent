@@ -9,6 +9,7 @@ export interface EntityCardProps {
   allEntities: SddEntity[];
   onFeatureOpen: (feature: SddFeature, entityRootPath: string) => void;
   onMappingChange: (servicePath: string, entityRootPath: string | null) => void;
+  onConstitutionOpen: (entityRootPath: string) => void;
 }
 
 export interface FeatureRowProps {
@@ -31,5 +32,6 @@ export interface SddPanelProps {
   onRefreshScan: () => void;
   onMappingChange: (servicePath: string, entityRootPath: string | null) => void;
   onFeatureOpen: (feature: SddFeature, entityRootPath: string) => void;
+  onConstitutionOpen: (entityRootPath: string) => void;
   onNewProject: () => void;
 }

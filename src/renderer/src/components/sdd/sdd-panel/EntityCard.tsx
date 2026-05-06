@@ -1,6 +1,7 @@
 import { Badge } from '@/components/ui';
 import type { EntityCardProps } from './types';
 import { FeatureRow } from './FeatureRow';
+import { ConstitutionRow } from './ConstitutionRow';
 import { MappingControl } from './MappingControl';
 import { phaseLabel } from '@/lib/sdd';
 import { deriveEntityPhase } from '@/lib/sdd';
@@ -18,6 +19,7 @@ export function EntityCard({
   allEntities,
   onFeatureOpen,
   onMappingChange,
+  onConstitutionOpen,
 }: EntityCardProps) {
   const entityPhase = deriveEntityPhase(entity.features, entity.hasConstitution);
 
@@ -54,6 +56,14 @@ export function EntityCard({
           )}
         </div>
       )}
+
+      {/* Constitution — entity-level, above features */}
+      <div className="border-b border-border">
+        <ConstitutionRow
+          hasConstitution={entity.hasConstitution}
+          onOpen={() => onConstitutionOpen(entity.rootPath)}
+        />
+      </div>
 
       {/* Features */}
       <div className="divide-y divide-border">
