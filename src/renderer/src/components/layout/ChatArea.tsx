@@ -143,6 +143,10 @@ export function ChatArea({
     // Mark stale until the new session's data resolves.
     setLoadedSessionPickId(null);
     sessionModeLoadedRef.current = false;
+    // Clear cwd immediately so useSdd doesn't fire a scan with the previous
+    // session's directory before loadFullSession resolves (BUG-SDD-07: flash
+    // / prior-session data when switching sessions quickly).
+    setCwd(undefined);
     let cancelled = false;
     loadFullSession(sessionId).then((data) => {
       if (cancelled || !data) return;

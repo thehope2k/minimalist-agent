@@ -25,12 +25,17 @@ export function useSdd(
       setLoading(true);
       try {
         const result = await window.api.sdd.initSessionState(sid, dir, mode);
+        // Guard against stale results: if the user switched sessions while this
+        // scan was in flight, discard the result — don't overwrite the newer
+        // session's state (race condition when switching quickly, BUG-SDD-07).
+        if (sid !== lastSessionId.current || dir !== lastCwd.current) return;
         setState(result);
       } catch (e) {
         console.error('[sdd] scan failed', e);
-        setState(null);
+        if (sid === lastSessionId.current) setState(null);
       } finally {
-        setLoading(false);
+        // Only clear the spinner for the scan that is still current.
+        if (sid === lastSessionId.current) setLoading(false);
       }
     },
     [],
