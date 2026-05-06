@@ -168,6 +168,27 @@ export type ChatStreamEvent =
     }
   | { id: string; type: 'error'; error: AgentError; sessionId?: string };
 
+export interface CopilotQuota {
+  /** Percentage of premium requests *remaining* this month (0–100). */
+  percentRemaining: number;
+  /** Monthly allowance (entitlement). Null if unlimited. */
+  entitlement: number | null;
+  /** Requests used this month (derived). Null if unlimited. */
+  used: number | null;
+  /** Requests billed as overage this month. */
+  overageCount: number;
+  /** Whether the plan allows overage usage beyond the allowance. */
+  overagePermitted: boolean;
+  /** Whether this plan has unlimited premium requests. */
+  unlimited: boolean;
+  /** ISO date string — 1st of the next month at 00:00 UTC. */
+  resetDate: string;
+  /** Normalised plan identifier: 'free' | 'individual' | 'business' | 'enterprise'. */
+  planType: string | null;
+  /** True when premium_interactions was unavailable and chat was used instead. */
+  fallback: boolean;
+}
+
 export interface ModelDef {
   id: string;
   name: string;
@@ -511,6 +532,14 @@ export interface AppApi {
     fetchModels: (
       args: { refreshToken?: string; connectionSlug?: string },
     ) => Promise<{ models: ModelDef[] } | { error: string }>;
+    /**
+     * Fetch the current-month premium-request quota snapshot.
+     * Uses the stored GitHub OAuth token — not the Copilot API token.
+     * Returns { error } when the token lacks billing permissions.
+     */
+    fetchQuota: (
+      args: { connectionSlug: string },
+    ) => Promise<CopilotQuota | { error: string }>;
 
   };
   chat: {

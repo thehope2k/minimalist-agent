@@ -98,6 +98,18 @@ type ChatStreamEvent =
     }
   | { id: string; type: 'error'; error: AgentError };
 
+interface CopilotQuota {
+  percentRemaining: number;
+  entitlement: number | null;
+  used: number | null;
+  overageCount: number;
+  overagePermitted: boolean;
+  unlimited: boolean;
+  resetDate: string;
+  planType: string | null;
+  fallback: boolean;
+}
+
 interface ModelDef {
   id: string;
   name: string;
@@ -298,7 +310,10 @@ const api = {
       args: { refreshToken?: string; connectionSlug?: string },
     ): Promise<{ models: ModelDef[] } | { error: string }> =>
       ipcRenderer.invoke('copilot:fetchModels', args),
-
+    fetchQuota: (
+      args: { connectionSlug: string },
+    ): Promise<CopilotQuota | { error: string }> =>
+      ipcRenderer.invoke('copilot:fetchQuota', args),
   },
   chat: {
     send: (req: ChatSendRequest): Promise<void> =>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ArrowUp, AtSign, Paperclip, Square } from 'lucide-react';
 import { IconButton } from '../ui';
 import { ConnectionModelPicker } from './ConnectionModelPicker';
+import { CopilotQuotaPill } from '../settings/CopilotQuotaBar';
 import { FolderPicker } from './FolderPicker';
 import { HighlightedTextarea } from './HighlightedTextarea';
 import { MentionMenu, type MentionItem, type MentionMenuHandle } from './MentionMenu';
@@ -510,16 +511,26 @@ export function MessageInput({
 
           <div className="flex items-center gap-2">
             {connection && model && data && (
-              <ConnectionModelPicker
-                connections={data.connections}
-                activeSlug={connection.slug}
-                activeModelId={model}
-                onChange={(slug, id) =>
-                  setPickerOverride({ slug, modelId: id })
-                }
-                disabled={isStreaming}
-                connectionLocked={messages.length > 0}
-              />
+              <>
+                <CopilotQuotaPill
+                  connectionSlug={connection.slug}
+                  isCopilot={
+                    connection.providerType === 'pi' &&
+                    connection.piAuthProvider === 'github-copilot'
+                  }
+                  isStreaming={isStreaming}
+                />
+                <ConnectionModelPicker
+                  connections={data.connections}
+                  activeSlug={connection.slug}
+                  activeModelId={model}
+                  onChange={(slug, id) =>
+                    setPickerOverride({ slug, modelId: id })
+                  }
+                  disabled={isStreaming}
+                  connectionLocked={messages.length > 0}
+                />
+              </>
             )}
             {isStreaming ? (
               <>

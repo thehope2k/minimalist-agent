@@ -16,6 +16,7 @@ import { useAiData } from '@/hooks/useAiData';
 import type { ConnectionMeta, PermissionMode, ThinkingLevel } from '@/lib/electron';
 import { Badge, Button, IconButton, Input, Menu, Select, type MenuItem } from '@/components/ui';
 import { AddConnectionDialog } from '../AddConnectionDialog';
+import { CopilotQuotaBar } from '../CopilotQuotaBar';
 import {
   SettingsCard,
   SettingsDivider,
@@ -330,6 +331,9 @@ function ConnectionRow({
         <div className="text-xs text-fg-subtle">
           {providerLabel(conn)} · {conn.models.length} models
         </div>
+        {conn.providerType === 'pi' && conn.piAuthProvider === 'github-copilot' && (
+          <CopilotQuotaBar connectionSlug={conn.slug} />
+        )}
       </div>
       <Menu
         trigger={<IconButton icon={MoreHorizontal} label="More" />}

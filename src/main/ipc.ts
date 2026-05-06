@@ -313,6 +313,35 @@ export function registerIpc(): void {
       }
     },
   );
+  /**
+   * Fetch the current-month premium-request quota snapshot for a Copilot
+   * connection. Uses the same copilot_internal/user endpoint that IntelliJ
+   * and VS Code use — works for all plan types including org-managed seats.
+   */
+  ipcMain.handle(
+    'copilot:fetchQuota',
+    async (
+      _e,
+      args: { connectionSlug: string },
+    ) => {
+      try {
+        // copilot_internal/user uses the GitHub OAuth token (long-lived,
+        // stored as refreshToken) — same credential as /copilot_internal/v2/token.
+        const cred = getCredential(args.connectionSlug);
+        if (!cred || cred.type !== 'oauth' || !cred.refreshToken) {
+          return { error: 'No GitHub OAuth token stored for this connection.' };
+        }
+        const { fetchCopilotQuota } = await import('./copilot/quota');
+        const result = await fetchCopilotQuota(cred.refreshToken);
+        if ('error' in result) {
+          console.error('[copilot:fetchQuota]', result.error);
+        }
+        return result;
+      } catch (e) {
+        return { error: e instanceof Error ? e.message : String(e) };
+      }
+    },
+  );
 
 
   // ---- Chat streaming ----------------------------------------------------
