@@ -106,6 +106,15 @@ const state: State = {
   pendingPermission: new Map(),
 };
 
+/**
+ * Tracks the live `session.prompt()` promise so that a new prompt message
+ * arriving while the previous one is still in its resolution tail (after the
+ * terminal subscription event fired but before the promise settled) can wait
+ * instead of calling `session.prompt()` concurrently and hitting the
+ * "Agent is already processing" error from the Pi SDK.
+ */
+let activePromptPromise: Promise<void> | null = null;
+
 /* ============================================================ */
 /*  Thinking-level mapping                                       */
 /* ============================================================ */
@@ -386,39 +395,68 @@ function forwardEvent(piEvent: AgentSessionEvent): void {
 async function handlePrompt(msg: MsgPrompt): Promise<void> {
   if (!state.session) fatal('Received prompt before init');
 
+  // Wait for any in-flight session.prompt() to fully settle before starting a
+  // new one. The Pi SDK fires subscription events (including terminal ones like
+  // agent_end / message_end error) *during* session.prompt() execution —
+  // before its promise resolves. forwardEvent therefore clears state.currentTurnId
+  // and notifies main that the turn is done while session.prompt() is still in
+  // its resolution tail. If a new prompt arrives in that gap it would call
+  // session.prompt() on an agent that hasn't finished, throwing:
+  //   "Agent is already processing. Specify streamingBehavior..."
+  // Awaiting the previous promise here closes that window.
+  if (activePromptPromise) {
+    await activePromptPromise;
+  }
+
   state.currentTurnId = msg.turnId;
   state.turnAbort = new AbortController();
-  try {
-    await state.session!.prompt(msg.message, {
-      images: msg.images?.map((i) => ({
-        mimeType: i.mimeType,
-        data: i.data,
-      })) as never,
-    });
-    // Terminal events emit through forwardEvent; nothing else to do here.
-  } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    if (state.currentTurnId) {
-      const out: MsgEvent = {
-        type: 'event',
-        turnId: state.currentTurnId,
-        event: {
-          type: 'error',
-          error: {
-            code: 'unknown_error',
-            title: 'Pi runtime error',
-            message,
-            canRetry: false,
-            originalError: message,
+
+  const run = async (): Promise<void> => {
+    try {
+      await state.session!.prompt(msg.message, {
+        images: msg.images?.map((i) => ({
+          mimeType: i.mimeType,
+          data: i.data,
+        })) as never,
+      });
+      // Terminal events emit through forwardEvent; nothing else to do here.
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      if (state.currentTurnId) {
+        // forwardEvent hasn't cleared currentTurnId yet — the turn wasn't
+        // acknowledged via a subscription event, so we must emit the error.
+        const out: MsgEvent = {
+          type: 'event',
+          turnId: state.currentTurnId,
+          event: {
+            type: 'error',
+            error: {
+              code: 'unknown_error',
+              title: 'Pi runtime error',
+              message,
+              canRetry: false,
+              originalError: message,
+            },
           },
-        },
-      };
-      send(out);
-      state.currentTurnId = undefined;
-      state.turnAbort = undefined;
-    } else {
-      fatal(message);
+        };
+        send(out);
+        state.currentTurnId = undefined;
+        state.turnAbort = undefined;
+      } else {
+        // forwardEvent already emitted a terminal event and cleared
+        // currentTurnId. The error is a duplicate from the promise
+        // resolution tail — log it but don't fatal, the turn is already
+        // handled on main's side.
+        console.error('[pi-server] session.prompt() threw after terminal event:', message);
+      }
     }
+  };
+
+  activePromptPromise = run();
+  try {
+    await activePromptPromise;
+  } finally {
+    activePromptPromise = null;
   }
 }
 
