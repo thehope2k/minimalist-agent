@@ -353,11 +353,12 @@ export function replaceLastMessage(id: string, msg: StoredMessage): void {
   }
   lines[idx] = JSON.stringify(msg);
   writeFileSync(mp, lines.join('\n') + '\n', 'utf-8');
-
-  const meta = load(metaSchema(id));
-  meta.id = id;
-  meta.lastMessageAt = msg.createdAt;
-  save(metaSchema(id), meta);
+  // Intentionally no meta.lastMessageAt update here.
+  // replaceLastMessage is an in-place content write (checkpoint persistence,
+  // turn completion). Bumping lastMessageAt on every call caused sessions to
+  // continuously re-sort in the sidebar every ~1 s during streaming.
+  // lastMessageAt is owned exclusively by appendMessage (new content arrives)
+  // and createSession.
 }
 
 export function updateSessionMeta(

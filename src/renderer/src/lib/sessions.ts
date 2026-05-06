@@ -98,7 +98,12 @@ export async function replaceLastMessage(
   msg: StoredMessage,
 ): Promise<void> {
   await window.api.sessions.replaceLastMessage(id, msg);
-  await reload();
+  // Intentionally no reload() here.
+  // replaceLastMessage is an in-place content update — the session list
+  // sort order, title, and project membership don't change. reload() was
+  // causing the full session list to be re-fetched and re-sorted every ~1 s
+  // per streaming session (checkpoint interval), making sessions visibly
+  // jump in the sidebar while multiple turns ran simultaneously.
 }
 
 export async function updateSessionMeta(

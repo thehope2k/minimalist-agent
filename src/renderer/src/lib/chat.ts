@@ -139,6 +139,6 @@ export function chatToStored(msg: ChatMessage): StoredMessage {
     attachments: msg.attachments,
     markerKind: msg.markerKind,
     compactionMeta: msg.compactionMeta,
-    createdAt: Date.now(),
+    createdAt: msg.createdAt ?? Date.now(),
   };
 }
