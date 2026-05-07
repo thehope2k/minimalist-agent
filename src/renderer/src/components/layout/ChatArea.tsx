@@ -53,7 +53,7 @@ export function ChatArea({
   /** Per-session working directory; rehydrated from session metadata on switch. */
   const [cwd, setCwd] = useState<string | undefined>(undefined);
   const [title, setTitle] = useState<string>('New session');
-  const [sddMode, setSddMode] = useState<'auto' | 'off'>('auto');
+  const [sddMode, setSddMode] = useState<'auto' | 'off'>('off');
   const [sddPanelOpen, setSddPanelOpen] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
   const [pendingMessage, setPendingMessage] = useState<string | undefined>(undefined);
@@ -152,7 +152,7 @@ export function ChatArea({
       if (cancelled || !data) return;
       setCwd(data.meta.workingDirectory);
       setTitle(data.meta.title);
-      setSddMode(data.meta.sddMode ?? 'auto');
+      setSddMode(data.meta.sddMode ?? 'off');
       const project = findProject(data.meta.projectId);
       setPermissionMode(
         data.meta.permissionMode ??

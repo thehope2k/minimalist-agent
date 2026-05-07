@@ -417,7 +417,7 @@ export function registerIpc(): void {
       if (req.sessionId && req.cwd) {
         if (!sddGetState(req.sessionId)) {
           const sessionMeta = loadSession(req.sessionId)?.meta;
-          const mode = sessionMeta?.sddMode ?? 'auto';
+          const mode = sessionMeta?.sddMode ?? 'off';
           if (mode !== 'off') {
             // Lazy init for system-prompt injection before the renderer calls
             // sdd:initSessionState. Watchers are NOT started here — the renderer

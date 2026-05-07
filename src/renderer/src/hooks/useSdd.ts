@@ -9,7 +9,7 @@ import type { SddMappingPatch, SddSessionState } from '@/lib/sdd';
 export function useSdd(
   sessionId: string | null,
   cwd: string | undefined,
-  sddMode: 'auto' | 'off' = 'auto',
+  sddMode: 'auto' | 'off' = 'off',
 ) {
   const [state, setState] = useState<SddSessionState | null>(null);
   const [loading, setLoading] = useState(false);
