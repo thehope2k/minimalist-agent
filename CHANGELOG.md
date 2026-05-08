@@ -5,6 +5,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.4.0] — 2026-05-08
+
+SDD quality of life improvements and bug fixes.
+
+### Changed
+
+**SDD defaults**
+
+- SDD mode now defaults to **off** for new sessions — users who want it must enable it explicitly per session
+- Long-running turn warning threshold raised from the previous value to **5 minutes**
+
+### Fixed
+
+**SDD panel**
+
+- Corrected speckit path convention: specs are now resolved from `$root/specs/` instead of `.specify/specs/`
+- Eliminated panel flash and stale data shown when switching between sessions (BUG-SDD-07)
+
+---
+
 ## [0.3.1] — 2026-05-06
 
 SDD panel quality-of-life improvements. Adds active feature pinning, lazy rule injection, and phase action buttons;
