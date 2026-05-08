@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, Copy, Maximize2 } from 'lucide-react';
+import { Maximize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ExpandModal } from '@/components/ui';
+import { CopyButton, ExpandModal } from '@/components/ui';
 
 /**
  * Lazy-loaded Shiki highlighter. We keep a singleton across the app so
@@ -174,27 +174,3 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
   );
 }
 
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <button
-      type="button"
-      className={cn(
-        'flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px]',
-        'text-fg-subtle opacity-0 transition-opacity hover:bg-elevated hover:text-fg group-hover:opacity-100',
-      )}
-      onClick={async () => {
-        try {
-          await navigator.clipboard.writeText(text);
-          setCopied(true);
-          setTimeout(() => setCopied(false), 1200);
-        } catch {
-          /* clipboard may be denied; silently ignore */
-        }
-      }}
-    >
-      {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-      {copied ? 'Copied' : 'Copy'}
-    </button>
-  );
-}

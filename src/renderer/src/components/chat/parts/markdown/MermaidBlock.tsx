@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, Maximize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ExpandModal, ZoomPan } from '@/components/ui';
+import { CopyButton, ExpandModal, ZoomPan } from '@/components/ui';
 
 /**
  * Lazy-loaded Mermaid renderer. Mermaid pulls ~1MB of JS so we only
@@ -133,21 +133,24 @@ export function MermaidBlock({ code }: { code: string }) {
       <div className="my-2 overflow-hidden rounded-md border border-border bg-panel">
         <div className="flex items-center justify-between border-b border-border/60 px-3 py-1 text-[10px] uppercase tracking-wide text-fg-subtle">
           <span>{errored ? 'mermaid (cannot render)' : 'mermaid'}</span>
-          {errored && (
-            <button
-              type="button"
-              onClick={() => setShowSource((v) => !v)}
-              className="flex items-center gap-1 hover:text-fg"
-            >
-              <ChevronDown
-                className={cn(
-                  'h-3 w-3 transition-transform',
-                  showSource && 'rotate-180',
-                )}
-              />
-              {showSource ? 'Hide source' : 'Show source'}
-            </button>
-          )}
+          <div className="flex items-center gap-0.5">
+            {errored && (
+              <button
+                type="button"
+                onClick={() => setShowSource((v) => !v)}
+                className="flex items-center gap-1 hover:text-fg"
+              >
+                <ChevronDown
+                  className={cn(
+                    'h-3 w-3 transition-transform',
+                    showSource && 'rotate-180',
+                  )}
+                />
+                {showSource ? 'Hide source' : 'Show source'}
+              </button>
+            )}
+            <CopyButton text={code} />
+          </div>
         </div>
         {(!errored || showSource) && (
           <pre className="scroll-thin m-0 overflow-x-auto px-3 py-2 font-mono text-[12px] leading-relaxed text-fg-muted">
@@ -177,6 +180,7 @@ export function MermaidBlock({ code }: { code: string }) {
         >
           <Maximize2 className="h-3.5 w-3.5" strokeWidth={1.75} />
         </button>
+        <CopyButton text={code} className="absolute right-9 top-2" />
       </div>
 
       {expanded && (

@@ -1,5 +1,6 @@
 // Barrel export for the in-house UI primitives.
 // See AGENTS.md "Shared UI components" for when to add a new one.
+export { CopyButton } from './CopyButton';
 export { Badge } from './Badge';
 export { Button } from './Button';
 export { ExpandModal, type ExpandModalProps } from './ExpandModal';
