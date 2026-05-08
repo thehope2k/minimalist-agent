@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.6.1] — 2026-05-08
+
+Bug fixes and stability improvements.
+
+### Fixed
+
+- Elapsed turn timer no longer resets to 0:00 when switching sessions mid-stream — the counter now counts from when the turn actually started, surviving any number of session switches
+
+---
+
 ## [0.6.0] — 2026-05-08
 
 Adds attachment support to mid-turn message injection; fixes Mermaid cylinder shapes failing to render.
