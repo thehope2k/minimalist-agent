@@ -5,6 +5,33 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.7.0] — 2026-05-08
+
+New features: Mermaid copy button, per-project Co-Authored-By, Copilot capability indicator, and rich compaction UI.
+
+### Added
+
+**Mermaid diagrams**
+
+- Copy button (copies raw Mermaid source) now appears on hover next to the Expand button in both the rendered view and the error/fallback view
+
+**Projects**
+
+- Projects can now override the global Co-Authored-By trailer preference — set _On_, _Off_, or _Use global default_ per project in Settings → Projects
+- The project list row shows a Co-Author chip alongside the existing Mode and Connection chips
+
+**Copilot connections**
+
+- Connection picker now shows a "No subagents (Task tool)" indicator under each Copilot connection row, making the capability gap visible before drilling in
+- Copilot model list shows an info callout explaining that the Task tool requires an Anthropic connection
+
+**Compaction UI (Copilot / Pi-server connections)**
+
+- Pi-server sessions (Copilot, Bedrock, etc.) now surface the same amber scissors divider and sparkles toast on context compaction that Claude SDK sessions already show
+- Aborted compactions are silently skipped; manual vs. auto trigger is correctly mapped from Pi SDK events
+
+---
+
 ## [0.6.1] — 2026-05-08
 
 Bug fixes and stability improvements.
