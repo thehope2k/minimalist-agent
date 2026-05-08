@@ -13,6 +13,7 @@ import {readdirSync, statSync} from 'node:fs';
 import {hostname, release} from 'node:os';
 import {join, sep} from 'node:path';
 import {formatPreferencesForPrompt, getCoAuthorPreference,} from '../storage/preferences';
+import { findProjectForPath } from '../storage/projects';
 import {formatExtensionsAwareness} from '../extensions/directive';
 import { buildSddPromptBlock } from '../sdd/system-prompt';
 import { getSettings, DEFAULT_CONTEXT_FILE_NAMES } from '../storage/settings';
@@ -414,7 +415,8 @@ export interface SystemPromptOptions {
  * stays static and cacheable.
  */
 export function getSystemPrompt(opts: SystemPromptOptions = {}): string {
-  const includeCoAuthoredBy = opts.includeCoAuthoredBy ?? getCoAuthorPreference();
+  const projectCoAuthor = findProjectForPath(opts.workingDirectory)?.includeCoAuthoredBy;
+  const includeCoAuthoredBy = opts.includeCoAuthoredBy ?? projectCoAuthor ?? getCoAuthorPreference();
   const preferences = formatPreferencesForPrompt();
   const userPreferences = preferences ? `\n\n${preferences}` : '';
   const projectContextFiles = getProjectContextFilesPrompt(opts.workingDirectory);

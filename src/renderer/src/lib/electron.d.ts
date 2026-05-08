@@ -349,6 +349,8 @@ export interface Project {
   defaultPermissionMode?: PermissionMode;
   /** Sessions in this project default to this connection slug; falls back to global default if missing. */
   defaultConnectionSlug?: string;
+  /** Override the global Co-Authored-By trailer preference. Undefined means inherit global. */
+  includeCoAuthoredBy?: boolean;
   createdAt: number;
   updatedAt: number;
 }
@@ -359,6 +361,7 @@ export interface ProjectInput {
   color?: string;
   defaultPermissionMode?: PermissionMode;
   defaultConnectionSlug?: string;
+  includeCoAuthoredBy?: boolean;
 }
 
 export type SessionFileNode =

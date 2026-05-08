@@ -19,6 +19,8 @@ export interface Project {
   /** Override of the global default permission mode. */
   defaultPermissionMode?: PermissionMode;
   defaultConnectionSlug?: string;
+  /** Override the global Co-Authored-By trailer preference. Undefined means inherit global. */
+  includeCoAuthoredBy?: boolean;
   createdAt: number;
   updatedAt: number;
 }
@@ -60,7 +62,7 @@ export type ProjectInput = Pick<Project, 'name' | 'rootPath'> &
   Partial<
     Pick<
       Project,
-      'color' | 'defaultPermissionMode' | 'defaultConnectionSlug'
+      'color' | 'defaultPermissionMode' | 'defaultConnectionSlug' | 'includeCoAuthoredBy'
     >
   >;
 

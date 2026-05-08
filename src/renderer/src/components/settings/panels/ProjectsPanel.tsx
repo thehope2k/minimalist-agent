@@ -106,6 +106,17 @@ export function ProjectsPanel() {
                         muted={!p.defaultPermissionMode}
                       />
                       <ProjectChip
+                        prefix="Co-Author"
+                        label={
+                          p.includeCoAuthoredBy === undefined
+                            ? 'Default'
+                            : p.includeCoAuthoredBy
+                              ? 'On'
+                              : 'Off'
+                        }
+                        muted={p.includeCoAuthoredBy === undefined}
+                      />
+                      <ProjectChip
                         prefix="Connection"
                         label={
                           p.defaultConnectionSlug
@@ -208,6 +219,15 @@ function ProjectEditDialog({
   const [defaultConnectionSlug, setDefaultConnectionSlug] = useState<string>(
     project?.defaultConnectionSlug ?? '',
   );
+  const [includeCoAuthoredBy, setIncludeCoAuthoredBy] = useState<
+    'true' | 'false' | ''
+  >(
+    project?.includeCoAuthoredBy === undefined
+      ? ''
+      : project.includeCoAuthoredBy
+        ? 'true'
+        : 'false',
+  );
   const [busy, setBusy] = useState(false);
 
   // The stored slug may point at a deleted connection. Detect so we can
@@ -235,6 +255,8 @@ function ProjectEditDialog({
         color,
         defaultPermissionMode: defaultPermissionMode || undefined,
         defaultConnectionSlug: defaultConnectionSlug || undefined,
+        includeCoAuthoredBy:
+          includeCoAuthoredBy === '' ? undefined : includeCoAuthoredBy === 'true',
       };
       if (isNew) await createProject(payload);
       else await updateProject(project!.id, payload);
@@ -344,6 +366,21 @@ function ProjectEditDialog({
                       },
                     ]
                   : []),
+              ]}
+            />
+          </Field>
+
+          <Field
+            label="Co-Authored-By trailer"
+            hint="Whether to append the Minimalist Agent co-author trailer to commits. Overrides the global preference for this project."
+          >
+            <Select
+              value={includeCoAuthoredBy}
+              onChange={(v) => setIncludeCoAuthoredBy(v as 'true' | 'false' | '')}
+              options={[
+                { value: '', label: 'Use global default' },
+                { value: 'true', label: 'On' },
+                { value: 'false', label: 'Off' },
               ]}
             />
           </Field>
