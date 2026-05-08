@@ -5,6 +5,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.6.0] — 2026-05-08
+
+Adds attachment support to mid-turn message injection; fixes Mermaid cylinder shapes failing to render.
+
+### Added
+
+**Attachments in mid-turn steer**
+
+- Images, PDFs, text files, and snippets can now be attached when injecting a message into a running turn via the Steer button (⌘+Enter)
+- The Paperclip button is no longer disabled while the agent is streaming
+- Attached files appear in the ghost "Injected mid-turn" bubble so there is a visible record of what was sent
+- Attachments are restored to the composer if the steer fails, matching the existing text restore behaviour
+
+### Fixed
+
+**Mermaid diagram rendering**
+
+- Cylinder / database node shapes (`[("text\nmore")]`) were being mangled by the `preprocessMermaid` function, producing an unmatched inner quote that caused Mermaid to fall back to raw source. The preprocessor now correctly preserves `(…)` delimiters when converting `\n` to `<br/>`.
+
+---
+
 ## [0.5.0] — 2026-05-08
 
 Adds smart snippet attachments for large clipboard pastes.
