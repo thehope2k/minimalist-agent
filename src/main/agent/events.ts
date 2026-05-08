@@ -4,8 +4,8 @@
 // source of truth for assembling tool parts, partial JSON, etc. We just
 // classify raw SDK chunks into stable, narrow shapes.
 //
-// Things deliberately *not* tracked here (see docs/LIMITATIONS.md "Post-v1"):
-//   - ToolIndex / parent-task tracking (no subagents in v1)
+// Things deliberately *not* tracked here:
+//   - ToolIndex / parent-task tracking (no subagents yet)
 //   - per-message usage snapshots (renderer just gets cumulative usage on
 //     `turn_done` from the result message)
 //   - retry-with-different-error special cases (we surface errors verbatim)

@@ -65,9 +65,9 @@ See `components/settings/AddConnectionDialog.tsx` + `connection-flow/`.
 
 - Renderer-side storage goes in `src/renderer/src/lib/connections.ts` style:
   small modules with read/write helpers over `localStorage`.
-- Secrets (API keys, OAuth tokens) **eventually** belong in Electron's
-  `safeStorage` via IPC. Currently in `localStorage` for v1 — see
-  `docs/LIMITATIONS.md`.
+- Secrets (API keys, OAuth tokens) are stored encrypted via Electron's
+  `safeStorage` (OS keychain) in the main process. Never store credentials
+  in `localStorage` — use the `credentials:set` IPC path instead.
 
 ## Comments
 
