@@ -52,12 +52,25 @@ function nextRenderId(): string {
  *   1. Replace `\n` with `<br/>` so HTML line-breaks are used.
  *   2. Wrap the bracket content in double-quotes (`["..."]`) so the Mermaid
  *      parser accepts the `<` / `>` angle-bracket characters without choking.
+ *
+ * Special case: cylinder / database shapes use `[("...")]` or `[(...))]`.
+ * We must preserve the `(…)` delimiters or Mermaid will lose the shape
+ * and potentially produce an unmatched-quote parse error.
  */
 function preprocessMermaid(code: string): string {
   // Match bracket node labels: [content] or ["content"] — no nested brackets.
   return code.replace(/\[([^\[\]]*)\]/g, (match, inner) => {
     // Only touch labels that contain a literal backslash-n.
     if (!inner.includes('\\n')) return match;
+
+    // Cylinder / database shape [(...)] or [("...")] — preserve the (…) wrapper.
+    if (inner.trimStart().startsWith('(')) {
+      const stripped = inner
+        .replace(/^\(([\s\S]*)\)$/, '$1')  // remove outer parens
+        .replace(/^"([\s\S]*)"$/, '$1');   // remove optional surrounding quotes
+      return `[("${stripped.replace(/\\n/g, '<br/>')}")]`;
+    }
+
     // Strip existing surrounding quotes (if any), replace \n, re-quote.
     const unquoted = inner.replace(/^"(.*)"$/s, '$1');
     const processed = unquoted.replace(/\\n/g, '<br/>');
