@@ -250,7 +250,7 @@ export function AIPanel() {
         <SettingsCard>
           <SettingsRow
             label="Workspace scan depth"
-            description="Directory levels MA walks when looking for .specify/ entities. Increase for deeply nested monorepos (default: 3)."
+            description="Directory levels MA walks when looking for .specify/ entities. Increase for deeply nested monorepos."
             control={
               <Input
                 type="number"

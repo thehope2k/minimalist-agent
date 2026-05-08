@@ -191,9 +191,12 @@ function ConnectionList({
                 )}
               >
                 <BrandMark category={cat} />
-                <span className="flex-1 truncate text-sm text-fg">
-                  {conn.name}
-                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm text-fg">{conn.name}</div>
+                  {cat === 'copilot' && (
+                    <div className="text-[10px] text-fg-subtle">No subagents (Task tool)</div>
+                  )}
+                </div>
                 {isActive && (
                   <Check
                     className="h-3.5 w-3.5 shrink-0 text-fg"
@@ -228,6 +231,7 @@ function ModelList({
   onBack: (() => void) | null;
   onPick: (modelId: string) => void;
 }) {
+  const isCopilot = categorize(connection) === 'copilot';
   return (
     <div className="scroll-thin max-h-112 overflow-auto">
       {onBack ? (
@@ -242,6 +246,11 @@ function ModelList({
       ) : (
         <div className="px-2.5 pb-1 pt-2 text-[10px] font-medium uppercase tracking-wide text-fg-subtle">
           {connection.name}
+        </div>
+      )}
+      {isCopilot && (
+        <div className="mx-2 mb-1 rounded-md bg-elevated px-2.5 py-1.5 text-[11px] text-fg-subtle">
+          ℹ️ Task (subagent) tool not available on Copilot — switch to an Anthropic connection for subagent support.
         </div>
       )}
       {connection.models.length === 0 ? (

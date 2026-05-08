@@ -44,17 +44,9 @@ These are understood, scoped, and on the roadmap — just not shipped yet.
 
 ### 🔴 High priority
 
-| What                                | Notes                                                                                                                                                                                                                                              |
-|-------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Copilot capability indicator**    | Surface in the connection picker / model pill that Copilot sessions don't have the Task (subagent) tool. Copilot users should know before they start that this capability requires an Anthropic connection. Small change, high transparency value. |
-| **Agent Teams / parallel sessions** | Wire multiple concurrent `runAgentChat()` calls so the model (or the user) can fan work across parallel sessions. Requires an orchestration layer and a UI surface to start, monitor, and coordinate concurrent turns.                             |
-
-### 🟠 Medium priority
-
-| What                            | Notes                                                                                                                                                                                                               |
-|---------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Hook / lifecycle automation** | Per-session hooks that fire shell commands or agent turns on lifecycle events: `on_turn_done`, `on_file_write`, `on_tool_use`. MVP: a simple "run this command after turn completes" config per session or project. |
-| **GitHub PR automation**        | Native "New session from GitHub issue" flow using the existing `gh` CLI. Pre-fills the prompt with issue body + links the URL into session context. Stepping stone toward issue→PR automation.                      |
+| What                             | Notes                                                                                                                                                                                                                                                                                                  |
+|----------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Hooks / lifecycle automation** | Per-session hooks that fire shell commands on lifecycle events: `on_turn_done`, `on_file_write`, `on_tool_use`. Closes the agent feedback loop automatically — runs tests, typechecks, linting, or `gh pr create` without the user having to ask. MVP: a simple command config per session or project. |
 
 ### 🟢 Long-term
 
