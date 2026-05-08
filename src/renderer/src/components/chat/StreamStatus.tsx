@@ -13,8 +13,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import type { MessagePart } from '@/lib/chat';
 
-export function StreamStatus({ parts }: { parts: MessagePart[] }) {
-  const elapsed = useElapsed();
+export function StreamStatus({ parts, startedAt }: { parts: MessagePart[]; startedAt?: number }) {
+  const elapsed = useElapsed(startedAt);
   const label = deriveLabel(parts);
   // Show a subtle warning after 5m — at this point the turn is taking
   // longer than any normal response and is likely retrying a transient
@@ -98,8 +98,10 @@ function basename(p: string): string {
 }
 
 /** Re-render once per second while mounted to drive the elapsed counter. */
-function useElapsed(): number {
-  const startRef = useRef<number>(Date.now());
+function useElapsed(startedAt?: number): number {
+  // Seed from the turn's creation timestamp so the counter survives
+  // session switches — StreamStatus unmounts/remounts but startedAt is stable.
+  const startRef = useRef<number>(startedAt ?? Date.now());
   const [, force] = useState(0);
   useEffect(() => {
     const id = window.setInterval(() => force((n) => n + 1), 1000);

@@ -633,6 +633,7 @@ export function useChat(
         parts: [],
         isStreaming: true,
         model,
+        createdAt: Date.now(),
       };
 
       const prev = messagesBySession.current.get(sid) ?? [];

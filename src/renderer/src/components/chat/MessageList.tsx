@@ -169,7 +169,7 @@ function Bubble({
             {parts.map((p, i) => (
               <PartView key={partKey(p, i)} part={p} />
             ))}
-            {m.isStreaming && <StreamStatus parts={parts} />}
+            {m.isStreaming && <StreamStatus parts={parts} startedAt={m.createdAt} />}
           </AssistantCard>
         ) : (
           !m.errorInfo &&
