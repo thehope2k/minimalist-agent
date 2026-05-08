@@ -2,6 +2,7 @@
 // → DraftAttachment, plus thin wrappers around the IPC bridge.
 
 import type { DraftAttachment, StoredAttachment } from './electron';
+import { detectLanguage } from './language-detect';
 
 export const REJECTED_EXTS = new Set([
   '.docx', '.xlsx', '.pptx', '.doc', '.xls', '.ppt',
@@ -91,4 +92,44 @@ export async function readAttachmentBase64(storedPath: string): Promise<string |
 
 export function revealAttachment(storedPath: string): Promise<void> {
   return window.api.attachments.reveal(storedPath);
+}
+
+/* -------- Snippet helpers -------- */
+
+let snippetCounter = 0;
+
+/**
+ * Build a DraftAttachment of type 'snippet' from raw text.
+ * Language is auto-detected if not supplied.
+ */
+export function createSnippetDraft(
+  text: string,
+  opts?: { name?: string; language?: string },
+): DraftAttachment {
+  snippetCounter++;
+  const lang = opts?.language ?? detectLanguage(text);
+  const ext = langToExt(lang);
+  const name = opts?.name ?? `snippet-${snippetCounter}${ext}`;
+  const lineCount = text.split('\n').length;
+  const bytes = new TextEncoder().encode(text).length;
+  return {
+    type: 'snippet',
+    path: `snippet:${crypto.randomUUID()}`,
+    name,
+    mimeType: 'text/plain',
+    size: bytes,
+    text,
+    language: lang,
+    lineCount,
+  };
+}
+
+function langToExt(lang: string): string {
+  const map: Record<string, string> = {
+    typescript: '.ts', javascript: '.js', tsx: '.tsx', jsx: '.jsx',
+    python: '.py', json: '.json', html: '.html', css: '.css',
+    yaml: '.yml', sql: '.sql', bash: '.sh', go: '.go',
+    rust: '.rs', java: '.java', xml: '.xml', markdown: '.md',
+  };
+  return map[lang] ?? '.txt';
 }

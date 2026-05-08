@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
-import { ChevronRight, File as FileIcon, Folder, Info } from 'lucide-react';
+import { ChevronRight, File as FileIcon, FileCode, FileText, Folder, Info } from 'lucide-react';
 import { Button } from '../ui';
 import { cn } from '@/lib/utils';
 import { updateSessionMeta } from '@/lib/sessions';
@@ -179,6 +179,18 @@ function DirNode({
   );
 }
 
+const CODE_EXTS = new Set([
+  'ts', 'tsx', 'js', 'jsx', 'py', 'go', 'rs', 'java', 'c', 'cpp', 'h',
+  'json', 'yaml', 'yml', 'toml', 'sh', 'bash', 'zsh', 'sql', 'html',
+  'css', 'scss', 'md', 'txt', 'log', 'conf', 'ini', 'cfg', 'env',
+]);
+const PDF_EXTS = new Set(['pdf']);
+const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg']);
+
+function fileExt(name: string): string {
+  return name.split('.').pop()?.toLowerCase() ?? '';
+}
+
 function FileNode({
   node,
   depth,
@@ -186,20 +198,66 @@ function FileNode({
   node: Extract<SessionFileNode, { kind: 'file' }>;
   depth: number;
 }) {
-  const reveal = () => void window.api.sessions.revealFile(node.path);
+  const [preview, setPreview] = useState<string | null>(null);
+  const ext = fileExt(node.name);
+  const isCode = CODE_EXTS.has(ext);
+  const isPdf = PDF_EXTS.has(ext);
+  const isImage = IMAGE_EXTS.has(ext);
+  const isInAttachments = node.path.includes('/attachments/');
+  // Snippets and text attachments can be previewed in-app.
+  const canPreview = isInAttachments && isCode;
+
+  const handleClick = () => {
+    if (canPreview) {
+      if (preview !== null) { setPreview(null); return; }
+      void window.api.attachments.readAsBase64(node.path).then((b64) => {
+        if (b64) setPreview(atob(b64));
+      });
+    } else {
+      void window.api.sessions.revealFile(node.path);
+    }
+  };
+
+  const Icon = isPdf ? FileText : isCode ? FileCode : FileIcon;
+  const iconClass = isCode && isInAttachments
+    ? 'h-3.5 w-3.5 shrink-0 text-accent'
+    : 'h-3.5 w-3.5 shrink-0 text-fg-subtle';
+
   return (
-    <button
-      onClick={reveal}
-      title={node.path}
-      className="flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-xs text-fg hover:bg-elevated"
-      style={{ paddingLeft: 6 + (depth + 1) * INDENT_PX }}
-    >
-      <FileIcon className="h-3.5 w-3.5 shrink-0 text-fg-subtle" strokeWidth={1.75} />
-      <span className="truncate" style={{ flex: 1 }}>
-        {node.name}
-      </span>
-      <span className="text-[10px] text-fg-subtle">{formatSize(node.size)}</span>
-    </button>
+    <div>
+      <button
+        onClick={handleClick}
+        title={canPreview ? `Preview ${node.name}` : node.path}
+        className="flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-xs text-fg hover:bg-elevated"
+        style={{ paddingLeft: 6 + (depth + 1) * INDENT_PX }}
+      >
+        <Icon className={iconClass} strokeWidth={1.75} />
+        <span className="truncate" style={{ flex: 1 }}>
+          {node.name}
+        </span>
+        {canPreview && (
+          <span className="text-[10px] text-accent/70">
+            {preview !== null ? 'hide' : 'view'}
+          </span>
+        )}
+        {!canPreview && !isImage && (
+          <span className="text-[10px] text-fg-subtle">{formatSize(node.size)}</span>
+        )}
+        {isImage && (
+          <span className="text-[10px] text-fg-subtle">image</span>
+        )}
+      </button>
+      {preview !== null && (
+        <div
+          className="mx-2 mb-1 overflow-hidden rounded-md border border-border bg-elevated/50"
+          style={{ marginLeft: 6 + (depth + 2) * INDENT_PX }}
+        >
+          <pre className="scroll-thin max-h-60 overflow-auto p-2.5 text-[11px] leading-relaxed text-fg-muted whitespace-pre">
+            {preview}
+          </pre>
+        </div>
+      )}
+    </div>
   );
 }
 

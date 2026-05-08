@@ -177,6 +177,18 @@ function buildUserMessageWithAttachments(
       } catch {
         // skip unreadable
       }
+    } else if (att.type === 'text' || att.type === 'snippet') {
+      try {
+        const content = readFileSync(att.storedPath, 'utf-8');
+        // Replace the stub header with the real content.
+        blocks.pop(); // remove the [Attached file] stub just pushed
+        blocks.push({
+          type: 'text',
+          text: `[File: ${att.name}]\n\`\`\`\n${content}\n\`\`\``,
+        });
+      } catch {
+        // keep the stub if the file is unreadable
+      }
     }
   }
 

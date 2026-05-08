@@ -492,6 +492,28 @@ const SDK_IMAGE_MEDIA = new Set([
   'image/webp',
 ]);
 
+/**
+ * Prepend text/snippet/pdf-text attachments to the prompt so the Pi
+ * backend receives their content (Pi only supports images natively).
+ */
+function buildPiPrompt(prompt: string, attachments?: StoredAttachment[]): string {
+  if (!attachments?.length) return prompt;
+  const parts: string[] = [];
+  for (const att of attachments) {
+    if (att.type === 'text' || att.type === 'snippet') {
+      try {
+        const content = readFileSync(att.storedPath, 'utf-8');
+        parts.push(`[File: ${att.name}]\n\`\`\`\n${content}\n\`\`\``);
+      } catch {
+        parts.push(`[File: ${att.name}] (unreadable)`);
+      }
+    }
+    // PDFs and images are handled separately (images via buildImages,
+    // PDFs are binary — skip for now as Pi has no document block type).
+  }
+  return parts.length > 0 ? `${parts.join('\n\n')}\n\n${prompt}` : prompt;
+}
+
 function buildImages(attachments?: StoredAttachment[]): PiPromptImage[] | undefined {
   if (!attachments?.length) return undefined;
   const out: PiPromptImage[] = [];
@@ -543,7 +565,7 @@ export async function* runPiChat(
   const promptMsg: MsgPrompt = {
     type: 'prompt',
     turnId: req.turnId,
-    message: finalPrompt,
+    message: buildPiPrompt(finalPrompt, req.attachments),
     images: buildImages(req.attachments),
   };
   send(handle, promptMsg);

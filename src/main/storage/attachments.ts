@@ -26,6 +26,10 @@ export interface DraftAttachment {
   size: number;
   base64?: string;
   text?: string;
+  /** Detected or user-set language tag (snippets only). */
+  language?: string;
+  /** Pre-computed line count (snippets only). */
+  lineCount?: number;
 }
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
@@ -207,6 +211,20 @@ export async function storeDraft(
       mimeType: 'application/pdf',
       size: buf.length,
       storedPath,
+    };
+  }
+
+  // snippet — same storage as text, but preserves language + lineCount metadata.
+  if (draft.type === 'snippet') {
+    writeFileSync(storedPath, draft.text ?? '');
+    return {
+      type: 'snippet',
+      name: draft.name,
+      mimeType: draft.mimeType,
+      size: draft.size,
+      storedPath,
+      language: draft.language,
+      lineCount: draft.lineCount,
     };
   }
 

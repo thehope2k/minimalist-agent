@@ -43,7 +43,7 @@ export type StoredMessagePart =
       status: 'running' | 'done' | 'error';
     };
 
-export type AttachmentType = 'image' | 'pdf' | 'text';
+export type AttachmentType = 'image' | 'pdf' | 'text' | 'snippet';
 
 export interface StoredAttachment {
   type: AttachmentType;
@@ -53,6 +53,10 @@ export interface StoredAttachment {
   storedPath: string;
   thumbnailBase64?: string;
   resizedBase64?: string;
+  /** Detected or user-set language tag (snippets only). */
+  language?: string;
+  /** Pre-computed line count (snippets only). */
+  lineCount?: number;
 }
 
 export interface StoredMessage {

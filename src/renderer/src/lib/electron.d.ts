@@ -71,7 +71,7 @@ export interface ChatSendRequest {
 }
 
 /** File classes we know how to handle. Office files are intentionally not supported. */
-export type AttachmentType = 'image' | 'pdf' | 'text';
+export type AttachmentType = 'image' | 'pdf' | 'text' | 'snippet';
 
 /**
  * Draft attachment — picked / pasted / dropped, not yet persisted.
@@ -88,6 +88,10 @@ export interface DraftAttachment {
   base64?: string;
   /** Set for text files (entire content if small, truncated if large). */
   text?: string;
+  /** Detected or user-set language tag (snippets only). */
+  language?: string;
+  /** Pre-computed line count (snippets only). */
+  lineCount?: number;
 }
 
 /**
@@ -107,6 +111,10 @@ export interface StoredAttachment {
   thumbnailBase64?: string;
   /** Optimized base64 used for the actual API payload (images only). */
   resizedBase64?: string;
+  /** Detected or user-set language tag (snippets only). */
+  language?: string;
+  /** Pre-computed line count (snippets only). */
+  lineCount?: number;
 }
 
 export interface AgentUsage {

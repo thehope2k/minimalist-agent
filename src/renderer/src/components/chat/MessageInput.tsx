@@ -19,6 +19,7 @@ import {
   fileToDraft,
   pickAttachments,
   readAttachmentPath,
+  createSnippetDraft,
 } from '@/lib/attachments';
 import { cn } from '@/lib/utils';
 import type {
@@ -392,7 +393,18 @@ export function MessageInput({
         if (f) fileItems.push(f);
       }
     }
-    if (fileItems.length === 0) return;
+
+    // Large plain-text paste (no files): auto-convert to a snippet chip.
+    if (fileItems.length === 0) {
+      const pasted = e.clipboardData.getData('text/plain');
+      const isLarge = pasted.split('\n').length >= 30 || pasted.length >= 1_500;
+      if (isLarge) {
+        e.preventDefault();
+        addDrafts([createSnippetDraft(pasted)]);
+      }
+      return;
+    }
+
     e.preventDefault();
     setError(null);
     setLoadingCount(fileItems.length);
@@ -412,7 +424,7 @@ export function MessageInput({
     }
   };
 
-  return (
+return (
     <div className="mx-auto w-full max-w-240">
       <CompactionNotice notice={lastCompaction} />
 
@@ -450,11 +462,14 @@ export function MessageInput({
           onRemove={(i) =>
             setAttachments((prev) => prev.filter((_, idx) => idx !== i))
           }
+          onUpdate={(i, updated) =>
+            setAttachments((prev) => prev.map((a, idx) => idx === i ? updated : a))
+          }
           loadingCount={loadingCount}
           disabled={isStreaming}
         />
 
-        {error && (
+{error && (
           <div className="border-b border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs text-red-300">
             {error}
           </div>
