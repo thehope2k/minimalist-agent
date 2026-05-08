@@ -40,8 +40,7 @@ What's in, what's coming, and what's intentionally out of scope.
 
 ## What's coming
 
-These are understood, scoped, and on the roadmap — just not shipped yet. Priority derived from [
-`docs/COMPETITIVE-ANALYSIS.md`](COMPETITIVE-ANALYSIS.md).
+These are understood, scoped, and on the roadmap — just not shipped yet.
 
 ### 🔴 High priority
 

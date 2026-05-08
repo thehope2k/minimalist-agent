@@ -49,6 +49,3 @@ app-builds/
 # Generated icon artifacts — produced from the SVG in `scripts/generate-icons.mjs`
 # at pack/release time. Source of truth is `src/main/app-icon.ts`.
 build/
-
-.specify
-.claude
