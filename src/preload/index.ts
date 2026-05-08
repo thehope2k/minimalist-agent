@@ -322,8 +322,9 @@ const api = {
     steer: (
       turnId: string,
       message: string,
+      attachments?: object[],
     ): Promise<{ ok: boolean; reason?: string }> =>
-      ipcRenderer.invoke('chat:steer', { turnId, message }),
+      ipcRenderer.invoke('chat:steer', { turnId, message, attachments }),
     generateTitle: (args: {
       connectionSlug: string;
       messages: Array<{ role: 'user' | 'assistant'; content: string }>;

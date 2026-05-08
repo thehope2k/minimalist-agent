@@ -469,13 +469,15 @@ export function registerIpc(): void {
     'chat:steer',
     async (
       _e,
-      args: { turnId: string; message: string },
+      args: { turnId: string; message: string; attachments?: StoredAttachment[] },
     ): Promise<{ ok: boolean; reason?: string }> => {
       const info = turnInfo.get(args.turnId);
       if (!info) return { ok: false, reason: 'turn_not_active' };
-      if (!args.message.trim()) return { ok: false, reason: 'empty_message' };
+      if (!args.message.trim() && !args.attachments?.length)
+        return { ok: false, reason: 'empty_message' };
       if (info.providerType === 'pi') {
         if (!info.chatSessionId) return { ok: false, reason: 'no_session' };
+        // Pi backend is text-only for steer; attachments are not forwarded.
         const ok = steerPiTurn({
           chatSessionPath: sessionPath(info.chatSessionId),
           turnId: args.turnId,
@@ -483,7 +485,7 @@ export function registerIpc(): void {
         });
         return ok ? { ok: true } : { ok: false, reason: 'subprocess_unavailable' };
       }
-      const ok = steerAnthropicTurn(args.turnId, args.message);
+      const ok = steerAnthropicTurn(args.turnId, args.message, args.attachments);
       return ok ? { ok: true } : { ok: false, reason: 'turn_not_steerable' };
     },
   );

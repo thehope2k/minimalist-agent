@@ -65,7 +65,7 @@ type Props = {
    * resolve `{ ok: false, reason }` on failure rather than throw — the
    * input clears optimistically and re-fills only on a non-ok result.
    */
-  onSteer?: (message: string) => Promise<{ ok: boolean; reason?: string }>;
+  onSteer?: (message: string, attachments: DraftAttachment[]) => Promise<{ ok: boolean; reason?: string }>;
   /** Active session id (null until first send creates one). */
   sessionId: string | null;
   /** Current session title — shown in the Info popover. */
@@ -244,23 +244,27 @@ export function MessageInput({
     null;
 
   const canSend = !isStreaming && (!!value.trim() || attachments.length > 0) && !!connection && !!model;
-  /** Mid-turn steer — only available while streaming with non-empty text. */
+  /** Mid-turn steer — available while streaming with text or attachments. */
   const canSteer =
-    isStreaming && !!streamingTurnId && !!value.trim() && !!onSteer;
+    isStreaming && !!streamingTurnId && (!!value.trim() || attachments.length > 0) && !!onSteer;
 
   const handleSteer = async () => {
     if (!canSteer || !streamingTurnId || !onSteer) return;
     const text = value.trim();
+    const pendingAttachments = attachments;
     setValue('');
+    setAttachments([]);
     try {
-      const result = await onSteer(text);
+      const result = await onSteer(text, pendingAttachments);
       if (!result.ok) {
-        // Re-fill the textarea so the user can re-try / edit.
+        // Re-fill the textarea and attachments so the user can re-try / edit.
         setValue(text);
+        setAttachments(pendingAttachments);
         setError(`Steer failed: ${result.reason ?? 'unknown'}`);
       }
     } catch (e) {
       setValue(text);
+      setAttachments(pendingAttachments);
       setError(e instanceof Error ? e.message : 'Steer failed.');
     }
   };
@@ -535,7 +539,6 @@ return (
               icon={Paperclip}
               label="Attach file"
               onClick={handlePickFiles}
-              disabled={isStreaming}
             />
             <IconButton
               icon={AtSign}

@@ -110,10 +110,18 @@ class SteerableInput {
 const inputsByTurnId = new Map<string, SteerableInput>();
 
 /** Inject a user message into an in-flight Anthropic turn. */
-export function steerAnthropicTurn(turnId: string, message: string): boolean {
+export function steerAnthropicTurn(
+  turnId: string,
+  message: string,
+  attachments?: StoredAttachment[],
+): boolean {
   const input = inputsByTurnId.get(turnId);
   if (!input) return false;
-  input.push(buildPlainUserMessage(message));
+  const msg =
+    attachments && attachments.length > 0
+      ? buildUserMessageWithAttachments(message, attachments)
+      : buildPlainUserMessage(message);
+  input.push(msg);
   return true;
 }
 

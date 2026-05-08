@@ -557,6 +557,7 @@ export interface AppApi {
     steer: (
       turnId: string,
       message: string,
+      attachments?: StoredAttachment[],
     ) => Promise<{ ok: boolean; reason?: string }>;
     onEvent: (cb: (event: ChatStreamEvent) => void) => () => void;
     onPermissionRequest: (

@@ -740,14 +740,33 @@ export function useChat(
    * (the agent's subsequent response already reflects them).
    */
   const steer = useCallback(
-    async (text: string): Promise<{ ok: boolean; reason?: string }> => {
+    async (
+      text: string,
+      attachmentDrafts: DraftAttachment[] = [],
+    ): Promise<{ ok: boolean; reason?: string }> => {
       const sid = activeSessionIdRef.current;
       if (!sid) return { ok: false, reason: 'no active session' };
       const stream = streamingBySession.current.get(sid);
       if (!stream) return { ok: false, reason: 'no running turn' };
       const trimmed = text.trim();
-      if (!trimmed) return { ok: false, reason: 'empty message' };
-      const result = await window.api.chat.steer(stream.turnId, trimmed);
+      if (!trimmed && attachmentDrafts.length === 0)
+        return { ok: false, reason: 'empty message' };
+
+      // Store draft attachments before sending (same path as normal send).
+      const stored: StoredAttachment[] = [];
+      for (const d of attachmentDrafts) {
+        try {
+          stored.push(await storeAttachment(sid, d));
+        } catch {
+          // skip unreadable drafts rather than blocking the steer
+        }
+      }
+
+      const result = await window.api.chat.steer(
+        stream.turnId,
+        trimmed,
+        stored.length > 0 ? stored : undefined,
+      );
       if (!result.ok) return result;
 
       // Insert a ghost user bubble right BEFORE the running assistant so
@@ -757,12 +776,14 @@ export function useChat(
       const steerMsg: ChatMessage = {
         id: newId(),
         role: 'user',
-        parts: [{ kind: 'text', text: trimmed }],
+        parts: trimmed ? [{ kind: 'text', text: trimmed }] : [],
+        attachments: stored.length > 0 ? stored : undefined,
         intentTag: 'steer',
       };
-      const next = idx >= 0
-        ? [...current.slice(0, idx), steerMsg, ...current.slice(idx)]
-        : [...current, steerMsg];
+      const next =
+        idx >= 0
+          ? [...current.slice(0, idx), steerMsg, ...current.slice(idx)]
+          : [...current, steerMsg];
       messagesBySession.current.set(sid, next);
       if (sid === activeSessionIdRef.current) setMessages(next);
       return result;
