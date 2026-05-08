@@ -5,6 +5,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.5.0] — 2026-05-08
+
+Adds smart snippet attachments for large clipboard pastes.
+
+### Added
+
+**Smart snippet attachments**
+
+- Large clipboard pastes (≥30 lines or ≥1 500 chars) are automatically converted into named snippet chips instead of flooding the composer
+- Snippet chip shows a language badge and line count in the attachment strip
+- Hover the chip for a popover preview of the first ~8 lines
+- Click the chip to open a full edit modal — rename, edit content, or change the detected language
+- Language auto-detection covers 16+ languages via a new pure-sync heuristic (`lib/language-detect.ts`)
+- Snippet content is fully delivered to the AI: Anthropic backend receives a fenced code block; Pi backend prepends it to the prompt — previously text attachments were silently dropped
+- Session Info panel: snippet and code-file entries now show a `FileCode` icon with accent colour and an inline toggle-preview instead of only a Finder reveal button
+
+---
+
 ## [0.4.0] — 2026-05-08
 
 SDD quality of life improvements and bug fixes.
