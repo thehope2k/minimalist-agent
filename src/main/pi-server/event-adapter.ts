@@ -366,15 +366,32 @@ export function adaptPiEvent(event: AgentSessionEvent): AgentChatEvent[] {
       return out;
     }
 
-    // Compaction + auto-retry: surface as informational deltas in the
-    // assistant text so the user knows something is happening. Phase H
-    // upgrades these to dedicated UI affordances.
+    // Compaction: emit a structured compaction event on _end_ (matching the
+    // Claude SDK path) so the renderer shows the CompactionNotice toast and
+    // the CompactionDivider in the message list. We ignore _start_ because
+    // we need the result metadata (tokensBefore) which only arrives at end.
+    // Aborted compactions produce no boundary.
     case 'compaction_start':
-      out.push({
-        type: 'text_delta',
-        text: '\n_…compacting context…_\n',
-      });
       return out;
+
+    case 'compaction_end': {
+      const e = event as {
+        reason: 'manual' | 'threshold' | 'overflow';
+        result?: { tokensBefore?: number };
+        aborted: boolean;
+      };
+      if (!e.aborted) {
+        out.push({
+          type: 'compaction',
+          trigger: e.reason === 'manual' ? 'manual' : 'auto',
+          preTokens: e.result?.tokensBefore ?? 0,
+          // postTokens not surfaced by the Pi SDK; the UI gracefully shows
+          // "Compacted older turns" without a savings figure in that case.
+        });
+      }
+      return out;
+    }
+
     case 'auto_retry_start':
       out.push({
         type: 'text_delta',
