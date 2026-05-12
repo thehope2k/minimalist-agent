@@ -84,19 +84,21 @@ interface State {
   init?: MsgInit;
   authStorage?: AuthStorage;
   session?: AgentSession;
+  resourceLoader?: DefaultResourceLoader;
+  /** Mutable array passed by reference into resourceLoader — update in-place
+   *  before reload() so per-turn SDD context takes effect without recreating
+   *  the session. */
+  appendArr: string[];
+  /** Last value pushed into appendArr — avoids a redundant reload(). */
+  lastAppend?: string;
   model?: ReturnType<typeof getModel>;
-  /** Current permission mode — flippable mid-session via set_permission_mode. */
   permissionMode: PiPermissionMode;
-  /** turnId of the in-flight prompt. */
   currentTurnId?: string;
-  /** unsubscribe fn returned by session.subscribe(). */
   unsubscribe?: () => void;
-  /** Pending pre-tool-use round trips, keyed by requestId. */
   pendingPermission: Map<
     string,
     { resolve: (r: MsgPreToolUseResponse) => void }
   >;
-  /** AbortController for the active turn — lets us cancel tool waits. */
   turnAbort?: AbortController;
   shuttingDown?: boolean;
 }
@@ -104,6 +106,7 @@ interface State {
 const state: State = {
   permissionMode: 'auto',
   pendingPermission: new Map(),
+  appendArr: [],
 };
 
 /**
@@ -269,6 +272,8 @@ function buildWrappedTools(cwd: string): ToolDefinition<any, any, any>[] {
 async function handleInit(msg: MsgInit): Promise<void> {
   state.init = msg;
   state.permissionMode = msg.permissionMode;
+  state.appendArr = msg.systemPrompt ? [msg.systemPrompt] : [];
+  state.lastAppend = msg.systemPrompt ?? '';
 
   const authStorage = AuthStorage.inMemory();
   await writeAuthCredential(authStorage, msg.piAuthProvider, msg.piAuth.credential);
@@ -308,9 +313,10 @@ async function handleInit(msg: MsgInit): Promise<void> {
   const resourceLoader = new DefaultResourceLoader({
     cwd: msg.cwd,
     agentDir,
-    appendSystemPrompt: msg.systemPrompt ? [msg.systemPrompt] : [],
+    appendSystemPrompt: state.appendArr,
   });
   await resourceLoader.reload();
+  state.resourceLoader = resourceLoader;
 
   const { session } = await createAgentSession({
     cwd: msg.cwd,
@@ -395,17 +401,17 @@ function forwardEvent(piEvent: AgentSessionEvent): void {
 async function handlePrompt(msg: MsgPrompt): Promise<void> {
   if (!state.session) fatal('Received prompt before init');
 
-  // Wait for any in-flight session.prompt() to fully settle before starting a
-  // new one. The Pi SDK fires subscription events (including terminal ones like
-  // agent_end / message_end error) *during* session.prompt() execution —
-  // before its promise resolves. forwardEvent therefore clears state.currentTurnId
-  // and notifies main that the turn is done while session.prompt() is still in
-  // its resolution tail. If a new prompt arrives in that gap it would call
-  // session.prompt() on an agent that hasn't finished, throwing:
-  //   "Agent is already processing. Specify streamingBehavior..."
-  // Awaiting the previous promise here closes that window.
   if (activePromptPromise) {
     await activePromptPromise;
+  }
+
+  // Update the system-prompt append when it has changed (per-turn SDD context).
+  const newAppend = msg.systemPromptAppend ?? '';
+  if (newAppend !== state.lastAppend && state.resourceLoader) {
+    state.appendArr.length = 0;
+    if (newAppend) state.appendArr.push(newAppend);
+    state.lastAppend = newAppend;
+    await state.resourceLoader.reload();
   }
 
   state.currentTurnId = msg.turnId;

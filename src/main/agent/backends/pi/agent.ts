@@ -567,6 +567,7 @@ export async function* runPiChat(
     turnId: req.turnId,
     message: buildPiPrompt(finalPrompt, req.attachments),
     images: buildImages(req.attachments),
+    systemPromptAppend: append,
   };
   send(handle, promptMsg);
 
