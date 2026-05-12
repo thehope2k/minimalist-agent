@@ -5,6 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.7.1] — 2026-05-12
+
+Bug fixes for SDD artifact viewing.
+
+### Fixed
+
+**SDD artifact viewer**
+
+- Feature spec, plan, and task files now load correctly in the viewer for non-legacy SpecKit projects where artifacts live at `$repo_root/specs/` rather than inside `.specify/specs/`. Previously the IPC security guard only allowed reads from `.specify/`, causing the viewer to show "spec.md not found" even when the SDD panel phase badge was correct.
+
+---
+
 ## [0.7.0] — 2026-05-08
 
 New features: Mermaid copy button, per-project Co-Authored-By, Copilot capability indicator, and rich compaction UI.
