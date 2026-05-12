@@ -29,7 +29,7 @@ function messageHasSddKeyword(message: string): boolean {
  * Lean context block for a single pinned feature.
  * Kept deliberately small (~40 tokens) to minimise per-turn overhead.
  */
-function buildLeanContext(feature: SddFeature): string {
+function buildLeanContext(feature: SddFeature, entityRootPath: string): string {
   const artifacts: string[] = [];
   if (feature.artifacts.hasSpec) artifacts.push('spec.md');
   if (feature.artifacts.hasPlan) artifacts.push('plan.md');
@@ -48,9 +48,15 @@ function buildLeanContext(feature: SddFeature): string {
     tasksLine = `${checked}/${feature.artifacts.taskCount} done`;
   }
 
+  // Relative path from entity root so the AI knows exactly where to read/write.
+  const featureDir = feature.path.startsWith(entityRootPath)
+    ? feature.path.slice(entityRootPath.length).replace(/^\//, '')
+    : feature.path;
+
   return `
 <sdd_context>
 Active feature: ${feature.name} (${feature.currentPhase} phase)
+Feature dir: ${featureDir}
 Artifacts: ${artifactLine}
 Tasks: ${tasksLine}
 </sdd_context>`;
@@ -178,7 +184,7 @@ export function buildSddPromptBlock(
   let phaseContext = '';
 
   if (pinnedFeature) {
-    phaseContext = buildLeanContext(pinnedFeature);
+    phaseContext = buildLeanContext(pinnedFeature, activeEntity?.rootPath ?? '');
   } else if (activeEntity) {
     const phase = deriveEntityPhase(activeEntity.features, activeEntity.hasConstitution);
     phaseContext = buildFullContext(

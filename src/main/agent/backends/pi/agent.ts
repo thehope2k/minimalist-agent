@@ -533,18 +533,24 @@ function buildImages(attachments?: StoredAttachment[]): PiPromptImage[] | undefi
 export async function* runPiChat(
   req: PiChatRequest,
 ): AsyncGenerator<AgentChatEvent> {
-  // Same system-prompt assembly as the Anthropic backend.
-  const append = buildSystemPromptAppend({ cwd: req.cwd, sessionId: req.chatSessionId, userMessage: req.prompt });
+  // Compute append for subprocess init. May be empty on the very first turn
+  // of a new session if initSessionState hasn't completed yet (race with the
+  // React useEffect that fires after the send handler). Re-computed after
+  // handle.ready to capture any state that settled during the spawn window.
+  const initAppend = buildSystemPromptAppend({ cwd: req.cwd, sessionId: req.chatSessionId, userMessage: req.prompt });
   const prefix = buildPromptPrefix({ cwd: req.cwd });
 
   let handle: SubprocessHandle;
   try {
-    handle = ensureSubprocess(req, append);
+    handle = ensureSubprocess(req, initAppend);
     await handle.ready;
   } catch (e) {
     yield { type: 'error', error: parseError(e) };
     return;
   }
+
+  // Re-compute after ready: initSessionState may have completed during spawn.
+  const append = buildSystemPromptAppend({ cwd: req.cwd, sessionId: req.chatSessionId, userMessage: req.prompt });
 
   // Update mode in case the user changed it between turns.
   send(handle, { type: 'set_permission_mode', mode: req.permissionMode ?? 'auto' });
