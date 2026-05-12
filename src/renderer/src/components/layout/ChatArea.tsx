@@ -337,14 +337,12 @@ export function ChatArea({
           </h2>
         </div>
         <div className="flex flex-1 items-center justify-end gap-1">
-          {activeSession && (
-            <IconButton
-              icon={PanelRight}
-              label={sddPanelOpen ? 'Close workspace panel' : 'Open workspace panel'}
-              onClick={() => setSddPanelOpen((v) => !v)}
-              className={sddPanelOpen ? 'text-accent' : ''}
-            />
-          )}
+          <IconButton
+            icon={PanelRight}
+            label={sddPanelOpen ? 'Close workspace panel' : 'Open workspace panel'}
+            onClick={() => setSddPanelOpen((v) => !v)}
+            className={sddPanelOpen ? 'text-accent' : ''}
+          />
           <IconButton icon={X} label="New" onClick={onNewSession} />
         </div>
       </header>
@@ -421,7 +419,7 @@ export function ChatArea({
         </ResizablePanel>
 
         {/* SDD right panel */}
-        {sddPanelOpen && activeSession && (
+        {sddPanelOpen && (
           <>
             <ResizableHandle />
             <ResizablePanel
@@ -430,7 +428,7 @@ export function ChatArea({
               maxSize={55}
             >
               <SddWorkspacePanel
-                activeSession={activeSession}
+                activeSession={activeSession ?? ''}
                 sddMode={sddMode}
                 sddState={sdd.state}
                 sddLoading={sdd.loading}
