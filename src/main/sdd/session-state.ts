@@ -89,8 +89,10 @@ export function reinitPreservingManual(
 }
 
 /**
- * Check whether `absolutePath` lies within a known SDD entity's .specify/
- * directory across ALL active sessions.
+ * Check whether `absolutePath` lies within a known SDD entity's artifact
+ * boundaries across ALL active sessions. Accepts two layouts:
+ *   - {root}/.specify/**  — constitution + legacy specs (.specify/specs/)
+ *   - {root}/specs/**     — current speckit convention (specs at repo root)
  *
  * Used by the sdd:readArtifact and sdd:toggleTaskCheckbox IPC handlers as a
  * defence-in-depth guard against renderer-side logic errors reading or writing
@@ -101,8 +103,16 @@ export function isPathInKnownEntity(absolutePath: string): boolean {
   const normalised = absolutePath.replace(/\\/g, '/');
   for (const state of store.values()) {
     for (const entity of state.entities) {
-      const base = entity.specifyPath.replace(/\\/g, '/');
-      if (normalised === base || normalised.startsWith(base + '/')) {
+      // Allow reads from the .specify/ subtree (constitution + legacy specs
+      // where features live at .specify/specs/).
+      const specifyBase = entity.specifyPath.replace(/\\/g, '/');
+      if (normalised === specifyBase || normalised.startsWith(specifyBase + '/')) {
+        return true;
+      }
+      // Allow reads from {root}/specs/ — the current speckit convention where
+      // feature artifacts live at $repo_root/specs/ rather than inside .specify/.
+      const specsBase = entity.rootPath.replace(/\\/g, '/') + '/specs/';
+      if (normalised.startsWith(specsBase)) {
         return true;
       }
     }
