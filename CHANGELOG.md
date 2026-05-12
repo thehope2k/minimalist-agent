@@ -5,6 +5,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.8.1] — 2026-05-13
+
+Bug fixes for SDD context injection on both Anthropic and Pi backends.
+
+### Fixed
+
+**SDD — Anthropic backend**
+
+- `chatSessionId` was not forwarded to `runAnthropicChat`, so `buildSddPromptBlock` always received `sessionId = undefined` and returned empty — the SDD coaching block was never injected for Anthropic connections
+- Phase action button (▶ Tasks, ▶ Plan, etc.) on the active/default feature silently did nothing in new sessions — the dedup ref in `MessageInput` was never reset between sessions, causing identical message strings to be skipped
+
+**SDD — Pi backend**
+
+- SDD system prompt was set once at subprocess init and never updated; the freshly-computed per-turn append was silently discarded on all subsequent turns. Fixed by threading `systemPromptAppend` through `MsgPrompt` and calling `resourceLoader.reload()` when the value changes
+- First-turn race condition: `initSessionState` fires from a React `useEffect` after the chat turn IPC starts, so `getState(chatSessionId)` was null when the initial append was computed. The append is now re-computed after `handle.ready` to capture state that settled during the subprocess spawn window
+- Lean `<sdd_context>` block omitted the feature directory path, forcing the AI to explore the repo to locate artifact files. `Feature dir` is now included so the AI reads/writes to the right path immediately
+
+---
+
 ## [0.8.0] — 2026-05-13
 
 SDD workspace panel improvements and bug fixes for modern SpecKit layouts.
