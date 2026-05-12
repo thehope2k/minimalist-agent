@@ -131,7 +131,7 @@ async function checkHasConstitution(constitutionPath: string): Promise<boolean> 
 
 // ── Feature scan ────────────────────────────────────────────────────────────
 
-async function scanFeatures(specsDir: string): Promise<SddFeature[]> {
+async function scanFeatures(specsDir: string, hasConstitution: boolean): Promise<SddFeature[]> {
   if (!(await pathExists(specsDir))) return [];
 
   let entries: Dirent[];
@@ -140,10 +140,6 @@ async function scanFeatures(specsDir: string): Promise<SddFeature[]> {
   } catch {
     return [];
   }
-
-  // Constitution is entity-level — hoist the check out of the feature loop.
-  const constitutionPath = join(specsDir, '..', 'memory', 'constitution.md');
-  const hasConstitution = await checkHasConstitution(constitutionPath);
 
   const featurePromises = entries
     .filter((e) => e.isDirectory())
@@ -253,11 +249,11 @@ async function walk(
     const specsDir = join(dir, 'specs');
     const legacySpecsDir = join(specifyPath, 'specs');
     const useLegacy = !(await isDirectory(specsDir)) && (await isDirectory(legacySpecsDir));
-    const [features, hasConstitution, defaultFeatureSlug] = await Promise.all([
-      scanFeatures(useLegacy ? legacySpecsDir : specsDir),
+    const [hasConstitution, defaultFeatureSlug] = await Promise.all([
       checkHasConstitution(constitutionPath),
       readDefaultFeatureSlug(specifyPath),
     ]);
+    const features = await scanFeatures(useLegacy ? legacySpecsDir : specsDir, hasConstitution);
 
     // Collect constitution mtime for stale-detection in the viewer.
     let constitutionMtime: number | undefined;

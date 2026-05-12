@@ -1,5 +1,6 @@
 import { watch, type FSWatcher } from 'node:fs';
 import { promises as fsp } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import type { SddEntity, SddWatchHandle } from './types';
 
@@ -31,11 +32,13 @@ function tryWatch(dirPath: string, trigger: () => void): FSWatcher | null {
 /**
  * Manually watch a directory tree up to 2 levels deep.
  * Used on Linux where fs.watch with recursive option silently falls back to
- * non-recursive (inotify limitation). The .specify tree is always shallow:
- *   level 0 — .specify/
- *   level 1 — .specify/memory/  and  .specify/specs/
- *   level 2 — .specify/specs/001-feature-name/  (artifacts live here)
+ * non-recursive (inotify limitation). The watched tree is always shallow:
+ *   level 0 — rootPath/
+ *   level 1 — rootPath/{memory,specs,...}
+ *   level 2 — rootPath/specs/001-feature-name/  (artifacts live here)
  * Two levels covers everything without needing recursive watching.
+ *
+ * Called once for .specify/ (constitution) and once for specs/ (modern layout).
  */
 async function watchManual(
   rootPath: string,
@@ -89,18 +92,29 @@ export function watchEntity(
   // macOS (FSEvents) and Windows (ReadDirectoryChangesW) support recursive.
   // Linux inotify does NOT — it silently ignores the { recursive } option.
   // We detect the platform and use the manual walk as a fallback.
+  //
+  // Watch two roots:
+  //   1. entity.specifyPath  — .specify/ (constitution.md + legacy specs)
+  //   2. {root}/specs/       — modern speckit convention (feature artifacts)
+  const specsDir = join(entity.rootPath, 'specs');
+  const pathsToWatch = [entity.specifyPath];
+  if (existsSync(specsDir)) pathsToWatch.push(specsDir);
+
   if (process.platform === 'darwin' || process.platform === 'win32') {
-    try {
-      watchers.push(watch(entity.specifyPath, { recursive: true }, trigger));
-    } catch {
-      // specifyPath may not exist yet (entity just initialised via wizard).
-      // The caller will re-register watchers after the next scan.
+    for (const dir of pathsToWatch) {
+      try {
+        watchers.push(watch(dir, { recursive: true }, trigger));
+      } catch {
+        // dir may not exist yet; the caller will re-register after the next scan.
+      }
     }
   } else {
     // Async; individual directory errors are swallowed per-directory.
     // Register the handle immediately (below) to prevent double-registration
     // if watchEntity is called again before the async walk completes.
-    void watchManual(entity.specifyPath, trigger, watchers);
+    for (const dir of pathsToWatch) {
+      void watchManual(dir, trigger, watchers);
+    }
   }
 
   handles.set(entity.rootPath, { watchers, entityRootPath: entity.rootPath });

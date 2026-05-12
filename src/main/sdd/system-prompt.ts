@@ -87,7 +87,7 @@ function buildFullContext(
   });
 
   if (hidden > 0) {
-    lines.push(`  ... and ${hidden} more feature${hidden > 1 ? 's' : ''} (run \`ls .specify/specs/\` to see all)`);
+    lines.push(`  ... and ${hidden} more feature${hidden > 1 ? 's' : ''} (run \`ls specs/\` to see all)`);
   }
 
   return `
