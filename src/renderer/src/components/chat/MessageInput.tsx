@@ -109,18 +109,18 @@ export function MessageInput({
   onPendingMessageConsumed,
 }: Props) {
   const [value, setValue] = useState('');
-  // Consume pendingMessage (set from phase action buttons) into the editor.
-  // The effect runs once when pendingMessage becomes non-empty, sets the
-  // editor text, and immediately notifies the parent so it can clear the
-  // pending state.
+  // Fills the editor when a phase action button sets a pending message.
+  // prevPendingRef prevents double-application within a render cycle;
+  // reset on clear so the same message can be re-injected across sessions.
   const prevPendingRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     if (pendingMessage && pendingMessage !== prevPendingRef.current) {
       prevPendingRef.current = pendingMessage;
       setValue(pendingMessage);
       onPendingMessageConsumed?.();
-      // Focus the textarea so the user can review and press Enter.
       requestAnimationFrame(() => textareaRef.current?.focus());
+    } else if (!pendingMessage) {
+      prevPendingRef.current = undefined;
     }
   }, [pendingMessage, onPendingMessageConsumed]);
   const [attachments, setAttachments] = useState<DraftAttachment[]>([]);

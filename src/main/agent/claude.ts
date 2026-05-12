@@ -83,6 +83,7 @@ export function runAgentChat(
   return runAnthropicChat({
     auth: req.auth,
     turnId: req.turnId,
+    chatSessionId: req.chatSessionId,
     model: req.model,
     prompt: req.prompt,
     attachments: req.attachments,
