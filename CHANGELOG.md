@@ -5,6 +5,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.8.0] — 2026-05-13
+
+SDD workspace panel improvements and bug fixes for modern SpecKit layouts.
+
+### Added
+
+**SDD workspace panel**
+
+- The workspace panel button (PanelRight) is now always visible on new sessions — no need to send a message first before you can open the SDD panel and browse features
+
+### Fixed
+
+**SDD — modern SpecKit layout (`specs/` at repo root)**
+
+- Features no longer show `▶ Constitution` when the constitution already exists. `scanFeatures()` was recomputing the constitution path relative to `specsDir`, resolving to `{root}/memory/constitution.md` (never exists), so every feature was stuck at the `constitution` phase
+- File-system watcher now also watches `{root}/specs/` in addition to `.specify/`. Previously only `.specify/` was watched, so edits to `spec.md`, `plan.md`, and `tasks.md` in the modern layout never triggered a panel rescan
+- Agent hint for feature overflow now correctly shows `ls specs/` instead of `ls .specify/specs/` (which is always empty in the modern layout)
+
+---
+
 ## [0.7.1] — 2026-05-12
 
 Bug fixes for SDD artifact viewing.
