@@ -305,7 +305,9 @@ async function handleInit(msg: MsgInit): Promise<void> {
   }
   state.model = model;
 
-  const sessionManager = SessionManager.create(msg.sessionPath);
+  // continueRecent resumes the most recent session stored in msg.sessionPath
+  // (our userData-backed dir), or creates a new one if none exists yet.
+  const sessionManager = SessionManager.continueRecent(msg.cwd, msg.sessionPath);
 
   const tools = buildWrappedTools(msg.cwd);
 

@@ -9,7 +9,7 @@ import {
   type SDKMessage,
   type SDKUserMessage,
 } from '@anthropic-ai/claude-agent-sdk';
-import { readFileSync, writeFileSync, chmodSync } from 'node:fs';
+import { readFileSync, writeFileSync, chmodSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { Paths } from '../../storage/paths';
 import type { StoredAttachment } from '../../storage/sessions';
@@ -252,6 +252,24 @@ function writeAnthropicOAuthCredentials(accessToken: string): string {
   return dir;
 }
 
+/**
+ * Check whether a Claude SDK session JSONL file exists under CLAUDE_CONFIG_DIR/projects/.
+ * Returns false when the file is missing so callers can warn before a silent context reset.
+ */
+function findClaudeSession(sessionId: string): boolean {
+  const projectsDir = join(Paths.claudeConfigDir(), 'projects');
+  if (!existsSync(projectsDir)) return false;
+  try {
+    for (const projectDir of readdirSync(projectsDir)) {
+      const candidate = join(projectsDir, projectDir, `${sessionId}.jsonl`);
+      if (existsSync(candidate)) return true;
+    }
+  } catch {
+    // ignore unreadable dirs
+  }
+  return false;
+}
+
 export function envForAnthropicAuth(auth: AnthropicAuth): Record<string, string> {
   if (auth.type === 'anthropic_api_key') {
     return { ANTHROPIC_API_KEY: auth.apiKey };
@@ -297,6 +315,12 @@ export async function* runAnthropicChat(
   const baseDefaults = getDefaultOptions({
     envOverrides: envForAnthropicAuth(req.auth),
   });
+
+  // Warn when a stored resume ID has no matching session file — the SDK
+  // silently falls back to a new session, so this surfaces the context loss.
+  if (req.resumeSessionId && !findClaudeSession(req.resumeSessionId)) {
+    console.warn(`[anthropic] resume session ${req.resumeSessionId} not found — starting fresh`);
+  }
 
   const options: Options = {
     ...baseDefaults,
