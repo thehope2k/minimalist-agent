@@ -54,6 +54,8 @@ export function ChatArea({
   const [cwd, setCwd] = useState<string | undefined>(undefined);
   const [title, setTitle] = useState<string>('New session');
   const [sddMode, setSddMode] = useState<'auto' | 'off'>('off');
+  const sddModeRef = useRef<'auto' | 'off'>('off');
+  sddModeRef.current = sddMode;
   const [sddPanelOpen, setSddPanelOpen] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
   const [pendingMessage, setPendingMessage] = useState<string | undefined>(undefined);
@@ -197,6 +199,11 @@ export function ChatArea({
   useEffect(() => {
     if (activeSessionId && activeSessionId !== sessionId) {
       onSessionCreated(activeSessionId);
+      // sddMode toggled on a fresh chat is never persisted (no session yet);
+      // save it now so the rehydration effect reads it back correctly.
+      if (sddModeRef.current !== 'off') {
+        void updateSessionMeta(activeSessionId, { sddMode: sddModeRef.current });
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSessionId]);
