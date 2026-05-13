@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.8.2] — 2026-05-13
+
+Bug fix: SDD mode enabled on a fresh chat reverted to off after the first message.
+
+### Fixed
+
+- SDD mode toggled on a new session (before the first message) was not persisted — on send, the newly created session was rehydrated without a saved `sddMode`, resetting it to off
+
+---
+
 ## [0.8.1] — 2026-05-13
 
 Bug fixes for SDD context injection on both Anthropic and Pi backends.
