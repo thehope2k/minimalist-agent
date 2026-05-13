@@ -1036,11 +1036,13 @@ export function registerIpc(): void {
             pinnedSlug,
           );
 
-          // Start watchers for any entities that weren't known at init time.
-          for (const newEnt of fresh.entities) {
-            if (!prevRoots.has(newEnt.rootPath)) {
-              sddWatchEntity(newEnt, watchCb);
-            }
+          // Update watchers for all entities — not just newly discovered ones.
+          // watchEntity now handles existing entities by adding any directories
+          // (e.g. specs/) that were created since the last watch setup. This
+          // ensures the phase badge updates even when specs/ is created after
+          // the initial scan (BUG-SDD-08).
+          for (const ent of fresh.entities) {
+            sddWatchEntity(ent, watchCb);
           }
 
           const win = BrowserWindow.getAllWindows()[0];

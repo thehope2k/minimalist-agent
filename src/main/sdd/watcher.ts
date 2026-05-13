@@ -72,23 +72,23 @@ async function watchManual(
 // ── Public API ────────────────────────────────────────────────────────────────
 
 /**
- * Start watching an entity's entire .specify subtree for changes.
+ * Start watching an entity's artifact directories for changes.
  *
  * On macOS and Windows: a single recursive watcher via { recursive: true }.
  * On Linux and other platforms: individual non-recursive watchers on each
  * directory up to 2 levels deep (covers the full .specify structure).
  *
  * onChange is debounced to 200 ms and called with the entity rootPath.
+ *
+ * Safe to call multiple times for the same entity — if the entity is already
+ * being watched, only NEW directories (e.g. a specs/ that was just created)
+ * are added to the existing watch set. This covers the case where the agent
+ * creates specs/ after the initial scan (phase badge would not update otherwise).
  */
 export function watchEntity(
   entity: SddEntity,
   onChange: (entityRootPath: string) => void,
 ): void {
-  if (handles.has(entity.rootPath)) return; // already watching
-
-  const trigger = createDebouncer(onChange, entity.rootPath);
-  const watchers: FSWatcher[] = [];
-
   // macOS (FSEvents) and Windows (ReadDirectoryChangesW) support recursive.
   // Linux inotify does NOT — it silently ignores the { recursive } option.
   // We detect the platform and use the manual walk as a fallback.
@@ -100,12 +100,46 @@ export function watchEntity(
   const pathsToWatch = [entity.specifyPath];
   if (existsSync(specsDir)) pathsToWatch.push(specsDir);
 
+  const existing = handles.get(entity.rootPath);
+  if (existing) {
+    // Entity already watched — only add directories that are newly available
+    // (e.g. specs/ was created after the initial watchEntity call).
+    const newPaths = pathsToWatch.filter((p) => !existing.watchedPaths.has(p));
+    if (newPaths.length === 0) return;
+
+    // Reuse a fresh debouncer for the newly added paths. Multiple independent
+    // debounce timers are harmless since watchCb is idempotent.
+    const trigger = createDebouncer(onChange, entity.rootPath);
+    if (process.platform === 'darwin' || process.platform === 'win32') {
+      for (const dir of newPaths) {
+        try {
+          existing.watchers.push(watch(dir, { recursive: true }, trigger));
+          existing.watchedPaths.add(dir);
+        } catch { /* dir may have disappeared between existsSync and watch */ }
+      }
+    } else {
+      for (const dir of newPaths) {
+        void watchManual(dir, trigger, existing.watchers).then(() => {
+          existing.watchedPaths.add(dir);
+        });
+      }
+    }
+    return;
+  }
+
+  // New entity — set up fresh watchers.
+  const trigger = createDebouncer(onChange, entity.rootPath);
+  const watchers: FSWatcher[] = [];
+  const watchedPaths = new Set<string>();
+
   if (process.platform === 'darwin' || process.platform === 'win32') {
     for (const dir of pathsToWatch) {
       try {
         watchers.push(watch(dir, { recursive: true }, trigger));
+        watchedPaths.add(dir);
       } catch {
-        // dir may not exist yet; the caller will re-register after the next scan.
+        // dir may not exist yet; watchEntity will be called again on the next
+        // scan if the directory is created (handled by the update path above).
       }
     }
   } else {
@@ -113,11 +147,13 @@ export function watchEntity(
     // Register the handle immediately (below) to prevent double-registration
     // if watchEntity is called again before the async walk completes.
     for (const dir of pathsToWatch) {
-      void watchManual(dir, trigger, watchers);
+      void watchManual(dir, trigger, watchers).then(() => {
+        watchedPaths.add(dir);
+      });
     }
   }
 
-  handles.set(entity.rootPath, { watchers, entityRootPath: entity.rootPath });
+  handles.set(entity.rootPath, { watchers, entityRootPath: entity.rootPath, watchedPaths });
 }
 
 /** Stop watching a specific entity. */
