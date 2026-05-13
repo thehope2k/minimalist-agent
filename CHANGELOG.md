@@ -5,6 +5,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.8.4] — 2026-05-13
+
+SDD bug fix: agent now uses absolute artifact paths, eliminating lookup failures in monorepo and nested workspace layouts.
+
+### Fixed
+
+**SDD — subdirectory entity layouts (monorepo / multi-service workspaces)**
+
+- When the SDD entity root is a subdirectory of the session cwd, the agent was resolving artifact paths relative to cwd instead of entity root, causing ENOENT errors and requiring trial-and-error file discovery. The `<sdd_context>` block now provides the absolute entity root, absolute feature path, and an explicit absolute path per existing artifact so the agent can read/write files without any search step.
+- Phase action buttons (▶ Tasks, ▶ Plan, ▶ Implement, etc.) now embed absolute `@file` references to relevant artifacts in the composed message — e.g. clicking ▶ Tasks includes `@/abs/path/spec.md` and `@/abs/path/plan.md`, so the agent reads them before running the command.
+- The coaching "Resuming" section previously directed the agent to `ls .specify/specs/` (legacy pre-speckit path). Updated to use the injected `Feature path` from `<sdd_context>` first, with `ls specs/` in entity root as the fallback.
+- Full-context feature list (no feature pinned) now appends the absolute path per feature entry so the no-pin codepath is equally unambiguous.
+
+---
+
 ## [0.8.3] — 2026-05-13
 
 Bug fix: conversation context is now correctly restored after app reinstall or upgrade.
