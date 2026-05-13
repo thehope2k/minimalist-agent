@@ -9,7 +9,6 @@ import { getAppIcon } from './app-icon';
 import { checkOnLaunch } from './auto-update';
 import { unwatchAll } from './sdd/watcher';
 import { clearAll as sddClearAll } from './sdd/session-state';
-import { migratePiSessions } from './storage/migrate-pi-sessions';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -71,7 +70,6 @@ function createWindow(icon?: Electron.NativeImage | null) {
 }
 
 app.whenReady().then(async () => {
-  migratePiSessions();
   installSkillsReferenceDoc();
   installExtensionsReferenceDoc();
   registerIpc();
