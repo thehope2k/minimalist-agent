@@ -48,16 +48,32 @@ function buildLeanContext(feature: SddFeature, entityRootPath: string): string {
     tasksLine = `${checked}/${feature.artifacts.taskCount} done`;
   }
 
-  // Relative path from entity root so the AI knows exactly where to read/write.
-  const featureDir = feature.path.startsWith(entityRootPath)
-    ? feature.path.slice(entityRootPath.length).replace(/^\//, '')
-    : feature.path;
+  // Use the absolute feature path so the agent can read/write files without
+  // having to guess the entity root. When the session cwd is a parent repo
+  // (monorepo / workspace), a relative-to-entity-root path would be resolved
+  // from cwd by the agent — yielding the wrong location.
+  const featurePath = feature.path;
+
+  // Build explicit artifact paths for the artifacts that already exist so the
+  // agent can read them directly without a discovery step.
+  const artifactPaths: string[] = [];
+  if (feature.artifacts.hasSpec) artifactPaths.push(`${featurePath}/spec.md`);
+  if (feature.artifacts.hasPlan) artifactPaths.push(`${featurePath}/plan.md`);
+  if (feature.artifacts.hasTasks) artifactPaths.push(`${featurePath}/tasks.md`);
+  for (const extra of feature.artifacts.extraArtifacts) {
+    artifactPaths.push(`${featurePath}/${extra}`);
+  }
+
+  const artifactPathsBlock = artifactPaths.length
+    ? '\nArtifact paths:\n' + artifactPaths.map((p) => `  ${p}`).join('\n')
+    : '';
 
   return `
 <sdd_context>
 Active feature: ${feature.name} (${feature.currentPhase} phase)
-Feature dir: ${featureDir}
-Artifacts: ${artifactLine}
+Entity root: ${entityRootPath}
+Feature path: ${featurePath}
+Artifacts: ${artifactLine}${artifactPathsBlock}
 Tasks: ${tasksLine}
 </sdd_context>`;
 }
@@ -89,7 +105,9 @@ function buildFullContext(
       parts.push(`tasks.md${progress}`);
     }
     if (f.artifacts.extraArtifacts.length > 0) parts.push(...f.artifacts.extraArtifacts);
-    return `  - ${f.name}: ${parts.length ? parts.join(', ') : 'no artifacts yet'}`;
+    // Include absolute path so the agent can locate files even when the entity
+    // is not at the session cwd root (monorepo / nested workspace layouts).
+    return `  - ${f.name}: ${parts.length ? parts.join(', ') : 'no artifacts yet'} [${f.path}]`;
   });
 
   if (hidden > 0) {

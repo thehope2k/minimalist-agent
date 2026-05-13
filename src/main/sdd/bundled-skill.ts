@@ -107,9 +107,10 @@ specify integration add pi            # Pi/Copilot backend
 ### Resuming
 
 When \`.specify/\` already exists:
-1. Check \`ls .specify/specs/\` for feature folders
-2. Report state per feature (current phase, which artifacts exist)
-3. Propose the next phase — never restart from constitution if it exists
+1. Check the **Feature path** in \`<sdd_context>\` — use that exact absolute path to read artifacts
+2. If no context is injected, run \`ls specs/\` in the entity root to list feature folders
+3. Report state per feature (current phase, which artifacts exist)
+4. Propose the next phase — never restart from constitution if it exists
 `;
 }
 

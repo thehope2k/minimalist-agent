@@ -51,19 +51,41 @@ const PHASE_COMMANDS: Record<SddPhase, string> = {
 /**
  * Build the pre-composed chat message sent when a phase action button is
  * clicked. Returns an empty string when the feature is complete.
+ *
+ * Uses feature.path (absolute) for all file references so the agent can
+ * read artifacts directly without a discovery step, regardless of whether
+ * the entity root is the session cwd or a subdirectory of it.
  */
 export function phaseActionMessage(feature: SddFeature): string {
   const cmd = PHASE_COMMANDS[feature.currentPhase];
   if (!cmd) return '';
-  if (feature.currentPhase === 'implement') {
-    const p = taskProgress(feature.artifacts);
-    const progress = p ? ` (${p.checked}/${p.total} tasks done)` : '';
-    // Use a relative @mention path — renders as a file pill in the chat bubble
-    // and gives the agent an unambiguous path to read without a discovery step.
-    const tasksRef = `.specify/specs/${feature.name}/tasks.md`;
-    return `Let's run ${cmd} for ${feature.name}${progress}. Open @${tasksRef} to find the next unchecked task.`;
+
+  // feature.path is the absolute path to the feature directory
+  // (e.g. /Users/thehope/Workspaces/png/some-api/specs/003-xxx).
+  const fp = feature.path;
+
+  switch (feature.currentPhase) {
+    case 'implement': {
+      const p = taskProgress(feature.artifacts);
+      const progress = p ? ` (${p.checked}/${p.total} tasks done)` : '';
+      return `Let's run ${cmd} for ${feature.name}${progress}. Open @${fp}/tasks.md to find the next unchecked task.`;
+    }
+    case 'tasks': {
+      const reads: string[] = [];
+      if (feature.artifacts.hasSpec) reads.push(`@${fp}/spec.md`);
+      if (feature.artifacts.hasPlan) reads.push(`@${fp}/plan.md`);
+      const hint = reads.length ? ` Read ${reads.join(' and ')} first.` : '';
+      return `Let's run ${cmd} for ${feature.name}.${hint}`;
+    }
+    case 'plan': {
+      const reads: string[] = [];
+      if (feature.artifacts.hasSpec) reads.push(`@${fp}/spec.md`);
+      const hint = reads.length ? ` Read ${reads.join(' and ')} first.` : '';
+      return `Let's run ${cmd} for ${feature.name}.${hint}`;
+    }
+    default:
+      return `Let's run ${cmd} for ${feature.name}.`;
   }
-  return `Let's run ${cmd} for ${feature.name}.`;
 }
 
 export function phaseLabel(phase: SddPhase): string {
