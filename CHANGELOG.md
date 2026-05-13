@@ -5,6 +5,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.8.3] — 2026-05-13
+
+Bug fix: conversation context is now correctly restored after app reinstall or upgrade.
+
+### Fixed
+
+**Session resumption after reinstall / upgrade**
+
+- Pi backend now resumes the previous conversation after an app restart instead of silently starting a new session. The root cause was `SessionManager.create()` being called with the session storage path as `cwd`, causing Pi to write session files to the wrong location and always begin fresh.
+- Anthropic backend now logs a warning when a stored resume session ID has no matching transcript file, surfacing silent context-loss events that would otherwise go unnoticed.
+
+---
+
 ## [0.8.2] — 2026-05-13
 
 Bug fix: SDD mode enabled on a fresh chat reverted to off after the first message.
