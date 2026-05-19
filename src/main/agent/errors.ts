@@ -22,6 +22,7 @@ export type ErrorCode =
   | 'model_no_tool_support'
   | 'invalid_model'
   | 'invalid_request'
+  | 'context_window_exceeded'
   | 'image_too_large'
   | 'provider_error'
   | 'max_turns_exceeded'
@@ -147,6 +148,14 @@ const ERROR_DEFINITIONS: Record<ErrorCode, ErrorDef> = {
     title: 'Invalid request',
     message: 'The API rejected this request.',
     canRetry: true,
+  },
+  context_window_exceeded: {
+    title: 'Context window exceeded',
+    message:
+      "This session's history has grown beyond the model's context limit. " +
+      'Enable auto-compaction in Settings → AI to let the agent compress history automatically, ' +
+      'or start a new chat session.',
+    canRetry: false,
   },
   image_too_large: {
     title: 'Image too large',
@@ -462,6 +471,29 @@ export function parseError(error: unknown): AgentError {
         'The connection to the API was interrupted. ' +
         'This is usually transient — retry to continue.',
     });
+  }
+
+  // Context-window overflow — must be checked before the generic 400 / invalid_request
+  // fallback. Anthropic surfaces this as "prompt is too long" or mentions "context window";
+  // OpenAI-compat providers (Copilot) use "context_length_exceeded" / "maximum context length".
+  if (
+    lower.includes('context window') ||
+    lower.includes('prompt is too long') ||
+    lower.includes('context_length_exceeded') ||
+    lower.includes('maximum context length') ||
+    lower.includes('too many tokens') ||
+    /exceeds.*token.*limit/i.test(lower)
+  ) {
+    return buildError('context_window_exceeded', original);
+  }
+
+  // Generic API rejection (HTTP 400 / invalid_request_error) that didn't match
+  // anything more specific above.
+  if (
+    lower.includes('invalid_request_error') ||
+    (lower.includes('400') && lower.includes('bad request'))
+  ) {
+    return buildError('invalid_request', original);
   }
 
   return buildError('unknown_error', original);
