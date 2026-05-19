@@ -4,6 +4,46 @@ import { cn } from '@/lib/utils';
 import { CopyButton, ExpandModal } from '@/components/ui';
 import { CodeBlock } from './CodeBlock';
 
+// ── Markdown serialiser ──────────────────────────────────────────────────────
+
+/**
+ * Serialise a DataTableSchema to a GitHub-flavoured markdown table.
+ *
+ * Output is pasteable into Teams (renders natively), Azure DevOps comments
+ * (renders natively), Zalo / plain-text chat (pipe chars are readable),
+ * and docs (readable as-is). Title is bolded on a line above the table.
+ *
+ * Example:
+ *   **Unbind LINE — Complete**
+ *
+ *   | Field | Value |
+ *   | --- | --- |
+ *   | INC Number | INC15268699 |
+ *   | Status | ✅ Complete |
+ */
+function toMarkdownTable(data: DataTableSchema): string {
+  const lines: string[] = [];
+
+  if (data.title) {
+    lines.push(`**${data.title}**`);
+    lines.push('');
+  }
+
+  const header = data.columns.map((c) => c.label).join(' | ');
+  const sep = data.columns.map(() => '---').join(' | ');
+  lines.push(`| ${header} |`);
+  lines.push(`| ${sep} |`);
+
+  for (const row of data.rows) {
+    const cells = data.columns
+      .map((c) => String(row[c.key] ?? '').replace(/\|/g, '\\|'))
+      .join(' | ');
+    lines.push(`| ${cells} |`);
+  }
+
+  return lines.join('\n');
+}
+
 // ── Schema ───────────────────────────────────────────────────────────────────
 
 interface DataTableColumn {
@@ -108,6 +148,10 @@ export function DataTableBlock({ code }: { code: string }) {
   const handleClose = useCallback(() => setExpanded(false), []);
 
   const data = useMemo(() => parseDataTable(code), [code]);
+  const toMarkdown = useMemo(
+    () => (data ? toMarkdownTable(data) : ''),
+    [data],
+  );
 
   // Streaming or invalid JSON → degrade gracefully
   if (!data) {
@@ -139,7 +183,7 @@ export function DataTableBlock({ code }: { code: string }) {
               <Maximize2 className="h-3 w-3" strokeWidth={1.75} />
               Expand
             </button>
-            <CopyButton text={code} />
+            <CopyButton text={toMarkdown} />
           </div>
         </div>
 
