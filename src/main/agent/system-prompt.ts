@@ -1,12 +1,13 @@
 // System prompt assembly. Ported as closely as possible from a comprehensive
 // agent harness (helpers, prompt structure, and prose for the sections that
 // apply are kept verbatim). Sections referencing capabilities this app does
-// not expose — permission modes, datatable / spreadsheet / html-preview /
+// not expose — permission modes, spreadsheet / html-preview /
 // pdf-preview / image-preview rendering, browser tools, session-management
 // tools, document CLIs, call_llm, transform_data, render_template,
 // developer feedback — are omitted to keep the prompt honest about what
-// the model can actually do. Skills, extensions (MCP/CLI/guide-only), and
-// mermaid rendering ARE supported and have their own sections below.
+// the model can actually do. Skills, extensions (MCP/CLI/guide-only),
+// mermaid, json, and datatable rendering ARE supported and have their
+// own sections below.
 
 import type {Dirent} from 'node:fs';
 import {readdirSync, statSync} from 'node:fs';

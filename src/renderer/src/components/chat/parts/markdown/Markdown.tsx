@@ -11,6 +11,7 @@ import { CodeBlock } from './CodeBlock';
 import { MermaidBlock } from './MermaidBlock';
 import { JsonBlock } from './JsonBlock';
 import { MathBlock } from './MathBlock';
+import { DataTableBlock } from './DataTableBlock';
 import { ExpandModal, ZoomPan } from '@/components/ui';
 
 /**
@@ -158,6 +159,11 @@ const COMPONENTS: Components = {
       // Explicit fenced-block LaTeX (in addition to $$...$$ auto-handled
       // by rehype-katex in the remark pipeline).
       return <MathBlock code={code} />;
+    }
+    if (lang === 'datatable') {
+      // Structured table: { title?, columns: [{key,label}], rows: [{}] }
+      // Used by skills to emit rich summary tables (e.g. @png-ciam-l3-*).
+      return <DataTableBlock code={code} />;
     }
     return <CodeBlock code={code} language={lang} />;
   },
