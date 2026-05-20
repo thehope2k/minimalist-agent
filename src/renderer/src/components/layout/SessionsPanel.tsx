@@ -35,6 +35,7 @@ function SessionRow({
   const [menuOpen, setMenuOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState('');
+  const [regenerating, setRegenerating] = useState(false);
   const project = session.projectId
     ? projects.find((p) => p.id === session.projectId) ?? null
     : null;
@@ -70,12 +71,15 @@ function SessionRow({
   };
 
   const handleRegenerateTitle = async () => {
+    setRegenerating(true);
     try {
       await regenerateSessionTitle(session.id);
     } catch (e) {
       window.alert(
         e instanceof Error ? e.message : 'Failed to regenerate title.',
       );
+    } finally {
+      setRegenerating(false);
     }
   };
 
@@ -85,7 +89,7 @@ function SessionRow({
 
   const items: Array<MenuItem | 'separator'> = [
     { label: 'Rename', icon: Pencil, onSelect: handleRename },
-    { label: 'Regenerate title', icon: Sparkles, onSelect: handleRegenerateTitle },
+    { label: regenerating ? 'Regenerating…' : 'Regenerate title', icon: Sparkles, onSelect: handleRegenerateTitle },
     {
       label: session.archived ? 'Restore' : 'Archive',
       icon: session.archived ? ArchiveRestore : Archive,
@@ -185,7 +189,9 @@ function SessionRow({
           )}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <span className="flex-1 truncate text-[0.95rem] text-fg">{session.title}</span>
+              <span className={cn('flex-1 truncate text-[0.95rem]', regenerating ? 'italic text-fg-muted' : 'text-fg')}>
+                {regenerating ? 'Regenerating title…' : session.title}
+              </span>
               {/* Time hides while row is hovered OR the menu is open, so the
                   "..." button can take over the same slot without layout shift.
                   When streaming, the timestamp is replaced with "Running…" in

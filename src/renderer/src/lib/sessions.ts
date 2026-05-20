@@ -155,7 +155,9 @@ export async function regenerateSessionTitle(id: string): Promise<string | null>
     sessionId: id,
     cwd: data.meta.workingDirectory,
   });
-  if (!title) return null;
+  if (!title) {
+    throw new Error('Title generation failed — check your AI connection is working.');
+  }
   await updateSessionMeta(id, { title });
   return title;
 }
