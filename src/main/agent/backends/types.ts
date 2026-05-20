@@ -19,7 +19,14 @@ export interface CopilotOAuthAuth {
   expiresAt?: number;
 }
 
+export interface LocalApiAuth {
+  type: 'local_api';
+  /** Base URL of the local model server, e.g. http://localhost:11434 */
+  baseUrl: string;
+}
+
 export type ResolvedAuth =
   | AnthropicApiKeyAuth
   | AnthropicOAuthAuth
-  | CopilotOAuthAuth;
+  | CopilotOAuthAuth
+  | LocalApiAuth;

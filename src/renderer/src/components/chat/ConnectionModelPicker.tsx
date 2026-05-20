@@ -1,44 +1,41 @@
 import { useMemo, useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
-import { Check, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Monitor } from 'lucide-react';
 import {
   AnthropicMark,
+  BrandMark as ConnectionBrandMark,
   GithubMark,
   OpenAIMark,
 } from '../settings/connection-flow/shared';
 import type { ConnectionMeta } from '@/lib/electron';
 import { cn } from '@/lib/utils';
 
-type ProviderCategory = 'anthropic' | 'copilot' | 'chatgpt' | 'other';
+type ProviderCategory = 'anthropic' | 'copilot' | 'chatgpt' | 'local' | 'other';
 
 function categorize(conn: ConnectionMeta): ProviderCategory {
-  if (conn.providerType === 'pi' && conn.piAuthProvider === 'github-copilot') {
-    return 'copilot';
-  }
-  if (conn.providerType === 'pi' && conn.piAuthProvider === 'openai-codex') {
-    return 'chatgpt';
-  }
+  if (conn.providerType === 'pi' && conn.piAuthProvider === 'github-copilot') return 'copilot';
+  if (conn.providerType === 'pi' && conn.piAuthProvider === 'openai-codex') return 'chatgpt';
+  if (conn.providerType === 'local') return 'local';
   if (conn.providerType === 'anthropic') return 'anthropic';
   return 'other';
 }
 
 function categoryHeader(c: ProviderCategory): string {
   switch (c) {
-    case 'anthropic':
-      return 'Anthropic';
-    case 'copilot':
-      return 'GitHub Copilot';
-    case 'chatgpt':
-      return 'ChatGPT Plus';
-    default:
-      return 'Other';
+    case 'anthropic': return 'Anthropic';
+    case 'copilot':   return 'GitHub Copilot';
+    case 'chatgpt':   return 'ChatGPT Plus';
+    case 'local':     return 'Local';
+    default:          return 'Other';
   }
 }
 
-function BrandMark({ category }: { category: ProviderCategory }) {
+function BrandMark({ category, conn }: { category: ProviderCategory; conn?: ConnectionMeta }) {
+  if (conn) return <ConnectionBrandMark conn={conn} />;
   if (category === 'anthropic') return <AnthropicMark />;
-  if (category === 'copilot') return <GithubMark />;
-  if (category === 'chatgpt') return <OpenAIMark />;
+  if (category === 'copilot')   return <GithubMark />;
+  if (category === 'chatgpt')   return <OpenAIMark />;
+  if (category === 'local')     return <Monitor className="h-4 w-4 text-fg-muted" strokeWidth={1.75} />;
   return <span className="grid h-4 w-4 place-items-center text-fg-subtle">·</span>;
 }
 
@@ -197,11 +194,14 @@ function ConnectionList({
                   isActive && 'bg-elevated/60',
                 )}
               >
-                <BrandMark category={cat} />
+                <BrandMark category={cat} conn={conn} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm text-fg">{conn.name}</div>
                   {(cat === 'copilot' || cat === 'chatgpt') && (
                     <div className="text-[10px] text-fg-subtle">No subagents (Task tool)</div>
+                  )}
+                  {cat === 'local' && (
+                    <div className="text-[10px] text-fg-subtle">Runs locally via Ollama</div>
                   )}
                 </div>
                 {isActive && (

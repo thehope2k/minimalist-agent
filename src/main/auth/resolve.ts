@@ -55,6 +55,13 @@ export async function resolveAuthForSlug(slug: string): Promise<ResolvedAuth> {
     );
   }
 
+  if (conn.providerType === 'local') {
+    return {
+      type: 'local_api',
+      baseUrl: conn.baseUrl?.replace(/\/+$/, '') ?? 'http://localhost:11434',
+    };
+  }
+
   if (conn.providerType === 'pi') {
     if (cred.type !== 'oauth') {
       throw new Error(

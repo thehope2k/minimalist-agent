@@ -80,7 +80,6 @@ export function ChooseScreen({ onPick }: { onPick: (k: ConnectionKind) => void }
           icon={<Monitor className="h-4 w-4" strokeWidth={1.75} />}
           title="Local model"
           desc="Run models locally with Ollama."
-          comingSoon
           onClick={() => onPick('local')}
         />
       </div>

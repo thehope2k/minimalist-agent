@@ -53,21 +53,23 @@ export interface AgentChatRequest {
 export function runAgentChat(
   req: AgentChatRequest,
 ): AsyncGenerator<AgentChatEvent> {
-  if (req.auth.type === 'copilot_oauth') {
+  if (req.auth.type === 'copilot_oauth' || req.auth.type === 'local_api') {
     if (!req.chatSessionId) {
       throw new Error(
-        'runAgentChat: chatSessionId is required for Pi/Copilot connections.',
+        'runAgentChat: chatSessionId is required for Pi/local connections.',
       );
     }
     if (!req.connectionSlug) {
       throw new Error(
-        'runAgentChat: connectionSlug is required for Pi/Copilot connections.',
+        'runAgentChat: connectionSlug is required for Pi/local connections.',
       );
     }
     return runPiChat({
       connectionSlug: req.connectionSlug,
       auth: req.auth,
-      piAuthProvider: req.piAuthProvider ?? 'github-copilot',
+      piAuthProvider: req.auth.type === 'copilot_oauth'
+        ? (req.piAuthProvider ?? 'github-copilot')
+        : undefined,
       turnId: req.turnId,
       chatSessionId: req.chatSessionId,
       chatSessionPath: sessionPath(req.chatSessionId),

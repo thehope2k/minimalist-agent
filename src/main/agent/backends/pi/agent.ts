@@ -34,7 +34,7 @@ import type {AgentChatEvent} from '../../events';
 import {parseError} from '../../errors';
 import {buildPromptPrefix, buildSystemPromptAppend,} from '../../system-prompt';
 import type {PermissionMode} from '../../permissions';
-import type {CopilotOAuthAuth} from '../types';
+import type {CopilotOAuthAuth, LocalApiAuth} from '../types';
 import {decidePiPermission, type PiPermissionDecisionArgs,} from './permission-bridge';
 import {resolveAuthForSlug} from '../../../auth/resolve';
 import type {
@@ -72,8 +72,8 @@ export interface PiPermissionAsk {
 export interface PiChatRequest {
   /** Connection slug — needed by the resolver for mid-session token refresh. */
   connectionSlug: string;
-  auth: CopilotOAuthAuth;
-  piAuthProvider: PiAuthProvider;
+  auth: CopilotOAuthAuth | LocalApiAuth;
+  piAuthProvider?: PiAuthProvider;
   /** Renderer-side message id. */
   turnId: string;
   /** Our chat session id. */
@@ -93,8 +93,8 @@ export interface PiChatRequest {
 
 export interface PiMiniCompletionRequest {
   connectionSlug: string;
-  auth: CopilotOAuthAuth;
-  piAuthProvider: PiAuthProvider;
+  auth: CopilotOAuthAuth | LocalApiAuth;
+  piAuthProvider?: PiAuthProvider;
   chatSessionId: string;
   chatSessionPath: string;
   cwd?: string;
@@ -304,6 +304,9 @@ function ensureSubprocess(
 
   handles.set(key, handle);
 
+  const isLocal = req.auth.type === 'local_api';
+  const baseUrl = isLocal ? (req.auth as import('../types').LocalApiAuth).baseUrl : undefined;
+
   // Send init.
   const init: MsgInit = {
     type: 'init',
@@ -314,26 +317,24 @@ function ensureSubprocess(
     thinkingLevel: req.thinkingLevel ?? 'medium',
     providerType: 'pi',
     authType: 'oauth',
-    piAuthProvider: req.piAuthProvider,
-    piAuth: {
-      provider: req.piAuthProvider,
-      // github-copilot needs the full oauth shape so the Pi SDK can derive
-      // the regional proxy endpoint from the access token's proxy-ep claim
-      // via modifyModels(). All other OAuth sub-providers (openai-codex, etc.)
-      // function as plain bearer tokens — pass as api_key so the Pi SDK
-      // formats the Authorization header correctly.
-      credential: req.piAuthProvider === 'github-copilot'
-        ? {
-            type: 'oauth',
-            access: req.auth.accessToken,
-            refresh: req.auth.refreshToken ?? '',
-            expires: req.auth.expiresAt,
-          }
-        : {
-            type: 'api_key',
-            key: req.auth.accessToken,
-          },
-    },
+    piAuthProvider: req.piAuthProvider ?? 'github-copilot',
+    piAuth: isLocal
+      ? { provider: 'openai', credential: { type: 'api_key', key: 'local' } }
+      : {
+          provider: req.piAuthProvider!,
+          credential: req.piAuthProvider === 'github-copilot'
+            ? {
+                type: 'oauth',
+                access: (req.auth as CopilotOAuthAuth).accessToken,
+                refresh: (req.auth as CopilotOAuthAuth).refreshToken ?? '',
+                expires: (req.auth as CopilotOAuthAuth).expiresAt,
+              }
+            : {
+                type: 'api_key',
+                key: (req.auth as CopilotOAuthAuth).accessToken,
+              },
+        },
+    ...(baseUrl ? { baseUrl, customEndpoint: { api: 'openai-completions' as const } } : {}),
     permissionMode: (req.permissionMode ?? 'auto') as MsgInit['permissionMode'],
     systemPrompt,
   };

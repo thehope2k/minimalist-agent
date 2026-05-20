@@ -24,6 +24,7 @@ import {
   AuthStorage,
   DefaultResourceLoader,
   SessionManager,
+  ModelRegistry,
   createBashToolDefinition,
   createEditToolDefinition,
   createFindToolDefinition,
@@ -74,6 +75,16 @@ function fatal(message: string): never {
   const m: MsgFatalError = { type: 'error', message };
   send(m);
   process.exit(1);
+}
+
+function isLocalhostUrl(url: string): boolean {
+  try {
+    const hostname = new URL(url).hostname;
+    const h = hostname.startsWith('[') && hostname.endsWith(']') ? hostname.slice(1, -1) : hostname;
+    return h === 'localhost' || h === '127.0.0.1' || h === '::1';
+  } catch {
+    return false;
+  }
 }
 
 /* ============================================================ */
@@ -276,32 +287,73 @@ async function handleInit(msg: MsgInit): Promise<void> {
   state.lastAppend = msg.systemPrompt ?? '';
 
   const authStorage = AuthStorage.inMemory();
-  await writeAuthCredential(authStorage, msg.piAuthProvider, msg.piAuth.credential);
+  if (msg.piAuth) {
+    await writeAuthCredential(authStorage, msg.piAuthProvider, msg.piAuth.credential);
+  }
   state.authStorage = authStorage;
 
-  // Resolve the Pi model. The cast to `never` for the model id is
-  // necessary because Pi's getModel<TProvider, TModelId> signature uses
-  // a typed lookup; we pass model ids dynamically.
-  let model = getModel(msg.piAuthProvider as 'github-copilot', msg.model as never);
+  const hasCustomEndpoint = !!msg.baseUrl?.trim() && !!msg.customEndpoint;
 
-  // CRITICAL for github-copilot: the OAuth access token carries a
-  // `proxy-ep=` claim that pins requests to the user's regional API
-  // host. Without applying it the request hits a default endpoint that
-  // doesn't serve the model → 421 Misdirected Request. The OAuth
-  // provider's `modifyModels` hook resolves the right baseUrl from the
-  // current credential.
-  const provider = getOAuthProvider(msg.piAuthProvider);
-  if (provider?.modifyModels && msg.piAuth.credential.type === 'oauth') {
-    const cred = msg.piAuth.credential;
-    const [adjusted] = provider.modifyModels(
-      [model] as never,
-      {
-        access: cred.access,
-        refresh: cred.refresh,
-        expires: cred.expires ?? Date.now() + 30 * 60 * 1000,
-      } as never,
-    );
-    if (adjusted) model = adjusted as typeof model;
+  const modelRegistry = ModelRegistry.inMemory(authStorage);
+  let model: ReturnType<typeof getModel>;
+  if (hasCustomEndpoint) {
+    const modelId = msg.model;
+    const rawBase = msg.baseUrl!.trim();
+    // The openai-completions provider passes baseUrl directly to the OpenAI
+    // SDK client which appends /chat/completions — so the URL must include
+    // /v1. Append it automatically so users can type http://localhost:11434.
+    const apiBase = msg.customEndpoint!.api === 'openai-completions' && !rawBase.endsWith('/v1')
+      ? `${rawBase}/v1`
+      : rawBase;
+    // Localhost endpoints (Ollama, LM Studio) don’t need auth.
+    const apiKey = isLocalhostUrl(rawBase) ? 'not-needed' : (msg.piAuth?.credential.type === 'api_key' ? msg.piAuth.credential.key : '');
+    modelRegistry.registerProvider('custom-endpoint', {
+      baseUrl: apiBase,
+      apiKey,
+      api: msg.customEndpoint!.api,
+      authHeader: true,
+      models: [{
+        id: modelId,
+        name: modelId,
+        // Mark reasoning=true + thinkingFormat='qwen' so the Pi SDK explicitly
+        // sends enable_thinking:false when no reasoningEffort is set.
+        // Without this, Ollama defaults to thinking-on for Qwen3 models
+        // causing ~30s delay before the first token.
+        reasoning: true,
+        compat: { thinkingFormat: 'qwen' },
+        input: ['text'],
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+        contextWindow: 131_072,
+        maxTokens: 8_192,
+      }],
+    } as never);
+    const resolved = (modelRegistry as unknown as { find: (p: string, id: string) => ReturnType<typeof getModel> | undefined })
+      .find('custom-endpoint', modelId);
+    if (!resolved) fatal(`Could not resolve custom-endpoint model: ${modelId}`);
+    model = resolved!;
+  } else {
+    // Resolve the Pi model. The cast to `never` for the model id is
+    // necessary because Pi's getModel<TProvider, TModelId> signature uses
+    // a typed lookup; we pass model ids dynamically.
+    model = getModel(msg.piAuthProvider as 'github-copilot', msg.model as never);
+
+    // CRITICAL for github-copilot: the OAuth access token carries a
+    // `proxy-ep=` claim that pins requests to the user's regional API
+    // host. Without applying it the request hits a default endpoint that
+    // doesn't serve the model → 421 Misdirected Request.
+    const provider = getOAuthProvider(msg.piAuthProvider);
+    if (provider?.modifyModels && msg.piAuth?.credential.type === 'oauth') {
+      const cred = msg.piAuth.credential;
+      const [adjusted] = provider.modifyModels(
+        [model] as never,
+        {
+          access: cred.access,
+          refresh: cred.refresh,
+          expires: cred.expires ?? Date.now() + 30 * 60 * 1000,
+        } as never,
+      );
+      if (adjusted) model = adjusted as typeof model;
+    }
   }
   state.model = model;
 
@@ -323,11 +375,13 @@ async function handleInit(msg: MsgInit): Promise<void> {
   const { session } = await createAgentSession({
     cwd: msg.cwd,
     model,
-    thinkingLevel: mapThinkingLevel(msg.thinkingLevel),
+    // Local models are slow enough without extended thinking.
+    // Force minimal for custom endpoints; honour the user's setting otherwise.
+    thinkingLevel: hasCustomEndpoint ? 'minimal' : mapThinkingLevel(msg.thinkingLevel),
     authStorage,
+    modelRegistry,
     sessionManager,
     resourceLoader,
-    // Replace Pi's default built-ins with our permission-gated wrappers.
     noTools: 'builtin',
     customTools: tools as never,
   });

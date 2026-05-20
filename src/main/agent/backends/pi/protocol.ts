@@ -22,7 +22,7 @@ export type PiCredential =
   | { type: 'api_key'; key: string };
 
 export interface PiAuth {
-  provider: PiAuthProvider;
+  provider: PiAuthProvider | 'openai';
   credential: PiCredential;
 }
 
@@ -63,7 +63,7 @@ export interface MsgInit {
   thinkingLevel: PiThinkingLevel;
   providerType: 'pi';
   authType: 'oauth' | 'api_key';
-  piAuthProvider: PiAuthProvider;
+  piAuthProvider: PiAuthProvider | 'openai';
   /** Initial credential — refreshed mid-flight via `token_update`. */
   piAuth: PiAuth;
   /** Initial permission mode. */
@@ -72,6 +72,10 @@ export interface MsgInit {
   systemPrompt: string;
   /** Resume an existing Pi session if one is stored. */
   resumePiSessionId?: string;
+  /** Base URL for custom/local endpoints (e.g. http://localhost:11434). */
+  baseUrl?: string;
+  /** Custom endpoint protocol — required when baseUrl is set. */
+  customEndpoint?: { api: 'openai-completions' | 'anthropic-messages'; supportsImages?: boolean };
 }
 
 export interface MsgPrompt {

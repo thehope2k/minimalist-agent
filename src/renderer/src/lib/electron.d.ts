@@ -211,10 +211,12 @@ export type { PiAuthProvider } from '../../../shared/pi-types';
 export interface ConnectionMeta {
   slug: string;
   name: string;
-  providerType: 'anthropic' | 'pi';
+  providerType: 'anthropic' | 'pi' | 'local';
   authType: 'api_key' | 'oauth';
   /** Required when providerType === 'pi'. */
   piAuthProvider?: PiAuthProvider;
+  /** Base URL for local model server (providerType === 'local'). */
+  baseUrl?: string;
   defaultModel: string;
   models: ModelDef[];
   createdAt: number;

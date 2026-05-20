@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { Activity, KeyRound, LogIn, MoreHorizontal, Plus, Sparkles, Star, Trash2, X } from 'lucide-react';
 import {
+  BrandMark,
+} from '../connection-flow/shared';
+import {
   DEFAULT_MAX_TURNS,
   deleteConnection,
   setContextFileNames,
@@ -320,8 +323,8 @@ function ConnectionRow({
 
   return (
     <div className="flex items-center gap-3 rounded-lg border border-border bg-panel px-4 py-3">
-      <span className="grid h-7 w-7 place-items-center rounded-md bg-orange-500/15 text-orange-400">
-        <Sparkles className="h-3.5 w-3.5" strokeWidth={2} />
+      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-elevated text-fg-muted">
+        <BrandMark conn={conn} />
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
@@ -344,6 +347,7 @@ function ConnectionRow({
 }
 
 function providerLabel(conn: ConnectionMeta): string {
+  if (conn.providerType === 'local') return 'Local (Ollama)';
   if (conn.providerType === 'pi') {
     if (conn.piAuthProvider === 'github-copilot') return 'GitHub Copilot';
     if (conn.piAuthProvider === 'openai-codex') return 'ChatGPT Plus';

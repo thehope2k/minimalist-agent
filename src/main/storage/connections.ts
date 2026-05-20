@@ -18,7 +18,7 @@ import {
   setCredential,
 } from './credentials';
 
-export type ProviderType = 'anthropic' | 'pi';
+export type ProviderType = 'anthropic' | 'pi' | 'local';
 export type AuthType = 'api_key' | 'oauth';
 import type { PiAuthProvider } from '../../shared/pi-types';
 export type { PiAuthProvider };
@@ -39,6 +39,8 @@ export interface ConnectionMeta {
   authType: AuthType;
   /** Required when providerType === 'pi'; identifies which sub-provider. */
   piAuthProvider?: PiAuthProvider;
+  /** Required when providerType === 'local'; base URL of the local model server. */
+  baseUrl?: string;
   defaultModel: string;
   models: ModelDef[];
   createdAt: number;

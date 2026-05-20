@@ -1,5 +1,6 @@
-import { ArrowLeft, Github, Sparkles } from 'lucide-react';
+import { ArrowLeft, Github, Monitor, Sparkles } from 'lucide-react';
 import { IconButton } from '@/components/ui';
+import type { ConnectionMeta } from '@/lib/electron';
 
 export function FormShell({
   title,
@@ -54,4 +55,15 @@ export function OpenAIMark() {
 
 export function GithubMark() {
   return <Github className="h-4 w-4" strokeWidth={1.75} />;
+}
+
+/** Provider-aware icon for a connection — use anywhere a connection needs a logo. */
+export function BrandMark({ conn }: { conn: Pick<ConnectionMeta, 'providerType' | 'piAuthProvider'> }) {
+  if (conn.providerType === 'anthropic') return <AnthropicMark />;
+  if (conn.providerType === 'pi' && conn.piAuthProvider === 'github-copilot') return <GithubMark />;
+  if (conn.providerType === 'pi' && conn.piAuthProvider === 'openai-codex') return <OpenAIMark />;
+  if (conn.providerType === 'local') {
+    return <Monitor className="h-4 w-4 text-fg-muted" strokeWidth={1.75} />;
+  }
+  return <span className="grid h-4 w-4 place-items-center text-fg-subtle">·</span>;
 }
