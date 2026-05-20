@@ -5,6 +5,41 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.9.0] — 2026-05-20
+
+Adds a native datatable renderer for code blocks; several bug fixes including session rename and regenerate-title actions.
+
+### Added
+
+**Datatable code block renderer**
+
+- ` ```datatable ` fenced blocks now render as an interactive table with an expand-to-fullscreen button and a copy-as-Markdown-table action
+
+### Fixed
+
+**Session actions**
+
+- Rename: replaced `window.prompt` (disabled by Electron) with an inline input that auto-focuses in the row; Enter/blur saves, Escape cancels
+- Regenerate title: now surfaces failures via an alert instead of silently doing nothing; shows a *"Regenerating title…"* placeholder while the LLM call is in-flight
+
+**Datatable**
+
+- Copy action now produces a Markdown table instead of raw JSON
+
+**Errors**
+
+- Added `context_window_exceeded` error code and wired `invalid_request` so context-limit failures are reported clearly
+
+**SDD**
+
+- Re-watch all entities in `watchCb` so a newly-created `specs/` directory is detected without requiring a restart (BUG-SDD-08)
+
+### Changed
+
+- Bumped `@mariozechner/pi-*` 0.72.1 → 0.73.1
+
+---
+
 ## [0.8.4] — 2026-05-13
 
 SDD bug fix: agent now uses absolute artifact paths, eliminating lookup failures in monorepo and nested workspace layouts.
