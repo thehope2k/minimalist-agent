@@ -119,7 +119,7 @@ interface ModelDef {
 }
 
 
-type PiAuthProvider = 'github-copilot';
+type PiAuthProvider = import('../shared/pi-types').PiAuthProvider;
 
 interface ConnectionMeta {
   slug: string;
@@ -303,6 +303,20 @@ const api = {
       ipcRenderer.on('copilot-oauth:device-code', handler);
       return () =>
         ipcRenderer.removeListener('copilot-oauth:device-code', handler);
+    },
+  },
+  chatgptOAuth: {
+    start: (): Promise<{
+      accessToken: string;
+      refreshToken?: string;
+      expiresAt?: number;
+    }> => ipcRenderer.invoke('chatgpt-oauth:start'),
+    cancel: (): Promise<void> => ipcRenderer.invoke('chatgpt-oauth:cancel'),
+    onBrowserOpen: (cb: (url: string) => void): (() => void) => {
+      const handler = (_e: unknown, url: string) => cb(url);
+      ipcRenderer.on('chatgpt-oauth:browser-open', handler);
+      return () =>
+        ipcRenderer.removeListener('chatgpt-oauth:browser-open', handler);
     },
   },
   copilot: {

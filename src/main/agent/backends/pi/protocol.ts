@@ -13,7 +13,8 @@ import type { AgentChatEvent } from '../../events';
 /*  Shared shapes                                                */
 /* ============================================================ */
 
-export type PiAuthProvider = 'github-copilot';
+import type { PiAuthProvider } from '../../../../shared/pi-types';
+export type { PiAuthProvider };
 
 /** Credential shape handed to the subprocess via `init` / `token_update`. */
 export type PiCredential =

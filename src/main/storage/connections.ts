@@ -20,8 +20,8 @@ import {
 
 export type ProviderType = 'anthropic' | 'pi';
 export type AuthType = 'api_key' | 'oauth';
-/** Sub-provider routed through the Pi SDK. */
-export type PiAuthProvider = 'github-copilot';
+import type { PiAuthProvider } from '../../shared/pi-types';
+export type { PiAuthProvider };
 
 export interface ModelDef {
   id: string;

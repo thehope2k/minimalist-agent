@@ -23,6 +23,11 @@ import {
   type DeviceCodeUpdate,
   type CopilotTokens,
 } from './oauth/copilot-flow';
+import {
+  startLogin as startChatGptLogin,
+  cancelLogin as cancelChatGptLogin,
+  type ChatGptTokens,
+} from './oauth/chatgpt-flow';
 import { runAgentChat } from './agent/claude';
 import { apply1MContextSuffix } from './agent/models';
 import { steerAnthropicTurn } from './agent/backends/anthropic';
@@ -284,6 +289,23 @@ export function registerIpc(): void {
 
   ipcMain.handle('copilot-oauth:cancel', () => cancelCopilotLogin());
 
+  // ---- ChatGPT Plus (Codex) OAuth (PKCE browser-redirect via Pi SDK) --------
+
+  // The PKCE flow opens the user's browser to auth.openai.com and catches
+  // the redirect on a local HTTP server (port 1455) the Pi SDK manages.
+  // We push a `chatgpt-oauth:browser-open` event so the UI can render a
+  // "waiting for browser" state, then resolve the start promise once the
+  // Pi SDK completes the id_token → OpenAI API key exchange.
+  ipcMain.handle('chatgpt-oauth:start', async (event): Promise<ChatGptTokens> => {
+    return startChatGptLogin((url: string) => {
+      if (event.sender.isDestroyed()) return;
+      event.sender.send('chatgpt-oauth:browser-open', url);
+      void shell.openExternal(url);
+    });
+  });
+
+  ipcMain.handle('chatgpt-oauth:cancel', () => cancelChatGptLogin());
+
   /**
    * Live Copilot model discovery. Caller passes either a freshly-acquired
    * `refreshToken` (during the first-time setup flow, before a connection
@@ -511,12 +533,14 @@ export function registerIpc(): void {
       },
     ): Promise<string | null> => {
       const auth = await resolveAuthForSlug(args.connectionSlug);
+      const connMeta = listConnections().find((c) => c.slug === args.connectionSlug);
       return generateTitle({
         auth,
         messages: args.messages,
         model: args.model,
         connectionSlug: args.connectionSlug,
         chatSessionId: args.sessionId,
+        piAuthProvider: connMeta?.piAuthProvider,
         cwd: args.cwd,
       });
     },

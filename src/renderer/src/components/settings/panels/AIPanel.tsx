@@ -345,7 +345,9 @@ function ConnectionRow({
 
 function providerLabel(conn: ConnectionMeta): string {
   if (conn.providerType === 'pi') {
-    return conn.piAuthProvider === 'github-copilot' ? 'GitHub Copilot' : 'Pi';
+    if (conn.piAuthProvider === 'github-copilot') return 'GitHub Copilot';
+    if (conn.piAuthProvider === 'openai-codex') return 'ChatGPT Plus';
+    return 'Pi';
   }
   return conn.authType === 'oauth' ? 'Claude OAuth' : 'Anthropic API';
 }

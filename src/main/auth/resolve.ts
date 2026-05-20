@@ -18,6 +18,10 @@ import {
   refreshCopilotTokens,
 } from '../oauth/copilot-flow';
 import {
+  isExpired as isChatGptExpired,
+  refreshChatGptTokens,
+} from '../oauth/chatgpt-flow';
+import {
   type Credential,
   type OAuthCred,
   deleteCredential,
@@ -56,6 +60,16 @@ export async function resolveAuthForSlug(slug: string): Promise<ResolvedAuth> {
       throw new Error(
         `Connection "${slug}" is a Pi/Copilot connection but its credential is not OAuth. Re-authenticate from Settings → AI.`,
       );
+    }
+    // Route refresh by sub-provider.
+    if (conn.piAuthProvider === 'openai-codex') {
+      const fresh = await ensureFreshChatGptOAuth(slug, cred);
+      return {
+        type: 'copilot_oauth',
+        accessToken: fresh.accessToken,
+        refreshToken: fresh.refreshToken,
+        expiresAt: fresh.expiresAt,
+      };
     }
     const fresh = await ensureFreshCopilotOAuth(slug, cred);
     return {
@@ -177,5 +191,56 @@ async function performCopilotRefresh(
       );
     }
     throw new Error(`Copilot token refresh failed: ${msg}`);
+  }
+}
+
+/* --------------------------- ChatGPT Plus (Codex) OAuth ----------------- */
+
+async function ensureFreshChatGptOAuth(
+  slug: string,
+  cred: OAuthCred,
+): Promise<OAuthCred> {
+  if (!isChatGptExpired(cred.expiresAt)) return cred;
+
+  if (!cred.refreshToken) {
+    throw new Error(
+      'ChatGPT Plus session expired and no refresh token is stored. Sign in again from Settings → AI.',
+    );
+  }
+
+  const existing = refreshInFlight.get(slug);
+  if (existing) return existing;
+
+  const promise = performChatGptRefresh(slug, cred).finally(() => {
+    refreshInFlight.delete(slug);
+  });
+  refreshInFlight.set(slug, promise);
+  return promise;
+}
+
+async function performChatGptRefresh(
+  slug: string,
+  cred: OAuthCred,
+): Promise<OAuthCred> {
+  try {
+    const fresh = await refreshChatGptTokens(cred.refreshToken!);
+    const next: Credential = {
+      type: 'oauth',
+      accessToken: fresh.accessToken,
+      refreshToken: fresh.refreshToken ?? cred.refreshToken,
+      expiresAt: fresh.expiresAt,
+      scopes: cred.scopes,
+    };
+    setCredential(slug, next);
+    return next;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (/unauthorized|invalid|forbidden|401|403/i.test(msg)) {
+      try { deleteCredential(slug); } catch { /* best effort */ }
+      throw new Error(
+        `ChatGPT Plus session was rejected (${msg}). Sign in again from Settings → AI.`,
+      );
+    }
+    throw new Error(`ChatGPT Plus token refresh failed: ${msg}`);
   }
 }

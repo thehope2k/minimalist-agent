@@ -206,7 +206,7 @@ export interface ModelDef {
 }
 
 
-export type PiAuthProvider = 'github-copilot';
+export type { PiAuthProvider } from '../../../shared/pi-types';
 
 export interface ConnectionMeta {
   slug: string;
@@ -533,6 +533,21 @@ export interface AppApi {
     onDeviceCode: (
       cb: (u: { userCode: string; verificationUri: string }) => void,
     ) => () => void;
+  };
+  chatgptOAuth: {
+    /**
+     * Start the PKCE browser-redirect flow. Opens auth.openai.com in the
+     * user's browser and resolves once the Pi SDK completes the id_token
+     * → OpenAI API key exchange.
+     */
+    start: () => Promise<{
+      accessToken: string;
+      refreshToken?: string;
+      expiresAt?: number;
+    }>;
+    cancel: () => Promise<void>;
+    /** Subscribe to the browser-open event so the UI can show a waiting state. */
+    onBrowserOpen: (cb: (url: string) => void) => () => void;
   };
   copilot: {
     /**

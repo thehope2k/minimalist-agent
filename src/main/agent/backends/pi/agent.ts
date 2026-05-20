@@ -161,6 +161,8 @@ interface SubprocessHandle {
   chatSessionId: string;
   /** Connection slug, captured at spawn so refresh can mutex per-slug. */
   connectionSlug: string;
+  /** Sub-provider (e.g. 'github-copilot' | 'openai-codex') for error messages. */
+  piAuthProvider?: string;
   /** True while a token refresh is in progress for this handle. */
   refreshing?: boolean;
 }
@@ -257,6 +259,7 @@ function ensureSubprocess(
     stderrBuffer,
     chatSessionId: req.chatSessionId,
     connectionSlug: req.connectionSlug,
+    piAuthProvider: req.piAuthProvider,
   };
 
   rl.on('line', (line) => {
@@ -314,12 +317,22 @@ function ensureSubprocess(
     piAuthProvider: req.piAuthProvider,
     piAuth: {
       provider: req.piAuthProvider,
-      credential: {
-        type: 'oauth',
-        access: req.auth.accessToken,
-        refresh: req.auth.refreshToken ?? '',
-        expires: req.auth.expiresAt,
-      },
+      // github-copilot needs the full oauth shape so the Pi SDK can derive
+      // the regional proxy endpoint from the access token's proxy-ep claim
+      // via modifyModels(). All other OAuth sub-providers (openai-codex, etc.)
+      // function as plain bearer tokens — pass as api_key so the Pi SDK
+      // formats the Authorization header correctly.
+      credential: req.piAuthProvider === 'github-copilot'
+        ? {
+            type: 'oauth',
+            access: req.auth.accessToken,
+            refresh: req.auth.refreshToken ?? '',
+            expires: req.auth.expiresAt,
+          }
+        : {
+            type: 'api_key',
+            key: req.auth.accessToken,
+          },
     },
     permissionMode: (req.permissionMode ?? 'auto') as MsgInit['permissionMode'],
     systemPrompt,
@@ -428,12 +441,17 @@ async function handleOutbound(
         if (fresh.type === 'copilot_oauth') {
           const upd: MsgTokenUpdate = {
             type: 'token_update',
-            credential: {
-              type: 'oauth',
-              access: fresh.accessToken,
-              refresh: fresh.refreshToken ?? '',
-              expires: fresh.expiresAt,
-            },
+            credential: handle.piAuthProvider === 'github-copilot'
+              ? {
+                  type: 'oauth',
+                  access: fresh.accessToken,
+                  refresh: fresh.refreshToken ?? '',
+                  expires: fresh.expiresAt,
+                }
+              : {
+                  type: 'api_key',
+                  key: fresh.accessToken,
+                },
           };
           send(handle, upd);
         }
@@ -446,13 +464,15 @@ async function handleOutbound(
       if (m.turnId) {
         const q = handle.queues.get(m.turnId);
         if (q) {
+          const isChatGpt = handle.piAuthProvider === 'openai-codex';
           q.push({
             type: 'error',
             error: {
               code: 'expired_oauth_token',
-              title: 'GitHub Copilot session expired',
-              message:
-                'Your Copilot token was refreshed. Re-send the message to continue.',
+              title: isChatGpt ? 'ChatGPT Plus session expired' : 'GitHub Copilot session expired',
+              message: isChatGpt
+                ? 'Your ChatGPT Plus token was refreshed. Re-send the message to continue.'
+                : 'Your Copilot token was refreshed. Re-send the message to continue.',
               canRetry: true,
               originalError: m.message,
             },

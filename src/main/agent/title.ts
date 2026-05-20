@@ -39,6 +39,8 @@ export interface GenerateTitleArgs {
   connectionSlug?: string;
   /** Required when auth is `copilot_oauth` — anchors the Pi session log. */
   chatSessionId?: string;
+  /** Required when auth is `copilot_oauth` — identifies the Pi sub-provider. */
+  piAuthProvider?: string;
   /** Optional cwd hint for the Pi subprocess. */
   cwd?: string;
 }
@@ -99,7 +101,7 @@ export async function generateTitle(args: GenerateTitleArgs): Promise<string | n
       const result = await runPiMiniCompletion({
         connectionSlug: args.connectionSlug,
         auth: args.auth,
-        piAuthProvider: 'github-copilot',
+        piAuthProvider: (args.piAuthProvider ?? 'github-copilot') as import('./backends/pi/protocol').PiAuthProvider,
         chatSessionId: args.chatSessionId,
         chatSessionPath: sessionPath(args.chatSessionId),
         cwd: args.cwd,

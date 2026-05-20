@@ -4,15 +4,19 @@ import { Check, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   AnthropicMark,
   GithubMark,
+  OpenAIMark,
 } from '../settings/connection-flow/shared';
 import type { ConnectionMeta } from '@/lib/electron';
 import { cn } from '@/lib/utils';
 
-type ProviderCategory = 'anthropic' | 'copilot' | 'other';
+type ProviderCategory = 'anthropic' | 'copilot' | 'chatgpt' | 'other';
 
 function categorize(conn: ConnectionMeta): ProviderCategory {
   if (conn.providerType === 'pi' && conn.piAuthProvider === 'github-copilot') {
     return 'copilot';
+  }
+  if (conn.providerType === 'pi' && conn.piAuthProvider === 'openai-codex') {
+    return 'chatgpt';
   }
   if (conn.providerType === 'anthropic') return 'anthropic';
   return 'other';
@@ -24,6 +28,8 @@ function categoryHeader(c: ProviderCategory): string {
       return 'Anthropic';
     case 'copilot':
       return 'GitHub Copilot';
+    case 'chatgpt':
+      return 'ChatGPT Plus';
     default:
       return 'Other';
   }
@@ -32,6 +38,7 @@ function categoryHeader(c: ProviderCategory): string {
 function BrandMark({ category }: { category: ProviderCategory }) {
   if (category === 'anthropic') return <AnthropicMark />;
   if (category === 'copilot') return <GithubMark />;
+  if (category === 'chatgpt') return <OpenAIMark />;
   return <span className="grid h-4 w-4 place-items-center text-fg-subtle">·</span>;
 }
 
@@ -193,7 +200,7 @@ function ConnectionList({
                 <BrandMark category={cat} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm text-fg">{conn.name}</div>
-                  {cat === 'copilot' && (
+                  {(cat === 'copilot' || cat === 'chatgpt') && (
                     <div className="text-[10px] text-fg-subtle">No subagents (Task tool)</div>
                   )}
                 </div>
@@ -231,7 +238,7 @@ function ModelList({
   onBack: (() => void) | null;
   onPick: (modelId: string) => void;
 }) {
-  const isCopilot = categorize(connection) === 'copilot';
+  const isCopilotOrChatGpt = categorize(connection) === 'copilot' || categorize(connection) === 'chatgpt';
   return (
     <div className="scroll-thin max-h-112 overflow-auto">
       {onBack ? (
@@ -248,9 +255,9 @@ function ModelList({
           {connection.name}
         </div>
       )}
-      {isCopilot && (
+      {isCopilotOrChatGpt && (
         <div className="mx-2 mb-1 rounded-md bg-elevated px-2.5 py-1.5 text-[11px] text-fg-subtle">
-          ℹ️ Task (subagent) tool not available on Copilot — switch to an Anthropic connection for subagent support.
+          ℹ️ Task (subagent) tool not available on Copilot or ChatGPT Plus — switch to an Anthropic connection for subagent support.
         </div>
       )}
       {connection.models.length === 0 ? (

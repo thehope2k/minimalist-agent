@@ -6,6 +6,7 @@ import { ChooseScreen } from './connection-flow/ChooseScreen';
 import { ApiKeyForm } from './connection-flow/ApiKeyForm';
 import { ClaudeOAuthForm } from './connection-flow/ClaudeOAuthForm';
 import { CopilotFlow } from './connection-flow/CopilotFlow';
+import { ChatGptFlow } from './connection-flow/ChatGptFlow';
 import { NotImplemented } from './connection-flow/NotImplemented';
 import type { ConnectionKind } from './connection-flow/types';
 
@@ -26,6 +27,9 @@ type Props = {
 function inferKind(meta: ConnectionMeta): ConnectionKind {
   if (meta.providerType === 'pi' && meta.piAuthProvider === 'github-copilot') {
     return 'github-copilot';
+  }
+  if (meta.providerType === 'pi' && meta.piAuthProvider === 'openai-codex') {
+    return 'chatgpt-plus';
   }
   if (meta.authType === 'oauth') return 'claude-max';
   return 'other';
@@ -79,7 +83,8 @@ export function AddConnectionDialog({
         {activeKind === 'other' && <ApiKeyForm {...flowProps} />}
         {activeKind === 'claude-max' && <ClaudeOAuthForm {...flowProps} />}
         {activeKind === 'github-copilot' && <CopilotFlow {...flowProps} />}
-        {(activeKind === 'chatgpt-plus' || activeKind === 'local') && (
+        {activeKind === 'chatgpt-plus' && <ChatGptFlow {...flowProps} />}
+        {activeKind === 'local' && (
           <NotImplemented onBack={() => setKind(null)} />
         )}
       </div>
