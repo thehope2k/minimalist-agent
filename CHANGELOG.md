@@ -5,6 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.10.0] — 2026-05-20
+
+Adds ChatGPT Plus (Codex) as a supported connection provider.
+
+### Added
+
+**ChatGPT Plus (Codex) connection**
+
+- ChatGPT Plus (Codex) is now available as a connection type — add it from the Connections settings to use Codex models in your sessions
+
+---
+
 ## [0.9.0] — 2026-05-20
 
 Adds a native datatable renderer for code blocks; several bug fixes including session rename and regenerate-title actions.
