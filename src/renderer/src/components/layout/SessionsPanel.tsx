@@ -33,17 +33,26 @@ function SessionRow({
   onAfterDelete: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
   const project = session.projectId
     ? projects.find((p) => p.id === session.projectId) ?? null
     : null;
 
-  const handleRename = async () => {
-    // Native prompt — simple for v1; replace with an inline input later.
-    const next = window.prompt('Rename session', session.title);
-    if (next === null) return;
-    const trimmed = next.trim();
+  const handleRename = () => {
+    setRenameValue(session.title);
+    setRenaming(true);
+  };
+
+  const commitRename = async () => {
+    setRenaming(false);
+    const trimmed = renameValue.trim();
     if (!trimmed || trimmed === session.title) return;
     await updateSessionMeta(session.id, { title: trimmed });
+  };
+
+  const cancelRename = () => {
+    setRenaming(false);
   };
 
   const handleArchiveToggle = async () => {
@@ -117,58 +126,93 @@ function SessionRow({
       {active && (
         <span className="absolute inset-y-1 left-0 z-10 w-0.5 rounded-r-sm bg-accent" />
       )}
-      <button
-        onClick={onClick}
-        className={cn(
-          'flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors',
-          active ? 'bg-elevated' : 'hover:bg-elevated/60',
-        )}
-      >
-        {isStreaming ? (
-          <RunningDot title="Running…" />
-        ) : showProjectDot ? (
-          <span
-            className="h-2.5 w-2.5 shrink-0 rounded-full"
-            style={{
-              backgroundColor: project?.color ?? 'var(--color-fg-subtle)',
-              opacity: project ? 1 : 0.4,
-            }}
-            title={project?.name ?? 'Inbox'}
-          />
-        ) : (
-          <Circle
-            className="h-4 w-4 shrink-0 text-fg-subtle"
-            strokeWidth={1.75}
-          />
-        )}
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="flex-1 truncate text-[0.95rem] text-fg">{session.title}</span>
-            {/* Time hides while row is hovered OR the menu is open, so the
-                "..." button can take over the same slot without layout shift.
-                When streaming, the timestamp is replaced with "Running…" in
-                accent color so the row reads as live at a glance. */}
+      {renaming ? (
+        <div className={cn('flex w-full items-center gap-3 px-3 py-2.5', active ? 'bg-elevated' : 'bg-panel')}>
+          {isStreaming ? (
+            <RunningDot title="Running…" />
+          ) : showProjectDot ? (
             <span
-              className={cn(
-                'shrink-0 text-xs group-hover/session:invisible',
-                isStreaming ? 'font-medium text-accent' : 'text-fg-subtle',
-                menuOpen && 'invisible',
-              )}
-            >
-              {isStreaming ? 'Running…' : relativeTime(session.lastMessageAt)}
-            </span>
-          </div>
+              className="h-2.5 w-2.5 shrink-0 rounded-full"
+              style={{
+                backgroundColor: project?.color ?? 'var(--color-fg-subtle)',
+                opacity: project ? 1 : 0.4,
+              }}
+              title={project?.name ?? 'Inbox'}
+            />
+          ) : (
+            <Circle
+              className="h-4 w-4 shrink-0 text-fg-subtle"
+              strokeWidth={1.75}
+            />
+          )}
+          <input
+            autoFocus
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { e.preventDefault(); void commitRename(); }
+              if (e.key === 'Escape') { e.preventDefault(); cancelRename(); }
+            }}
+            onBlur={() => void commitRename()}
+            onClick={(e) => e.stopPropagation()}
+            className="flex-1 min-w-0 rounded border border-accent bg-elevated px-1.5 py-0.5 text-[0.95rem] text-fg outline-none"
+          />
         </div>
-      </button>
+      ) : (
+        <button
+          onClick={onClick}
+          className={cn(
+            'flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors',
+            active ? 'bg-elevated' : 'hover:bg-elevated/60',
+          )}
+        >
+          {isStreaming ? (
+            <RunningDot title="Running…" />
+          ) : showProjectDot ? (
+            <span
+              className="h-2.5 w-2.5 shrink-0 rounded-full"
+              style={{
+                backgroundColor: project?.color ?? 'var(--color-fg-subtle)',
+                opacity: project ? 1 : 0.4,
+              }}
+              title={project?.name ?? 'Inbox'}
+            />
+          ) : (
+            <Circle
+              className="h-4 w-4 shrink-0 text-fg-subtle"
+              strokeWidth={1.75}
+            />
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="flex-1 truncate text-[0.95rem] text-fg">{session.title}</span>
+              {/* Time hides while row is hovered OR the menu is open, so the
+                  "..." button can take over the same slot without layout shift.
+                  When streaming, the timestamp is replaced with "Running…" in
+                  accent color so the row reads as live at a glance. */}
+              <span
+                className={cn(
+                  'shrink-0 text-xs group-hover/session:invisible',
+                  isStreaming ? 'font-medium text-accent' : 'text-fg-subtle',
+                  menuOpen && 'invisible',
+                )}
+              >
+                {isStreaming ? 'Running…' : relativeTime(session.lastMessageAt)}
+              </span>
+            </div>
+          </div>
+        </button>
+      )}
 
       {/* The trigger stays mounted (so Radix can anchor the popover) and
           uses opacity, not display, to avoid losing its bounding rect when
-          the user clicks it and hover ends. */}
+          the user clicks it and hover ends. Hidden entirely while renaming. */}
       <div
         className={cn(
           'absolute right-2 top-1/2 -translate-y-1/2 transition-opacity',
           'opacity-0 group-hover/session:opacity-100',
           menuOpen && 'opacity-100',
+          renaming && '!opacity-0 pointer-events-none',
         )}
         onClick={(e) => e.stopPropagation()}
       >
