@@ -47,6 +47,7 @@ import type {
   MsgPreToolUseRequest,
   MsgPrompt,
   MsgSessionIdUpdate,
+  MsgSetModel,
   MsgTokenUpdate,
   PiAuthProvider,
   PiPromptImage,
@@ -165,6 +166,8 @@ interface SubprocessHandle {
   piAuthProvider?: string;
   /** True while a token refresh is in progress for this handle. */
   refreshing?: boolean;
+  /** Model ID currently active in the subprocess. */
+  currentModel?: string;
 }
 
 /** Per-chat-session subprocess. */
@@ -199,7 +202,15 @@ function ensureSubprocess(
 ): SubprocessHandle {
   const key = req.chatSessionPath;
   const existing = handles.get(key);
-  if (existing && !existing.child.killed) return existing;
+  if (existing && !existing.child.killed) {
+    // If the model changed, notify the running subprocess.
+    if (req.model && req.model !== existing.currentModel) {
+      const upd: MsgSetModel = { type: 'set_model', model: req.model };
+      send(existing, upd);
+      existing.currentModel = req.model;
+    }
+    return existing;
+  }
 
   const piServer = resolvePiServerPath();
   const child = spawn(process.execPath, [piServer], {
@@ -260,6 +271,7 @@ function ensureSubprocess(
     chatSessionId: req.chatSessionId,
     connectionSlug: req.connectionSlug,
     piAuthProvider: req.piAuthProvider,
+    currentModel: req.model,
   };
 
   rl.on('line', (line) => {
