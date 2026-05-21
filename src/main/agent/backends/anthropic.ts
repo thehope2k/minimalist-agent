@@ -347,7 +347,7 @@ export async function* runAnthropicChat(
     systemPrompt: {
       type: 'preset',
       preset: 'claude_code',
-      append: buildSystemPromptAppend({ cwd: req.cwd, sessionId: req.chatSessionId, userMessage: req.prompt }),
+      append: buildSystemPromptAppend({ cwd: req.cwd, sessionId: req.chatSessionId, userMessage: req.prompt, authType: req.auth.type }),
     },
 
     settingSources: ['user', 'project', 'local'],

@@ -570,7 +570,7 @@ export async function* runPiChat(
   // of a new session if initSessionState hasn't completed yet (race with the
   // React useEffect that fires after the send handler). Re-computed after
   // handle.ready to capture any state that settled during the spawn window.
-  const initAppend = buildSystemPromptAppend({ cwd: req.cwd, sessionId: req.chatSessionId, userMessage: req.prompt });
+  const initAppend = buildSystemPromptAppend({ cwd: req.cwd, sessionId: req.chatSessionId, userMessage: req.prompt, authType: req.auth.type, piAuthProvider: req.piAuthProvider, model: req.model });
   const prefix = buildPromptPrefix({ cwd: req.cwd });
 
   let handle: SubprocessHandle;
@@ -583,7 +583,7 @@ export async function* runPiChat(
   }
 
   // Re-compute after ready: initSessionState may have completed during spawn.
-  const append = buildSystemPromptAppend({ cwd: req.cwd, sessionId: req.chatSessionId, userMessage: req.prompt });
+  const append = buildSystemPromptAppend({ cwd: req.cwd, sessionId: req.chatSessionId, userMessage: req.prompt, authType: req.auth.type, piAuthProvider: req.piAuthProvider, model: req.model });
 
   // Update mode in case the user changed it between turns.
   send(handle, { type: 'set_permission_mode', mode: req.permissionMode ?? 'auto' });

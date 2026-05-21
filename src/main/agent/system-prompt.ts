@@ -230,6 +230,39 @@ ${fileList}
 }
 
 /* ===================================================================== *
+ *  Provider description (dynamic, injected into the assistant identity)
+ * ===================================================================== */
+
+/**
+ * Map auth type + Pi sub-provider onto a human-readable provider string that
+ * the model uses when asked "what model are you?".
+ *
+ * Kept intentionally short so it reads naturally inside the prompt.
+ */
+export function resolveProviderDescription(
+  authType?: string,
+  piAuthProvider?: string,
+  model?: string,
+): string {
+  const modelSuffix = model ? ` (${model})` : '';
+  switch (authType) {
+    case 'anthropic_api_key':
+    case 'anthropic_oauth':
+      return 'Claude Code (Anthropic)';
+    case 'copilot_oauth':
+      if (piAuthProvider === 'openai-codex') {
+        return `ChatGPT Plus / OpenAI${modelSuffix}`;
+      }
+      return `GitHub Copilot${modelSuffix}`;
+    case 'local_api':
+      return `a local model server${model ? ` — ${model}` : ''}`;
+    default:
+      // Fallback: stay honest but non-specific rather than lie.
+      return 'Claude Code';
+  }
+}
+
+/* ===================================================================== *
  *  Static assistant body (appended to the claude_code preset)
  * ===================================================================== */
 
@@ -249,8 +282,12 @@ function getEnvironmentMarker(): string {
  * come up.
  *
  * @param includeCoAuthoredBy - Whether to include the Co-Authored-By git trailer instruction (default: true)
+ * @param providerDescription - Human-readable provider string injected into the identity line (default: 'Claude Code')
  */
-function getAssistantPrompt(includeCoAuthoredBy: boolean = true): string {
+function getAssistantPrompt(
+  includeCoAuthoredBy: boolean = true,
+  providerDescription: string = 'Claude Code',
+): string {
   const environmentMarker = getEnvironmentMarker();
 
   return `${environmentMarker}
@@ -258,7 +295,7 @@ function getAssistantPrompt(includeCoAuthoredBy: boolean = true): string {
 You are Minimalist Agent — an AI coding assistant that helps users understand, change, and operate on the files in their working directory through a desktop chat interface.
 
 **Core capabilities:**
-- **Code** — You are powered by Claude Code, so you can read, write, and edit files; run shell commands; search by content or filename; fetch and search the web; and spawn focused sub-agents for parallel work.
+- **Code** — You are powered by ${providerDescription}, so you can read, write, and edit files; run shell commands; search by content or filename; fetch and search the web; and spawn focused sub-agents for parallel work.
 - **Project awareness** — You read \`AGENTS.md\` / \`CLAUDE.md\` to learn project conventions before making non-trivial changes.
 - **Skills** — Reusable instruction files (\`SKILL.md\`) the user can invoke with \`@slug\` to give you specialized behavior on demand.
 - **Extensions** — Installed capabilities (MCP servers, bundled CLIs, or pure usage guides) that expand what you can do beyond the built-in tools.
@@ -362,7 +399,7 @@ Every code block (\`\`\`bash, \`\`\`typescript, \`\`\`python, etc.) has an **Exp
 6. **Nice Markdown Formatting**: The user sees your responses rendered in markdown. Use headings, lists, bold/italic text, and code blocks for clarity. Basic HTML is also supported, but use sparingly.
 7. **Math Delimiters**: Use \`$$...$$\` for math expressions — they render natively as KaTeX. Do NOT use single-dollar delimiters (\`$...$\`) in normal prose so currency values like \`$100\` or \`$2M–$4M\` stay plain text.
 
-!!IMPORTANT!!. You must refer to yourself as Minimalist Agent when asked. You can acknowledge that you are powered by Claude Code.
+!!IMPORTANT!!. You must refer to yourself as Minimalist Agent when asked. You can acknowledge that you are powered by ${providerDescription}.
 
 ${includeCoAuthoredBy ? `## Git Conventions
 
@@ -405,6 +442,21 @@ export interface SystemPromptOptions {
    * injected when the message contains an SDD keyword or it's the first turn.
    */
   userMessage?: string;
+  /**
+   * Resolved auth type for this turn. Used to derive a human-readable
+   * provider description injected into the identity line so the model
+   * correctly answers "what model / provider are you?".
+   *
+   * Values: 'anthropic_api_key' | 'anthropic_oauth' | 'copilot_oauth' | 'local_api'
+   */
+  authType?: string;
+  /**
+   * Pi sub-provider (only meaningful when authType === 'copilot_oauth').
+   * Values: 'github-copilot' | 'openai-codex'
+   */
+  piAuthProvider?: string;
+  /** Active model ID forwarded for display in the identity line. */
+  model?: string;
 }
 
 /**
@@ -421,7 +473,8 @@ export function getSystemPrompt(opts: SystemPromptOptions = {}): string {
   const preferences = formatPreferencesForPrompt();
   const userPreferences = preferences ? `\n\n${preferences}` : '';
   const projectContextFiles = getProjectContextFilesPrompt(opts.workingDirectory);
-  const basePrompt = getAssistantPrompt(includeCoAuthoredBy);
+  const providerDescription = resolveProviderDescription(opts.authType, opts.piAuthProvider, opts.model);
+  const basePrompt = getAssistantPrompt(includeCoAuthoredBy, providerDescription);
 
   // SDD coaching + phase context — injected when session has active entities.
   let sddBlock = '';
@@ -442,12 +495,21 @@ export function buildSystemPromptAppend(input: {
   includeCoAuthoredBy?: boolean;
   sessionId?: string;
   userMessage?: string;
+  /** Resolved auth type — forwarded to resolveProviderDescription(). */
+  authType?: string;
+  /** Pi sub-provider — forwarded to resolveProviderDescription(). */
+  piAuthProvider?: string;
+  /** Active model ID — forwarded to resolveProviderDescription(). */
+  model?: string;
 }): string {
   return getSystemPrompt({
     workingDirectory: input.cwd,
     includeCoAuthoredBy: input.includeCoAuthoredBy,
     sessionId: input.sessionId,
     userMessage: input.userMessage,
+    authType: input.authType,
+    piAuthProvider: input.piAuthProvider,
+    model: input.model,
   });
 }
 
