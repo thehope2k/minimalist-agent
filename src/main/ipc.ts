@@ -366,6 +366,25 @@ export function registerIpc(): void {
     },
   );
 
+  // ---- ChatGPT Plus (Codex) model discovery ---------------------------
+
+  // Returns the Pi SDK’s static model registry for openai-codex.
+  // No network call — the SDK ships the list. Used by ChatGptFlow to
+  // populate the model picker at connection-setup time.
+  ipcMain.handle('chatgpt:getModels', async (): Promise<ModelDef[]> => {
+    const { getModels } = await import('@mariozechner/pi-ai');
+    const raw = getModels('openai-codex' as never) as Array<{
+      id: string; name: string; contextWindow: number;
+    }>;
+    return raw.map((m) => ({
+      id: m.id,
+      name: m.name,
+      shortName: m.name,
+      description: 'ChatGPT Plus · Codex',
+      contextWindow: m.contextWindow ?? 272_000,
+    }));
+  });
+
 
   // ---- Chat streaming ----------------------------------------------------
 

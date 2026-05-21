@@ -321,6 +321,9 @@ const api = {
         ipcRenderer.removeListener('chatgpt-oauth:browser-open', handler);
     },
   },
+  chatgpt: {
+    getModels: (): Promise<ModelDef[]> => ipcRenderer.invoke('chatgpt:getModels'),
+  },
   copilot: {
     fetchModels: (
       args: { refreshToken?: string; connectionSlug?: string },

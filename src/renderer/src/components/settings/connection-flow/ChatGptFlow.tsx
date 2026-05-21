@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ExternalLink, Loader2 } from 'lucide-react';
 import { generateSlug, saveConnection } from '@/lib/connections';
-import { CODEX_MODELS } from '@/lib/models';
-import type { ConnectionMeta, Credential } from '@/lib/electron';
+import type { ConnectionMeta, Credential, ModelDef } from '@/lib/electron';
 import { Button, Field, Input, Select } from '@/components/ui';
 import { Actions, ErrorBox, FormShell } from './shared';
 import type { FlowProps } from './types';
@@ -12,9 +11,19 @@ type Step = 'idle' | 'browser-open' | 'saving';
 export function ChatGptFlow({ onBack, onClose, onSaved, editingMeta }: FlowProps) {
   const editing = !!editingMeta;
   const [name, setName] = useState(editingMeta?.name ?? 'ChatGPT Plus');
+  const [models, setModels] = useState<ModelDef[]>(editingMeta?.models ?? []);
   const [model, setModel] = useState<string>(
-    editingMeta?.defaultModel ?? CODEX_MODELS[0].id,
+    editingMeta?.defaultModel ?? '',
   );
+
+  // Load the Pi SDK’s openai-codex model catalog on mount.
+  useEffect(() => {
+    window.api?.chatgpt?.getModels().then((list) => {
+      if (list.length === 0) return;
+      setModels(list);
+      setModel((prev) => list.find((m) => m.id === prev)?.id ?? list[0].id);
+    }).catch(() => {/* keep empty list */});
+  }, []);
   const [step, setStep] = useState<Step>('idle');
   const [error, setError] = useState<string | null>(null);
   const inFlight = useRef(false);
@@ -51,9 +60,7 @@ export function ChatGptFlow({ onBack, onClose, onSaved, editingMeta }: FlowProps
       const tokens = await window.api.chatgptOAuth.start();
       setStep('saving');
 
-      // Use the Pi SDK's static model list for openai-codex — no live
-      // /models endpoint exists for ChatGPT Plus accounts.
-      const models = CODEX_MODELS;
+      // Use the Pi SDK model list fetched on mount.
       const finalDefaultModel =
         models.find((m) => m.id === model)?.id ?? models[0]?.id ?? model;
 
@@ -148,7 +155,7 @@ export function ChatGptFlow({ onBack, onClose, onSaved, editingMeta }: FlowProps
         <Select
           value={model}
           onChange={setModel}
-          options={CODEX_MODELS.map((m) => ({
+          options={models.map((m) => ({
             value: m.id,
             label: `${m.name} — ${m.description}`,
           }))}
