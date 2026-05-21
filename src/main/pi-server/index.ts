@@ -692,14 +692,25 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
       return;
 
     case 'set_model':
-      // AgentSession exposes setModel via session-event; we resolve a
-      // fresh model handle and let Pi pick it up on the next turn.
       if (state.init) {
         try {
-          state.model = getModel(
+          let newModel = getModel(
             state.init.piAuthProvider as 'github-copilot',
             msg.model as never,
           );
+          // Apply modifyModels for providers that pin a regional endpoint
+          // (e.g. github-copilot proxy-ep claim).
+          const provider = getOAuthProvider(state.init.piAuthProvider);
+          const cred = state.authStorage?.get(state.init.piAuthProvider);
+          if (provider?.modifyModels && cred?.type === 'oauth') {
+            const [adjusted] = provider.modifyModels([newModel] as never, cred as never);
+            if (adjusted) newModel = adjusted as typeof newModel;
+          }
+          state.model = newModel;
+          // Propagate to the live session so the next prompt uses the new model.
+          if (state.session) {
+            await state.session.setModel(newModel as never);
+          }
         } catch (e) {
           console.error('[pi-server] set_model failed:', e);
         }
