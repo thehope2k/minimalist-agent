@@ -6,7 +6,6 @@
 // regional endpoint.
 
 import { refreshGitHubCopilotToken } from '@mariozechner/pi-ai/oauth';
-import { getModels } from '@mariozechner/pi-ai';
 import type { ModelDef } from '../storage/connections';
 
 const COPILOT_HEADERS = {
@@ -57,34 +56,17 @@ function dropReason(raw: RawCopilotModel): string {
     return `policy=${raw.policy.state}`;
   }
   if (NON_CHAT_PREFIXES.some((p) => raw.id.startsWith(p))) return 'non-chat';
-  if (COPILOT_UNSUPPORTED_IDS.has(raw.id)) return 'openai-responses-unsupported';
   return 'unknown';
 }
-
-// Models whose Pi SDK entry uses 'openai-responses' API are not served
-// by the Copilot proxy — it only supports 'anthropic-messages' and
-// 'openai-completions'. Build the exclusion set once at module load.
-const COPILOT_UNSUPPORTED_IDS: Set<string> = (() => {
-  try {
-    const all = getModels('github-copilot');
-    return new Set(
-      all.filter((m) => (m as unknown as { api?: string }).api === 'openai-responses')
-         .map((m) => m.id),
-    );
-  } catch {
-    return new Set<string>();
-  }
-})();
 
 function modelDefFrom(raw: RawCopilotModel): ModelDef | null {
   if (!raw?.id) return null;
   // Only surface models the user's tier has enabled.
   if (raw.policy?.state && raw.policy.state !== 'enabled') return null;
-  // Embedding-only models.
+  // Embedding-only models are id-prefixed by Copilot's API; rather than
+  // gating on `capabilities.type` (which excluded valid completion-style
+  // chat models like Codex variants), drop the few known non-chat prefixes.
   if (NON_CHAT_PREFIXES.some((p) => raw.id.startsWith(p))) return null;
-  // Exclude models that use 'openai-responses' API — the Copilot proxy
-  // only supports 'anthropic-messages' and 'openai-completions'.
-  if (COPILOT_UNSUPPORTED_IDS.has(raw.id)) return null;
 
   const ctx = raw.capabilities?.limits?.max_context_window_tokens ?? 128_000;
   const family = raw.capabilities?.family ?? '';

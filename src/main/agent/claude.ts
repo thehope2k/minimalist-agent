@@ -9,6 +9,7 @@ import type { StoredAttachment } from '../storage/sessions';
 import { sessionPath } from '../storage/sessions';
 import type { AgentChatEvent } from './events';
 import type { PermissionMode } from './permissions';
+import type { PiAuthProvider } from '../../shared/pi-types';
 import { runAnthropicChat, type AnthropicAuth } from './backends/anthropic';
 import { runPiChat, type PiPermissionAsk } from './backends/pi/agent';
 import type { ResolvedAuth } from './backends/types';
@@ -25,7 +26,8 @@ export interface AgentChatRequest {
    */
   auth: ResolvedAuth;
   /** Pi sub-provider — required when `auth.type === 'copilot_oauth'`. */
-  piAuthProvider?: 'github-copilot';
+  /** Pi sub-provider — required when auth is copilot_oauth or local_api. */
+  piAuthProvider?: PiAuthProvider;
   /**
    * Connection slug — needed by the Pi backend so it can mutex token
    * refresh against the same connection across concurrent turns.

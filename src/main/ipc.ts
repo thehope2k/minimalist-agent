@@ -457,6 +457,7 @@ export function registerIpc(): void {
       for await (const chunk of runAgentChat({
         auth,
         connectionSlug: req.connectionSlug,
+        piAuthProvider: listConnections().find((c) => c.slug === req.connectionSlug)?.piAuthProvider,
         turnId: req.id,
         chatSessionId: req.sessionId,
         model: effectiveModel,
