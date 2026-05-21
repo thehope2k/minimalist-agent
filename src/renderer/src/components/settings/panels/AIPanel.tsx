@@ -350,7 +350,7 @@ function providerLabel(conn: ConnectionMeta): string {
   if (conn.providerType === 'local') return 'Local (Ollama)';
   if (conn.providerType === 'pi') {
     if (conn.piAuthProvider === 'github-copilot') return 'GitHub Copilot';
-    if (conn.piAuthProvider === 'openai-codex') return 'ChatGPT Plus';
+    if (conn.providerType === 'pi' && conn.piAuthProvider === 'openai-codex') return 'ChatGPT Plus';
     return 'Pi';
   }
   return conn.authType === 'oauth' ? 'Claude OAuth' : 'Anthropic API';

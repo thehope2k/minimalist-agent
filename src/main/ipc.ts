@@ -376,13 +376,22 @@ export function registerIpc(): void {
     const raw = getModels('openai-codex' as never) as Array<{
       id: string; name: string; contextWindow: number;
     }>;
-    return raw.map((m) => ({
+    const models = raw.map((m) => ({
       id: m.id,
       name: m.name,
       shortName: m.name,
       description: 'ChatGPT Plus · Codex',
       contextWindow: m.contextWindow ?? 272_000,
     }));
+    // Sort: Codex-branded models first (they work on Plus), base GPT models after.
+    // gpt-5.3-codex, gpt-5.2-codex etc confirmed working on Plus.
+    models.sort((a, b) => {
+      const aCodex = a.id.includes('codex') ? 0 : 1;
+      const bCodex = b.id.includes('codex') ? 0 : 1;
+      if (aCodex !== bCodex) return aCodex - bCodex;
+      return a.id.localeCompare(b.id);
+    });
+    return models;
   });
 
 

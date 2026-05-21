@@ -119,6 +119,8 @@ export function ChatGptFlow({ onBack, onClose, onSaved, editingMeta }: FlowProps
             Sign in with your ChatGPT Plus or Pro account. Your browser will
             open to <code className="mx-1 rounded bg-elevated px-1 py-0.5 text-[11px] text-fg-muted">auth.openai.com</code>{' '}
             and redirect back automatically — no code to copy.
+            Model availability varies by plan — if a model returns an error,
+            switch to another from the picker.
           </p>
           <p className="text-xs text-fg-subtle">
             Chat runs through the Pi runtime — permission prompts, plan/ask/auto
