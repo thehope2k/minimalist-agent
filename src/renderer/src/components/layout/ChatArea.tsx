@@ -22,6 +22,8 @@ import { SddWizardDialog } from '@/components/sdd/SddWizardDialog';
 import { SddWorkspacePanel } from './chat-area/SddWorkspacePanel';
 import { deriveEntityPhase, taskProgress } from '@/lib/sdd';
 import { GitDiffModal } from '@/components/git/GitDiffModal';
+import { SearchModal } from '@/components/search/SearchModal';
+import { FileViewModal } from '@/components/search/FileViewModal';
 
 type Props = {
   sessionId: string | null;
@@ -313,6 +315,32 @@ export function ChatArea({
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
+  // Search Everything — Double Shift opens the unified search palette.
+  // Any other key between the two Shifts resets the sequence.
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [viewFile, setViewFile] = useState<{ absolutePath: string; lineNumber: number } | null>(null);
+  const lastShiftTs = useRef<number>(0);
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Shift' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const now = Date.now();
+        const delta = now - lastShiftTs.current;
+        if (delta > 0 && delta < 300) {
+          e.preventDefault();
+          setSearchOpen((v) => !v);
+          lastShiftTs.current = 0;
+        } else {
+          lastShiftTs.current = now;
+        }
+      } else {
+        // Any non-Shift key resets the sequence.
+        lastShiftTs.current = 0;
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
   const handleSddModeChange = (next: 'auto' | 'off') => {
     setSddMode(next);
     void sdd.setMode(next);
@@ -493,6 +521,25 @@ export function ChatArea({
           model={sessionModel || undefined}
           sessionId={activeSession ?? undefined}
           onClose={() => setGitModalOpen(false)}
+        />
+      )}
+
+      {searchOpen && (
+        <SearchModal
+          cwd={cwd}
+          onClose={() => setSearchOpen(false)}
+          onOpenFile={(absolutePath, lineNumber) => {
+            setSearchOpen(false);
+            setViewFile({ absolutePath, lineNumber });
+          }}
+        />
+      )}
+
+      {viewFile && (
+        <FileViewModal
+          absolutePath={viewFile.absolutePath}
+          lineNumber={viewFile.lineNumber}
+          onClose={() => setViewFile(null)}
         />
       )}
     </main>

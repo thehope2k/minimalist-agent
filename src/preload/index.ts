@@ -450,10 +450,14 @@ const api = {
   fs: {
     pickDirectory: (): Promise<string | null> =>
       ipcRenderer.invoke('fs:pickDirectory'),
+    readFile: (absolutePath: string): Promise<string | null> =>
+      ipcRenderer.invoke('fs:readFile', absolutePath),
   },
   files: {
     search: (args: { root: string; query: string; limit?: number }): Promise<unknown[]> =>
       ipcRenderer.invoke('files:search', args),
+    grep: (args: { root: string; query: string; useRegex?: boolean; caseSensitive?: boolean; limit?: number }): Promise<unknown[]> =>
+      ipcRenderer.invoke('files:grep', args),
   },
   skills: {
     getDir: (): Promise<string> => ipcRenderer.invoke('skills:getDir'),

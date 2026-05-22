@@ -1037,6 +1037,17 @@ export function registerIpc(): void {
       searchFiles({ root: args.root, query: args.query, limit: args.limit }),
   );
 
+  ipcMain.handle(
+    'files:grep',
+    async (
+      _e,
+      args: { root: string; query: string; useRegex?: boolean; caseSensitive?: boolean; limit?: number },
+    ) => {
+      const { grepFiles } = await import('./files/grep');
+      return grepFiles(args);
+    },
+  );
+
   // ---- Filesystem dialogs ------------------------------------------------
 
   ipcMain.handle('fs:pickDirectory', async (event) => {
@@ -1050,6 +1061,19 @@ export function registerIpc(): void {
       ? await dialog.showOpenDialog(win, opts)
       : await dialog.showOpenDialog(opts);
     return result.canceled ? null : result.filePaths[0] ?? null;
+  });
+
+  ipcMain.handle('fs:readFile', (_e, absolutePath: string): string | null => {
+    // Guard: skip files larger than 2 MB to keep the renderer responsive.
+    const MAX_BYTES = 2 * 1024 * 1024;
+    const { existsSync, statSync, readFileSync } = require('node:fs') as typeof import('node:fs');
+    if (!absolutePath || !existsSync(absolutePath)) return null;
+    try {
+      if (statSync(absolutePath).size > MAX_BYTES) return null;
+      return readFileSync(absolutePath, 'utf-8');
+    } catch {
+      return null;
+    }
   });
 
   // ---- SDD ---------------------------------------------------------------

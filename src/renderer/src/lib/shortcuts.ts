@@ -144,6 +144,17 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       },
     ],
   },
+  {
+    title: 'Search',
+    shortcuts: [
+      {
+        macKeys: ['Shift', 'Shift'],
+        winKeys: ['Shift', 'Shift'],
+        label: 'Open / close Search Everywhere palette',
+        condition: 'Double-tap Shift in <300 ms; any other key resets the sequence',
+      },
+    ],
+  },
 ];
 
 /** Return the key sequence for the current platform. */

@@ -11,6 +11,7 @@ import type { DiffOnMount } from '@monaco-editor/react';
 import type * as MonacoType from 'monaco-editor';
 import { Loader2 } from 'lucide-react';
 import type { GitFileDiff, LineChange } from './types';
+import { registerAppMonacoTheme, APP_MONACO_COLORS } from '@/lib/monaco-setup';
 
 const DiffEditor = lazy(() =>
   import('@monaco-editor/react').then((m) => ({ default: m.DiffEditor })),
@@ -27,63 +28,8 @@ interface GitDiffViewProps {
   fileKey?: string;
 }
 
-const THEME_COLORS = {
-  editorBg: '#111116',
-  gutterBg: '#0d0d11',
-  fg: '#f5f5f7',
-  fgMuted: '#bcbcc3',
-  fgSubtle: '#939399',
-  border: '#2d2d33',
-  addedBg: '#1a3828',
-  removedBg: '#38201e',
-  wordAddedBg: '#2a5438',
-  wordRemovedBg: '#562828',
-  addedGutter: '#163022',
-  removedGutter: '#301919',
-} as const;
-
-function defineAppTheme(monaco: typeof MonacoType) {
-  monaco.editor.defineTheme('minimalist-dark', {
-    base: 'vs-dark',
-    inherit: true,
-    rules: [
-      { token: 'keyword',                 foreground: '569CD6' },
-      { token: 'keyword.control',         foreground: 'C586C0' },
-      { token: 'keyword.operator',        foreground: '569CD6' },
-      { token: 'storage.type',            foreground: '569CD6' },
-      { token: 'entity.name.function',    foreground: 'DCDCAA' },
-      { token: 'support.function',        foreground: 'DCDCAA' },
-      { token: 'entity.name.type',        foreground: '4EC9B0' },
-      { token: 'entity.name.class',       foreground: '4EC9B0' },
-      { token: 'support.class',           foreground: '4EC9B0' },
-      { token: 'variable',                foreground: '9CDCFE' },
-      { token: 'variable.other.readwrite',foreground: '9CDCFE' },
-      { token: 'variable.other.object',   foreground: '9CDCFE' },
-      { token: 'variable.parameter',      foreground: '9CDCFE' },
-      { token: 'constant.numeric',        foreground: 'B5CEA8' },
-      { token: 'constant.language',       foreground: '569CD6' },
-      { token: 'string',                  foreground: 'CE9178' },
-      { token: 'comment',                 foreground: '6A9955', fontStyle: 'italic' },
-      { token: 'punctuation.definition',  foreground: 'D4D4D4' },
-    ],
-    colors: {
-      'editor.background': THEME_COLORS.editorBg,
-      'editor.foreground': THEME_COLORS.fg,
-      'editorLineNumber.foreground': THEME_COLORS.fgSubtle,
-      'editorLineNumber.activeForeground': THEME_COLORS.fgMuted,
-      'editor.lineHighlightBackground': THEME_COLORS.editorBg,
-      'editorGutter.background': THEME_COLORS.gutterBg,
-      'diffEditor.insertedTextBackground': THEME_COLORS.wordAddedBg,
-      'diffEditor.removedTextBackground': THEME_COLORS.wordRemovedBg,
-      'diffEditor.insertedLineBackground': THEME_COLORS.addedBg,
-      'diffEditor.removedLineBackground': THEME_COLORS.removedBg,
-      'diffEditorGutter.insertedLineBackground': THEME_COLORS.addedGutter,
-      'diffEditorGutter.removedLineBackground': THEME_COLORS.removedGutter,
-      'scrollbarSlider.background': '#ffffff18',
-      'scrollbarSlider.hoverBackground': '#ffffff28',
-    },
-  });
-}
+// THEME_COLORS kept locally for the diff-specific gutter colours used below.
+const THEME_COLORS = APP_MONACO_COLORS;
 
 const EDITOR_OPTIONS: MonacoType.editor.IDiffEditorConstructionOptions = {
   readOnly: true,
@@ -154,7 +100,7 @@ export function GitDiffView({
 
   const handleBeforeMount = useCallback((monaco: typeof MonacoType) => {
     monacoRef.current = monaco;
-    defineAppTheme(monaco);
+    registerAppMonacoTheme(monaco);
   }, []);
 
   const handleMount: DiffOnMount = useCallback((editor) => {

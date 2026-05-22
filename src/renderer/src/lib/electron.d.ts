@@ -381,6 +381,21 @@ export interface FileSearchEntry {
   mtimeMs: number;
 }
 
+/* ---------- Content grep (Search Everywhere) ---------- */
+
+export interface ContentMatchEntry {
+  relativePath: string;
+  absolutePath: string;
+  /** 1-based line number of the match. */
+  lineNumber: number;
+  /** Full source line with trailing newline stripped. */
+  lineContent: string;
+  /** Character offset of match start within `lineContent`. */
+  matchStart: number;
+  /** Character offset of match end (exclusive) within `lineContent`. */
+  matchEnd: number;
+}
+
 /* ---------- Skills ---------- */
 
 export interface SkillMetadata {
@@ -678,6 +693,8 @@ export interface AppApi {
   };
   fs: {
     pickDirectory: () => Promise<string | null>;
+    /** Read a file's text content. Returns null if file is missing, binary, or >2 MB. */
+    readFile: (absolutePath: string) => Promise<string | null>;
   };
   files: {
     /** BFS file/folder search rooted at `root`, respecting `.gitignore`. */
@@ -686,6 +703,14 @@ export interface AppApi {
       query: string;
       limit?: number;
     }) => Promise<FileSearchEntry[]>;
+    /** Full-text / regex content search rooted at `root`, respecting `.gitignore`. */
+    grep: (args: {
+      root: string;
+      query: string;
+      useRegex?: boolean;
+      caseSensitive?: boolean;
+      limit?: number;
+    }) => Promise<ContentMatchEntry[]>;
   };
   skills: {
     /** Absolute path of the on-disk skills directory (under userData). */
