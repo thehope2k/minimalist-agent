@@ -369,30 +369,35 @@ export function registerIpc(): void {
   // ---- ChatGPT Plus (Codex) model discovery ---------------------------
 
   // Official ChatGPT Plus Codex models per openai.com/codex/pricing (May 2026).
-  // gpt-5.3-codex-spark is Pro-only research preview; gpt-5.1/5.2 variants
-  // are not in the Plus tier table and return 400 'not supported'.
+  // gpt-5.3-codex-spark is Pro-only research preview — shown with a label
+  // so Pro users can use it; Plus users see the error and understand why.
   const CHATGPT_PLUS_MODEL_IDS = new Set(['gpt-5.5', 'gpt-5.4', 'gpt-5.4-mini', 'gpt-5.3-codex']);
+  const CHATGPT_PRO_ONLY_IDS = new Set(['gpt-5.3-codex-spark']);
 
   ipcMain.handle('chatgpt:getModels', async (): Promise<ModelDef[]> => {
     const { getModels } = await import('@mariozechner/pi-ai');
     const raw = getModels('openai-codex' as never) as Array<{
       id: string; name: string; contextWindow: number;
     }>;
-    return raw
+    const toModel = (m: typeof raw[0], tier: string) => ({
+      id: m.id,
+      name: m.name,
+      shortName: m.name,
+      description: `${tier} · Codex`,
+      contextWindow: m.contextWindow ?? 272_000,
+    });
+    const plus = raw
       .filter((m) => CHATGPT_PLUS_MODEL_IDS.has(m.id))
       .sort((a, b) => {
-        // gpt-5.3-codex first — best balance of quality and usage limits on Plus
         if (a.id === 'gpt-5.3-codex') return -1;
         if (b.id === 'gpt-5.3-codex') return 1;
         return b.id.localeCompare(a.id);
       })
-      .map((m) => ({
-        id: m.id,
-        name: m.name,
-        shortName: m.name,
-        description: 'ChatGPT Plus · Codex',
-        contextWindow: m.contextWindow ?? 272_000,
-      }));
+      .map((m) => toModel(m, 'Plus & Pro'));
+    const pro = raw
+      .filter((m) => CHATGPT_PRO_ONLY_IDS.has(m.id))
+      .map((m) => toModel(m, 'Pro only'));
+    return [...plus, ...pro];
   });
 
 
