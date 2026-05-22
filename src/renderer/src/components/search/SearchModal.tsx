@@ -18,7 +18,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { File as FileIcon, Folder as FolderIcon, Search, Loader2 } from 'lucide-react';
+import { File as FileIcon, Search, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { searchFiles, scoreEntry } from '@/lib/files';
 import type { FileSearchEntry } from '@/lib/electron';
@@ -93,9 +93,11 @@ export function SearchModal({ cwd, onClose, onOpenFile }: SearchModalProps) {
   }, [cwd, query]);
 
   // ── Client-side scoring/filtering of file results ─────────────────────────
+  // files only — directories have no meaningful action in Search Everywhere
   const filteredFiles = useMemo<FileSearchEntry[]>(() => {
-    if (!query.trim()) return fileResults.slice(0, FILES_LIMIT);
-    return fileResults
+    const filesOnly = fileResults.filter((e) => e.type === 'file');
+    if (!query.trim()) return filesOnly.slice(0, FILES_LIMIT);
+    return filesOnly
       .map((e) => ({ entry: e, score: scoreEntry(e, query) }))
       .filter((x) => x.score > 0)
       .sort((a, b) => b.score - a.score)
@@ -290,7 +292,6 @@ function FileRow({
   onMouseEnter: () => void;
   onMouseDown: (e: React.MouseEvent) => void;
 }) {
-  const Icon   = entry.type === 'directory' ? FolderIcon : FileIcon;
   const parent = entry.relativePath.includes('/')
     ? entry.relativePath.slice(0, entry.relativePath.lastIndexOf('/'))
     : null;
@@ -305,13 +306,7 @@ function FileRow({
         active ? 'bg-elevated' : 'hover:bg-elevated/60',
       )}
     >
-      <Icon
-        className={cn(
-          'h-3.5 w-3.5 shrink-0',
-          entry.type === 'directory' ? 'text-fg-muted' : 'text-fg-subtle',
-        )}
-        strokeWidth={1.75}
-      />
+      <FileIcon className="h-3.5 w-3.5 shrink-0 text-fg-subtle" strokeWidth={1.75} />
       <HighlightedText text={entry.name} query={query} className="text-sm text-fg" />
       {parent && (
         <span className="ml-auto truncate font-mono text-[11px] text-fg-subtle">

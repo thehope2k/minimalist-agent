@@ -10,6 +10,12 @@ files:
   - out/**/*
   - package.json
   - "!**/*.map"
+  # Bundled ripgrep binary — must be included so asarUnpack can extract it.
+  - "node_modules/@vscode/ripgrep-*/bin/**"
+
+asarUnpack:
+  # rg must be a real executable on disk, not inside the asar virtual archive.
+  - "node_modules/@vscode/ripgrep-*/bin/**"
 
 # Auto-update reads update manifests (latest-mac.yml / latest.yml / latest-linux.yml)
 # from the GitHub Releases of this repo.

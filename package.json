@@ -41,6 +41,7 @@
     "@monaco-editor/react": "^4.7.0",
     "@radix-ui/react-popover": "^1.1.15",
     "@uiw/react-json-view": "^2.0.0-alpha.42",
+    "@vscode/ripgrep": "^1.18.0",
     "clsx": "^2.1.1",
     "electron-updater": "^6.8.3",
     "gray-matter": "^4.0.3",
