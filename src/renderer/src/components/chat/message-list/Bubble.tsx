@@ -13,6 +13,7 @@ import { StreamStatus } from '../StreamStatus';
 import { TextPart } from '../parts/TextPart';
 import { ThinkingPart } from '../parts/ThinkingPart';
 import { ToolPart } from '../parts/ToolPart';
+import { TurnSummaryCard } from '../parts/TurnSummaryCard';
 import { compactNumber, emptyTurnLabel, labelForIntent, partKey } from './utils';
 
 export function Bubble({
@@ -67,6 +68,7 @@ export function Bubble({
             {parts.map((p, i) => (
               <PartView key={partKey(p.kind, p.kind === 'tool' ? p.toolUseId : undefined, i)} part={p} />
             ))}
+            {!m.isStreaming && <TurnSummaryCard parts={m.parts} />}
             {m.isStreaming && <StreamStatus parts={parts} startedAt={m.createdAt} />}
           </AssistantCard>
         ) : (
