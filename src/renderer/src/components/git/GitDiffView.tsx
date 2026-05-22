@@ -1,17 +1,17 @@
 // Right panel of the git diff modal: Monaco DiffEditor.
 // Lazy-loaded so the ~5 MB Monaco bundle doesn't block app startup.
 //
-// The custom theme derives its colors from the app's OKLCH design tokens
-// (globals.css). Monaco can't consume CSS variables, so hex approximations
-// are hard-coded here with clear derivation comments.
+// Hunk staging: each diff hunk gets a glyph margin icon (left side of
+// the modified editor — visually the "center" of the split view).
+// Clicking the glyph toggles that hunk in/out of the commit.
+// CSS classes git-hunk-checked / git-hunk-unchecked defined in globals.css.
 
-import { lazy, Suspense, useCallback, useRef } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef } from 'react';
 import type { DiffOnMount } from '@monaco-editor/react';
 import type * as MonacoType from 'monaco-editor';
 import { Loader2 } from 'lucide-react';
-import type { GitFileDiff } from './types';
+import type { GitFileDiff, LineChange } from './types';
 
-// Lazy import keeps Monaco out of the initial bundle.
 const DiffEditor = lazy(() =>
   import('@monaco-editor/react').then((m) => ({ default: m.DiffEditor })),
 );
@@ -19,65 +19,52 @@ const DiffEditor = lazy(() =>
 interface GitDiffViewProps {
   diff: GitFileDiff | null;
   splitView: boolean;
+  changes: LineChange[];
+  stagedHunks: Set<number> | undefined;
+  onToggleHunk: (index: number) => void;
+  onDiffComputed?: (changes: LineChange[]) => void;
+  /** Forces a clean Monaco remount when the file changes (prevents TextModel disposed race). */
+  fileKey?: string;
 }
 
-// Hex approximations of the app's OKLCH design tokens (globals.css).
-// These are unavoidable — Monaco's theming API doesn't accept CSS variables.
-//   --panel      oklch(0.13 0.004 270)  ≈ #1b1b21
-//   --background oklch(0.07 0.004 270)  ≈ #0e0e12
-//   --elevated   oklch(0.22 0.004 270)  ≈ #313139
-//   --fg         oklch(0.97 0.003 270)  ≈ #f5f5f7
-//   --fg-muted   oklch(0.74 0.004 270)  ≈ #bcbcc3
-//   --fg-subtle  oklch(0.60 0.004 270)  ≈ #939399
-//   --border     fg/16%                 ≈ #2d2d33
 const THEME_COLORS = {
-  // Darker than --panel (#1b1b21) so the code surface is visually distinct
-  // from the modal chrome and diff highlights pop more against the deep base.
   editorBg: '#111116',
   gutterBg: '#0d0d11',
   fg: '#f5f5f7',
   fgMuted: '#bcbcc3',
   fgSubtle: '#939399',
   border: '#2d2d33',
-  // Diff line backgrounds — solid colors, not translucent blends.
-  // Calibrated to match IntelliJ Darcula's contrast level: clearly visible
-  // bands without being garish. Editor bg is #1b1b21 (L=0.13), these sit
-  // at L≈0.20–0.22 with hue shift, giving a readable but not harsh tint.
-  addedBg: '#1a3828',           // deep green band
-  removedBg: '#38201e',         // deep red band
-  wordAddedBg: '#2a5438',       // stronger green for word-level changes
-  wordRemovedBg: '#562828',     // stronger red for word-level changes
-  addedGutter: '#163022',       // green-tinted gutter strip
-  removedGutter: '#301919',     // red-tinted gutter strip
+  addedBg: '#1a3828',
+  removedBg: '#38201e',
+  wordAddedBg: '#2a5438',
+  wordRemovedBg: '#562828',
+  addedGutter: '#163022',
+  removedGutter: '#301919',
 } as const;
 
 function defineAppTheme(monaco: typeof MonacoType) {
   monaco.editor.defineTheme('minimalist-dark', {
     base: 'vs-dark',
     inherit: true,
-    // Token color rules — modelled after VS Code Dark+ to get the same
-    // semantic richness: methods yellow, variables light-blue, types teal,
-    // keywords blue/purple. These apply on top of the TypeScript worker's
-    // semantic tokens and the base TextMate grammar fallback.
     rules: [
-      { token: 'keyword',                          foreground: '569CD6' },
-      { token: 'keyword.control',                  foreground: 'C586C0' },
-      { token: 'keyword.operator',                 foreground: '569CD6' },
-      { token: 'storage.type',                     foreground: '569CD6' },
-      { token: 'entity.name.function',             foreground: 'DCDCAA' },
-      { token: 'support.function',                 foreground: 'DCDCAA' },
-      { token: 'entity.name.type',                 foreground: '4EC9B0' },
-      { token: 'entity.name.class',                foreground: '4EC9B0' },
-      { token: 'support.class',                    foreground: '4EC9B0' },
-      { token: 'variable',                         foreground: '9CDCFE' },
-      { token: 'variable.other.readwrite',         foreground: '9CDCFE' },
-      { token: 'variable.other.object',            foreground: '9CDCFE' },
-      { token: 'variable.parameter',               foreground: '9CDCFE' },
-      { token: 'constant.numeric',                 foreground: 'B5CEA8' },
-      { token: 'constant.language',                foreground: '569CD6' },
-      { token: 'string',                           foreground: 'CE9178' },
-      { token: 'comment',                          foreground: '6A9955', fontStyle: 'italic' },
-      { token: 'punctuation.definition',           foreground: 'D4D4D4' },
+      { token: 'keyword',                 foreground: '569CD6' },
+      { token: 'keyword.control',         foreground: 'C586C0' },
+      { token: 'keyword.operator',        foreground: '569CD6' },
+      { token: 'storage.type',            foreground: '569CD6' },
+      { token: 'entity.name.function',    foreground: 'DCDCAA' },
+      { token: 'support.function',        foreground: 'DCDCAA' },
+      { token: 'entity.name.type',        foreground: '4EC9B0' },
+      { token: 'entity.name.class',       foreground: '4EC9B0' },
+      { token: 'support.class',           foreground: '4EC9B0' },
+      { token: 'variable',                foreground: '9CDCFE' },
+      { token: 'variable.other.readwrite',foreground: '9CDCFE' },
+      { token: 'variable.other.object',   foreground: '9CDCFE' },
+      { token: 'variable.parameter',      foreground: '9CDCFE' },
+      { token: 'constant.numeric',        foreground: 'B5CEA8' },
+      { token: 'constant.language',       foreground: '569CD6' },
+      { token: 'string',                  foreground: 'CE9178' },
+      { token: 'comment',                 foreground: '6A9955', fontStyle: 'italic' },
+      { token: 'punctuation.definition',  foreground: 'D4D4D4' },
     ],
     colors: {
       'editor.background': THEME_COLORS.editorBg,
@@ -100,43 +87,115 @@ function defineAppTheme(monaco: typeof MonacoType) {
 
 const EDITOR_OPTIONS: MonacoType.editor.IDiffEditorConstructionOptions = {
   readOnly: true,
+  originalEditable: false,
+  glyphMargin: true,         // enables the glyph column for hunk checkboxes
   minimap: { enabled: false },
-  fontSize: 12,
-  lineHeight: 18,
+  fontSize: 13,
+  lineHeight: 21,
   fontFamily: '"JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace',
   scrollBeyondLastLine: false,
   wordWrap: 'off',
-  renderSideBySide: true,      // overridden by splitView prop via onMount
+  renderSideBySide: true,
   ignoreTrimWhitespace: false,
   renderIndicators: true,
-  originalEditable: false,
 };
 
-export function GitDiffView({ diff, splitView }: GitDiffViewProps) {
-  const editorRef = useRef<MonacoType.editor.IStandaloneDiffEditor | null>(null);
+export function GitDiffView({
+  diff,
+  splitView,
+  changes,
+  stagedHunks,
+  onToggleHunk,
+  onDiffComputed,
+  fileKey,
+}: GitDiffViewProps) {
+  const editorRef  = useRef<MonacoType.editor.IStandaloneDiffEditor | null>(null);
+  const monacoRef  = useRef<typeof MonacoType | null>(null);
+  const decoRef    = useRef<MonacoType.editor.IEditorDecorationsCollection | null>(null);
+  // Stable refs — avoids stale closures inside Monaco event handlers.
+  const onDiffComputedRef = useRef(onDiffComputed);
+  const onToggleHunkRef   = useRef(onToggleHunk);
+  const changesRef        = useRef(changes);
+  onDiffComputedRef.current = onDiffComputed;
+  onToggleHunkRef.current   = onToggleHunk;
+  changesRef.current        = changes;
+
+  // Rebuild glyph decorations whenever changes or staging state updates.
+  useEffect(() => {
+    const monaco = monacoRef.current;
+    const editor = editorRef.current;
+    const col    = decoRef.current;
+    if (!monaco || !editor || !col || changes.length === 0) {
+      col?.clear();
+      return;
+    }
+    const modEditor = editor.getModifiedEditor();
+    const model     = modEditor.getModel();
+    if (!model) return;
+
+    const allStaged = stagedHunks === undefined;
+    const decorations: MonacoType.editor.IModelDeltaDecoration[] = changes.map((c, i) => {
+      // For pure deletions (modEnd=0), use the anchor line in modified.
+      const line    = c.modifiedStartLineNumber || 1;
+      const endLine = c.modifiedEndLineNumber > 0 ? c.modifiedEndLineNumber : line;
+      const staged  = allStaged || stagedHunks.has(i);
+      return {
+        range: new monaco.Range(line, 1, line, 1),  // first line only — one icon per hunk
+        options: {
+          glyphMarginClassName: staged ? 'git-hunk-checked' : 'git-hunk-unchecked',
+          glyphMarginHoverMessage: {
+            value: staged ? '**Click** to exclude from commit' : '**Click** to include in commit',
+          },
+        },
+      };
+    });
+    col.set(decorations);
+  }, [changes, stagedHunks]);
 
   const handleBeforeMount = useCallback((monaco: typeof MonacoType) => {
+    monacoRef.current = monaco;
     defineAppTheme(monaco);
   }, []);
 
-  const handleMount: DiffOnMount = useCallback(
-    (editor) => {
-      editorRef.current = editor;
-      editor.updateOptions({ renderSideBySide: splitView });
+  const handleMount: DiffOnMount = useCallback((editor) => {
+    editorRef.current = editor;
+    editor.updateOptions({ renderSideBySide: splitView });
 
-      // Scroll to the first diff hunk whenever Monaco finishes computing
-      // the diff (fires once after content is set, not on every keystroke).
-      editor.onDidUpdateDiff(() => {
-        const changes = editor.getLineChanges();
-        if (changes && changes.length > 0) {
-          editor.getModifiedEditor().revealLineInCenter(
-            changes[0].modifiedStartLineNumber,
-          );
-        }
-      });
-    },
-    [splitView],
-  );
+    const modEditor = editor.getModifiedEditor();
+
+    // Create the decoration collection once on mount.
+    decoRef.current = modEditor.createDecorationsCollection([]);
+
+    // Glyph margin click — find which hunk the clicked line belongs to.
+    modEditor.onMouseDown((e) => {
+      if (
+        monacoRef.current &&
+        e.target.type === monacoRef.current.editor.MouseTargetType.GUTTER_GLYPH_MARGIN
+      ) {
+        const lineNum = e.target.position?.lineNumber;
+        if (lineNum == null) return;
+        const idx = changesRef.current.findIndex((c) => {
+          const start = c.modifiedStartLineNumber || 1;
+          const end   = c.modifiedEndLineNumber > 0 ? c.modifiedEndLineNumber : start;
+          return lineNum >= start && lineNum <= end;
+        });
+        if (idx >= 0) onToggleHunkRef.current(idx);
+      }
+    });
+
+    // Fire onDiffComputed + scroll to first hunk each time Monaco recomputes.
+    editor.onDidUpdateDiff(() => {
+      const cs = editor.getLineChanges();
+      if (!cs) return;
+      onDiffComputedRef.current?.(cs);
+      if (cs.length > 0) {
+        const firstLine = cs[0].modifiedEndLineNumber === 0
+          ? cs[0].originalStartLineNumber
+          : cs[0].modifiedStartLineNumber;
+        modEditor.revealLineInCenter(firstLine);
+      }
+    });
+  }, [splitView]);
 
   if (!diff) {
     return (

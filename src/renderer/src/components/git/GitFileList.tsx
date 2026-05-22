@@ -6,7 +6,7 @@
 // "what changed" review.
 
 import { useEffect, useRef } from 'react';
-import { FolderGit2 } from 'lucide-react';
+import { Check, FolderGit2, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { GitFileEntry, GitFileStatus, GitRepo } from './types';
 
@@ -14,6 +14,10 @@ interface GitFileListProps {
   repos: GitRepo[];
   selected: GitFileEntry | null;
   onSelect: (file: GitFileEntry) => void;
+  stagedPaths: Set<string>;
+  onToggleStage: (file: GitFileEntry) => void;
+  /** Optional per-file hunk staging info for indeterminate state. */
+  hunkStates?: Map<string, { staged: number; total: number }>;
 }
 
 const STATUS_STYLES: Record<GitFileStatus, {
@@ -66,7 +70,7 @@ function splitPath(relativePath: string): { dir: string; name: string } {
   };
 }
 
-export function GitFileList({ repos, selected, onSelect }: GitFileListProps) {
+export function GitFileList({ repos, selected, onSelect, stagedPaths, onToggleStage, hunkStates }: GitFileListProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const allFiles = repos.flatMap((r) => r.files);
@@ -116,10 +120,10 @@ export function GitFileList({ repos, selected, onSelect }: GitFileListProps) {
           >
             <FolderGit2 className="h-3.5 w-3.5 shrink-0 text-accent" strokeWidth={1.75} />
             <div className="min-w-0 flex-1">
-              <span className="block truncate text-xs font-semibold text-fg">
+              <span className="block truncate text-[13px] font-semibold text-fg">
                 {repoLabel(repo.root)}
               </span>
-              <span className="block truncate font-mono text-[10px] text-fg-subtle">
+              <span className="block truncate font-mono text-[11px] text-fg-subtle">
                 {shortenRoot(repo.root)}
               </span>
             </div>
@@ -131,6 +135,11 @@ export function GitFileList({ repos, selected, onSelect }: GitFileListProps) {
           {/* ── File rows — indented under the repo header ── */}
           {repo.files.map((file) => {
             const isSelected = selected?.absolutePath === file.absolutePath;
+            const isStaged = stagedPaths.has(file.absolutePath);
+            const hs = hunkStates?.get(file.absolutePath);
+            // Indeterminate: file is staged but only some hunks are selected.
+            const isIndeterminate = isStaged && hs != null && hs.staged > 0 && hs.staged < hs.total;
+            const isFullyStaged = isStaged && (!hs || hs.staged === hs.total);
             const s = STATUS_STYLES[file.status];
             const { dir, name } = splitPath(file.relativePath);
             return (
@@ -139,17 +148,38 @@ export function GitFileList({ repos, selected, onSelect }: GitFileListProps) {
                 type="button"
                 onClick={() => onSelect(file)}
                 className={cn(
-                  'flex w-full items-center gap-2 py-1.5 pr-3 text-left transition-colors',
+                  'flex w-full items-center gap-2.5 py-2 pr-3 text-left transition-colors',
                   'focus-visible:outline-none',
                   isSelected
                     ? 'border-l-2 border-accent bg-accent/10 pl-[26px]'
                     : 'border-l-2 border-transparent pl-[26px] hover:bg-elevated',
                 )}
               >
+                {/* Stage checkbox with indeterminate support */}
+                <div
+                  role="checkbox"
+                  aria-checked={isIndeterminate ? 'mixed' : isFullyStaged}
+                  aria-label={`Stage ${file.relativePath}`}
+                  onClick={(e) => { e.stopPropagation(); onToggleStage(file); }}
+                  className={cn(
+                    'flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border transition-colors cursor-pointer',
+                    isFullyStaged || isIndeterminate
+                      ? 'border-accent bg-accent'
+                      : 'border-border-strong bg-transparent hover:border-accent/70',
+                  )}
+                >
+                  {isIndeterminate
+                    ? <Minus className="h-3 w-3 text-accent-fg" strokeWidth={3} />
+                    : isFullyStaged
+                      ? <Check className="h-3 w-3 text-accent-fg" strokeWidth={2.5} />
+                      : null
+                  }
+                </div>
+
                 {/* Status badge */}
                 <span
                   className={cn(
-                    'shrink-0 rounded px-1 py-0.5 font-mono text-[10px] font-bold leading-none',
+                    'shrink-0 rounded px-1.5 py-0.5 font-mono text-[11px] font-bold leading-none',
                     s.badgeClasses,
                   )}
                 >
@@ -158,11 +188,11 @@ export function GitFileList({ repos, selected, onSelect }: GitFileListProps) {
 
                 {/* Filename (status-colored) + directory (muted) */}
                 <span className="min-w-0 flex-1">
-                  <span className={cn('block truncate font-mono text-[12px] font-medium', s.nameClasses)}>
+                  <span className={cn('block truncate font-mono text-[13px] font-medium', s.nameClasses)}>
                     {name}
                   </span>
                   {dir && (
-                    <span className="block truncate font-mono text-[10px] text-fg-subtle">
+                    <span className="block truncate font-mono text-[11px] text-fg-subtle">
                       {dir}
                     </span>
                   )}

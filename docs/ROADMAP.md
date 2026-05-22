@@ -8,23 +8,23 @@ What's in, what's coming, and what's intentionally out of scope.
 
 | Capability                     | Detail                                                                                                                                                                                                                       |
 |--------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Anthropic API key**          | Direct API connection — works with any Anthropic-tier account                                                                                                                                                                |
+| **Anthropic API key**          | Direct API connection - works with any Anthropic-tier account                                                                                                                                                                |
 | **Claude Pro/Max OAuth**       | Sign in via PKCE flow; token auto-refresh                                                                                                                                                                                    |
 | **GitHub Copilot**             | Device-flow OAuth; live model discovery; mid-session token refresh; Copilot quota display                                                                                                                                    |
-| **Built-in agent tools**       | Read, Write, Edit, Bash, Grep, Glob, WebFetch, WebSearch, Task — via `claude_code` SDK preset (Anthropic backend). Pi/Copilot backend has its own equivalent set excluding Task.                                             |
-| **Subagents (Anthropic only)** | Task tool available on Anthropic connections — model can spawn subagents within a turn. Not available on Copilot/Pi backend.                                                                                                 |
-| **MCP servers**                | stdio + HTTP/SSE transports, consent gate, encrypted secrets — managed through the Extensions panel                                                                                                                          |
+| **Built-in agent tools**       | Read, Write, Edit, Bash, Grep, Glob, WebFetch, WebSearch, Task - via `claude_code` SDK preset (Anthropic backend). Pi/Copilot backend has its own equivalent set excluding Task.                                             |
+| **Subagents (Anthropic only)** | Task tool available on Anthropic connections - model can spawn subagents within a turn. Not available on Copilot/Pi backend.                                                                                                 |
+| **MCP servers**                | stdio + HTTP/SSE transports, consent gate, encrypted secrets - managed through the Extensions panel                                                                                                                          |
 | **Extensions**                 | MCP-backed, CLI-bound, and guide-only variants; drop a directory into `<userData>/extensions/`                                                                                                                               |
 | **Skills**                     | `SKILL.md` files invoked with `@slug`; global tier under `<userData>/skills/`                                                                                                                                                |
 | **@-mention picker**           | Extensions and Skills surfaced as first-class citizens in the mention picker alongside files                                                                                                                                 |
 | **Projects**                   | Group sessions by folder with name + color; per-project defaults for connection, model, permission mode; sidebar filter and color dots                                                                                       |
 | **Sessions**                   | Full persistence (`messages.jsonl` + `session.json`); resume across restarts; SDK session ID preserved for resumable turns                                                                                                   |
 | **Compaction**                 | Persistent inline divider at compaction boundaries with token delta; survives reload                                                                                                                                         |
-| **Permission modes**           | Plan (no mutations), Ask (per-tool prompt), Auto (bypass) — per session and global default                                                                                                                                   |
+| **Permission modes**           | Plan (no mutations), Ask (per-tool prompt), Auto (bypass) - per session and global default                                                                                                                                   |
 | **Safe bash auto-allow**       | ~55 read-only bash commands auto-allowed in Ask mode; dangerous constructs (`$()`, redirects, `&`, env assignment, `find -exec`) always blocked. Both backends covered.                                                      |
 | **Mid-turn steering**          | Inject a message (with attachments) into a live agent turn without cancelling it                                                                                                                                             |
 | **Project context**            | Auto-discovers `CLAUDE.md` / `AGENTS.md` / `copilot-instructions.md` recursively; injected into every turn; configurable names                                                                                               |
-| **User Preferences**           | Name, timezone, location, language, free-text notes — injected into every system prompt                                                                                                                                      |
+| **User Preferences**           | Name, timezone, location, language, free-text notes - injected into every system prompt                                                                                                                                      |
 | **Encrypted credentials**      | API keys + OAuth tokens via Electron `safeStorage` (OS keychain)                                                                                                                                                             |
 | **Thinking / reasoning**       | Extended thinking with collapsible panels                                                                                                                                                                                    |
 | **Tool diff UI**               | Inline unified diff + split-view modal for Edit/Write tool calls                                                                                                                                                             |
@@ -36,49 +36,48 @@ What's in, what's coming, and what's intentionally out of scope.
 | **SDD workspace panel**        | Native Spec-Driven Development panel: entity cards, phase badges, artifact viewer, constitution viewer, interactive task checkboxes, file-system watchers, lazy rule injection, active feature pinning, phase action buttons |
 | **SDD project wizard**         | In-app `specify init` launch when no `.specify/` directory is found                                                                                                                                                          |
 | **Git diff review modal**      | Full-screen modal (`Cmd+G` or chat header button). Pure `git status` + `git diff HEAD` showing uncommitted changes. Left panel: file list grouped by git root with `M`/`N`/`D`/`R` color-coded status, `↑↓` keyboard nav. Right panel: Monaco DiffEditor, split/unified toggle, VS Code Dark+ theme, auto-scroll to first hunk. Multi-repo workspace support. |
+| **Git commit flow**            | Extends Cmd+G modal. File-level checkboxes + hunk-level staging via Monaco glyph margin icons (one per diff hunk, left gutter of modified pane). Partial-hunk commits use `git hash-object + update-index` so disk file is never touched. Commit panel: 6-row textarea, `Cmd+Enter` submit, amend checkbox (pre-fills last message, restores on uncheck, amber UI), multi-repo footer shows which repos will be committed. |
 | **Keyboard shortcut map**      | "Keyboard Shortcuts" section in Settings listing all available shortcuts (`Enter`, `Cmd+Enter`, `Esc`, `Shift+Enter`, `Cmd+G`). Static table, no rebinding. |
 
 ---
 
 ## What's coming
 
-These are understood, scoped, and on the roadmap — just not shipped yet.
+These are understood, scoped, and on the roadmap - just not shipped yet.
 
 ### 🔴 High priority
 
 | What                             | Notes                                                                                                                                                                                                                                                                                                  |
 |----------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Hooks / lifecycle automation** | Per-session hooks that fire shell commands on lifecycle events: `on_turn_done`, `on_file_write`, `on_tool_use`. Closes the agent feedback loop automatically — runs tests, typechecks, linting, or `gh pr create` without the user having to ask. MVP: a simple command config per session or project. |
-| **Turn summary card (chat-native)** | After a turn completes, a single collapsed card appended to the assistant message: *"N files changed in this turn"*. Expands to show all Edit/Write diffs from that turn aggregated — same `DiffPart` renderer and `parseDiffInput()` logic, just rolled up into one card instead of individual chips. Purely session/tool-call data, no git involved. Works in non-git directories. |
+| **Hooks / lifecycle automation** | Per-session hooks that fire shell commands on lifecycle events: `on_turn_done`, `on_file_write`, `on_tool_use`. Closes the agent feedback loop automatically - runs tests, typechecks, linting, or `gh pr create` without the user having to ask. MVP: a simple command config per session or project. |
 
 ### 🟡 Medium priority
 
 | What | Notes |
 |------|-------|
-| **Git commit flow (extends Cmd+G)** | Stage files (file-level checkboxes in the left panel) + commit message box + commit. For line-level control: the modified Monaco pane is editable — user trims what they don’t want to commit (e.g. local env changes); on commit, a patch is generated from `(HEAD → Monaco content)` and applied **index-only** (`git apply --cached`) so the disk file is never touched. Multi-repo aware: commits per git root. |
-| **Terminal (Cmd+T)** | Full persistent terminal overlay using `xterm.js` + `node-pty`. Real PTY — interactive processes (`npm run dev`, ssh, etc.) work correctly. Session survives Cmd+T close/reopen (toggle, not restart). Shell inherits the active session’s working directory on first open. Bridges the gap between AI turn output and manual verification (run tests, paste failures into chat). |
-| **Search Everything (Double Shift)** | Double-tap Shift opens a unified search modal — mirrors IntelliJ’s “Search Everywhere”. Two modes: **Files** (fuzzy filename search, existing `files:search` IPC) and **In files** (full-text/regex grep across codebase). Selecting any result opens a read-only Monaco file viewer inline. Double Shift detected via keydown timestamp delta (≪300 ms, reset if any other key fires between the two Shifts). |
+| **Terminal (Cmd+T)** | Full persistent terminal overlay using `xterm.js` + `node-pty`. Real PTY - interactive processes (`npm run dev`, ssh, etc.) work correctly. Session survives Cmd+T close/reopen (toggle, not restart). Shell inherits the active session's working directory on first open. Bridges the gap between AI turn output and manual verification (run tests, paste failures into chat). |
+| **Search Everything (Double Shift)** | Double-tap Shift opens a unified search modal - mirrors IntelliJ's "Search Everywhere". Two modes: **Files** (fuzzy filename search, existing `files:search` IPC) and **In files** (full-text/regex grep across codebase). Selecting any result opens a read-only Monaco file viewer inline. Double Shift detected via keydown timestamp delta (≪300 ms, reset if any other key fires between the two Shifts). |
 
 ### 🟢 Long-term
 
 | What                                  | Notes                                                                                                                                                                                                                                      |
 |---------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Built-in browser / visual preview** | Render the user's app, capture screenshots, run E2E checks — all within MA. High value for front-end work; high engineering cost.                                                                                                          |
-| **SDD: Task → session queue**         | Parse `tasks.md` checkboxes and offer "Spawn sessions for all tasks" — each unchecked task becomes a child session pre-loaded with `spec.md` + `plan.md` context, checks its box on completion. Depends on parallel session support above. |
+| **Built-in browser / visual preview** | Render the user's app, capture screenshots, run E2E checks - all within MA. High value for front-end work; high engineering cost.                                                                                                          |
+| **SDD: Task → session queue**         | Parse `tasks.md` checkboxes and offer "Spawn sessions for all tasks" - each unchecked task becomes a child session pre-loaded with `spec.md` + `plan.md` context, checks its box on completion. Depends on parallel session support above. |
 
 ---
 
 ## What's intentionally out of scope
 
-These are explicit non-goals — they belong to a different product surface or a different strategic lane.
+These are explicit non-goals - they belong to a different product surface or a different strategic lane.
 
-- **Additional LLM providers** (OpenAI direct, Gemini, Bedrock, Ollama) — no current plans; Copilot already proxies a
+- **Additional LLM providers** (OpenAI direct, Gemini, Bedrock, Ollama) - no current plans; Copilot already proxies a
   range of models for users who need multi-provider access
-- **IDE integration / inline completions** — chat-first is the product; the market is moving toward agent-driven
+- **IDE integration / inline completions** - chat-first is the product; the market is moving toward agent-driven
   workflows anyway
-- **Codebase semantic indexing** — Claude Code and Codex also don't do this; file tools + large context window is the
+- **Codebase semantic indexing** - Claude Code and Codex also don't do this; file tools + large context window is the
   correct approach for this product class
-- **Self-hosted server / web UI** — desktop-only by design
-- **Cron / scheduled agent runs** — a separate scheduling engine, not a chat app concern
-- **Custom rendering blocks** (datatable, html-preview, pdf-preview) — no tool architecture to produce them
-- **Theming / multi-language** — system theme only
+- **Self-hosted server / web UI** - desktop-only by design
+- **Cron / scheduled agent runs** - a separate scheduling engine, not a chat app concern
+- **Custom rendering blocks** (datatable, html-preview, pdf-preview) - no tool architecture to produce them
+- **Theming / multi-language** - system theme only

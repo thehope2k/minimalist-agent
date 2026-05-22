@@ -576,6 +576,23 @@ const api = {
       absolutePath: string;
       status: string;
     }) => ipcRenderer.invoke('git:diff', args),
+    commitFiles: (args: {
+      repoRoot: string;
+      files: Array<{ relativePath: string; absolutePath: string; status: string; content?: string }>;
+      message: string;
+      amend?: boolean;
+    }) => ipcRenderer.invoke('git:commitFiles', args),
+    lastCommitMessage: (repoRoot: string) => ipcRenderer.invoke('git:lastCommitMessage', repoRoot),
+    branchName: (repoRoot: string) => ipcRenderer.invoke('git:branchName', repoRoot),
+    lastCommitFiles: (repoRoot: string) => ipcRenderer.invoke('git:lastCommitFiles', repoRoot),
+    lastCommitDiff: (repoRoot: string) => ipcRenderer.invoke('git:lastCommitDiff', repoRoot),
+    generateCommitMessage: (args: {
+      connectionSlug: string;
+      model?: string;
+      diffContext: string;
+      sessionId?: string;
+      cwd?: string;
+    }) => ipcRenderer.invoke('git:generateCommitMessage', args),
   },
 };
 

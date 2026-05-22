@@ -136,6 +136,12 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
         label: 'Open / close Git diff review modal',
         condition: 'Requires an active working directory',
       },
+      {
+        macKeys: ['⌘', '↵'],
+        winKeys: ['Ctrl', 'Enter'],
+        label: 'Submit commit or amend',
+        condition: 'Commit message textarea is focused',
+      },
     ],
   },
 ];

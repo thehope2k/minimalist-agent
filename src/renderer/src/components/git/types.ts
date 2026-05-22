@@ -2,6 +2,11 @@
 // These mirror the main-process types but live in the renderer so
 // components can import them without a cross-process import.
 
+import type * as MonacoType from 'monaco-editor';
+
+/** Monaco line change — re-exported so components don't need a direct monaco-editor import. */
+export type LineChange = MonacoType.editor.ILineChange;
+
 export type GitFileStatus = 'M' | 'A' | 'D' | 'R' | '?';
 
 export interface GitFileEntry {
@@ -21,3 +26,6 @@ export interface GitFileDiff {
   modified: string;
   language: string;
 }
+
+/** Per-file content edited in the Monaco modified pane. Key = absolutePath. */
+export type EditedContents = Map<string, string>;

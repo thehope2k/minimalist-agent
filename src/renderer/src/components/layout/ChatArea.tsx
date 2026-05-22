@@ -489,6 +489,9 @@ export function ChatArea({
       {gitModalOpen && (
         <GitDiffModal
           cwd={cwd ?? null}
+          connectionSlug={sessionConnectionSlug || undefined}
+          model={sessionModel || undefined}
+          sessionId={activeSession ?? undefined}
           onClose={() => setGitModalOpen(false)}
         />
       )}

@@ -1193,4 +1193,74 @@ export function registerIpc(): void {
       return getFileDiff(args.repoRoot, args.relativePath, args.absolutePath, args.status);
     },
   );
+
+  ipcMain.handle(
+    'git:commitFiles',
+    async (
+      _e,
+      args: {
+        repoRoot: string;
+        files: Array<{ relativePath: string; absolutePath: string; status: string; content?: string }>;
+        message: string;
+        amend?: boolean;
+      },
+    ) => {
+      const { commitFiles } = await import('./git/commit');
+      return commitFiles(
+        args.repoRoot,
+        args.files as import('./git/commit').FileToCommit[],
+        args.message,
+        args.amend,
+      );
+    },
+  );
+
+  ipcMain.handle('git:lastCommitMessage', async (_e, repoRoot: string) => {
+    const { getLastCommitMessage } = await import('./git/commit');
+    return getLastCommitMessage(repoRoot);
+  });
+
+  ipcMain.handle('git:branchName', async (_e, repoRoot: string) => {
+    const { getBranchName } = await import('./git/commit');
+    return getBranchName(repoRoot);
+  });
+
+  ipcMain.handle('git:lastCommitFiles', async (_e, repoRoot: string) => {
+    const { getLastCommitFiles } = await import('./git/commit');
+    return getLastCommitFiles(repoRoot);
+  });
+
+  ipcMain.handle('git:lastCommitDiff', async (_e, repoRoot: string) => {
+    const { getLastCommitDiff } = await import('./git/commit');
+    return getLastCommitDiff(repoRoot);
+  });
+
+  ipcMain.handle(
+    'git:generateCommitMessage',
+    async (
+      _e,
+      args: { connectionSlug: string; model?: string; diffContext: string; sessionId?: string; cwd?: string },
+    ) => {
+      try {
+        const { resolveAuthForSlug } = await import('./auth/resolve');
+        const { listConnections } = await import('./storage/connections');
+        const { generateCommitMessage } = await import('./agent/commit-message');
+        const auth = await resolveAuthForSlug(args.connectionSlug);
+        const conn = listConnections().find((c) => c.slug === args.connectionSlug);
+        const result = await generateCommitMessage({
+          auth,
+          diffContext: args.diffContext,
+          model: args.model,
+          connectionSlug: args.connectionSlug,
+          chatSessionId: args.sessionId,
+          piAuthProvider: conn?.piAuthProvider,
+          cwd: args.cwd,
+        });
+        return result;
+      } catch (e) {
+        console.error('[git:generateCommitMessage] error:', e);
+        return null;
+      }
+    },
+  );
 }

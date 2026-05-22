@@ -799,6 +799,24 @@ export interface AppApi {
       absolutePath: string;
       status: string;
     }) => Promise<GitFileDiff>;
+    /** Stage specific files (with optional line-level custom content) and commit. */
+    commitFiles: (args: {
+      repoRoot: string;
+      files: Array<{ relativePath: string; absolutePath: string; status: string; content?: string }>;
+      message: string;
+      amend?: boolean;
+    }) => Promise<{ ok: boolean; error?: string }>;
+    lastCommitMessage: (repoRoot: string) => Promise<string | null>;
+    branchName: (repoRoot: string) => Promise<string | null>;
+    lastCommitFiles: (repoRoot: string) => Promise<string | null>;
+    lastCommitDiff: (repoRoot: string) => Promise<string | null>;
+    generateCommitMessage: (args: {
+      connectionSlug: string;
+      model?: string;
+      diffContext: string;
+      sessionId?: string;
+      cwd?: string;
+    }) => Promise<string | null>;
   };
 }
 
