@@ -452,6 +452,8 @@ const api = {
       ipcRenderer.invoke('fs:pickDirectory'),
     readFile: (absolutePath: string): Promise<string | null> =>
       ipcRenderer.invoke('fs:readFile', absolutePath),
+    readFileBase64: (absolutePath: string): Promise<string | null> =>
+      ipcRenderer.invoke('fs:readFileBase64', absolutePath),
   },
   files: {
     search: (args: { root: string; query: string; limit?: number }): Promise<unknown[]> =>

@@ -37,7 +37,8 @@ What's in, what's coming, and what's intentionally out of scope.
 | **SDD project wizard**         | In-app `specify init` launch when no `.specify/` directory is found                                                                                                                                                          |
 | **Git diff review modal**      | Full-screen modal (`Cmd+G` or chat header button). Pure `git status` + `git diff HEAD` showing uncommitted changes. Left panel: file list grouped by git root with `M`/`N`/`D`/`R` color-coded status, `↑↓` keyboard nav. Right panel: Monaco DiffEditor, split/unified toggle, VS Code Dark+ theme, auto-scroll to first hunk. Multi-repo workspace support. |
 | **Git commit flow**            | Extends Cmd+G modal. File-level checkboxes + hunk-level staging via Monaco glyph margin icons (one per diff hunk, left gutter of modified pane). Partial-hunk commits use `git hash-object + update-index` so disk file is never touched. Commit panel: 6-row textarea, `Cmd+Enter` submit, amend checkbox (pre-fills last message, restores on uncheck, amber UI), multi-repo footer shows which repos will be committed. |
-| **Keyboard shortcut map**      | "Keyboard Shortcuts" section in Settings listing all available shortcuts (`Enter`, `Cmd+Enter`, `Esc`, `Shift+Enter`, `Cmd+G`). Static table, no rebinding. |
+| **Keyboard shortcut map**      | "Keyboard Shortcuts" section in Settings listing all available shortcuts (`Enter`, `Cmd+Enter`, `Esc`, `Shift+Enter`, `Cmd+G`, `Shift Shift`). Static table, no rebinding. |
+| **Search Everything (Double Shift)** | Double-tap Shift (<300 ms delta, any other key resets) opens a unified search palette — mirrors IntelliJ's "Search Everywhere" All tab. Single input, two progressive sections: **Files** (fuzzy filename search, instant, reuses `files:search` IPC + client-side scoring) and **In files** (full-text grep via bundled `@vscode/ripgrep`, debounced 250 ms, `asarUnpack` so binary runs from disk). Selecting any result opens a smart file viewer: Markdown renders with the full chat renderer (remark-gfm, remark-math/KaTeX, Shiki code blocks, Mermaid, JSON tree) plus a Source toggle; images (PNG/JPG/GIF/WebP/SVG/AVIF) open in a ZoomPan canvas with scroll-to-zoom + drag-to-pan; JSON/JSONC files show an interactive `@uiw/react-json-view` tree (falls back to Monaco for invalid JSON); all other files open in a read-only Monaco editor that jumps to the matched line for grep results. |
 
 ---
 
@@ -56,7 +57,7 @@ These are understood, scoped, and on the roadmap - just not shipped yet.
 | What | Notes |
 |------|-------|
 | **Terminal (Cmd+T)** | Full persistent terminal overlay using `xterm.js` + `node-pty`. Real PTY - interactive processes (`npm run dev`, ssh, etc.) work correctly. Session survives Cmd+T close/reopen (toggle, not restart). Shell inherits the active session's working directory on first open. Bridges the gap between AI turn output and manual verification (run tests, paste failures into chat). |
-| **Search Everything (Double Shift)** | Double-tap Shift opens a unified search modal - mirrors IntelliJ's "Search Everywhere". Two modes: **Files** (fuzzy filename search, existing `files:search` IPC) and **In files** (full-text/regex grep across codebase). Selecting any result opens a read-only Monaco file viewer inline. Double Shift detected via keydown timestamp delta (≪300 ms, reset if any other key fires between the two Shifts). |
+
 
 ### 🟢 Long-term
 

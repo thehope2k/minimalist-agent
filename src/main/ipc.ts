@@ -1076,6 +1076,20 @@ export function registerIpc(): void {
     }
   });
 
+  ipcMain.handle('fs:readFileBase64', (_e, absolutePath: string): string | null => {
+    // Used for binary files (images). 20 MB cap — larger assets are rarely
+    // useful to preview and would bloat the IPC payload.
+    const MAX_BYTES = 20 * 1024 * 1024;
+    const { existsSync, statSync, readFileSync } = require('node:fs') as typeof import('node:fs');
+    if (!absolutePath || !existsSync(absolutePath)) return null;
+    try {
+      if (statSync(absolutePath).size > MAX_BYTES) return null;
+      return readFileSync(absolutePath).toString('base64');
+    } catch {
+      return null;
+    }
+  });
+
   // ---- SDD ---------------------------------------------------------------
 
   ipcMain.handle('sdd:getSessionState', (_e, sessionId: string) => {

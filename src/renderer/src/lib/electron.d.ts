@@ -695,6 +695,8 @@ export interface AppApi {
     pickDirectory: () => Promise<string | null>;
     /** Read a file's text content. Returns null if file is missing, binary, or >2 MB. */
     readFile: (absolutePath: string) => Promise<string | null>;
+    /** Read a file as base64. Returns null if missing or >20 MB. Used for image previews. */
+    readFileBase64: (absolutePath: string) => Promise<string | null>;
   };
   files: {
     /** BFS file/folder search rooted at `root`, respecting `.gitignore`. */
