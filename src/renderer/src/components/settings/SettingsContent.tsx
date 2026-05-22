@@ -1,5 +1,6 @@
 import { AIPanel } from './panels/AIPanel';
 import { AppPanel } from './panels/AppPanel';
+import { KeyboardShortcutsPanel } from './panels/KeyboardShortcutsPanel';
 import { PermissionsPanel } from './panels/PermissionsPanel';
 import { PreferencesPanel } from './panels/PreferencesPanel';
 import { ProjectsPanel } from './panels/ProjectsPanel';
@@ -27,6 +28,8 @@ export function SettingsContent({ category }: { category: SettingsCategory }) {
           <PreferencesPanel />
         ) : category === 'projects' ? (
           <ProjectsPanel />
+        ) : category === 'shortcuts' ? (
+          <KeyboardShortcutsPanel />
         ) : (
           <StubPanel title={meta?.label ?? 'Settings'} />
         )}

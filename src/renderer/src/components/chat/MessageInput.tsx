@@ -30,10 +30,7 @@ import type {
 import type { ChatMessage } from '@/lib/chat';
 import type { CompactionNotice as CompactionNoticeT } from '@/hooks/useChat';
 
-/** macOS uses ⌘, every other platform uses Ctrl. */
-const IS_MAC =
-  typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
-const SHORTCUT_MOD_SYMBOL = IS_MAC ? '⌘' : 'Ctrl';
+import { MOD as SHORTCUT_MOD_SYMBOL } from '@/lib/shortcuts';
 
 type SendArgs = {
   text: string;

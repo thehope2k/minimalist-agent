@@ -1,5 +1,6 @@
 import {
   Cog,
+  Keyboard,
   Sparkles,
   Folders,
   Shield,
@@ -13,6 +14,7 @@ export const SETTINGS_CATEGORIES = [
   { id: 'projects',    label: 'Projects',    hint: 'Group sessions by project',     icon: Folders },
   { id: 'permissions', label: 'Permissions', hint: 'Explore mode rules',            icon: Shield },
   { id: 'preferences', label: 'Preferences', hint: 'Name, timezone, language, notes',  icon: User },
+  { id: 'shortcuts',    label: 'Shortcuts',   hint: 'Keyboard shortcut reference',       icon: Keyboard },
 ] as const;
 
 export type SettingsCategory = (typeof SETTINGS_CATEGORIES)[number]['id'];
