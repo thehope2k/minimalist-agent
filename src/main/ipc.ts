@@ -160,7 +160,7 @@ export interface ChatSendRequest {
   /** Caller-provided id used to correlate streamed events to a UI message. */
   id: string;
   /**
-   * Connection slug — main resolves it into a fresh `AnthropicAuth`
+   * Connection slug - main resolves it into a fresh `AnthropicAuth`
    * server-side (refreshing OAuth tokens if needed). The renderer never
    * touches the access token directly. See `src/main/auth/resolve.ts`.
    */
@@ -176,7 +176,7 @@ export interface ChatSendRequest {
   /** Permission mode for this turn ('plan' | 'ask' | 'auto'). */
   permissionMode?: PermissionMode;
   /**
-   * Owning session id — required so per-session "Allow for session"
+   * Owning session id - required so per-session "Allow for session"
    * approvals can be remembered across turns. Optional only because the
    * very first send happens before the renderer has called sessions:create;
    * useChat.ts always provides it once the session exists.
@@ -194,13 +194,13 @@ const inFlight = new Map<string, AbortController>();
  */
 interface TurnInfo {
   providerType: 'anthropic' | 'pi';
-  /** For Pi turns — used to find the right subprocess. */
+  /** For Pi turns - used to find the right subprocess. */
   chatSessionId?: string;
 }
 const turnInfo = new Map<string, TurnInfo>();
 
 /**
- * Pending permission prompts — one entry per outstanding renderer round
+ * Pending permission prompts - one entry per outstanding renderer round
  * trip. Keyed by reqId; cleared on response, abort, or window close.
  */
 const pendingPermissions = new Map<
@@ -339,7 +339,7 @@ export function registerIpc(): void {
   /**
    * Fetch the current-month premium-request quota snapshot for a Copilot
    * connection. Uses the same copilot_internal/user endpoint that IntelliJ
-   * and VS Code use — works for all plan types including org-managed seats.
+   * and VS Code use - works for all plan types including org-managed seats.
    */
   ipcMain.handle(
     'copilot:fetchQuota',
@@ -349,7 +349,7 @@ export function registerIpc(): void {
     ) => {
       try {
         // copilot_internal/user uses the GitHub OAuth token (long-lived,
-        // stored as refreshToken) — same credential as /copilot_internal/v2/token.
+        // stored as refreshToken) - same credential as /copilot_internal/v2/token.
         const cred = getCredential(args.connectionSlug);
         if (!cred || cred.type !== 'oauth' || !cred.refreshToken) {
           return { error: 'No GitHub OAuth token stored for this connection.' };
@@ -368,30 +368,31 @@ export function registerIpc(): void {
 
   // ---- ChatGPT Plus (Codex) model discovery ---------------------------
 
-  // Returns the Pi SDK’s static model registry for openai-codex.
-  // No network call — the SDK ships the list. Used by ChatGptFlow to
-  // populate the model picker at connection-setup time.
+  // Official ChatGPT Plus Codex models per openai.com/codex/pricing (May 2026).
+  // gpt-5.3-codex-spark is Pro-only research preview; gpt-5.1/5.2 variants
+  // are not in the Plus tier table and return 400 'not supported'.
+  const CHATGPT_PLUS_MODEL_IDS = new Set(['gpt-5.5', 'gpt-5.4', 'gpt-5.4-mini', 'gpt-5.3-codex']);
+
   ipcMain.handle('chatgpt:getModels', async (): Promise<ModelDef[]> => {
     const { getModels } = await import('@mariozechner/pi-ai');
     const raw = getModels('openai-codex' as never) as Array<{
       id: string; name: string; contextWindow: number;
     }>;
-    const models = raw.map((m) => ({
-      id: m.id,
-      name: m.name,
-      shortName: m.name,
-      description: 'ChatGPT Plus · Codex',
-      contextWindow: m.contextWindow ?? 272_000,
-    }));
-    // Sort: Codex-branded models first (they work on Plus), base GPT models after.
-    // gpt-5.3-codex, gpt-5.2-codex etc confirmed working on Plus.
-    models.sort((a, b) => {
-      const aCodex = a.id.includes('codex') ? 0 : 1;
-      const bCodex = b.id.includes('codex') ? 0 : 1;
-      if (aCodex !== bCodex) return aCodex - bCodex;
-      return a.id.localeCompare(b.id);
-    });
-    return models;
+    return raw
+      .filter((m) => CHATGPT_PLUS_MODEL_IDS.has(m.id))
+      .sort((a, b) => {
+        // gpt-5.3-codex first — best balance of quality and usage limits on Plus
+        if (a.id === 'gpt-5.3-codex') return -1;
+        if (b.id === 'gpt-5.3-codex') return 1;
+        return b.id.localeCompare(a.id);
+      })
+      .map((m) => ({
+        id: m.id,
+        name: m.name,
+        shortName: m.name,
+        description: 'ChatGPT Plus · Codex',
+        contextWindow: m.contextWindow ?? 272_000,
+      }));
   });
 
 
@@ -470,7 +471,7 @@ export function registerIpc(): void {
           const mode = sessionMeta?.sddMode ?? 'off';
           if (mode !== 'off') {
             // Lazy init for system-prompt injection before the renderer calls
-            // sdd:initSessionState. Watchers are NOT started here — the renderer
+            // sdd:initSessionState. Watchers are NOT started here - the renderer
             // initiates the full setup (with watchers) via sdd:initSessionState.
             const { entities, cliMissing, scannedDepth, cliVersion } = await sddScanForEntities(req.cwd);
             const pinnedSlug = sessionMeta?.activeFeatureSlug ?? null;
@@ -622,7 +623,7 @@ export function registerIpc(): void {
     async (_e, slug: string): Promise<{ ok: true } | { ok: false; error: ReturnType<typeof parseError> }> => {
       try {
         const auth = await resolveAuthForSlug(slug);
-        // Tiniest possible round-trip — runAgentChat with maxTurns=1 and a
+        // Tiniest possible round-trip - runAgentChat with maxTurns=1 and a
         // throwaway prompt. Pi/Copilot pathways don't run the SDK; for now
         // a successful auth resolve is sufficient validation there.
         const meta = listConnections().find((c) => c.slug === slug);
@@ -659,7 +660,7 @@ export function registerIpc(): void {
   ipcMain.handle('settings:get', () => getSettings());
   ipcMain.handle('settings:save', (_e, settings: AiSettings) => {
     saveSettings(settings);
-    // Context file names changed — clear the discovery cache so the new list
+    // Context file names changed - clear the discovery cache so the new list
     // takes effect on the next turn without requiring an app restart.
     invalidateContextFileCache();
   });
@@ -1089,7 +1090,7 @@ export function registerIpc(): void {
             pinnedSlug,
           );
 
-          // Update watchers for all entities — not just newly discovered ones.
+          // Update watchers for all entities - not just newly discovered ones.
           // watchEntity now handles existing entities by adding any directories
           // (e.g. specs/) that were created since the last watch setup. This
           // ensures the phase badge updates even when specs/ is created after
