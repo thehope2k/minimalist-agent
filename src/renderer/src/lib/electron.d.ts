@@ -500,6 +500,33 @@ export interface UpdateInfo {
   error?: string;
 }
 
+/* ---------- Git diff review ---------- */
+
+export type GitFileStatus = 'M' | 'A' | 'D' | 'R' | '?';
+
+export interface GitFileEntry {
+  absolutePath: string;
+  relativePath: string;
+  status: GitFileStatus;
+  repoRoot: string;
+}
+
+export interface GitRepo {
+  root: string;
+  files: GitFileEntry[];
+}
+
+export interface GitStatusResult {
+  repos: GitRepo[];
+  error?: string;
+}
+
+export interface GitFileDiff {
+  original: string;
+  modified: string;
+  language: string;
+}
+
 export interface AppApi {
   update: {
     getInfo: () => Promise<UpdateInfo>;
@@ -758,6 +785,20 @@ export interface AppApi {
     onArtifactChanged: (cb: (sessionId: string) => void) => () => void;
     /** Returns an unsubscribe function. Fired when CWD changes for a session. */
     onStateChanged: (cb: (sessionId: string) => void) => () => void;
+  };
+  git: {
+    /**
+     * Discover all git repos under `cwd` and return their changed files
+     * (`git status --porcelain`). Supports multi-repo workspaces.
+     */
+    status: (cwd: string) => Promise<GitStatusResult>;
+    /** Get the two text strings (original vs modified) for Monaco DiffEditor. */
+    diff: (args: {
+      repoRoot: string;
+      relativePath: string;
+      absolutePath: string;
+      status: string;
+    }) => Promise<GitFileDiff>;
   };
 }
 

@@ -35,6 +35,8 @@ What's in, what's coming, and what's intentionally out of scope.
 | **Auto-update**                | `electron-updater` pulling from GitHub Releases                                                                                                                                                                              |
 | **SDD workspace panel**        | Native Spec-Driven Development panel: entity cards, phase badges, artifact viewer, constitution viewer, interactive task checkboxes, file-system watchers, lazy rule injection, active feature pinning, phase action buttons |
 | **SDD project wizard**         | In-app `specify init` launch when no `.specify/` directory is found                                                                                                                                                          |
+| **Git diff review modal**      | Full-screen modal (`Cmd+G` or chat header button). Pure `git status` + `git diff HEAD` showing uncommitted changes. Left panel: file list grouped by git root with `M`/`N`/`D`/`R` color-coded status, `↑↓` keyboard nav. Right panel: Monaco DiffEditor, split/unified toggle, VS Code Dark+ theme, auto-scroll to first hunk. Multi-repo workspace support. |
+| **Keyboard shortcut map**      | "Keyboard Shortcuts" section in Settings listing all available shortcuts (`Enter`, `Cmd+Enter`, `Esc`, `Shift+Enter`, `Cmd+G`). Static table, no rebinding. |
 
 ---
 
@@ -47,13 +49,11 @@ These are understood, scoped, and on the roadmap — just not shipped yet.
 | What                             | Notes                                                                                                                                                                                                                                                                                                  |
 |----------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | **Hooks / lifecycle automation** | Per-session hooks that fire shell commands on lifecycle events: `on_turn_done`, `on_file_write`, `on_tool_use`. Closes the agent feedback loop automatically — runs tests, typechecks, linting, or `gh pr create` without the user having to ask. MVP: a simple command config per session or project. |
-| **Git diff review modal (`Cmd+G`)** | Full-screen modal triggered by `Cmd+G` (zero footprint when not in use). Shows all uncommitted changes via `git status` + `git diff HEAD`: file list on the left, Monaco DiffEditor on the right for syntax-highlighted split-view diff. Closes the review→feedback loop without switching to an IDE. Uses `@monaco-editor/react` for diff quality (syntax highlighting, hunk navigation, word-level highlights). IPC: `git:status` and `git:diff` handlers in `src/main/ipc.ts`. Intentionally a modal not a side panel — it overlays the chat temporarily, `Esc` or `Cmd+G` closes it. |
+| **Turn summary card (chat-native)** | After a turn completes, a single collapsed card appended to the assistant message: *"N files changed in this turn"*. Expands to show all Edit/Write diffs from that turn aggregated — same `DiffPart` renderer and `parseDiffInput()` logic, just rolled up into one card instead of individual chips. Purely session/tool-call data, no git involved. Works in non-git directories. |
 
 ### 🟡 Medium priority
 
-| What | Notes |
-|------|-------|
-| **Keyboard shortcut map in Settings** | A "Keyboard Shortcuts" section in the Settings panel listing all available shortcuts. The app currently has very few (`Enter`, `Cmd+Enter`, `Esc`, `Shift+Enter`) — as new shortcuts are added (e.g. `Cmd+G` for git diff), they should be discoverable in one place. Simple static table, no rebinding needed at first. |
+_Nothing currently scoped here._
 
 ### 🟢 Long-term
 

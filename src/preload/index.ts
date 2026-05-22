@@ -568,6 +568,15 @@ const api = {
       return () => ipcRenderer.removeListener('sdd:state-changed', listener);
     },
   },
+  git: {
+    status: (cwd: string) => ipcRenderer.invoke('git:status', cwd),
+    diff: (args: {
+      repoRoot: string;
+      relativePath: string;
+      absolutePath: string;
+      status: string;
+    }) => ipcRenderer.invoke('git:diff', args),
+  },
 };
 
 contextBridge.exposeInMainWorld('api', api);

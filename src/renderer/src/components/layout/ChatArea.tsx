@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { X, PanelRight } from 'lucide-react';
+import { GitBranch, X, PanelRight } from 'lucide-react';
 import { ChatScroll } from '../chat/ChatScroll';
 import { MessageInput } from '../chat/MessageInput';
 import { MessageList } from '../chat/MessageList';
@@ -21,6 +21,7 @@ import { SddPhaseBadge } from '@/components/sdd/SddPhaseBadge';
 import { SddWizardDialog } from '@/components/sdd/SddWizardDialog';
 import { SddWorkspacePanel } from './chat-area/SddWorkspacePanel';
 import { deriveEntityPhase, taskProgress } from '@/lib/sdd';
+import { GitDiffModal } from '@/components/git/GitDiffModal';
 
 type Props = {
   sessionId: string | null;
@@ -299,6 +300,19 @@ export function ChatArea({
 
   const activeSession = activeSessionId ?? sessionId;
 
+  // Git diff modal state — Cmd+G toggles it, button in the header opens it.
+  const [gitModalOpen, setGitModalOpen] = useState(false);
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'g' && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        setGitModalOpen((v) => !v);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
   const handleSddModeChange = (next: 'auto' | 'off') => {
     setSddMode(next);
     void sdd.setMode(next);
@@ -344,6 +358,11 @@ export function ChatArea({
           </h2>
         </div>
         <div className="flex flex-1 items-center justify-end gap-1">
+          <IconButton
+            icon={GitBranch}
+            label="Git changes (Cmd+G)"
+            onClick={() => setGitModalOpen(true)}
+          />
           <IconButton
             icon={PanelRight}
             label={sddPanelOpen ? 'Close workspace panel' : 'Open workspace panel'}
@@ -464,6 +483,13 @@ export function ChatArea({
             onSessionCreated(newSessionId);
             sdd.refreshScan();
           }}
+        />
+      )}
+
+      {gitModalOpen && (
+        <GitDiffModal
+          cwd={cwd ?? null}
+          onClose={() => setGitModalOpen(false)}
         />
       )}
     </main>

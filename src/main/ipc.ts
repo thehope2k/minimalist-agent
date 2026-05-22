@@ -1175,4 +1175,22 @@ export function registerIpc(): void {
     }
     sddClearState(sessionId);
   });
+
+  // ---- Git diff review (Cmd+G modal) ------------------------------------
+
+  ipcMain.handle('git:status', async (_e, cwd: string) => {
+    const { getGitStatus } = await import('./git/status');
+    return getGitStatus(cwd);
+  });
+
+  ipcMain.handle(
+    'git:diff',
+    async (
+      _e,
+      args: { repoRoot: string; relativePath: string; absolutePath: string; status: string },
+    ) => {
+      const { getFileDiff } = await import('./git/diff');
+      return getFileDiff(args.repoRoot, args.relativePath, args.absolutePath, args.status);
+    },
+  );
 }

@@ -59,11 +59,9 @@ type Props = {
   view: View;
   onViewChange: (v: View) => void;
   onToggleSidebar: () => void;
-  /** Drives the toggle icon — open vs closed glyph. */
   sidebarCollapsed: boolean;
   projectFilter: ProjectFilter;
   onProjectFilterChange: (f: ProjectFilter) => void;
-  /** Open Settings → Projects (used by the "Manage projects…" entry). */
   onManageProjects: () => void;
 };
 
