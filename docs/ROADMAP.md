@@ -53,7 +53,11 @@ These are understood, scoped, and on the roadmap — just not shipped yet.
 
 ### 🟡 Medium priority
 
-_Nothing currently scoped here._
+| What | Notes |
+|------|-------|
+| **Git commit flow (extends Cmd+G)** | Stage files (file-level checkboxes in the left panel) + commit message box + commit. For line-level control: the modified Monaco pane is editable — user trims what they don’t want to commit (e.g. local env changes); on commit, a patch is generated from `(HEAD → Monaco content)` and applied **index-only** (`git apply --cached`) so the disk file is never touched. Multi-repo aware: commits per git root. |
+| **Terminal (Cmd+T)** | Full persistent terminal overlay using `xterm.js` + `node-pty`. Real PTY — interactive processes (`npm run dev`, ssh, etc.) work correctly. Session survives Cmd+T close/reopen (toggle, not restart). Shell inherits the active session’s working directory on first open. Bridges the gap between AI turn output and manual verification (run tests, paste failures into chat). |
+| **Search Everything (Double Shift)** | Double-tap Shift opens a unified search modal — mirrors IntelliJ’s “Search Everywhere”. Two modes: **Files** (fuzzy filename search, existing `files:search` IPC) and **In files** (full-text/regex grep across codebase). Selecting any result opens a read-only Monaco file viewer inline. Double Shift detected via keydown timestamp delta (≪300 ms, reset if any other key fires between the two Shifts). |
 
 ### 🟢 Long-term
 
