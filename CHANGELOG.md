@@ -5,6 +5,47 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.11.0] — 2026-05-23
+
+Adds Search Everywhere, smart file viewer, Ollama support, git diff review, and turn summary cards; several model management fixes.
+
+### Added
+
+**Search Everywhere**
+
+- Double-tap Shift opens a unified Search Everywhere palette — search across file names and file contents in one place
+- Bundled `@vscode/ripgrep` for fast content search; common build/dep directories are excluded from results
+- Smart file viewer routes results to the right renderer automatically: Markdown, images, JSON, or syntax-highlighted code
+
+**Git tooling**
+
+- Git diff review modal (Cmd+G) — browse and review staged/unstaged diffs without leaving the app
+- Turn summary card in chat shows net per-file diff counts after each agent turn
+- Improved AI commit message quality and amend-context awareness
+
+**Session management**
+
+- Bulk session delete/archive — select multiple sessions and act on them at once
+
+**Settings & models**
+
+- Keyboard shortcut map added to Settings — browse every keybinding in one place
+- Ollama (local model) connection support — add a local Ollama endpoint as a connection
+- ChatGPT Plus models now loaded dynamically from the Pi SDK registry via IPC
+- Dynamic provider identity in system prompt reflects the active connection
+
+### Fixed
+
+**Model management**
+
+- ChatGPT Plus connection now filters to the officially supported model set
+- Codex tier label corrected — reverted Pro-only messaging; Codex works on Plus with supported models
+- `set_model` is now sent when the model changes in an existing Pi subprocess, keeping the backend in sync
+- `piAuthProvider` from connection metadata is correctly passed into `runAgentChat`
+- `openai-responses` models are filtered out of the Copilot connection model list
+
+---
+
 ## [0.10.0] — 2026-05-20
 
 Adds ChatGPT Plus (Codex) as a supported connection provider.
