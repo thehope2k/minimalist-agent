@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { getDraft, setDraft } from '@/lib/input-drafts';
 import { ArrowUp, AtSign, Paperclip, Square } from 'lucide-react';
 import { IconButton } from '../ui';
 import { ConnectionModelPicker } from './ConnectionModelPicker';
@@ -106,23 +107,19 @@ export function MessageInput({
   onPendingMessageConsumed,
 }: Props) {
   const [value, setValue] = useState('');
-  // Per-session text drafts — keyed by sessionId (null = unsaved new chat).
-  // When sessionId changes we save the current text for the session we're
-  // leaving and restore whatever the destination session had typed before.
-  // This mirrors the Slack / VSCode model: each thread remembers its draft.
-  const draftMapRef   = useRef<Map<string | null, string>>(new Map());
-  const draftValueRef = useRef(value);          // always-current mirror of `value`
+  // Per-session text drafts — delegated to the module-level `input-drafts`
+  // store so SessionsPanel can observe the null-slot state without prop
+  // threading. The pattern is identical: save on leave, restore on enter.
+  const draftValueRef = useRef(value); // always-current mirror, avoids stale closure
   draftValueRef.current = value;
   const draftPrevIdRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {
     const prevId = draftPrevIdRef.current;
     if (prevId !== undefined) {
-      // Persist what the user had typed for the session we're leaving.
-      draftMapRef.current.set(prevId, draftValueRef.current);
+      setDraft(prevId, draftValueRef.current);
     }
     draftPrevIdRef.current = sessionId;
-    // Restore the saved draft for the incoming session (empty string if none).
-    setValue(draftMapRef.current.get(sessionId) ?? '');
+    setValue(getDraft(sessionId));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]); // intentionally excludes `value` — draftValueRef handles staleness
   // Fills the editor when a phase action button sets a pending message.

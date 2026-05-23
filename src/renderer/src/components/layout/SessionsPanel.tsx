@@ -5,6 +5,7 @@ import { useProjects } from '@/hooks/useProjects';
 import { deleteSession, updateSessionMeta } from '@/lib/sessions';
 import { Button, IconButton } from '../ui';
 import { cn } from '@/lib/utils';
+import { useHasNewSessionDraft } from '@/hooks/useHasNewSessionDraft';
 import type { ProjectFilter, View } from './TopBar';
 import { SessionRow } from './sessions-panel/SessionRow';
 import { groupByDate } from './sessions-panel/utils';
@@ -31,6 +32,7 @@ export function SessionsPanel({
 }: Props) {
   const sessions = useSessions();
   const projects = useProjects() ?? [];
+  const hasNewSessionDraft = useHasNewSessionDraft();
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -147,7 +149,7 @@ export function SessionsPanel({
       )}
 
       <div className="scroll-thin flex-1 overflow-y-auto px-2 pb-3">
-        {view === 'all' && (
+        {view === 'all' && (activeId == null || hasNewSessionDraft) && (
           <NewSessionRow active={activeId == null} onSelect={onNewSession} />
         )}
 
