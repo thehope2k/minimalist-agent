@@ -63,6 +63,19 @@ function createWindow(icon?: Electron.NativeImage | null) {
     return { action: 'deny' };
   });
 
+  // Block Cmd+R / Ctrl+R (and the hard-reload Cmd+Shift+R) in production.
+  // In dev the Vite HMR server is running and reloads are harmless; in a
+  // packaged app a reload wipes all React state, aborts live agent turns,
+  // and can corrupt in-flight session writes.
+  if (!process.env.ELECTRON_RENDERER_URL) {
+    win.webContents.on('before-input-event', (event, input) => {
+      const mod = input.meta || input.control;
+      if (mod && input.key.toLowerCase() === 'r' && !input.alt) {
+        event.preventDefault();
+      }
+    });
+  }
+
   if (process.env.ELECTRON_RENDERER_URL) {
     win.loadURL(process.env.ELECTRON_RENDERER_URL);
   } else {
