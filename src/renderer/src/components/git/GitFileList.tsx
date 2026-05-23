@@ -16,6 +16,7 @@ interface GitFileListProps {
   onSelect: (file: GitFileEntry) => void;
   stagedPaths: Set<string>;
   onToggleStage: (file: GitFileEntry) => void;
+  onToggleRepoStage: (repo: GitRepo) => void;
   /** Optional per-file hunk staging info for indeterminate state. */
   hunkStates?: Map<string, { staged: number; total: number }>;
 }
@@ -70,7 +71,7 @@ function splitPath(relativePath: string): { dir: string; name: string } {
   };
 }
 
-export function GitFileList({ repos, selected, onSelect, stagedPaths, onToggleStage, hunkStates }: GitFileListProps) {
+export function GitFileList({ repos, selected, onSelect, stagedPaths, onToggleStage, onToggleRepoStage, hunkStates }: GitFileListProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const allFiles = repos.flatMap((r) => r.files);
@@ -118,6 +119,33 @@ export function GitFileList({ repos, selected, onSelect, stagedPaths, onToggleSt
             )}
             title={repo.root}
           >
+            {/* Repo-level stage-all checkbox */}
+            {(() => {
+              const allStaged = repo.files.every((f) => stagedPaths.has(f.absolutePath));
+              const someStaged = repo.files.some((f) => stagedPaths.has(f.absolutePath));
+              const isIndeterminate = someStaged && !allStaged;
+              return (
+                <div
+                  role="checkbox"
+                  aria-checked={isIndeterminate ? 'mixed' : allStaged}
+                  aria-label={allStaged ? 'Unstage all files in repo' : 'Stage all files in repo'}
+                  onClick={(e) => { e.stopPropagation(); onToggleRepoStage(repo); }}
+                  className={cn(
+                    'flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded-sm border transition-colors',
+                    allStaged || isIndeterminate
+                      ? 'border-accent bg-accent'
+                      : 'border-border-strong bg-transparent hover:border-accent/70',
+                  )}
+                >
+                  {isIndeterminate
+                    ? <Minus className="h-3 w-3 text-accent-fg" strokeWidth={3} />
+                    : allStaged
+                      ? <Check className="h-3 w-3 text-accent-fg" strokeWidth={2.5} />
+                      : null
+                  }
+                </div>
+              );
+            })()}
             <FolderGit2 className="h-3.5 w-3.5 shrink-0 text-accent" strokeWidth={1.75} />
             <div className="min-w-0 flex-1">
               <span className="block truncate text-[13px] font-semibold text-fg">

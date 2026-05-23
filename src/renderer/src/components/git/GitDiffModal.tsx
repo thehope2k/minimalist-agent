@@ -160,6 +160,35 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
     }
   }, [stagedPaths, stagedHunks, currentChanges.length]);
 
+  const handleToggleRepoStage = useCallback((repo: GitRepo) => {
+    const allStaged = repo.files.every((f) => stagedPaths.has(f.absolutePath));
+    if (allStaged) {
+      // All staged → unstage every file in this repo.
+      setStagedPaths((prev) => {
+        const n = new Set(prev);
+        repo.files.forEach((f) => n.delete(f.absolutePath));
+        return n;
+      });
+      setStagedHunks((prev) => {
+        const n = new Map(prev);
+        repo.files.forEach((f) => n.set(f.absolutePath, new Set()));
+        return n;
+      });
+    } else {
+      // Some or none staged → stage every file in this repo.
+      setStagedPaths((prev) => {
+        const n = new Set(prev);
+        repo.files.forEach((f) => n.add(f.absolutePath));
+        return n;
+      });
+      setStagedHunks((prev) => {
+        const n = new Map(prev);
+        repo.files.forEach((f) => n.delete(f.absolutePath));
+        return n;
+      });
+    }
+  }, [stagedPaths]);
+
   // Derive hunk state map for file list indeterminate display.
   const hunkStates = useMemo(() => {
     const map = new Map<string, { staged: number; total: number }>();
@@ -319,6 +348,7 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
             onSelect={setSelected}
             stagedPaths={stagedPaths}
             onToggleStage={handleToggleStage}
+            onToggleRepoStage={handleToggleRepoStage}
             hunkStates={hunkStates}
           />
         </div>
