@@ -4,6 +4,7 @@ import { useSessions } from '@/hooks/useSessions';
 import { useProjects } from '@/hooks/useProjects';
 import { deleteSession, updateSessionMeta } from '@/lib/sessions';
 import { Button, IconButton } from '../ui';
+import { cn } from '@/lib/utils';
 import type { ProjectFilter, View } from './TopBar';
 import { SessionRow } from './sessions-panel/SessionRow';
 import { groupByDate } from './sessions-panel/utils';
@@ -146,7 +147,9 @@ export function SessionsPanel({
       )}
 
       <div className="scroll-thin flex-1 overflow-y-auto px-2 pb-3">
-        {view === 'all' && activeId == null && <NewSessionRow />}
+        {view === 'all' && (
+          <NewSessionRow active={activeId == null} onSelect={onNewSession} />
+        )}
 
         {items.length === 0 && !(view === 'all' && activeId == null) ? (
           <div className="px-3 py-6 text-center text-xs text-fg-subtle">
@@ -187,19 +190,34 @@ export function SessionsPanel({
   );
 }
 
-function NewSessionRow() {
+function NewSessionRow({ active, onSelect }: { active: boolean; onSelect?: () => void }) {
   return (
-    <div className="relative">
-      <span className="absolute inset-y-1.5 left-0 z-10 w-0.5 rounded-r-sm bg-accent" />
-      <div className="flex w-full items-center gap-3 rounded-lg bg-elevated px-3 py-2.5">
-        <Circle className="h-4 w-4 shrink-0 text-fg-subtle" strokeWidth={1.75} />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="flex-1 truncate text-[0.95rem] text-fg">New session</span>
-            <span className="shrink-0 text-xs text-fg-subtle">now</span>
-          </div>
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cn(
+        'relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors',
+        active ? 'bg-elevated' : 'hover:bg-elevated/60 text-fg-muted',
+      )}
+    >
+      {active && (
+        <span className="absolute inset-y-1.5 left-0 z-10 w-0.5 rounded-r-sm bg-accent" />
+      )}
+      <Circle
+        className={cn('h-4 w-4 shrink-0', active ? 'text-fg-subtle' : 'text-fg-subtle/50')}
+        strokeWidth={1.75}
+      />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span className={cn(
+            'flex-1 truncate text-[0.95rem]',
+            active ? 'text-fg' : 'text-fg-muted',
+          )}>
+            New session
+          </span>
+          {active && <span className="shrink-0 text-xs text-fg-subtle">now</span>}
         </div>
       </div>
-    </div>
+    </button>
   );
 }
