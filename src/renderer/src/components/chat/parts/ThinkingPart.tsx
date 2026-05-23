@@ -29,7 +29,7 @@ export function ThinkingPart({ text }: { text: string }) {
         )}
       </button>
       {open && (
-        <div className="border-t border-border px-3 py-2 text-xs italic text-fg-subtle">
+        <div className="border-t border-border px-3 py-2 text-sm italic text-fg-subtle">
           <Markdown text={text} />
         </div>
       )}
