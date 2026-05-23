@@ -400,6 +400,68 @@ export function deleteSession(id: string): void {
 }
 
 /**
+ * Create a new session that branches off `parentId` at the given message.
+ * All messages *before* `upToMessageId` are copied into the new session,
+ * giving the AI the full shared context without the divergence point itself
+ * (the caller pre-fills that text in the renderer input so the user can
+ * edit and re-send it as the first message of the new thread).
+ *
+ * Returns the new `SessionMeta`, or `null` when the parent or message id
+ * can't be resolved.
+ */
+export function branchSession(
+  parentId: string,
+  upToMessageId: string,
+): SessionMeta | null {
+  const parent = loadSession(parentId);
+  if (!parent) return null;
+
+  const cutIdx = parent.messages.findIndex((m) => m.id === upToMessageId);
+  if (cutIdx < 0) return null;
+
+  const id = genId();
+  ensureSessionDir(id);
+  const now = Date.now();
+
+  const parentTitle = parent.meta.title?.trim();
+  const title = parentTitle
+    ? `Branch: ${parentTitle}`.slice(0, 80)
+    : 'New session';
+
+  const meta: SessionMeta = {
+    id,
+    title,
+    archived: false,
+    createdAt: now,
+    lastMessageAt: now,
+    workingDirectory: parent.meta.workingDirectory,
+    projectId: parent.meta.projectId ?? null,
+    connectionSlug: parent.meta.connectionSlug,
+    model: parent.meta.model,
+    permissionMode: parent.meta.permissionMode,
+    sddMode: parent.meta.sddMode,
+    activeFeatureSlug: parent.meta.activeFeatureSlug,
+  };
+  save(metaSchema(id), meta);
+
+  const messagesToCopy = parent.messages.slice(0, cutIdx);
+  if (messagesToCopy.length > 0) {
+    writeFileSync(
+      messagesPath(id),
+      messagesToCopy.map((m) => JSON.stringify(m)).join('\n') + '\n',
+      'utf-8',
+    );
+    // Reflect the last copied message's timestamp in the session list.
+    meta.lastMessageAt = messagesToCopy[messagesToCopy.length - 1]!.createdAt;
+    save(metaSchema(id), meta);
+  } else {
+    writeFileSync(messagesPath(id), '', 'utf-8');
+  }
+
+  return meta;
+}
+
+/**
  * Drop all messages from `firstDroppedId` onward (inclusive). Used by the
  * “retry” flow so the failed user/assistant pair doesn't pile up in the
  * persisted log when the user replays the turn.

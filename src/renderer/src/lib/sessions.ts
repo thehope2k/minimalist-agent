@@ -128,6 +128,20 @@ export async function deleteSession(id: string): Promise<void> {
 }
 
 /**
+ * Create a branch of `parentId` that contains all messages before
+ * `upToMessageId`. The caller is expected to pre-fill the branching
+ * message text in the new session's input.
+ */
+export async function branchSession(
+  parentId: string,
+  upToMessageId: string,
+): Promise<SessionMeta | null> {
+  const meta = await window.api.sessions.branch(parentId, upToMessageId);
+  if (meta) await reload();
+  return meta;
+}
+
+/**
  * Regenerate a session's title via the cheap LLM. Uses the workspace's
  * default connection. Throws on no-connection or no-messages — callers
  * surface the error in the UI.

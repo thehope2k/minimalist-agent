@@ -134,6 +134,7 @@ import { readArtifact as sddReadArtifact, toggleTaskCheckbox as sddToggleTaskChe
 import { runSpecifyInit as sddRunSpecifyInit } from './sdd/wizard';
 import {
   appendMessage,
+  branchSession,
   clearProjectFromSessions,
   createSession,
   deleteSession,
@@ -768,6 +769,9 @@ export function registerIpc(): void {
   ipcMain.handle('sessions:revealInFolder', (_e, id: string) => {
     shell.showItemInFolder(sessionPath(id));
   });
+  ipcMain.handle('sessions:branch', (_e, parentId: string, upToMessageId: string) =>
+    branchSession(parentId, upToMessageId),
+  );
   ipcMain.handle('sessions:listFiles', (_e, id: string) => listSessionFiles(id));
   ipcMain.handle('sessions:revealFile', (_e, absPath: string) => {
     shell.showItemInFolder(absPath);

@@ -686,6 +686,7 @@ export interface AppApi {
     ) => Promise<SessionMeta>;
     truncateFrom: (id: string, firstDroppedId: string) => Promise<number>;
     delete: (id: string) => Promise<void>;
+    branch: (parentId: string, upToMessageId: string) => Promise<SessionMeta | null>;
     revealInFolder: (id: string) => Promise<void>;
     listFiles: (id: string) => Promise<SessionFileNode[]>;
     revealFile: (absPath: string) => Promise<void>;

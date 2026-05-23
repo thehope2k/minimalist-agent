@@ -10,7 +10,7 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '../ui';
 import { useResizablePanels } from '@/hooks/useResizablePanels';
 import { useChat } from '@/hooks/useChat';
 import { useAiData } from '@/hooks/useAiData';
-import { loadFullSession, setSessionPermissionMode, updateSessionMeta } from '@/lib/sessions';
+import { branchSession, loadFullSession, setSessionPermissionMode, updateSessionMeta } from '@/lib/sessions';
 import { findProject } from '@/lib/projects';
 import { useProjects } from '@/hooks/useProjects';
 import { homedir } from '@/lib/path';
@@ -270,6 +270,30 @@ export function ChatArea({
     });
   }, [aiData, sessionConnectionSlug, sessionModel, retry, cwd, permissionMode]);
 
+  // Ref used to pre-fill the input after navigating to a branched session.
+  // Set synchronously before onSessionCreated so the effect below catches it
+  // on the very first render with the new sessionId.
+  const pendingBranchDraftRef = useRef<{ sessionId: string; text: string } | null>(null);
+  useEffect(() => {
+    const draft = pendingBranchDraftRef.current;
+    if (draft && draft.sessionId === sessionId) {
+      setPendingMessage(draft.text);
+      pendingBranchDraftRef.current = null;
+    }
+  }, [sessionId]);
+
+  const handleBranch = useCallback(async (messageId: string) => {
+    if (!sessionId) return;
+    const msg = messages.find((m) => m.id === messageId);
+    if (!msg || msg.role !== 'user') return;
+    const text = msg.parts.map((p) => (p.kind === 'text' ? p.text : '')).join('');
+    const meta = await branchSession(sessionId, messageId);
+    if (!meta) return;
+    // Store the draft BEFORE navigation so the effect above can pick it up.
+    pendingBranchDraftRef.current = { sessionId: meta.id, text };
+    onSessionCreated(meta.id);
+  }, [sessionId, messages, onSessionCreated]);
+
   /**
    * Auto-send a seeded submission (e.g. from "+ New Skill"). We wait
    * until the AI data has loaded and there's no in-flight stream, then
@@ -429,6 +453,7 @@ export function ChatArea({
                     onRetry={handleRetry}
                     isStreaming={isStreaming}
                     onContinue={isStreaming ? undefined : handleContinue}
+                    onBranch={isStreaming ? undefined : (id) => void handleBranch(id)}
                   />
                 </div>
               )}

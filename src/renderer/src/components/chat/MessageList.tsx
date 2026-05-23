@@ -7,11 +7,13 @@ export function MessageList({
   onRetry,
   isStreaming,
   onContinue,
+  onBranch,
 }: {
   messages: ChatMessage[];
   onRetry?: () => void;
   isStreaming?: boolean;
   onContinue?: () => void;
+  onBranch?: (messageId: string) => void;
 }) {
   const retriableId = findLastRetriableId(messages);
   return (
@@ -26,6 +28,10 @@ export function MessageList({
             onRetry={m.id === retriableId ? onRetry : undefined}
             isRetrying={m.id === retriableId && !!isStreaming}
             onContinue={onContinue}
+            onBranch={m.role === 'user' && !m.isStreaming && onBranch
+              ? () => onBranch(m.id)
+              : undefined
+            }
           />
         ),
       )}

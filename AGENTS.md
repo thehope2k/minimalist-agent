@@ -53,6 +53,21 @@ parent-flow/                     # subdirectory for the pieces
 
 See `components/settings/AddConnectionDialog.tsx` + `connection-flow/`.
 
+## Dependencies
+
+Packages used **only in the renderer** (React components, UI libs, syntax
+highlighters, etc.) belong in `devDependencies`. Packages required by the
+**main process at runtime** (node-pty, electron-updater, @mariozechner/\*,
+sharp, …) belong in `dependencies`.
+
+Reason: electron-builder packs every `dependency` into the app alongside the
+already-bundled `out/renderer/`. Putting renderer libs in `dependencies` ships
+them twice and bloats the installer by 200+ MB.
+
+After editing `package.json` (even just moving between the two sections),
+run `node scripts/rebuild-native.mjs` before `npm run dev` to ensure
+`node-pty` is compiled against the correct Electron version.
+
 ## Process boundaries
 
 - Renderer talks to main only via `window.api` (typed in `lib/electron.d.ts`).

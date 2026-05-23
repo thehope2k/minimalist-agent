@@ -436,6 +436,8 @@ const api = {
       ipcRenderer.invoke('sessions:truncateFrom', id, firstDroppedId),
     delete: (id: string): Promise<void> =>
       ipcRenderer.invoke('sessions:delete', id),
+    branch: (parentId: string, upToMessageId: string): Promise<unknown> =>
+      ipcRenderer.invoke('sessions:branch', parentId, upToMessageId),
     revealInFolder: (id: string): Promise<void> =>
       ipcRenderer.invoke('sessions:revealInFolder', id),
     listFiles: (id: string): Promise<unknown[]> =>

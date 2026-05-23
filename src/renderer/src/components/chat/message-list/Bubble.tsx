@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, ChevronsRight, Copy } from 'lucide-react';
+import { Check, ChevronsRight, Copy, GitBranch } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '../../ui';
 import { readAttachmentBase64 } from '@/lib/attachments';
@@ -21,11 +21,13 @@ export function Bubble({
   onRetry,
   isRetrying,
   onContinue,
+  onBranch,
 }: {
   message: ChatMessage;
   onRetry?: () => void;
   isRetrying?: boolean;
   onContinue?: () => void;
+  onBranch?: () => void;
 }) {
   const isUser = m.role === 'user';
   const parts = m.parts;
@@ -60,6 +62,7 @@ export function Bubble({
           <UserMessageActions
             text={parts.map((p) => (p.kind === 'text' ? p.text : '')).join('')}
             attachments={m.attachments ?? []}
+            onBranch={onBranch}
           />
         </>
       ) : (
@@ -150,18 +153,33 @@ function PartView({ part }: { part: MessagePart }) {
   }
 }
 
-function UserMessageActions({ text, attachments }: { text: string; attachments: StoredAttachment[] }) {
-  const [state, setState] = useState<'idle' | 'copied' | 'error'>('idle');
+function UserMessageActions({ text, attachments, onBranch }: {
+  text: string;
+  attachments: StoredAttachment[];
+  onBranch?: () => void;
+}) {
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
+  const [branchState, setBranchState] = useState<'idle' | 'branching'>('idle');
 
   const handleCopy = async () => {
     try {
       await copyMessage(text, attachments);
-      setState('copied');
-      window.setTimeout(() => setState('idle'), 1500);
+      setCopyState('copied');
+      window.setTimeout(() => setCopyState('idle'), 1500);
     } catch (e) {
       console.error('Copy failed:', e);
-      setState('error');
-      window.setTimeout(() => setState('idle'), 1500);
+      setCopyState('error');
+      window.setTimeout(() => setCopyState('idle'), 1500);
+    }
+  };
+
+  const handleBranch = async () => {
+    if (!onBranch || branchState === 'branching') return;
+    setBranchState('branching');
+    try {
+      await onBranch();
+    } finally {
+      setBranchState('idle');
     }
   };
 
@@ -177,14 +195,31 @@ function UserMessageActions({ text, attachments }: { text: string; attachments: 
           'transition-opacity duration-150 hover:bg-elevated hover:text-fg',
           'opacity-0 group-hover:opacity-100 focus-visible:opacity-100',
         )}
-        title={state === 'error' ? 'Copy failed' : 'Copy message'}
+        title={copyState === 'error' ? 'Copy failed' : 'Copy message'}
       >
-        {state === 'copied' ? (
+        {copyState === 'copied' ? (
           <><Check className="h-3 w-3" strokeWidth={2} /><span>Copied</span></>
         ) : (
-          <><Copy className="h-3 w-3" strokeWidth={1.75} /><span>{state === 'error' ? 'Failed' : 'Copy'}</span></>
+          <><Copy className="h-3 w-3" strokeWidth={1.75} /><span>{copyState === 'error' ? 'Failed' : 'Copy'}</span></>
         )}
       </button>
+      {onBranch && (
+        <button
+          type="button"
+          onClick={() => void handleBranch()}
+          disabled={branchState === 'branching'}
+          className={cn(
+            'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-fg-subtle',
+            'transition-opacity duration-150 hover:bg-elevated hover:text-fg',
+            'opacity-0 group-hover:opacity-100 focus-visible:opacity-100',
+            branchState === 'branching' && 'opacity-60 cursor-wait',
+          )}
+          title="Branch conversation from here"
+        >
+          <GitBranch className="h-3 w-3" strokeWidth={1.75} />
+          <span>{branchState === 'branching' ? 'Branching…' : 'Branch'}</span>
+        </button>
+      )}
     </div>
   );
 }
