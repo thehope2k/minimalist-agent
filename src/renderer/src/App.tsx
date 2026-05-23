@@ -18,6 +18,7 @@ import { TooltipProvider } from './components/ui';
 import { useSkills } from './hooks/useSkills';
 import { useExtensions } from './hooks/useExtensions';
 import { useSessions } from './hooks/useSessions';
+import { deleteSession } from './lib/sessions';
 import { reload as reloadSkills } from './lib/skills';
 import { reload as reloadExtensions } from './lib/extensions';
 
@@ -107,6 +108,10 @@ export default function App() {
   // without needing to be re-registered on every toggle.
   const terminalOpenRef = useRef(false);
   terminalOpenRef.current = terminalOpen;
+  // Stable refs for the delete shortcut — avoids re-registering the handler
+  // on every session list or active-id change.
+  const activeSessionIdRef = useRef(activeSessionId);
+  activeSessionIdRef.current = activeSessionId;
   // Stable ref for handleNewSession — defined below but needed in the effect.
   const handleNewSessionRef = useRef<() => void>(() => {});
 
@@ -155,6 +160,21 @@ export default function App() {
         return;
       }
 
+      // Cmd+Delete — delete the active session (with confirmation)
+      if (e.key === 'Backspace' && !e.shiftKey && !e.altKey) {
+        const sid = activeSessionIdRef.current;
+        if (!sid) return; // no active session (new-session state)
+        const t = e.target as HTMLElement;
+        // Don't fire when the user is typing in a text field.
+        if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable) return;
+        e.preventDefault();
+        const session = sessionsRef.current?.find((s) => s.id === sid);
+        const label = session?.title?.trim() || 'this session';
+        if (!window.confirm(`Delete "${label}"? This cannot be undone.`)) return;
+        void deleteSession(sid).then(() => setActiveSessionId(null));
+        return;
+      }
+
       // Resize shortcuts — only when terminal is open and focus not in a text field
       if (!terminalOpenRef.current || isTextInput(e)) return;
 
@@ -190,6 +210,10 @@ export default function App() {
   const skills = useSkills();
   const extensions = useExtensions();
   const sessions = useSessions();
+  // Stable ref for the delete shortcut — avoids re-registering the handler
+  // on every session list or active-id change.
+  const sessionsRef = useRef(sessions);
+  sessionsRef.current = sessions;
   const activeSkill = inSkills
     ? skills?.find((s) => s.slug === activeSkillSlug) ?? null
     : null;

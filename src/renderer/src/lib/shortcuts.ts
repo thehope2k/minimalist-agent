@@ -107,6 +107,12 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
         label: 'New session',
       },
       {
+        macKeys: ['⌘', '⌫'],
+        winKeys: ['Ctrl', 'Backspace'],
+        label: 'Delete active session',
+        condition: 'Focus not in a text field',
+      },
+      {
         macKeys: ['↵'],
         winKeys: ['Enter'],
         label: 'Commit session rename',
