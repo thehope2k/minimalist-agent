@@ -295,6 +295,8 @@ export interface StoredMessage {
   stopReason?: string;
   /** Token counts from the SDK's `result` message for this turn. */
   usage?: AgentUsage;
+  /** Total wall-clock duration of the turn in milliseconds. */
+  durationMs?: number;
   /**
    * Origin tag for messages submitted from a non-chat surface (e.g.
    * `'add-skill'` from the New Skill dialog). The renderer uses this to
