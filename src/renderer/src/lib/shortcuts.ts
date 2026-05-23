@@ -193,6 +193,11 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
         label: 'Open / close Search Everywhere palette',
         condition: 'Double-tap Shift in <300 ms; any other key resets the sequence',
       },
+      {
+        macKeys: ['⌘', 'E'],
+        winKeys: ['Ctrl', 'E'],
+        label: 'Open / close Recent Files palette',
+      },
     ],
   },
 ];

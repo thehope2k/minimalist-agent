@@ -75,6 +75,7 @@ What's shipped, what's coming, and what's intentionally out of scope.
 | Capability | Detail |
 |---|---|
 | **Search Everything (Double Shift)** | Double-tap Shift (<300 ms) opens a unified search palette — mirrors IntelliJ's "Search Everywhere". Two progressive sections: **Files** (fuzzy filename search, instant, `files:search` IPC + client-side scoring) and **In files** (full-text grep via bundled `@vscode/ripgrep`, debounced 250 ms, `asarUnpack` so binary runs from disk). Results open a smart file viewer: Markdown renders with full chat renderer (remark-gfm, KaTeX, Shiki, Mermaid, JSON tree) plus Source toggle; images open in ZoomPan canvas (scroll-to-zoom, drag-to-pan); JSON/JSONC shows interactive `@uiw/react-json-view` tree; all other files open in read-only Monaco that jumps to the matched line |
+| **Recent Files (Cmd+E)** | Palette of the 30 most recently opened files, most-recent first, persisted in `localStorage`. Type to narrow by filename or path; arrow keys navigate; Enter opens. Same `mouseMovedRef` guard as Search Everywhere so Enter always opens the keyboard-highlighted row. Clear button wipes the list. Opening any file from Search Everywhere or Recent Files records it in history |
 | **Keyboard shortcut map** | Settings → Shortcuts panel listing all shortcuts with styled key chips (`⌘`/`⇧`/`↵` symbols, `+` connectors, physical-key shadow) |
 
 ---

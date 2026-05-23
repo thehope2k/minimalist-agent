@@ -23,7 +23,9 @@ import { SddWorkspacePanel } from './chat-area/SddWorkspacePanel';
 import { deriveEntityPhase, taskProgress } from '@/lib/sdd';
 import { GitDiffModal } from '@/components/git/GitDiffModal';
 import { SearchModal } from '@/components/search/SearchModal';
+import { RecentFilesModal } from '@/components/search/RecentFilesModal';
 import { FileViewModal } from '@/components/search/FileViewModal';
+import { push as pushRecentFile } from '@/lib/recent-files';
 
 type Props = {
   sessionId: string | null;
@@ -347,7 +349,8 @@ export function ChatArea({
 
   // Search Everything - Double Shift opens the unified search palette.
   // Any other key between the two Shifts resets the sequence.
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchOpen, setSearchOpen]   = useState(false);
+  const [recentOpen, setRecentOpen]   = useState(false);
   const [viewFile, setViewFile] = useState<{ absolutePath: string; lineNumber: number } | null>(null);
   const lastShiftTs = useRef<number>(0);
   useEffect(() => {
@@ -369,6 +372,24 @@ export function ChatArea({
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  // Recent Files — Cmd+E toggles the palette.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'e' && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        setRecentOpen((v) => !v);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  // Shared handler: open a file in the viewer and record it in recent history.
+  const handleOpenFile = useCallback((absolutePath: string, lineNumber: number) => {
+    pushRecentFile(absolutePath, lineNumber);
+    setViewFile({ absolutePath, lineNumber });
   }, []);
 
   const handleSddModeChange = (next: 'auto' | 'off') => {
@@ -561,7 +582,17 @@ export function ChatArea({
           onClose={() => setSearchOpen(false)}
           onOpenFile={(absolutePath, lineNumber) => {
             setSearchOpen(false);
-            setViewFile({ absolutePath, lineNumber });
+            handleOpenFile(absolutePath, lineNumber);
+          }}
+        />
+      )}
+
+      {recentOpen && (
+        <RecentFilesModal
+          onClose={() => setRecentOpen(false)}
+          onOpenFile={(absolutePath, lineNumber) => {
+            setRecentOpen(false);
+            handleOpenFile(absolutePath, lineNumber);
           }}
         />
       )}
