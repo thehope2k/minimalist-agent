@@ -1,8 +1,19 @@
 // Shared diff utilities used by both DiffPart (per-tool chip) and
 // TurnSummaryCard (end-of-turn aggregate view).
 
-import { DiffMethod } from 'react-diff-viewer-continued';
-import ReactDiffViewer from 'react-diff-viewer-continued';
+import { lazy, Suspense } from 'react';
+import type { DiffMethod } from 'react-diff-viewer-continued';
+
+// Lazy-loaded so react-diff-viewer-continued (~2.7 MB) stays out of the
+// initial bundle. The viewer is only rendered when the user expands a diff
+// chip or opens the split-view modal, so the deferred load is invisible.
+export const LazyDiffViewer = lazy(() =>
+  import('react-diff-viewer-continued').then((m) => ({ default: m.default }))
+);
+
+// DiffMethod.WORDS = 'diffWords' — inlined to avoid importing the full package.
+// Cast via `import type` (erased at runtime — zero bundle cost).
+export const DIFF_METHOD_WORDS = 'diffWords' as unknown as DiffMethod;
 import { FilePenLine, FileText } from 'lucide-react';
 import { ExpandModal } from '@/components/ui';
 
@@ -141,14 +152,16 @@ export function DiffExpandModal({
   return (
     <ExpandModal title={title} onClose={onClose} className="max-w-6xl">
       <div className="scroll-thin flex-1 overflow-auto bg-panel">
-        <ReactDiffViewer
-          oldValue={parsed.oldValue}
-          newValue={parsed.newValue}
-          splitView={true}
-          compareMethod={DiffMethod.WORDS}
-          useDarkTheme={true}
-          styles={diffViewerStyles}
-        />
+        <Suspense fallback={<div className="h-16 animate-pulse rounded bg-elevated/40 m-4" />}>
+          <LazyDiffViewer
+            oldValue={parsed.oldValue}
+            newValue={parsed.newValue}
+            splitView={true}
+            compareMethod={DIFF_METHOD_WORDS}
+            useDarkTheme={true}
+            styles={diffViewerStyles}
+          />
+        </Suspense>
       </div>
     </ExpandModal>
   );

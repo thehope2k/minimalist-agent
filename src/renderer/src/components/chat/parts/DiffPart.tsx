@@ -9,8 +9,7 @@
 // Edit input:  { file_path, old_string, new_string, replace_all? }
 // Write input: { file_path, content }   (treated as full-file addition)
 
-import { useMemo, useState } from 'react';
-import ReactDiffViewer, { DiffMethod } from 'react-diff-viewer-continued';
+import { useMemo, useState, Suspense } from 'react';
 import {
   AlertCircle,
   CheckCircle2,
@@ -28,6 +27,8 @@ import {
   stripErrorWrapper,
   diffViewerStyles,
   DiffExpandModal,
+  LazyDiffViewer,
+  DIFF_METHOD_WORDS,
 } from './diff-utils';
 
 interface DiffPartProps {
@@ -158,14 +159,16 @@ export function DiffPart({ name, input, result, status }: DiffPartProps) {
         {open && (
           <div className="border-t border-border/60">
             <div className="scroll-thin overflow-x-auto bg-panel">
-              <ReactDiffViewer
-                oldValue={parsed.oldValue}
-                newValue={parsed.newValue}
-                splitView={false}
-                compareMethod={DiffMethod.WORDS}
-                useDarkTheme={true}
-                styles={diffViewerStyles}
-              />
+              <Suspense fallback={<div className="h-16 animate-pulse rounded bg-elevated/40 m-4" />}>
+                <LazyDiffViewer
+                  oldValue={parsed.oldValue}
+                  newValue={parsed.newValue}
+                  splitView={false}
+                  compareMethod={DIFF_METHOD_WORDS}
+                  useDarkTheme={true}
+                  styles={diffViewerStyles}
+                />
+              </Suspense>
             </div>
             {result?.isError && (
               <div className="border-t border-border/60 px-3 py-2">

@@ -7,8 +7,7 @@
 //
 // This is purely session/tool-call data — no git, works in non-git dirs.
 
-import { useMemo, useState } from 'react';
-import ReactDiffViewer, { DiffMethod } from 'react-diff-viewer-continued';
+import { useMemo, useState, Suspense } from 'react';
 import { ChevronRight, FilePenLine, FileText, GitCommit, Maximize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { MessagePart } from '@/lib/chat';
@@ -19,6 +18,8 @@ import {
   shortenPath,
   diffViewerStyles,
   DiffExpandModal,
+  LazyDiffViewer,
+  DIFF_METHOD_WORDS,
   EDIT_SEP,
 } from './diff-utils';
 
@@ -269,14 +270,16 @@ function FileRow({
       {diffOpen && (
         <div className="border-t border-border/60">
           <div className="scroll-thin overflow-x-auto bg-panel">
-            <ReactDiffViewer
-              oldValue={merged.oldValue}
-              newValue={merged.newValue}
-              splitView={false}
-              compareMethod={DiffMethod.WORDS}
-              useDarkTheme={true}
-              styles={diffViewerStyles}
-            />
+            <Suspense fallback={<div className="h-16 animate-pulse rounded bg-elevated/40 m-4" />}>
+              <LazyDiffViewer
+                oldValue={merged.oldValue}
+                newValue={merged.newValue}
+                splitView={false}
+                compareMethod={DIFF_METHOD_WORDS}
+                useDarkTheme={true}
+                styles={diffViewerStyles}
+              />
+            </Suspense>
           </div>
         </div>
       )}
