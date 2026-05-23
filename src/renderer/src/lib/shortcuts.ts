@@ -84,6 +84,21 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     ],
   },
   {
+    title: 'Navigation',
+    shortcuts: [
+      {
+        macKeys: ['⌘', 'S'],
+        winKeys: ['Ctrl', 'S'],
+        label: 'Go to Sessions',
+      },
+      {
+        macKeys: ['⌘', ','],
+        winKeys: ['Ctrl', ','],
+        label: 'Go to Settings',
+      },
+    ],
+  },
+  {
     title: 'Session Management',
     shortcuts: [
       {

@@ -141,6 +141,20 @@ export default function App() {
         return;
       }
 
+      // Cmd+S — jump to Sessions view
+      if (e.key === 's' && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        setView('all');
+        return;
+      }
+
+      // Cmd+, — jump to Settings view (universal macOS convention)
+      if (e.key === ',' && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        setView('settings');
+        return;
+      }
+
       // Resize shortcuts — only when terminal is open and focus not in a text field
       if (!terminalOpenRef.current || isTextInput(e)) return;
 
