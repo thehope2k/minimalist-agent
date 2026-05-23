@@ -10,10 +10,16 @@ export interface SkillExtraction {
   skillPaths: Map<string, string>;
   /** Slug → absolute guide.md path for every resolvable extension mention. */
   extensionGuidePaths: Map<string, string>;
+  /** Absolute paths of mentioned files that exist on disk. */
+  filePaths: string[];
+  /** Absolute paths of mentioned folders that exist on disk. */
+  folderPaths: string[];
   /** Message text with mentions replaced by semantic markers. */
   cleanMessage: string;
   /** Slugs that the user mentioned but aren't installed. */
   missingSkills: string[];
+  /** File-path-shaped mentions that didn't resolve to anything on disk. */
+  missingFiles: string[];
 }
 
 /**
@@ -51,6 +57,14 @@ export function extractSkillPaths(
     if (existsSync(ext.guidePath)) extensionGuidePaths.set(slug, ext.guidePath);
   }
 
+  // Absolutize resolved file / folder paths (tokens are relative to cwd).
+  const filePaths: string[] = parsed.files.map((rel) =>
+    cwd ? join(cwd, rel) : rel,
+  );
+  const folderPaths: string[] = parsed.folders.map((rel) =>
+    cwd ? join(cwd, rel) : rel,
+  );
+
   // Replace mentions with semantic markers so sentence structure is preserved.
   const skillNames = new Map(skills.map((s) => [s.slug, s.metadata.name]));
   const extensionNames = new Map(extensions.map((e) => [e.slug, displayName(e)]));
@@ -60,33 +74,48 @@ export function extractSkillPaths(
     cwd,
   }).trim();
 
-  // If the user sent only skill / extension mentions and no other text,
-  // give the model a default directive to anchor its action.
+  // If the user sent only skill / extension / file / folder mentions and no
+  // other text, give the model a default directive to anchor its action.
   const onlyMentions =
-    !resolved && (skillPaths.size > 0 || extensionGuidePaths.size > 0);
+    !resolved &&
+    (skillPaths.size > 0 ||
+      extensionGuidePaths.size > 0 ||
+      filePaths.length > 0 ||
+      folderPaths.length > 0);
   const cleanMessage = onlyMentions
-    ? 'Follow the skill / extension instructions from the files listed above.'
+    ? 'Follow the skill / extension instructions and review the mentioned files listed above.'
     : resolved;
 
   return {
     skillPaths,
     extensionGuidePaths,
+    filePaths,
+    folderPaths,
     cleanMessage,
     missingSkills: parsed.invalidSkills,
+    missingFiles: parsed.invalidFiles,
   };
 }
 
 /**
  * Build the prompt prefix telling the model to read SKILL.md / guide.md
- * files before doing anything else. Empty string when nothing was
- * mentioned. Skill and extension references are listed together so the
- * model handles them with one directive.
+ * files and any user-mentioned files before doing anything else. Returns
+ * an empty string when nothing was mentioned. Skills, extensions, and
+ * plain file / folder mentions are listed together under one directive.
  */
 export function formatSkillDirective(
   skillPaths: Map<string, string>,
   extensionGuidePaths: Map<string, string> = new Map(),
+  mentionedFiles: string[] = [],
+  mentionedFolders: string[] = [],
 ): string {
-  if (skillPaths.size === 0 && extensionGuidePaths.size === 0) return '';
+  if (
+    skillPaths.size === 0 &&
+    extensionGuidePaths.size === 0 &&
+    mentionedFiles.length === 0 &&
+    mentionedFolders.length === 0
+  )
+    return '';
   const lines: string[] = [];
   for (const [slug, path] of skillPaths) {
     lines.push(`- ${path} (skill: ${slug})`);
@@ -94,5 +123,11 @@ export function formatSkillDirective(
   for (const [slug, path] of extensionGuidePaths) {
     lines.push(`- ${path} (extension: ${slug})`);
   }
-  return `Before proceeding with the user's request, you MUST read the following instruction files using the Read tool or \`cat\` via Bash:\n${lines.join('\n')}\n\nDo not take any other action until you have read these files.`;
+  for (const path of mentionedFiles) {
+    lines.push(`- ${path} (mentioned file)`);
+  }
+  for (const path of mentionedFolders) {
+    lines.push(`- ${path} (mentioned folder — use ls or find to explore its contents)`);
+  }
+  return `Before proceeding with the user's request, you MUST read the following files using the Read tool before taking any other action:\n${lines.join('\n')}\n\nDo not take any other action until you have read these files.`;
 }

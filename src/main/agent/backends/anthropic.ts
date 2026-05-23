@@ -364,7 +364,7 @@ export async function* runAnthropicChat(
   // Resolve `@slug` mentions: replace with semantic markers and (if any)
   // prepend a "Read SKILL.md / guide.md first" directive. See
   // `src/main/skills/directive.ts` for the rules.
-  const { skillPaths, extensionGuidePaths, cleanMessage, missingSkills } =
+  const { skillPaths, extensionGuidePaths, filePaths, folderPaths, cleanMessage, missingSkills, missingFiles } =
     extractSkillPaths(req.prompt, req.cwd);
   if (missingSkills.length > 0) {
     yield {
@@ -379,7 +379,19 @@ export async function* runAnthropicChat(
     };
     return;
   }
-  const directive = formatSkillDirective(skillPaths, extensionGuidePaths);
+  if (missingFiles.length > 0) {
+    yield {
+      type: 'error',
+      error: parseError(
+        new Error(
+          `File mention(s) not found: ${missingFiles.join(', ')}. ` +
+            `Paths must be relative to the working directory (e.g. @docs/ROADMAP.md).`,
+        ),
+      ),
+    };
+    return;
+  }
+  const directive = formatSkillDirective(skillPaths, extensionGuidePaths, filePaths, folderPaths);
   const finalPrompt = [prefix, directive, cleanMessage]
     .filter(Boolean)
     .join('\n\n');

@@ -6,9 +6,12 @@
 //
 // Resolution rules (priority order):
 //   1. token matches a known skill slug          → skill marker
-//   2. token resolves to an existing directory   → folder marker
-//   3. token resolves to an existing file         → file  marker
-//   4. otherwise                                  → leave as literal text
+//   2. token matches a known extension slug      → extension marker
+//   3. token resolves to an existing directory   → folder marker
+//   4. token resolves to an existing file        → file  marker
+//   5. token looks like a file path but no match → invalidFiles (error)
+//   6. token looks like a skill slug but no match→ invalidSkills (error)
+//   7. otherwise                                  → leave as literal text
 //
 // We resolve at the main-process level (filesystem access), so this file
 // is not safe to import from the renderer.
@@ -30,6 +33,13 @@ export interface ParsedMentions {
   files: string[];
   /** Folder paths that exist on disk under `cwd`. */
   folders: string[];
+  /**
+   * `@…` tokens that look like file paths (contain `/` or a dot-extension)
+   * but didn't resolve to anything on disk. Surfaced so the backend can
+   * emit a clear "file not found" error rather than silently passing the
+   * raw `@token` to the model.
+   */
+  invalidFiles: string[];
 }
 
 /**
@@ -51,6 +61,7 @@ export function parseMentions(
     invalidSkills: [],
     files: [],
     folders: [],
+    invalidFiles: [],
   };
 
   for (const match of text.matchAll(MENTION_RE)) {
@@ -77,10 +88,12 @@ export function parseMentions(
       }
     }
 
-    // Looks like a slug shape but no match — record so the agent gets a
-    // hint about the typo. We don't surface invalid file paths the same
-    // way because a stray `@joe` in prose isn't a typo.
-    if (looksLikeSkillSlug(token) && !result.invalidSkills.includes(token)) {
+    // File-path-shaped token that didn't resolve → flag for a clear error.
+    // Slug-shaped token that didn't resolve → flag as a possible typo.
+    // Plain prose (@joe) → leave untouched (not a typo, not a path).
+    if (looksLikeFilePath(token) && !result.invalidFiles.includes(token)) {
+      result.invalidFiles.push(token);
+    } else if (looksLikeSkillSlug(token) && !result.invalidSkills.includes(token)) {
       result.invalidSkills.push(token);
     }
   }
@@ -139,6 +152,16 @@ const SKILL_SLUG_RE = /^[a-z0-9][a-z0-9-]{0,29}$/;
 
 function looksLikeSkillSlug(token: string): boolean {
   return SKILL_SLUG_RE.test(token);
+}
+
+/**
+ * Returns true when a token looks like the user intended a file reference
+ * (contains a path separator or a dotted extension) rather than prose.
+ * Used to distinguish "@docs/ROADMAP.md" (unresolved file path → error)
+ * from "@joe" (prose mention → ignore).
+ */
+function looksLikeFilePath(token: string): boolean {
+  return token.includes('/') || /\.[a-zA-Z0-9]{1,10}$/.test(token);
 }
 
 function baseName(p: string): string {

@@ -33,6 +33,7 @@ import {updateSessionMeta} from '../../../storage/sessions';
 import type {AgentChatEvent} from '../../events';
 import {parseError} from '../../errors';
 import {buildPromptPrefix, buildSystemPromptAppend,} from '../../system-prompt';
+import {extractSkillPaths, formatSkillDirective} from '../../../skills/directive';
 import type {PermissionMode} from '../../permissions';
 import type {CopilotOAuthAuth, LocalApiAuth} from '../types';
 import {decidePiPermission, type PiPermissionDecisionArgs,} from './permission-bridge';
@@ -573,6 +574,36 @@ export async function* runPiChat(
   const initAppend = buildSystemPromptAppend({ cwd: req.cwd, sessionId: req.chatSessionId, userMessage: req.prompt, authType: req.auth.type, piAuthProvider: req.piAuthProvider, model: req.model });
   const prefix = buildPromptPrefix({ cwd: req.cwd });
 
+  // Resolve `@slug` / `@path` mentions exactly as the Anthropic backend does.
+  const { skillPaths, extensionGuidePaths, filePaths, folderPaths, cleanMessage, missingSkills, missingFiles } =
+    extractSkillPaths(req.prompt, req.cwd);
+  if (missingSkills.length > 0) {
+    yield {
+      type: 'error',
+      error: parseError(
+        new Error(
+          `Mention(s) not found: ${missingSkills.join(', ')}. ` +
+            `Skills live under ~/.agents/skills/<slug>/ or <cwd>/.agents/skills/<slug>/. ` +
+            `Extensions must be installed and enabled.`,
+        ),
+      ),
+    };
+    return;
+  }
+  if (missingFiles.length > 0) {
+    yield {
+      type: 'error',
+      error: parseError(
+        new Error(
+          `File mention(s) not found: ${missingFiles.join(', ')}. ` +
+            `Paths must be relative to the working directory (e.g. @docs/ROADMAP.md).`,
+        ),
+      ),
+    };
+    return;
+  }
+  const directive = formatSkillDirective(skillPaths, extensionGuidePaths, filePaths, folderPaths);
+
   let handle: SubprocessHandle;
   try {
     handle = ensureSubprocess(req, initAppend);
@@ -600,7 +631,7 @@ export async function* runPiChat(
   const queue = new EventQueue();
   handle.queues.set(req.turnId, queue);
 
-  const finalPrompt = prefix ? `${prefix}\n\n${req.prompt}` : req.prompt;
+  const finalPrompt = [prefix, directive, cleanMessage].filter(Boolean).join('\n\n');
   const promptMsg: MsgPrompt = {
     type: 'prompt',
     turnId: req.turnId,
