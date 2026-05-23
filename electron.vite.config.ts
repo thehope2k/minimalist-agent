@@ -21,10 +21,11 @@ export default defineConfig({
       },
       rollupOptions: {
         // Native + heavy modules must stay external. Pi SDK pulls in a lot
-        // (clipboard binaries, jiti, …); externalising the @mariozechner
+        // (clipboard binaries, jiti, ...); externalising the @mariozechner
         // packages keeps build fast and avoids bundling issues.
         external: [
           'sharp',
+          'node-pty',
           'electron',
           /^@mariozechner\//,
           /^node:/,
@@ -41,7 +42,7 @@ export default defineConfig({
       outDir: r('out/preload'),
       lib: { entry: r('src/preload/index.ts'), formats: ['es'] },
       rollupOptions: {
-        // Side-effect-only (contextBridge.exposeInMainWorld) — must not tree-shake.
+        // Side-effect-only (contextBridge.exposeInMainWorld) - must not tree-shake.
         treeshake: false,
         output: { entryFileNames: '[name].mjs' },
       },

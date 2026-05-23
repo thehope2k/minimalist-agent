@@ -1,5 +1,6 @@
 import { forwardRef } from 'react';
 import { cn } from '@/lib/utils';
+import { Tooltip } from './Tooltip';
 
 type Size = 'sm' | 'md';
 
@@ -11,17 +12,18 @@ const SIZE_CLASS: Record<Size, string> = {
 type Props = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   icon: React.ElementType;
   size?: Size;
-  /** Optional tooltip via the native title attribute. */
+  /** Tooltip text. Also used as aria-label. */
   label?: string;
   /** Extra className forwarded to the rendered icon element. */
   iconClassName?: string;
+  /** Which side the tooltip appears on. Defaults to 'bottom'. */
+  tooltipSide?: 'top' | 'right' | 'bottom' | 'left';
 };
 
-export const IconButton = forwardRef<HTMLButtonElement, Props>(
-  ({ icon: Icon, size = 'sm', label, className, iconClassName, ...rest }, ref) => (
+const ButtonInner = forwardRef<HTMLButtonElement, Props>(
+  ({ icon: Icon, size = 'sm', label, className, iconClassName, tooltipSide: _side, ...rest }, ref) => (
     <button
       ref={ref}
-      title={label}
       aria-label={label}
       className={cn(
         'grid place-items-center rounded-md text-fg-muted transition-colors',
@@ -35,5 +37,18 @@ export const IconButton = forwardRef<HTMLButtonElement, Props>(
       <Icon className={cn('h-4 w-4', iconClassName)} strokeWidth={1.75} />
     </button>
   ),
+);
+ButtonInner.displayName = 'IconButtonInner';
+
+export const IconButton = forwardRef<HTMLButtonElement, Props>(
+  (props, ref) => {
+    const { label, tooltipSide = 'bottom' } = props;
+    if (!label) return <ButtonInner ref={ref} {...props} />;
+    return (
+      <Tooltip content={label} side={tooltipSide}>
+        <ButtonInner ref={ref} {...props} />
+      </Tooltip>
+    );
+  },
 );
 IconButton.displayName = 'IconButton';

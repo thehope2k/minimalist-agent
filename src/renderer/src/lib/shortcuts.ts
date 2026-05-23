@@ -53,7 +53,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
         condition: 'When agent is not running',
       },
       {
-        macKeys: ['Shift', '↵'],
+        macKeys: ['⇧', '↵'],
         winKeys: ['Shift', 'Enter'],
         label: 'Insert new line',
       },
@@ -86,6 +86,11 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
     title: 'Session Management',
     shortcuts: [
+      {
+        macKeys: ['⌘', 'N'],
+        winKeys: ['Ctrl', 'N'],
+        label: 'New session',
+      },
       {
         macKeys: ['↵'],
         winKeys: ['Enter'],
@@ -145,10 +150,56 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     ],
   },
   {
+    title: 'Terminal',
+    shortcuts: [
+      {
+        macKeys: ['⌘', 'T'],
+        winKeys: ['Ctrl', 'T'],
+        label: 'Open / close terminal panel',
+      },
+      {
+        macKeys: ['⌘', '⇧', 'T'],
+        winKeys: ['Ctrl', 'Shift', 'T'],
+        label: 'New terminal tab',
+        condition: 'Terminal panel is open',
+      },
+      {
+        macKeys: ['⌘', '⇧', 'W'],
+        winKeys: ['Ctrl', 'Shift', 'W'],
+        label: 'Close active terminal tab',
+        condition: 'Terminal panel is open',
+      },
+      {
+        macKeys: ['⌘', '←'],
+        winKeys: ['Ctrl', '←'],
+        label: 'Previous terminal tab',
+        condition: 'Terminal panel is open, focus not in a text field',
+      },
+      {
+        macKeys: ['⌘', '→'],
+        winKeys: ['Ctrl', '→'],
+        label: 'Next terminal tab',
+        condition: 'Terminal panel is open, focus not in a text field',
+      },
+      {
+        macKeys: ['⌘', '⇧', '↑'],
+        winKeys: ['Ctrl', 'Shift', '↑'],
+        label: 'Expand terminal panel',
+        condition: 'Terminal panel is open, focus not in a text field',
+      },
+      {
+        macKeys: ['⌘', '⇧', '↓'],
+        winKeys: ['Ctrl', 'Shift', '↓'],
+        label: 'Shrink terminal panel',
+        condition: 'Terminal panel is open, focus not in a text field',
+      },
+    ],
+  },
+  {
     title: 'Search',
     shortcuts: [
       {
-        macKeys: ['Shift', 'Shift'],
+        macKeys: ['⇧', '⇧'],
         winKeys: ['Shift', 'Shift'],
         label: 'Open / close Search Everywhere palette',
         condition: 'Double-tap Shift in <300 ms; any other key resets the sequence',

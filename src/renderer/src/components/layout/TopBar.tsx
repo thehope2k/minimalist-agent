@@ -11,6 +11,7 @@ import {
   Plug,
   Settings,
   Sparkles,
+  SquareTerminal,
 } from 'lucide-react';
 import * as Popover from '@radix-ui/react-popover';
 import {useEffect, useState} from 'react';
@@ -63,6 +64,8 @@ type Props = {
   projectFilter: ProjectFilter;
   onProjectFilterChange: (f: ProjectFilter) => void;
   onManageProjects: () => void;
+  terminalOpen: boolean;
+  onToggleTerminal: () => void;
 };
 
 export function TopBar({
@@ -73,6 +76,8 @@ export function TopBar({
   projectFilter,
   onProjectFilterChange,
   onManageProjects,
+  terminalOpen,
+  onToggleTerminal,
 }: Props) {
   return (
     <div className="titlebar-drag flex h-12 shrink-0 items-center gap-1 bg-app px-2">
@@ -131,6 +136,12 @@ export function TopBar({
       <div className="flex-1" />
 
       <div className="titlebar-no-drag flex items-center gap-0.5">
+        <IconButton
+          icon={SquareTerminal}
+          label="Toggle terminal (Cmd+T)"
+          onClick={onToggleTerminal}
+          className={terminalOpen ? 'text-accent' : ''}
+        />
         <WhatsNewButton />
         <IconButton icon={HelpCircle} label="Help" />
       </div>

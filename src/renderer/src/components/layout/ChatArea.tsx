@@ -29,7 +29,7 @@ type Props = {
   sessionId: string | null;
   /** Called when the user sends in an unsaved chat — App tracks the new id. */
   onSessionCreated: (id: string) => void;
-  /** Called when user clicks the "X / new" header button. */
+  /** Called when user clicks the “X / new” header button. */
   onNewSession: () => void;
   /** Structured submission auto-sent on next mount (e.g. New Skill). */
   seedSubmit?: SeedSubmit | null;
@@ -38,6 +38,8 @@ type Props = {
   newSessionDefaultProjectId?: string | null;
   /** Reports the set of session ids with active streams (including off-screen). */
   onStreamingChange?: (ids: ReadonlySet<string>) => void;
+  /** Reports CWD changes so the global terminal panel can seed new tabs. */
+  onCwdChange?: (cwd: string | undefined) => void;
 };
 
 export function ChatArea({
@@ -48,6 +50,7 @@ export function ChatArea({
   onSeedSubmitConsumed,
   newSessionDefaultProjectId,
   onStreamingChange,
+  onCwdChange,
 }: Props) {
   const { messages, isStreaming, streamingTurnId, streamingSessionIds, send, abort, retry, steer, activeSessionId, lastCompaction } = useChat(sessionId, newSessionDefaultProjectId);
   const aiData = useAiData();
@@ -66,7 +69,7 @@ export function ChatArea({
   const { layout: workspaceLayout, onLayoutChange: onWorkspaceLayout } =
     useResizablePanels('workspace-sdd-v1', [68, 32]);
 
-  // SDD state for the active session — drives phase badge
+  // SDD state for the active session - drives phase badge
   const sdd = useSdd(activeSessionId ?? sessionId, cwd, sddMode);
   /**
    * Project-level default connection slug to seed MessageInput's resolver.
@@ -80,7 +83,7 @@ export function ChatArea({
    * session has no record yet (e.g. brand-new fresh chat). MessageInput
    * uses this to seed the pill so each session "remembers" its choice.
    *
-   * `loadedSessionPickId` is the sessionId these values belong to — set
+   * `loadedSessionPickId` is the sessionId these values belong to - set
    * after the async load resolves. MessageInput only syncs when this
    * matches the visible sessionId, which avoids a stale value from the
    * previous session leaking onto the pill during a switch.
@@ -130,6 +133,7 @@ export function ChatArea({
       // global settings otherwise.
       const projForFresh = findProject(newSessionDefaultProjectId);
       setCwd(projForFresh?.rootPath ?? undefined);
+      onCwdChange?.(projForFresh?.rootPath ?? undefined);
       setPermissionMode(
         projForFresh?.defaultPermissionMode ??
           aiData?.settings.defaultPermissionMode ??
@@ -152,10 +156,12 @@ export function ChatArea({
     // session's directory before loadFullSession resolves (BUG-SDD-07: flash
     // / prior-session data when switching sessions quickly).
     setCwd(undefined);
+    onCwdChange?.(undefined);
     let cancelled = false;
     loadFullSession(sessionId).then((data) => {
       if (cancelled || !data) return;
       setCwd(data.meta.workingDirectory);
+      onCwdChange?.(data.meta.workingDirectory);
       setTitle(data.meta.title);
       setSddMode(data.meta.sddMode ?? 'off');
       const project = findProject(data.meta.projectId);
@@ -241,7 +247,7 @@ export function ChatArea({
     });
   }, [aiData, sessionConnectionSlug, sessionModel, send, cwd, permissionMode]);
 
-  // Retry handler — passes a fallback so the cold path (session loaded
+  // Retry handler - passes a fallback so the cold path (session loaded
   // after an interrupted turn, no in-memory `lastSend`) can reconstruct
   // the SendArgs from session metadata + the trailing user message.
   const handleRetry = useCallback(() => {
@@ -302,7 +308,7 @@ export function ChatArea({
 
   const activeSession = activeSessionId ?? sessionId;
 
-  // Git diff modal state — Cmd+G toggles it, button in the header opens it.
+  // Git diff modal state - Cmd+G toggles it, button in the header opens it.
   const [gitModalOpen, setGitModalOpen] = useState(false);
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -315,7 +321,7 @@ export function ChatArea({
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  // Search Everything — Double Shift opens the unified search palette.
+  // Search Everything - Double Shift opens the unified search palette.
   // Any other key between the two Shifts resets the sequence.
   const [searchOpen, setSearchOpen] = useState(false);
   const [viewFile, setViewFile] = useState<{ absolutePath: string; lineNumber: number } | null>(null);

@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, Notification, shell } from 'electron';
+import { terminalManager } from './terminal/manager';
 import {
   checkForUpdates,
   downloadUpdate,
@@ -1063,6 +1064,19 @@ export function registerIpc(): void {
     return result.canceled ? null : result.filePaths[0] ?? null;
   });
 
+  ipcMain.handle('fs:pickFile', async (event, opts?: { defaultPath?: string; title?: string }) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const dialogOpts = {
+      title: opts?.title ?? 'Select file',
+      defaultPath: opts?.defaultPath ?? (process.platform === 'win32' ? 'C:\\Windows\\System32' : '/bin'),
+      properties: ['openFile'] as Array<'openFile'>,
+    };
+    const result = win
+      ? await dialog.showOpenDialog(win, dialogOpts)
+      : await dialog.showOpenDialog(dialogOpts);
+    return result.canceled ? null : result.filePaths[0] ?? null;
+  });
+
   ipcMain.handle('fs:readFile', (_e, absolutePath: string): string | null => {
     // Guard: skip files larger than 2 MB to keep the renderer responsive.
     const MAX_BYTES = 2 * 1024 * 1024;
@@ -1301,4 +1315,59 @@ export function registerIpc(): void {
       }
     },
   );
+
+  // ---- Terminal ----------------------------------------------------------
+
+  ipcMain.handle('terminal:resolveShell', () =>
+    terminalManager.resolveShell(),
+  );
+
+  ipcMain.handle(
+    'terminal:create',
+    (_e, opts: { cwd: string; shell?: string }) =>
+      terminalManager.create(opts.cwd, opts.shell),
+  );
+
+  ipcMain.handle(
+    'terminal:write',
+    (_e, args: { tabId: string; data: string }) =>
+      terminalManager.write(args.tabId, args.data),
+  );
+
+  ipcMain.handle(
+    'terminal:resize',
+    (_e, args: { tabId: string; cols: number; rows: number }) =>
+      terminalManager.resize(args.tabId, args.cols, args.rows),
+  );
+
+  ipcMain.handle('terminal:getScrollback', (_e, tabId: string) =>
+    terminalManager.getScrollback(tabId),
+  );
+
+  ipcMain.handle('terminal:listTabs', () =>
+    terminalManager.listTabs(),
+  );
+
+  ipcMain.handle('terminal:kill', (_e, tabId: string) =>
+    terminalManager.kill(tabId),
+  );
+
+  ipcMain.handle('terminal:listShells', async (): Promise<string[]> => {
+    if (process.platform === 'win32') {
+      // On Windows, surface the common shell executables.
+      return ['powershell.exe', 'pwsh.exe', 'cmd.exe'];
+    }
+    try {
+      const { readFile } = await import('node:fs/promises');
+      const raw = await readFile('/etc/shells', 'utf-8');
+      const shells = raw
+        .split('\n')
+        .map((l) => l.trim())
+        .filter((l) => l.startsWith('/') && !l.startsWith('#'));
+      return [...new Set(shells)]; // deduplicate
+    } catch {
+      // Fall back to the most common shells if /etc/shells is unreadable.
+      return ['/bin/zsh', '/bin/bash', '/bin/sh'];
+    }
+  });
 }

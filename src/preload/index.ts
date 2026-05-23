@@ -244,6 +244,15 @@ type SessionSummary = SessionMeta;
 
 type UpdateState = 'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'error';
 
+interface TerminalTabInfo {
+  tabId: string;
+  title: string;
+  cwd: string;
+  shell: string;
+  pid: number;
+  alive: boolean;
+}
+
 interface UpdateInfo {
   state: UpdateState;
   currentVersion: string;
@@ -450,6 +459,8 @@ const api = {
   fs: {
     pickDirectory: (): Promise<string | null> =>
       ipcRenderer.invoke('fs:pickDirectory'),
+    pickFile: (opts?: { defaultPath?: string; title?: string }): Promise<string | null> =>
+      ipcRenderer.invoke('fs:pickFile', opts),
     readFile: (absolutePath: string): Promise<string | null> =>
       ipcRenderer.invoke('fs:readFile', absolutePath),
     readFileBase64: (absolutePath: string): Promise<string | null> =>
@@ -599,6 +610,51 @@ const api = {
       sessionId?: string;
       cwd?: string;
     }) => ipcRenderer.invoke('git:generateCommitMessage', args),
+  },
+  terminal: {
+    resolveShell: (): Promise<string> =>
+      ipcRenderer.invoke('terminal:resolveShell'),
+
+    create: (opts: { cwd: string; shell?: string }): Promise<TerminalTabInfo> =>
+      ipcRenderer.invoke('terminal:create', opts),
+
+    write: (tabId: string, data: string): Promise<void> =>
+      ipcRenderer.invoke('terminal:write', { tabId, data }),
+
+    resize: (tabId: string, cols: number, rows: number): Promise<void> =>
+      ipcRenderer.invoke('terminal:resize', { tabId, cols, rows }),
+
+    getScrollback: (tabId: string): Promise<string | null> =>
+      ipcRenderer.invoke('terminal:getScrollback', tabId),
+
+    listTabs: (): Promise<TerminalTabInfo[]> =>
+      ipcRenderer.invoke('terminal:listTabs'),
+
+    kill: (tabId: string): Promise<void> =>
+      ipcRenderer.invoke('terminal:kill', tabId),
+
+    listShells: (): Promise<string[]> =>
+      ipcRenderer.invoke('terminal:listShells'),
+
+    onData: (cb: (tabId: string, data: string) => void): (() => void) => {
+      const h = (_e: unknown, p: { tabId: string; data: string }) => cb(p.tabId, p.data);
+      ipcRenderer.on('terminal:data', h);
+      return () => ipcRenderer.removeListener('terminal:data', h);
+    },
+
+    onExit: (cb: (tabId: string, exitCode: number) => void): (() => void) => {
+      const h = (_e: unknown, p: { tabId: string; exitCode: number }) =>
+        cb(p.tabId, p.exitCode);
+      ipcRenderer.on('terminal:exit', h);
+      return () => ipcRenderer.removeListener('terminal:exit', h);
+    },
+
+    onTitleChange: (cb: (tabId: string, title: string) => void): (() => void) => {
+      const h = (_e: unknown, p: { tabId: string; title: string }) =>
+        cb(p.tabId, p.title);
+      ipcRenderer.on('terminal:titleChange', h);
+      return () => ipcRenderer.removeListener('terminal:titleChange', h);
+    },
   },
 };
 

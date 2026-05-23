@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import type { ImperativePanelHandle } from 'react-resizable-panels';
 import { TopBar, type ProjectFilter, type View } from './components/layout/TopBar';
 import { UpdateBanner } from './components/UpdateBanner';
@@ -13,6 +13,8 @@ import { SkillsPanel } from './components/skills/SkillsPanel';
 import { SkillInfoPage } from './components/skills/SkillInfoPage';
 import { ExtensionsPanel } from './components/extensions/ExtensionsPanel';
 import { ExtensionInfoPage } from './components/extensions/ExtensionInfoPage';
+import { TerminalPanel } from './components/terminal/TerminalPanel';
+import { TooltipProvider } from './components/ui';
 import { useSkills } from './hooks/useSkills';
 import { useExtensions } from './hooks/useExtensions';
 import { useSessions } from './hooks/useSessions';
@@ -82,6 +84,88 @@ export default function App() {
     else p.collapse();
   };
 
+  // Terminal panel state
+  const [terminalOpen, setTerminalOpen] = useState(false);
+  const [activeCwd, setActiveCwd] = useState<string | undefined>(undefined);
+  const terminalPanelRef = useRef<ImperativePanelHandle>(null);
+  const { layout: termLayout, onLayoutChange: onTermLayout } =
+    useResizablePanels('terminal-v1', [65, 35]);
+
+  const toggleTerminal = useCallback(() => {
+    const p = terminalPanelRef.current;
+    if (!p) return;
+    if (p.isCollapsed()) {
+      p.expand();
+      setTerminalOpen(true);
+    } else {
+      p.collapse();
+      setTerminalOpen(false);
+    }
+  }, []);
+
+  // Keep a ref so keyboard handlers below always read the latest value
+  // without needing to be re-registered on every toggle.
+  const terminalOpenRef = useRef(false);
+  terminalOpenRef.current = terminalOpen;
+  // Stable ref for handleNewSession — defined below but needed in the effect.
+  const handleNewSessionRef = useRef<() => void>(() => {});
+
+  // Cmd+T — global terminal toggle.
+  // Cmd+N — new session (global).
+  // Cmd+Shift+↑/↓ — resize terminal panel (gated: terminal open, focus not in text field).
+  useEffect(() => {
+    const isTextInput = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement;
+      return (
+        t.tagName === 'INPUT' ||
+        t.tagName === 'TEXTAREA' ||
+        t.isContentEditable
+      );
+    };
+
+    const handler = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod) return;
+
+      // Cmd+T — toggle terminal
+      if (e.key === 't' && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        toggleTerminal();
+        return;
+      }
+
+      // Cmd+N — new session
+      if (e.key === 'n' && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        handleNewSessionRef.current();
+        return;
+      }
+
+      // Resize shortcuts — only when terminal is open and focus not in a text field
+      if (!terminalOpenRef.current || isTextInput(e)) return;
+
+      const RESIZE_STEP = 3;
+      if (e.key === 'ArrowUp' && e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        const p = terminalPanelRef.current;
+        if (p) p.resize(Math.min(p.getSize() + RESIZE_STEP, 70));
+        return;
+      }
+      if (e.key === 'ArrowDown' && e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        const p = terminalPanelRef.current;
+        if (p) p.resize(Math.max(p.getSize() - RESIZE_STEP, 15));
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [toggleTerminal]);
+
+  // Collapse terminal on mount (starts closed).
+  // Also keep handleNewSessionRef current after it is defined below.
+
   const inSettings = view === 'settings';
   const inSkills = view === 'skills';
   const inExtensions = view === 'extensions';
@@ -125,6 +209,11 @@ export default function App() {
     });
   }, []);
 
+  // Ensure the terminal panel starts collapsed on first render.
+  useEffect(() => {
+    terminalPanelRef.current?.collapse();
+  }, []);
+
   const intentNewChatRef = useRef(false);
 
   const handleNewSession = () => {
@@ -132,6 +221,7 @@ export default function App() {
     setActiveSessionId(null);
     if (inSettings || inSkills || inExtensions) setView('all');
   };
+  handleNewSessionRef.current = handleNewSession;
 
   // Reset the "explicit new chat" flag once the chat materialises.
   useEffect(() => {
@@ -167,6 +257,7 @@ export default function App() {
   };
 
   return (
+    <TooltipProvider>
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-app text-fg">
       <TopBar
         view={view}
@@ -179,6 +270,8 @@ export default function App() {
           setView('settings');
           setSettingsCategory('projects');
         }}
+        terminalOpen={terminalOpen}
+        onToggleTerminal={toggleTerminal}
       />
 
       <UpdateBanner />
@@ -230,46 +323,75 @@ export default function App() {
           <ResizableHandle />
 
           <ResizablePanel defaultSize={layout[1]} minSize={30}>
-            <div className={PANEL_CARD}>
-              <div
-                className="h-full w-full"
-                style={{
-                  display:
-                    inSettings || inSkills || inExtensions ? 'none' : 'block',
-                }}
+            <ResizablePanelGroup direction="vertical" onLayout={onTermLayout}>
+              {/* Main content area */}
+              <ResizablePanel defaultSize={termLayout[0]} minSize={25}>
+                <div className={PANEL_CARD}>
+                  <div
+                    className="h-full w-full"
+                    style={{
+                      display:
+                        inSettings || inSkills || inExtensions ? 'none' : 'block',
+                    }}
+                  >
+                    <ChatArea
+                      sessionId={activeSessionId}
+                      onSessionCreated={setActiveSessionId}
+                      onNewSession={handleNewSession}
+                      seedSubmit={seedSubmit}
+                      onSeedSubmitConsumed={() => setSeedSubmit(null)}
+                      newSessionDefaultProjectId={
+                        projectFilter === 'all' || projectFilter === 'inbox'
+                          ? null
+                          : projectFilter
+                      }
+                      onStreamingChange={setStreamingSessionIds}
+                      onCwdChange={setActiveCwd}
+                    />
+                  </div>
+                  {inSettings && <SettingsContent category={settingsCategory} />}
+                  {inSkills && (
+                    <SkillInfoPage
+                      skill={activeSkill}
+                      onClose={() => setActiveSkillSlug(null)}
+                      onStartChatWithSubmission={startSessionWithSubmission}
+                    />
+                  )}
+                  {inExtensions && (
+                    <ExtensionInfoPage
+                      extension={activeExtension}
+                      onClose={() => setActiveExtensionSlug(null)}
+                    />
+                  )}
+                </div>
+              </ResizablePanel>
+
+              <ResizableHandle />
+
+              {/* Terminal panel — collapsible, stays mounted across toggles */}
+              <ResizablePanel
+                ref={terminalPanelRef}
+                defaultSize={termLayout[1]}
+                minSize={15}
+                maxSize={70}
+                collapsible
+                collapsedSize={0}
+                onCollapse={() => setTerminalOpen(false)}
+                onExpand={() => setTerminalOpen(true)}
               >
-                <ChatArea
-                  sessionId={activeSessionId}
-                  onSessionCreated={setActiveSessionId}
-                  onNewSession={handleNewSession}
-                  seedSubmit={seedSubmit}
-                  onSeedSubmitConsumed={() => setSeedSubmit(null)}
-                  newSessionDefaultProjectId={
-                    projectFilter === 'all' || projectFilter === 'inbox'
-                      ? null
-                      : projectFilter
-                  }
-                  onStreamingChange={setStreamingSessionIds}
-                />
-              </div>
-              {inSettings && <SettingsContent category={settingsCategory} />}
-              {inSkills && (
-                <SkillInfoPage
-                  skill={activeSkill}
-                  onClose={() => setActiveSkillSlug(null)}
-                  onStartChatWithSubmission={startSessionWithSubmission}
-                />
-              )}
-              {inExtensions && (
-                <ExtensionInfoPage
-                  extension={activeExtension}
-                  onClose={() => setActiveExtensionSlug(null)}
-                />
-              )}
-            </div>
+                <div className={PANEL_CARD}>
+                  <TerminalPanel
+                    isOpen={terminalOpen}
+                    initialCwd={activeCwd}
+                    onClose={toggleTerminal}
+                  />
+                </div>
+              </ResizablePanel>
+            </ResizablePanelGroup>
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
     </div>
+    </TooltipProvider>
   );
 }

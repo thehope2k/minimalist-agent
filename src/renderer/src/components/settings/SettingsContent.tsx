@@ -5,6 +5,7 @@ import { PermissionsPanel } from './panels/PermissionsPanel';
 import { PreferencesPanel } from './panels/PreferencesPanel';
 import { ProjectsPanel } from './panels/ProjectsPanel';
 import { StubPanel } from './panels/StubPanel';
+import { TerminalSettingsPanel } from './panels/TerminalSettingsPanel';
 import {
   SETTINGS_CATEGORIES,
   type SettingsCategory,
@@ -30,6 +31,8 @@ export function SettingsContent({ category }: { category: SettingsCategory }) {
           <ProjectsPanel />
         ) : category === 'shortcuts' ? (
           <KeyboardShortcutsPanel />
+        ) : category === 'terminal' ? (
+          <TerminalSettingsPanel />
         ) : (
           <StubPanel title={meta?.label ?? 'Settings'} />
         )}

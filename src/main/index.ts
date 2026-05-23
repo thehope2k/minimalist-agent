@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { registerIpc } from './ipc';
 import { cleanupPower } from './power';
+import { terminalManager } from './terminal/manager';
 import { installSkillsReferenceDoc } from './skills/install-reference';
 import { installExtensionsReferenceDoc } from './extensions/install-reference';
 import { getAppIcon } from './app-icon';
@@ -120,6 +121,7 @@ app.on('before-quit', async (e) => {
 
 app.on('will-quit', () => {
   cleanupPower();
+  terminalManager.killAll();
   // Stop all SDD file-system watchers and clear in-memory session state.
   unwatchAll();
   sddClearAll();

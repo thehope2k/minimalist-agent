@@ -542,6 +542,15 @@ export interface GitFileDiff {
   language: string;
 }
 
+export interface TerminalTabInfo {
+  tabId: string;
+  title: string;
+  cwd: string;
+  shell: string;
+  pid: number;
+  alive: boolean;
+}
+
 export interface AppApi {
   update: {
     getInfo: () => Promise<UpdateInfo>;
@@ -693,6 +702,7 @@ export interface AppApi {
   };
   fs: {
     pickDirectory: () => Promise<string | null>;
+    pickFile: (opts?: { defaultPath?: string; title?: string }) => Promise<string | null>;
     /** Read a file's text content. Returns null if file is missing, binary, or >2 MB. */
     readFile: (absolutePath: string) => Promise<string | null>;
     /** Read a file as base64. Returns null if missing or >20 MB. Used for image previews. */
@@ -844,6 +854,22 @@ export interface AppApi {
       sessionId?: string;
       cwd?: string;
     }) => Promise<string | null>;
+  };
+  terminal: {
+    resolveShell: () => Promise<string>;
+    create: (opts: { cwd: string; shell?: string }) => Promise<TerminalTabInfo>;
+    write: (tabId: string, data: string) => Promise<void>;
+    resize: (tabId: string, cols: number, rows: number) => Promise<void>;
+    getScrollback: (tabId: string) => Promise<string | null>;
+    listTabs: () => Promise<TerminalTabInfo[]>;
+    kill: (tabId: string) => Promise<void>;
+    listShells: () => Promise<string[]>;
+    /** Returns an unsubscribe function. */
+    onData: (cb: (tabId: string, data: string) => void) => () => void;
+    /** Returns an unsubscribe function. */
+    onExit: (cb: (tabId: string, exitCode: number) => void) => () => void;
+    /** Returns an unsubscribe function. */
+    onTitleChange: (cb: (tabId: string, title: string) => void) => () => void;
   };
 }
 

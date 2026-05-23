@@ -5,6 +5,7 @@ export { Badge } from './Badge';
 export { Button } from './Button';
 export { ExpandModal, type ExpandModalProps } from './ExpandModal';
 export { IconButton } from './IconButton';
+export { Tooltip, TooltipProvider } from './Tooltip';
 export { ZoomPan } from './ZoomPan';
 export { Input, Textarea, FIELD_CHROME } from './Input';
 export { Menu, type MenuItem } from './Menu';

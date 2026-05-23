@@ -52,14 +52,21 @@ export function KeyboardShortcutsPanel() {
 
 function KeyChips({ keys }: { keys: string[] }) {
   return (
-    <div className="flex shrink-0 items-center gap-1">
+    <div className="flex shrink-0 items-center gap-1.5">
       {keys.map((key, i) => (
-        <kbd
-          key={i}
-          className="inline-flex min-w-[1.5rem] items-center justify-center rounded border border-border bg-elevated/60 px-1.5 py-0.5 font-mono text-[11px] leading-none text-fg-muted shadow-sm"
-        >
-          {key}
-        </kbd>
+        <span key={i} className="flex items-center gap-1.5">
+          {i > 0 && (
+            <span className="text-[11px] text-fg-subtle select-none">+</span>
+          )}
+          <kbd className={
+            'inline-flex min-w-[2rem] items-center justify-center rounded-md ' +
+            'border border-border-strong bg-elevated-2 ' +
+            'px-2.5 py-1 font-mono text-[15px] font-semibold leading-none text-fg ' +
+            'shadow-[0_2px_0_0_rgba(0,0,0,0.4)]'
+          }>
+            {key}
+          </kbd>
+        </span>
       ))}
     </div>
   );

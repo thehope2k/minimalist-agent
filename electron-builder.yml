@@ -12,10 +12,16 @@ files:
   - "!**/*.map"
   # Bundled ripgrep binary — must be included so asarUnpack can extract it.
   - "node_modules/@vscode/ripgrep-*/bin/**"
+  # node-pty native addon.
+  - "node_modules/node-pty/**"
 
 asarUnpack:
   # rg must be a real executable on disk, not inside the asar virtual archive.
   - "node_modules/@vscode/ripgrep-*/bin/**"
+  # node-pty native addon must also be on disk (not inside asar).
+  - "node_modules/node-pty/build/Release/**"
+  - "node_modules/node-pty/lib/**"
+  - "node_modules/node-pty/package.json"
 
 # Auto-update reads update manifests (latest-mac.yml / latest.yml / latest-linux.yml)
 # from the GitHub Releases of this repo.
