@@ -20,6 +20,7 @@ import {
   DiffExpandModal,
   LazyDiffViewer,
   DIFF_METHOD_WORDS,
+  WrittenView,
   EDIT_SEP,
 } from './diff-utils';
 
@@ -269,18 +270,22 @@ function FileRow({
       {/* inline diff */}
       {diffOpen && (
         <div className="border-t border-border/60">
-          <div className="scroll-thin overflow-x-auto bg-panel">
-            <Suspense fallback={<div className="h-16 animate-pulse rounded bg-elevated/40 m-4" />}>
-              <LazyDiffViewer
-                oldValue={merged.oldValue}
-                newValue={merged.newValue}
-                splitView={false}
-                compareMethod={DIFF_METHOD_WORDS}
-                useDarkTheme={true}
-                styles={diffViewerStyles}
-              />
-            </Suspense>
-          </div>
+          {lastOpKind === 'write' ? (
+            <WrittenView filePath={merged.filePath} content={merged.newValue} />
+          ) : (
+            <div className="scroll-thin overflow-x-auto bg-panel">
+              <Suspense fallback={<div className="h-16 animate-pulse rounded bg-elevated/40 m-4" />}>
+                <LazyDiffViewer
+                  oldValue={merged.oldValue}
+                  newValue={merged.newValue}
+                  splitView={false}
+                  compareMethod={DIFF_METHOD_WORDS}
+                  useDarkTheme={true}
+                  styles={diffViewerStyles}
+                />
+              </Suspense>
+            </div>
+          )}
         </div>
       )}
     </div>

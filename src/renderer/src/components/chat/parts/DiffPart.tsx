@@ -29,6 +29,7 @@ import {
   DiffExpandModal,
   LazyDiffViewer,
   DIFF_METHOD_WORDS,
+  WrittenView,
 } from './diff-utils';
 
 interface DiffPartProps {
@@ -158,18 +159,22 @@ export function DiffPart({ name, input, result, status }: DiffPartProps) {
         )}
         {open && (
           <div className="border-t border-border/60">
-            <div className="scroll-thin overflow-x-auto bg-panel">
-              <Suspense fallback={<div className="h-16 animate-pulse rounded bg-elevated/40 m-4" />}>
-                <LazyDiffViewer
-                  oldValue={parsed.oldValue}
-                  newValue={parsed.newValue}
-                  splitView={false}
-                  compareMethod={DIFF_METHOD_WORDS}
-                  useDarkTheme={true}
-                  styles={diffViewerStyles}
-                />
-              </Suspense>
-            </div>
+            {isWrite ? (
+              <WrittenView filePath={parsed.filePath} content={parsed.newValue} />
+            ) : (
+              <div className="scroll-thin overflow-x-auto bg-panel">
+                <Suspense fallback={<div className="h-16 animate-pulse rounded bg-elevated/40 m-4" />}>
+                  <LazyDiffViewer
+                    oldValue={parsed.oldValue}
+                    newValue={parsed.newValue}
+                    splitView={false}
+                    compareMethod={DIFF_METHOD_WORDS}
+                    useDarkTheme={true}
+                    styles={diffViewerStyles}
+                  />
+                </Suspense>
+              </div>
+            )}
             {result?.isError && (
               <div className="border-t border-border/60 px-3 py-2">
                 <div className="mb-1 text-[10px] uppercase tracking-wide text-fg-subtle">

@@ -3,6 +3,9 @@
 
 import { lazy, Suspense } from 'react';
 import type { DiffMethod } from 'react-diff-viewer-continued';
+import { FilePenLine, FileText } from 'lucide-react';
+import { ExpandModal } from '@/components/ui';
+import { CodeBlock } from './markdown/CodeBlock';
 
 // Lazy-loaded so react-diff-viewer-continued (~2.7 MB) stays out of the
 // initial bundle. The viewer is only rendered when the user expands a diff
@@ -14,8 +17,35 @@ export const LazyDiffViewer = lazy(() =>
 // DiffMethod.WORDS = 'diffWords' — inlined to avoid importing the full package.
 // Cast via `import type` (erased at runtime — zero bundle cost).
 export const DIFF_METHOD_WORDS = 'diffWords' as unknown as DiffMethod;
-import { FilePenLine, FileText } from 'lucide-react';
-import { ExpandModal } from '@/components/ui';
+
+// Derive a Shiki language tag from a file path extension.
+export function langFromPath(filePath: string): string {
+  const ext = filePath.split('.').pop()?.toLowerCase() ?? '';
+  const MAP: Record<string, string> = {
+    ts: 'ts', tsx: 'tsx', js: 'js', jsx: 'jsx',
+    py: 'python', rs: 'rust', go: 'go', rb: 'ruby',
+    java: 'java', kt: 'kotlin', swift: 'swift', cs: 'csharp',
+    cpp: 'cpp', c: 'c', h: 'c', hpp: 'cpp',
+    html: 'html', css: 'css', scss: 'scss',
+    json: 'json', yaml: 'yaml', yml: 'yaml', toml: 'toml',
+    md: 'md', mdx: 'mdx', sh: 'bash', bash: 'bash',
+    sql: 'sql', graphql: 'graphql', xml: 'xml',
+    dockerfile: 'dockerfile', tf: 'hcl',
+  };
+  return MAP[ext] ?? 'text';
+}
+
+/**
+ * Used for Write tool results — no old content to diff, just show the
+ * written file with syntax highlighting instead of an empty diff pane.
+ */
+export function WrittenView({ filePath, content }: { filePath: string; content: string }) {
+  return (
+    <div className="scroll-thin overflow-x-auto bg-panel">
+      <CodeBlock code={content} language={langFromPath(filePath)} />
+    </div>
+  );
+}
 
 export interface ParsedDiff {
   filePath: string;
@@ -152,16 +182,20 @@ export function DiffExpandModal({
   return (
     <ExpandModal title={title} onClose={onClose} className="max-w-6xl">
       <div className="scroll-thin flex-1 overflow-auto bg-panel">
-        <Suspense fallback={<div className="h-16 animate-pulse rounded bg-elevated/40 m-4" />}>
-          <LazyDiffViewer
-            oldValue={parsed.oldValue}
-            newValue={parsed.newValue}
-            splitView={true}
-            compareMethod={DIFF_METHOD_WORDS}
-            useDarkTheme={true}
-            styles={diffViewerStyles}
-          />
-        </Suspense>
+        {isWrite ? (
+          <WrittenView filePath={parsed.filePath} content={parsed.newValue} />
+        ) : (
+          <Suspense fallback={<div className="h-16 animate-pulse rounded bg-elevated/40 m-4" />}>
+            <LazyDiffViewer
+              oldValue={parsed.oldValue}
+              newValue={parsed.newValue}
+              splitView={true}
+              compareMethod={DIFF_METHOD_WORDS}
+              useDarkTheme={true}
+              styles={diffViewerStyles}
+            />
+          </Suspense>
+        )}
       </div>
     </ExpandModal>
   );
