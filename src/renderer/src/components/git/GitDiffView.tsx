@@ -5,16 +5,24 @@
 // the modified editor — visually the "center" of the split view).
 // Clicking the glyph toggles that hunk in/out of the commit.
 // CSS classes git-hunk-checked / git-hunk-unchecked defined in globals.css.
+//
+// New / deleted files skip the DiffEditor entirely and render a single
+// read-only Editor with a status banner — there is nothing to diff.
 
 import { lazy, Suspense, useCallback, useEffect, useRef } from 'react';
-import type { DiffOnMount } from '@monaco-editor/react';
+import type { DiffOnMount, OnMount } from '@monaco-editor/react';
 import type * as MonacoType from 'monaco-editor';
-import { Loader2 } from 'lucide-react';
+import { FilePlus, Trash2, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import type { GitFileDiff, LineChange } from './types';
 import { registerAppMonacoTheme, APP_MONACO_COLORS } from '@/lib/monaco-setup';
 
 const DiffEditor = lazy(() =>
   import('@monaco-editor/react').then((m) => ({ default: m.DiffEditor })),
+);
+
+const Editor = lazy(() =>
+  import('@monaco-editor/react').then((m) => ({ default: m.Editor })),
 );
 
 interface GitDiffViewProps {
@@ -44,6 +52,19 @@ const EDITOR_OPTIONS: MonacoType.editor.IDiffEditorConstructionOptions = {
   renderSideBySide: true,
   ignoreTrimWhitespace: false,
   renderIndicators: true,
+};
+
+// Options for the plain single-panel view (new / deleted files).
+const PLAIN_EDITOR_OPTIONS: MonacoType.editor.IStandaloneEditorConstructionOptions = {
+  readOnly: true,
+  glyphMargin: false,
+  minimap: { enabled: false },
+  fontSize: 13,
+  lineHeight: 21,
+  fontFamily: '"JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace',
+  scrollBeyondLastLine: false,
+  wordWrap: 'off',
+  lineNumbers: 'on',
 };
 
 export function GitDiffView({
@@ -147,6 +168,65 @@ export function GitDiffView({
     return (
       <div className="flex h-full items-center justify-center">
         <p className="text-xs text-fg-subtle">Select a file to view changes</p>
+      </div>
+    );
+  }
+
+  // New (A/?) or deleted (D) files have no meaningful diff — one side is
+  // always empty. Render a single read-only panel with a status banner.
+  const isNewFile = diff.original === '' && diff.modified !== '';
+  const isDeletedFile = diff.modified === '' && diff.original !== '';
+
+  if (isNewFile || isDeletedFile) {
+    const content = isNewFile ? diff.modified : diff.original;
+    const Icon = isNewFile ? FilePlus : Trash2;
+    const label = isNewFile ? 'New file' : 'Deleted file';
+    const hint  = isNewFile ? 'Entire file will be added' : 'Entire file will be removed';
+    const colorCls = isNewFile
+      ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+      : 'text-red-400 bg-red-500/10 border-red-500/20';
+
+    const handleSingleMount: OnMount = (editor) => {
+      // No hunks — signal empty so the parent treats this file as all-or-nothing.
+      onDiffComputedRef.current?.([]);
+      editor.revealLine(1);
+    };
+
+    return (
+      <div className="flex h-full flex-col">
+        <div className={cn(
+          'flex shrink-0 items-center gap-2 border-b px-3 py-1.5',
+          colorCls,
+        )}>
+          <Icon className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+          <span className="text-[11px] font-medium">{label}</span>
+          <span className="text-[11px] opacity-60">· {hint}</span>
+        </div>
+        <div className="min-h-0 flex-1">
+          <Suspense
+            fallback={
+              <div className="flex h-full items-center justify-center">
+                <Loader2 className="h-5 w-5 animate-spin text-fg-subtle" strokeWidth={1.5} />
+              </div>
+            }
+          >
+            <Editor
+              key={fileKey}
+              value={content}
+              language={diff.language}
+              theme="minimalist-dark"
+              options={PLAIN_EDITOR_OPTIONS}
+              beforeMount={handleBeforeMount}
+              onMount={handleSingleMount}
+              height="100%"
+              loading={
+                <div className="flex h-full items-center justify-center">
+                  <Loader2 className="h-5 w-5 animate-spin text-fg-subtle" strokeWidth={1.5} />
+                </div>
+              }
+            />
+          </Suspense>
+        </div>
       </div>
     );
   }
