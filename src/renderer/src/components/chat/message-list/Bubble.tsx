@@ -105,7 +105,7 @@ export function Bubble({
                 Continue
               </Button>
             )}
-          {(m.model || m.usage?.outputTokens !== undefined || m.stopReason) && (
+          {(m.model || m.usage?.outputTokens !== undefined || m.stopReason || m.durationMs !== undefined) && (
             <span className={cn(
               'inline-flex items-center gap-1.5 rounded-md border border-border/40 bg-panel/40',
               'px-1.5 py-0.5 font-mono text-[10px] text-fg-subtle',
@@ -120,6 +120,9 @@ export function Bubble({
               )}
               {m.stopReason && !showStopBadge && (
                 <><span className="opacity-50">·</span><span title="SDK stop_reason">{m.stopReason}</span></>
+              )}
+              {m.durationMs !== undefined && (
+                <><span className="opacity-50">·</span><span title="Turn duration">{formatDuration(m.durationMs)}</span></>
               )}
             </span>
           )}
@@ -215,4 +218,11 @@ function base64ToBlob(b64: string, mimeType: string): Blob {
   const arr = new Uint8Array(bytes.length);
   for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
   return new Blob([arr], { type: mimeType });
+}
+
+function formatDuration(ms: number): string {
+  const total = Math.floor(ms / 1000);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return m > 0 ? `${m}:${s.toString().padStart(2, '0')}` : `${s}s`;
 }

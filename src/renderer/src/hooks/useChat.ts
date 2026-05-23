@@ -150,6 +150,7 @@ function applyEvent(msg: ChatMessage, evt: ChatStreamEvent): ChatMessage {
         // leaves the message in a zombie state that the interrupt detector fires on.
         stopReason: evt.stopReason ?? 'stop',
         usage: evt.usage,
+        durationMs: msg.createdAt != null ? Date.now() - msg.createdAt : undefined,
       };
     }
     case 'assistant_usage': {
@@ -166,6 +167,7 @@ function applyEvent(msg: ChatMessage, evt: ChatStreamEvent): ChatMessage {
         errorInfo: evt.error,
         // Keep `error` populated for legacy renderers / external readers.
         error: evt.error.message,
+        durationMs: msg.createdAt != null ? Date.now() - msg.createdAt : undefined,
       };
     }
     default:
@@ -808,7 +810,7 @@ export function useChat(
     const current = messagesBySession.current.get(sid) ?? [];
     const updated = current.map((m) =>
       m.id === stream.turnId
-        ? { ...m, isStreaming: false, stopReason: 'aborted' }
+        ? { ...m, isStreaming: false, stopReason: 'aborted', durationMs: m.createdAt != null ? Date.now() - m.createdAt : undefined }
         : m,
     );
     messagesBySession.current.set(sid, updated);

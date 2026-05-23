@@ -74,6 +74,8 @@ export interface StoredMessage {
   stopReason?: string;
   /** Token counts reported by the SDK on this turn's `result` message. */
   usage?: MessageUsage;
+  /** Total wall-clock duration of the turn in milliseconds. */
+  durationMs?: number;
   createdAt: number;
   /** User-message attachments. */
   attachments?: StoredAttachment[];

@@ -45,6 +45,8 @@ export interface ChatMessage {
   stopReason?: string;
   /** Aggregate token counts from the SDK's `result` — used for cost / display. */
   usage?: AgentUsage;
+  /** Total wall-clock duration of the turn in milliseconds. Persisted. */
+  durationMs?: number;
   /**
    * Per-call usage from the latest API round inside the turn. Anthropic
    * attaches `usage` to every assistant message it returns; we keep the
@@ -101,6 +103,7 @@ export function chatFromStored(stored: StoredMessage): ChatMessage {
     errorInfo: stored.errorInfo,
     stopReason: stored.stopReason,
     usage: stored.usage,
+    durationMs: stored.durationMs,
     intentTag: stored.intentTag,
     attachments: stored.attachments,
     markerKind: stored.markerKind,
@@ -135,6 +138,7 @@ export function chatToStored(msg: ChatMessage): StoredMessage {
     errorInfo: msg.errorInfo,
     stopReason: msg.stopReason,
     usage: msg.usage,
+    durationMs: msg.durationMs,
     intentTag: msg.intentTag,
     attachments: msg.attachments,
     markerKind: msg.markerKind,
