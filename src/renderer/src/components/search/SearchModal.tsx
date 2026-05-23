@@ -47,8 +47,12 @@ export function SearchModal({ cwd, onClose, onOpenFile }: SearchModalProps) {
   const [grepLoading, setGrepLoad]  = useState(false);
   const [activeIdx, setActiveIdx]   = useState(0);
 
-  const inputRef = useRef<HTMLInputElement>(null);
-  const listRef  = useRef<HTMLDivElement>(null);
+  const inputRef     = useRef<HTMLInputElement>(null);
+  const listRef       = useRef<HTMLDivElement>(null);
+  // Guard against onMouseEnter updating activeIdx when results re-render
+  // under a stationary cursor. Only allow hover-driven highlights after the
+  // user has deliberately moved their mouse inside the palette.
+  const mouseMovedRef = useRef(false);
 
   // Autofocus the input immediately on open.
   useEffect(() => { inputRef.current?.focus(); }, []);
@@ -111,8 +115,12 @@ export function SearchModal({ cwd, onClose, onOpenFile }: SearchModalProps) {
     ...grepResults.map((entry)   => ({ kind: 'grep' as const, entry })),
   ], [filteredFiles, grepResults]);
 
-  // Reset active index whenever the result set changes.
-  useEffect(() => { setActiveIdx(0); }, [items.length, query]);
+  // Reset active index and the mouse-moved guard whenever the result set
+  // changes so the keyboard highlight always starts at the top.
+  useEffect(() => {
+    setActiveIdx(0);
+    mouseMovedRef.current = false;
+  }, [items.length, query]);
 
   // Scroll active row into view.
   useEffect(() => {
@@ -185,6 +193,7 @@ export function SearchModal({ cwd, onClose, onOpenFile }: SearchModalProps) {
         <div
           ref={listRef}
           className="max-h-[54vh] overflow-y-auto scroll-thin pb-1"
+          onMouseMove={() => { mouseMovedRef.current = true; }}
         >
           {noCwd ? (
             <EmptyHint>Set a working directory for this session to use Search</EmptyHint>
@@ -201,7 +210,7 @@ export function SearchModal({ cwd, onClose, onOpenFile }: SearchModalProps) {
                       query={query}
                       active={i === activeIdx}
                       dataIdx={i}
-                      onMouseEnter={() => setActiveIdx(i)}
+                      onMouseEnter={() => { if (mouseMovedRef.current) setActiveIdx(i); }}
                       onMouseDown={(e) => {
                         e.preventDefault();
                         openItem({ kind: 'file', entry });
@@ -224,7 +233,7 @@ export function SearchModal({ cwd, onClose, onOpenFile }: SearchModalProps) {
                         query={query}
                         active={idx === activeIdx}
                         dataIdx={idx}
-                        onMouseEnter={() => setActiveIdx(idx)}
+                        onMouseEnter={() => { if (mouseMovedRef.current) setActiveIdx(idx); }}
                         onMouseDown={(e) => {
                           e.preventDefault();
                           openItem({ kind: 'grep', entry });
