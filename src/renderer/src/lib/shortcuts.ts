@@ -152,47 +152,15 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
     title: 'Terminal',
     shortcuts: [
-      {
-        macKeys: ['⌘', 'T'],
-        winKeys: ['Ctrl', 'T'],
-        label: 'Open / close terminal panel',
-      },
-      {
-        macKeys: ['⌘', '⇧', 'T'],
-        winKeys: ['Ctrl', 'Shift', 'T'],
-        label: 'New terminal tab',
-        condition: 'Terminal panel is open',
-      },
-      {
-        macKeys: ['⌘', '⇧', 'W'],
-        winKeys: ['Ctrl', 'Shift', 'W'],
-        label: 'Close active terminal tab',
-        condition: 'Terminal panel is open',
-      },
-      {
-        macKeys: ['⌘', '←'],
-        winKeys: ['Ctrl', '←'],
-        label: 'Previous terminal tab',
-        condition: 'Terminal panel is open, focus not in a text field',
-      },
-      {
-        macKeys: ['⌘', '→'],
-        winKeys: ['Ctrl', '→'],
-        label: 'Next terminal tab',
-        condition: 'Terminal panel is open, focus not in a text field',
-      },
-      {
-        macKeys: ['⌘', '⇧', '↑'],
-        winKeys: ['Ctrl', 'Shift', '↑'],
-        label: 'Expand terminal panel',
-        condition: 'Terminal panel is open, focus not in a text field',
-      },
-      {
-        macKeys: ['⌘', '⇧', '↓'],
-        winKeys: ['Ctrl', 'Shift', '↓'],
-        label: 'Shrink terminal panel',
-        condition: 'Terminal panel is open, focus not in a text field',
-      },
+      { macKeys: ['⌘', 'T'],       winKeys: ['Ctrl', 'T'],       label: 'Open / close terminal panel' },
+      { macKeys: ['⌘', '⇧', 'T'],   winKeys: ['Ctrl', 'Shift', 'T'], label: 'New terminal tab',          condition: 'Terminal panel is open' },
+      { macKeys: ['⌘', '⇧', 'W'],   winKeys: ['Ctrl', 'Shift', 'W'], label: 'Close active terminal tab', condition: 'Terminal panel is open' },
+      { macKeys: ['⌘', 'K'],        winKeys: ['Ctrl', 'K'],          label: 'Clear terminal',            condition: 'Terminal canvas has focus' },
+      { macKeys: ['⌘', 'F'],        winKeys: ['Ctrl', 'F'],          label: 'Find in terminal output',   condition: 'Terminal panel is open, focus not in a text field' },
+      { macKeys: ['⌘', '←'],        winKeys: ['Ctrl', '←'],          label: 'Previous terminal tab',     condition: 'Terminal panel is open, focus not in a text field' },
+      { macKeys: ['⌘', '→'],        winKeys: ['Ctrl', '→'],          label: 'Next terminal tab',         condition: 'Terminal panel is open, focus not in a text field' },
+      { macKeys: ['⌘', '⇧', '↑'],   winKeys: ['Ctrl', 'Shift', '↑'], label: 'Expand terminal panel',     condition: 'Terminal panel is open, focus not in a text field' },
+      { macKeys: ['⌘', '⇧', '↓'],   winKeys: ['Ctrl', 'Shift', '↓'], label: 'Shrink terminal panel',     condition: 'Terminal panel is open, focus not in a text field' },
     ],
   },
   {

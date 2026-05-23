@@ -561,6 +561,7 @@ export interface AppApi {
   };
   app: {
     getVersion: () => Promise<string>;
+    openExternal: (url: string) => Promise<void>;
     getKeepAwake: () => Promise<boolean>;
     setKeepAwake: (enabled: boolean) => Promise<boolean>;
     setAgentActive: (active: boolean) => Promise<void>;

@@ -1,28 +1,19 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
+import { Search, X, ChevronUp, ChevronDown } from 'lucide-react';
 import { TabBar } from './terminal-panel/TabBar';
-import { TerminalInstance } from './terminal-panel/TerminalInstance';
+import { TerminalInstance, type TerminalInstanceHandle } from './terminal-panel/TerminalInstance';
 import { useTerminalManager } from './terminal-panel/useTerminalManager';
+import { IconButton } from '@/components/ui';
+import { cn } from '@/lib/utils';
 
 interface TerminalPanelProps {
-  /** Whether the resizable panel is expanded (not collapsed to 0). */
   isOpen:     boolean;
-  /** Working directory to use for the very first tab only. */
   initialCwd: string | undefined;
-  /** Called when the user clicks the × close-panel button. */
   onClose:    () => void;
 }
 
-/**
- * Persistent terminal panel with multiple tabs.
- *
- * This component stays mounted even when the panel is collapsed — that keeps
- * all TerminalInstance components alive so xterm state and IPC subscriptions
- * are preserved across Cmd+T toggles. The PTYs themselves live in the main
- * process and are never affected by renderer mount/unmount cycles.
- */
 export function TerminalPanel({ isOpen, initialCwd, onClose }: TerminalPanelProps) {
   const manager       = useTerminalManager();
-  // Stable refs so keyboard handlers don't go stale.
   const managerRef    = useRef(manager);
   managerRef.current  = manager;
   const isOpenRef     = useRef(isOpen);
@@ -30,10 +21,49 @@ export function TerminalPanel({ isOpen, initialCwd, onClose }: TerminalPanelProp
   const initialCwdRef = useRef(initialCwd);
   initialCwdRef.current = initialCwd;
 
-  // Seed a first tab whenever the panel opens and has no tabs.
-  // Covers both: first-ever open, and reopen after the last tab was closed.
-  // Intentionally only depends on `isOpen` — we don't want to re-fire on
-  // every tab-count change, just on each open transition.
+  // Per-tab refs for imperative access (clear, search).
+  const tabRefs = useRef<Map<string, React.RefObject<TerminalInstanceHandle>>>(new Map());
+  const getTabRef = (tabId: string) => {
+    if (!tabRefs.current.has(tabId)) {
+      tabRefs.current.set(tabId, { current: null } as React.RefObject<TerminalInstanceHandle>);
+    }
+    return tabRefs.current.get(tabId)!;
+  };
+  // Clean up refs for removed tabs.
+  useEffect(() => {
+    const liveIds = new Set(manager.tabs.map((t) => t.tabId));
+    for (const id of tabRefs.current.keys()) {
+      if (!liveIds.has(id)) tabRefs.current.delete(id);
+    }
+  }, [manager.tabs]);
+
+  // Search bar state.
+  const [searchOpen, setSearchOpen]   = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const activeHandle = () =>
+    manager.activeTabId ? tabRefs.current.get(manager.activeTabId)?.current : null;
+
+  const openSearch = useCallback(() => {
+    setSearchOpen(true);
+    setTimeout(() => searchInputRef.current?.focus(), 0);
+  }, []);
+
+  const closeSearch = useCallback(() => {
+    setSearchOpen(false);
+    setSearchQuery('');
+  }, []);
+
+  const findNext = useCallback((q = searchQuery) => {
+    if (q) activeHandle()?.findNext(q, { caseSensitive: false });
+  }, [searchQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const findPrevious = useCallback((q = searchQuery) => {
+    if (q) activeHandle()?.findPrevious(q, { caseSensitive: false });
+  }, [searchQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Seed first tab on panel open.
   useEffect(() => {
     if (!isOpen) return;
     if (managerRef.current.tabs.length === 0) {
@@ -44,21 +74,17 @@ export function TerminalPanel({ isOpen, initialCwd, onClose }: TerminalPanelProp
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
-  const newTab = useCallback(() => {
-    void managerRef.current.createTab(
-      initialCwdRef.current ?? window.env?.homedir ?? '/',
-    );
-  }, []);
+  // Auto-close when last tab is closed.
+  useEffect(() => {
+    if (!isOpenRef.current) return;
+    if (manager.tabs.length === 0) onClose();
+  }, [manager.tabs.length, onClose]);
 
-  // Terminal-scoped keyboard shortcuts (gated: panel open).
+  // Terminal-scoped keyboard shortcuts.
   useEffect(() => {
     const isTextInput = (e: KeyboardEvent): boolean => {
       const t = e.target as HTMLElement;
-      return (
-        t.tagName === 'INPUT' ||
-        t.tagName === 'TEXTAREA' ||
-        t.isContentEditable
-      );
+      return t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable;
     };
 
     const handler = (e: KeyboardEvent) => {
@@ -69,7 +95,7 @@ export function TerminalPanel({ isOpen, initialCwd, onClose }: TerminalPanelProp
       // Cmd+Shift+T — new tab
       if (e.key === 'T' && e.shiftKey && !e.altKey) {
         e.preventDefault();
-        newTab();
+        void managerRef.current.createTab(initialCwdRef.current ?? window.env?.homedir ?? '/');
         return;
       }
 
@@ -81,10 +107,19 @@ export function TerminalPanel({ isOpen, initialCwd, onClose }: TerminalPanelProp
         return;
       }
 
-      // Arrow tab switching — skip if focus is in a text field (preserve cursor movement).
+      // Cmd+F — open search bar
+      if (e.key === 'f' && !e.shiftKey && !e.altKey) {
+        // Only intercept when terminal panel is in focus context (not chat input etc.)
+        if (!isTextInput(e)) {
+          e.preventDefault();
+          openSearch();
+          return;
+        }
+      }
+
+      // Arrow tab switching — skip if focus is in a text field.
       if (isTextInput(e)) return;
 
-      // Cmd+← — previous tab
       if (e.key === 'ArrowLeft' && !e.shiftKey && !e.altKey) {
         e.preventDefault();
         const { tabs, activeTabId, setActiveTab } = managerRef.current;
@@ -94,7 +129,6 @@ export function TerminalPanel({ isOpen, initialCwd, onClose }: TerminalPanelProp
         return;
       }
 
-      // Cmd+→ — next tab
       if (e.key === 'ArrowRight' && !e.shiftKey && !e.altKey) {
         e.preventDefault();
         const { tabs, activeTabId, setActiveTab } = managerRef.current;
@@ -105,17 +139,13 @@ export function TerminalPanel({ isOpen, initialCwd, onClose }: TerminalPanelProp
       }
     };
 
-    // Capture phase: fires before xterm's own canvas listeners.
     window.addEventListener('keydown', handler, { capture: true });
     return () => window.removeEventListener('keydown', handler, { capture: true });
-  }, [newTab]);
+  }, [openSearch]);
 
-  // Auto-close the panel when the last tab is closed.
-  // Only fire after the panel has actually been open (isOpenRef prevents closing on initial mount).
-  useEffect(() => {
-    if (!isOpenRef.current) return;
-    if (manager.tabs.length === 0) onClose();
-  }, [manager.tabs.length, onClose]);
+  const newTab = useCallback(() => {
+    void managerRef.current.createTab(initialCwdRef.current ?? window.env?.homedir ?? '/');
+  }, []);
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -128,17 +158,42 @@ export function TerminalPanel({ isOpen, initialCwd, onClose }: TerminalPanelProp
         onClosePanel={onClose}
       />
 
-      {/* Terminal canvas area — all instances rendered, only active one visible. */}
       <div className="relative min-h-0 flex-1 bg-[#0c0c0c] p-1">
-        {manager.tabs.map((tab) => (
-            <TerminalInstance
-              key={tab.tabId}
-              tabId={tab.tabId}
-              isActive={tab.tabId === manager.activeTabId && isOpen}
-              alive={tab.alive}
+        {/* Search bar — floats top-right of the terminal area */}
+        {searchOpen && (
+          <div className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-lg border border-border bg-panel px-2 py-1.5 shadow-xl">
+            <Search className="h-3.5 w-3.5 shrink-0 text-fg-muted" />
+            <input
+              ref={searchInputRef}
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                if (e.target.value) activeHandle()?.findNext(e.target.value, { caseSensitive: false });
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { e.shiftKey ? findPrevious() : findNext(); }
+                if (e.key === 'Escape') closeSearch();
+              }}
+              placeholder="Find in terminal…"
+              className={cn(
+                'w-48 bg-transparent text-sm text-fg outline-none placeholder:text-fg-subtle',
+              )}
             />
-          ))
-        }
+            <IconButton icon={ChevronUp}   label="Previous match (Shift+Enter)" onClick={() => findPrevious()} />
+            <IconButton icon={ChevronDown} label="Next match (Enter)"           onClick={() => findNext()} />
+            <IconButton icon={X}           label="Close search (Esc)"           onClick={closeSearch} />
+          </div>
+        )}
+
+        {manager.tabs.map((tab) => (
+          <TerminalInstance
+            key={tab.tabId}
+            ref={getTabRef(tab.tabId)}
+            tabId={tab.tabId}
+            isActive={tab.tabId === manager.activeTabId && isOpen}
+            alive={tab.alive}
+          />
+        ))}
       </div>
     </div>
   );

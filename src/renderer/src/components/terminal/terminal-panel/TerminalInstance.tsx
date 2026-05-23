@@ -1,15 +1,16 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import type { Terminal as XTerminal } from '@xterm/xterm';
 import type { FitAddon } from '@xterm/addon-fit';
+import type { SearchAddon } from '@xterm/addon-search';
+import { cn } from '@/lib/utils';
 import { getTerminalSettings } from '@/lib/terminal-settings';
 
-// Dark theme tuned to match the app's dark palette.
 const TERMINAL_THEME = {
   background:          '#0c0c0c',
   foreground:          '#e8e8e8',
   cursor:              '#e8e8e8',
   cursorAccent:        '#0c0c0c',
-  selectionBackground: 'rgba(255,255,255,0.15)',
+  selectionBackground: 'rgba(255,255,255,0.2)',
   black:               '#1e1e1e',
   red:                 '#f14c4c',
   green:               '#23d18b',
@@ -28,146 +29,240 @@ const TERMINAL_THEME = {
   brightWhite:         '#ffffff',
 };
 
+export interface TerminalInstanceHandle {
+  clear:        () => void;
+  findNext:     (query: string, options?: { caseSensitive?: boolean; regex?: boolean }) => boolean;
+  findPrevious: (query: string, options?: { caseSensitive?: boolean; regex?: boolean }) => boolean;
+}
+
 interface TerminalInstanceProps {
   tabId:    string;
   isActive: boolean;
   alive:    boolean;
 }
 
-/**
- * Mounts a single xterm.js terminal instance for one PTY tab.
- *
- * Stays mounted even when not the active tab (display:none) — this preserves
- * terminal state without reattaching. When the active tab changes or the panel
- * reopens (isActive flips to true), the terminal refits to the visible dimensions.
- */
-export function TerminalInstance({ tabId, isActive, alive }: TerminalInstanceProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const termRef      = useRef<XTerminal | null>(null);
-  const fitRef       = useRef<FitAddon | null>(null);
+interface ContextMenu {
+  x:           number;
+  y:           number;
+  hasSelection: boolean;
+}
 
-  // Mount the xterm terminal once per tabId.
-  useEffect(() => {
-    if (!containerRef.current) return;
+export const TerminalInstance = forwardRef<TerminalInstanceHandle, TerminalInstanceProps>(
+  function TerminalInstance({ tabId, isActive, alive }, ref) {
+    const containerRef  = useRef<HTMLDivElement>(null);
+    const termRef       = useRef<XTerminal | null>(null);
+    const fitRef        = useRef<FitAddon | null>(null);
+    const searchRef     = useRef<SearchAddon | null>(null);
+    const cleanupRef    = useRef<(() => void) | null>(null);
+    const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
 
-    let disposed = false;
+    // Expose imperative handles to TerminalPanel.
+    useImperativeHandle(ref, () => ({
+      clear: () => termRef.current?.clear(),
+      findNext: (query, opts) => searchRef.current?.findNext(query, opts) ?? false,
+      findPrevious: (query, opts) => searchRef.current?.findPrevious(query, opts) ?? false,
+    }), []);
 
-    void (async () => {
-      // Dynamic imports — keeps xterm out of the initial bundle chunk.
-      const [
-        { Terminal },
-        { FitAddon },
-        { CanvasAddon },
-        { WebLinksAddon },
-      ] = await Promise.all([
-        import('@xterm/xterm'),
-        import('@xterm/addon-fit'),
-        import('@xterm/addon-canvas'),
-        import('@xterm/addon-web-links'),
-      ]);
+    // Mount xterm once per tabId.
+    useEffect(() => {
+      if (!containerRef.current) return;
+      let disposed = false;
 
-      // CSS must be imported for xterm to render correctly.
-      await import('@xterm/xterm/css/xterm.css');
+      void (async () => {
+        const [
+          { Terminal },
+          { FitAddon },
+          { CanvasAddon },
+          { WebLinksAddon },
+          { SearchAddon },
+        ] = await Promise.all([
+          import('@xterm/xterm'),
+          import('@xterm/addon-fit'),
+          import('@xterm/addon-canvas'),
+          import('@xterm/addon-web-links'),
+          import('@xterm/addon-search'),
+        ]);
+        await import('@xterm/xterm/css/xterm.css');
 
-      if (disposed || !containerRef.current) return;
+        if (disposed || !containerRef.current) return;
 
-      const settings = getTerminalSettings();
+        const settings = getTerminalSettings();
+        const term = new Terminal({
+          fontFamily:    settings.fontFamily,
+          fontSize:      settings.fontSize,
+          scrollback:    settings.scrollback,
+          theme:         TERMINAL_THEME,
+          cursorBlink:   true,
+          allowProposedApi: true,
+        });
 
-      const term = new Terminal({
-        fontFamily:  settings.fontFamily,
-        fontSize:    settings.fontSize,
-        scrollback:  settings.scrollback,
-        theme:       TERMINAL_THEME,
-        cursorBlink: true,
-        allowProposedApi: true,
-      });
+        const fitAddon    = new FitAddon();
+        const canvasAddon = new CanvasAddon();
+        const linksAddon  = new WebLinksAddon((_event, uri) => {
+          void window.api.app.openExternal(uri);
+        });
+        const searchAddon = new SearchAddon();
 
-      const fitAddon    = new FitAddon();
-      const canvasAddon = new CanvasAddon();
-      const linksAddon  = new WebLinksAddon();
+        term.loadAddon(fitAddon);
+        term.loadAddon(canvasAddon);
+        term.loadAddon(linksAddon);
+        term.loadAddon(searchAddon);
+        term.open(containerRef.current);
+        fitAddon.fit();
 
-      term.loadAddon(fitAddon);
-      term.loadAddon(canvasAddon);
-      term.loadAddon(linksAddon);
-      term.open(containerRef.current);
-      fitAddon.fit();
+        termRef.current   = term;
+        fitRef.current    = fitAddon;
+        searchRef.current = searchAddon;
 
-      termRef.current = term;
-      fitRef.current  = fitAddon;
+        // Copy-on-select: auto-copy to clipboard whenever the selection changes.
+        const onSelDispose = term.onSelectionChange(() => {
+          const sel = term.getSelection();
+          if (sel) void navigator.clipboard.writeText(sel).catch(() => {});
+        });
 
-      // Replay buffered output from the main-process ring buffer.
-      const scrollback = await window.api.terminal.getScrollback(tabId);
-      if (scrollback && !disposed) term.write(scrollback);
+        // Replay buffered output.
+        const scrollback = await window.api.terminal.getScrollback(tabId);
+        if (scrollback && !disposed) term.write(scrollback);
 
-      // IPC → xterm: stream PTY output from main process.
-      const unsubData = window.api.terminal.onData((tid, data) => {
-        if (tid === tabId) term.write(data);
-      });
+        // PTY output → xterm.
+        const unsubData = window.api.terminal.onData((tid, data) => {
+          if (tid === tabId) term.write(data);
+        });
 
-      // xterm → IPC: forward keystrokes to the PTY.
-      const onDataDispose = term.onData((data) => {
-        if (alive) void window.api.terminal.write(tabId, data);
-      });
+        // Keystrokes → PTY.
+        const onDataDispose = term.onData((data) => {
+          if (alive) void window.api.terminal.write(tabId, data);
+        });
 
-      // Resize: debounced ResizeObserver keeps PTY dimensions in sync with DOM.
-      let resizeTimer: ReturnType<typeof setTimeout> | null = null;
-      const ro = new ResizeObserver(() => {
-        if (resizeTimer) clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(() => {
-          if (!containerRef.current || disposed) return;
-          const { width, height } = containerRef.current.getBoundingClientRect();
-          if (width === 0 || height === 0) return;
-          fitAddon.fit();
-          void window.api.terminal.resize(tabId, term.cols, term.rows);
-        }, 50);
-      });
-      ro.observe(containerRef.current);
+        // Cmd+K — clear terminal (only fires when xterm canvas has focus).
+        term.attachCustomKeyEventHandler((e) => {
+          if (e.type !== 'keydown') return true;
+          if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+            term.clear();
+            return false;
+          }
+          return true;
+        });
 
-      // Cleanup on unmount.
+        // Resize.
+        let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+        const ro = new ResizeObserver(() => {
+          if (resizeTimer) clearTimeout(resizeTimer);
+          resizeTimer = setTimeout(() => {
+            if (!containerRef.current || disposed) return;
+            const { width, height } = containerRef.current.getBoundingClientRect();
+            if (width === 0 || height === 0) return;
+            fitAddon.fit();
+            void window.api.terminal.resize(tabId, term.cols, term.rows);
+          }, 50);
+        });
+        ro.observe(containerRef.current);
+
+        cleanupRef.current = () => {
+          disposed = true;
+          unsubData();
+          onDataDispose.dispose();
+          onSelDispose.dispose();
+          ro.disconnect();
+          if (resizeTimer) clearTimeout(resizeTimer);
+          term.dispose();
+          termRef.current   = null;
+          fitRef.current    = null;
+          searchRef.current = null;
+        };
+      })();
+
       return () => {
         disposed = true;
-        unsubData();
-        onDataDispose.dispose();
-        ro.disconnect();
-        if (resizeTimer) clearTimeout(resizeTimer);
-        term.dispose();
-        termRef.current = null;
-        fitRef.current  = null;
+        cleanupRef.current?.();
       };
-    })().then((cleanup) => {
-      if (cleanup) {
-        // Store cleanup for the useEffect teardown below — patched via ref.
-        cleanupRef.current = cleanup;
-      }
-    });
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [tabId]);
 
-    return () => {
-      disposed = true;
-      cleanupRef.current?.();
+    // Refit when tab becomes visible.
+    useEffect(() => {
+      if (!isActive) return;
+      const t = setTimeout(() => {
+        if (!fitRef.current || !termRef.current) return;
+        fitRef.current.fit();
+        void window.api.terminal.resize(tabId, termRef.current.cols, termRef.current.rows);
+      }, 50);
+      return () => clearTimeout(t);
+    }, [isActive, tabId]);
+
+    // Right-click context menu.
+    const handleContextMenu = (e: React.MouseEvent) => {
+      e.preventDefault();
+      setContextMenu({
+        x:            e.clientX,
+        y:            e.clientY,
+        hasSelection: !!termRef.current?.getSelection(),
+      });
     };
-    // tabId is stable for the lifetime of this instance — intentional dep.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tabId]);
 
-  // Holds the async cleanup returned from the dynamic-import block.
-  const cleanupRef = useRef<(() => void) | null>(null);
+    const closeMenu = () => setContextMenu(null);
 
-  // Refit when this tab becomes the active/visible one.
-  useEffect(() => {
-    if (!isActive) return;
-    const t = setTimeout(() => {
-      if (!fitRef.current || !termRef.current) return;
-      fitRef.current.fit();
-      void window.api.terminal.resize(tabId, termRef.current.cols, termRef.current.rows);
-    }, 50);
-    return () => clearTimeout(t);
-  }, [isActive, tabId]);
+    const handleCopy = () => {
+      const sel = termRef.current?.getSelection();
+      if (sel) void navigator.clipboard.writeText(sel);
+      closeMenu();
+    };
 
+    const handlePaste = async () => {
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text) void window.api.terminal.write(tabId, text);
+      } catch { /* clipboard permission denied */ }
+      closeMenu();
+    };
+
+    const handleClear = () => {
+      termRef.current?.clear();
+      closeMenu();
+    };
+
+    return (
+      <div
+        style={{ display: isActive ? 'block' : 'none' }}
+        className="relative h-full w-full"
+        onContextMenu={handleContextMenu}
+      >
+        <div ref={containerRef} className="h-full w-full" />
+
+        {/* Right-click context menu */}
+        {contextMenu && (
+          <>
+            {/* Invisible backdrop to close on outside click */}
+            <div className="fixed inset-0 z-40" onClick={closeMenu} />
+            <div
+              className="fixed z-50 min-w-[140px] overflow-hidden rounded-lg border border-border bg-panel py-1 shadow-2xl"
+              style={{ left: contextMenu.x, top: contextMenu.y }}
+            >
+              {contextMenu.hasSelection && (
+                <ContextMenuItem label="Copy" onClick={handleCopy} />
+              )}
+              <ContextMenuItem label="Paste" onClick={handlePaste} />
+              <div className="my-1 h-px bg-border/50" />
+              <ContextMenuItem label="Clear" onClick={handleClear} />
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+);
+
+function ContextMenuItem({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <div
-      ref={containerRef}
-      style={{ display: isActive ? 'block' : 'none' }}
-      className="h-full w-full"
-    />
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex w-full items-center px-3 py-1.5 text-left text-sm text-fg',
+        'hover:bg-elevated transition-colors',
+      )}
+    >
+      {label}
+    </button>
   );
 }

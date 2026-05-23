@@ -213,6 +213,7 @@ export function registerIpc(): void {
   // ---- App ---------------------------------------------------------------
 
   ipcMain.handle('app:getVersion', () => app.getVersion());
+  ipcMain.handle('shell:openExternal', (_e, url: string) => shell.openExternal(url));
   ipcMain.handle('app:getKeepAwake', () => getKeepAwake());
   ipcMain.handle('app:setKeepAwake', (_e, enabled: boolean) => {
     setKeepAwake(enabled);

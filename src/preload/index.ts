@@ -275,6 +275,7 @@ const api = {
   },
   app: {
     getVersion: (): Promise<string> => ipcRenderer.invoke('app:getVersion'),
+    openExternal: (url: string): Promise<void> => ipcRenderer.invoke('shell:openExternal', url),
     getKeepAwake: (): Promise<boolean> =>
       ipcRenderer.invoke('app:getKeepAwake'),
     setKeepAwake: (enabled: boolean): Promise<boolean> =>
