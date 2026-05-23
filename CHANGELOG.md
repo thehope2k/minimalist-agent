@@ -5,6 +5,50 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.12.0] — 2026-05-24
+
+Adds in-app terminal with search, conversation branching, new shortcuts, and performance improvements; quality of life improvements and bug fixes.
+
+### Added
+
+**Terminal**
+
+- Integrated xterm.js with node-pty for a full in-app terminal panel
+- In-terminal search bar and copy-on-select support
+
+**Sessions**
+
+- Conversation branching — fork a new session from any user message in the history
+- New-session draft row visibility is now persisted across session switches
+
+**Chat**
+
+- Turn duration displayed in each message bubble
+- Written files now render with syntax highlighting instead of an empty diff block
+
+**Git**
+
+- Repo-level stage-all toggle added to the GitFileList panel
+
+**Keyboard shortcuts**
+
+- Cmd+Delete deletes the active session
+- Cmd+S navigates to the sessions list; Cmd+, opens Settings
+
+### Changed
+
+- Diff viewer is now lazy-loaded and latin-only font subsets are used — reduces initial bundle load time
+- Thinking block text size increased from `xs` to `sm` for improved readability
+
+### Fixed
+
+- Per-session message draft now saves and restores correctly when switching sessions
+- Git diff panel shows a single-panel view for new and deleted files instead of a broken diff
+- Expand modal no longer allows nav clicks to pass through while it is open
+- Unresolved file paths in `@mentions` are surfaced as errors with a file/folder read directive
+
+---
+
 ## [0.11.0] — 2026-05-23
 
 Adds Search Everywhere, smart file viewer, Ollama support, git diff review, and turn summary cards; several model management fixes.
