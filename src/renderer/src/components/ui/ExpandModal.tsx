@@ -42,8 +42,14 @@ export function ExpandModal({ title, onClose, children, className }: ExpandModal
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm titlebar-no-drag"
       onClick={onClose}
+      // Prevent Electron's -webkit-app-region hit-testing from routing
+      // mousedown events to titlebar-no-drag buttons (e.g. nav tabs) that
+      // sit below the backdrop in the z-order. Without this the backdrop
+      // gets a click event AND the nav button below it also fires, causing
+      // unintended navigation while a modal is open.
+      onMouseDown={(e) => e.stopPropagation()}
     >
       <div
         role="dialog"
