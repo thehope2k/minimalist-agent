@@ -5,6 +5,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.13.0] — 2026-05-24
+
+Adds a Recent Files palette (Cmd+E); fixes reload shortcuts in production and a search hover highlight glitch.
+
+### Added
+
+- Recent Files palette (Cmd+E) — quickly reopen recently accessed files from anywhere in the app
+
+### Fixed
+
+- Reload shortcuts (Cmd+R / Cmd+Shift+R) are now blocked in production builds to prevent accidental state corruption
+- Search hover highlight no longer fires without actual mouse movement
+
+---
+
 ## [0.12.0] — 2026-05-24
 
 Adds in-app terminal with search, conversation branching, new shortcuts, and performance improvements; quality of life improvements and bug fixes.
