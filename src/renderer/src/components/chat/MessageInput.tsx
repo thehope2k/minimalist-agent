@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { getDraft, setDraft } from '@/lib/input-drafts';
+import { getAttachmentDraft, setAttachmentDraft } from '@/lib/attachment-drafts';
 import { ArrowUp, AtSign, Paperclip, Square } from 'lucide-react';
 import { IconButton } from '../ui';
 import { ConnectionModelPicker } from './ConnectionModelPicker';
@@ -112,16 +113,24 @@ export function MessageInput({
   // threading. The pattern is identical: save on leave, restore on enter.
   const draftValueRef = useRef(value); // always-current mirror, avoids stale closure
   draftValueRef.current = value;
+  const [attachments, setAttachments] = useState<DraftAttachment[]>([]);
+  // Always-current mirror so the sessionId effect can read attachments without
+  // adding it as a dependency (same pattern as draftValueRef for text).
+  const draftAttachmentsRef = useRef(attachments);
+  draftAttachmentsRef.current = attachments;
   const draftPrevIdRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {
     const prevId = draftPrevIdRef.current;
+    // prevId is `undefined` only on the very first mount — skip saving then.
     if (prevId !== undefined) {
       setDraft(prevId, draftValueRef.current);
+      setAttachmentDraft(prevId, draftAttachmentsRef.current);
     }
     draftPrevIdRef.current = sessionId;
     setValue(getDraft(sessionId));
+    setAttachments(getAttachmentDraft(sessionId));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId]); // intentionally excludes `value` — draftValueRef handles staleness
+  }, [sessionId]); // intentionally excludes `value`/`attachments` — refs handle staleness
   // Fills the editor when a phase action button sets a pending message.
   // prevPendingRef prevents double-application within a render cycle;
   // reset on clear so the same message can be re-injected across sessions.
@@ -136,7 +145,6 @@ export function MessageInput({
       prevPendingRef.current = undefined;
     }
   }, [pendingMessage, onPendingMessageConsumed]);
-  const [attachments, setAttachments] = useState<DraftAttachment[]>([]);
   const [loadingCount, setLoadingCount] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
