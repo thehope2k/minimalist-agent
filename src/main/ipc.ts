@@ -309,6 +309,38 @@ export function registerIpc(): void {
 
   ipcMain.handle('chatgpt-oauth:cancel', () => cancelChatGptLogin());
 
+  // ---- Claude OAuth usage -----------------------------------------------
+
+  ipcMain.handle(
+    'claude:fetchUsage',
+    async (
+      _e,
+      args: { connectionSlug: string },
+    ): Promise<import('./claude/usage').ClaudeUsageEntry[] | { error: string }> => {
+      try {
+        const meta = listConnections().find((c) => c.slug === args.connectionSlug);
+        if (!meta) return { error: `Connection "${args.connectionSlug}" not found.` };
+        if (meta.providerType !== 'anthropic' || meta.authType !== 'oauth') {
+          return { error: 'Connection is not Claude OAuth.' };
+        }
+
+        const auth = await resolveAuthForSlug(args.connectionSlug);
+        if (auth.type !== 'anthropic_oauth') {
+          return { error: 'Resolved auth is not Claude OAuth.' };
+        }
+
+        const { fetchClaudeUsage } = await import('./claude/usage');
+        const result = await fetchClaudeUsage(auth.accessToken);
+        if ('error' in result) {
+          console.error('[claude:fetchUsage]', result.error);
+        }
+        return result;
+      } catch (e) {
+        return { error: e instanceof Error ? e.message : String(e) };
+      }
+    },
+  );
+
   /**
    * Live Copilot model discovery. Caller passes either a freshly-acquired
    * `refreshToken` (during the first-time setup flow, before a connection

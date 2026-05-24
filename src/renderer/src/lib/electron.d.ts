@@ -197,6 +197,13 @@ export interface CopilotQuota {
   fallback: boolean;
 }
 
+export interface ClaudeUsageEntry {
+  rateLimitType: 'five_hour' | 'seven_day' | 'seven_day_opus' | 'seven_day_sonnet' | 'overage';
+  utilization: number;
+  resetsAt?: number;
+  status: 'allowed' | 'allowed_warning' | 'rejected';
+}
+
 export interface ModelDef {
   id: string;
   name: string;
@@ -605,6 +612,12 @@ export interface AppApi {
   chatgpt: {
     /** Pi SDK static model registry for openai-codex — no network call. */
     getModels: () => Promise<ModelDef[]>;
+  };
+  claude: {
+    /** Fetch OAuth usage buckets from api.anthropic.com for a Claude OAuth connection. */
+    fetchUsage: (
+      args: { connectionSlug: string },
+    ) => Promise<ClaudeUsageEntry[] | { error: string }>;
   };
   copilot: {
     /**

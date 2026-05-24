@@ -110,6 +110,13 @@ interface CopilotQuota {
   fallback: boolean;
 }
 
+interface ClaudeUsageEntry {
+  rateLimitType: 'five_hour' | 'seven_day' | 'seven_day_opus' | 'seven_day_sonnet' | 'overage';
+  utilization: number;
+  resetsAt?: number;
+  status: 'allowed' | 'allowed_warning' | 'rejected';
+}
+
 interface ModelDef {
   id: string;
   name: string;
@@ -333,6 +340,12 @@ const api = {
   },
   chatgpt: {
     getModels: (): Promise<ModelDef[]> => ipcRenderer.invoke('chatgpt:getModels'),
+  },
+  claude: {
+    fetchUsage: (
+      args: { connectionSlug: string },
+    ): Promise<ClaudeUsageEntry[] | { error: string }> =>
+      ipcRenderer.invoke('claude:fetchUsage', args),
   },
   copilot: {
     fetchModels: (
