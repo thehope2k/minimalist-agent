@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.14.0] — 2026-05-25
+
+Adds Claude OAuth usage badges in Settings and persistent attachment drafts across session switches.
+
+### Added
+
+**Settings**
+
+- Claude OAuth connections now show a live usage badge in Settings — fetches current quota consumption and displays it alongside the connection row
+
+**Chat**
+
+- Attachment drafts (files, images, snippets) are now persisted per session and restored when switching back, so in-progress attachments are never lost mid-workflow
+
+---
+
 ## [0.13.0] — 2026-05-24
 
 Adds a Recent Files palette (Cmd+E); fixes reload shortcuts in production and a search hover highlight glitch.
