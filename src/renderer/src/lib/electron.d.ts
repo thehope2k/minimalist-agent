@@ -526,7 +526,8 @@ export interface UpdateInfo {
 
 /* ---------- Git diff review ---------- */
 
-export type GitFileStatus = 'M' | 'A' | 'D' | 'R' | '?';
+export type GitFileStatus = 'M' | 'A' | 'D' | 'R' | '?' | 'U';
+export type MergeOperationType = 'merge' | 'rebase' | 'cherry-pick' | 'revert' | 'none';
 
 export interface GitFileEntry {
   absolutePath: string;
@@ -549,6 +550,33 @@ export interface GitFileDiff {
   original: string;
   modified: string;
   language: string;
+}
+
+export interface MergeState {
+  type: MergeOperationType;
+  headLabel: string | null;
+  incomingLabel: string | null;
+  mergeMessage: string | null;
+  conflictCount: number;
+  rebaseProgress?: {
+    current: number;
+    total: number;
+    commitMessage: string | null;
+  };
+}
+
+export interface ConflictContent {
+  base: string;
+  ours: string;
+  theirs: string;
+  working: string;
+  language: string;
+}
+
+export interface GitOperationResult {
+  ok: boolean;
+  error?: string;
+  allResolved?: boolean;
 }
 
 export interface TerminalTabInfo {
@@ -871,6 +899,29 @@ export interface AppApi {
       sessionId?: string;
       cwd?: string;
     }) => Promise<string | null>;
+    /** Detect MERGE / REBASE / CHERRY_PICK state for a repo root. */
+    mergeState: (repoRoot: string) => Promise<MergeState>;
+    /** Fetch three-way content (base / ours / theirs / working) for a conflicted file. */
+    conflictContent: (args: {
+      repoRoot: string;
+      relativePath: string;
+      absolutePath: string;
+    }) => Promise<ConflictContent>;
+    /** Write resolved content to disk and run `git add` to mark conflict resolved. */
+    resolveConflict: (args: {
+      repoRoot: string;
+      relativePath: string;
+      absolutePath: string;
+      content: string;
+    }) => Promise<GitOperationResult>;
+    /** Abort the current merge / rebase / cherry-pick operation. */
+    abortOperation: (args: { repoRoot: string; type: string }) => Promise<GitOperationResult>;
+    /** Complete the merge / cherry-pick / revert after all conflicts are resolved. */
+    continueMerge: (args: {
+      repoRoot: string;
+      message: string;
+      type: string;
+    }) => Promise<GitOperationResult>;
   };
   terminal: {
     resolveShell: () => Promise<string>;

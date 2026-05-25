@@ -19,6 +19,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ExpandModal } from '@/components/ui';
 import { GitDiffView } from './GitDiffView';
+import { ConflictView } from './ConflictView';
+import { MergeStateBanner } from './MergeStateBanner';
 import { applySelectedHunks } from './git-util';
 import { buildDiffContext } from './git-generate';
 import {
@@ -31,6 +33,8 @@ import { buildRestorePlan, hunkKey, type PersistedGitReviewState } from './git-r
 import { GitHeader } from './git-flow/GitHeader';
 import { GitLeftPanel } from './git-flow/GitLeftPanel';
 import { useGitReviewPersistence } from './git-flow/useGitReviewPersistence';
+import { useMergeState } from './conflict-flow/useMergeState';
+import { useConflictResolution } from './conflict-flow/useConflictResolution';
 import type { GitFileEntry, GitFileDiff, GitRepo, LineChange } from './types';
 
 interface GitDiffModalProps {
@@ -68,6 +72,29 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
   const [committing, setCommitting] = useState(false);
   const [commitError, setCommitError] = useState<string | null>(null);
   const [splitView, setSplitView] = useState(true);
+
+  // ── Merge / conflict state ───────────────────────────────────────────────
+  const repoRoots = useMemo(() => repos.map((r) => r.root), [repos]);
+  const { mergeStates, inMergeOperation, totalConflicts, refresh: refreshMergeState } =
+    useMergeState({ repoRoots, enabled: !statusLoading && repos.length > 0 });
+
+  // Active merge is the first repo that is in a non-idle operation.
+  const activeMergeEntry = useMemo(() => {
+    for (const [root, state] of mergeStates) {
+      if (state.type !== 'none') return { root, state };
+    }
+    return null;
+  }, [mergeStates]);
+
+  // Stable ref so useConflictResolution.onDone always calls the latest loadStatus.
+  const loadStatusRef = useRef<() => void>(() => {});
+
+  const { aborting, continuing, actionError, abort, continueMerge, clearError } =
+    useConflictResolution({
+      onDone: () => {
+        loadStatusRef.current();
+      },
+    });
 
   const pendingHunkRestoreRef = useRef<Map<string, Set<string>>>(new Map());
   const restoredPartialContentRef = useRef<Map<string, string>>(new Map());
@@ -157,6 +184,15 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
       setStatusLoading(false);
     }
   }, [cwd, onNoCwd, prepareForRepos]);
+
+  // Called when ConflictView successfully resolves a file (git add done).
+  const handleConflictResolved = useCallback(() => {
+    refreshMergeState();
+    void loadStatus();
+  }, [refreshMergeState, loadStatus]);
+
+  // Keep the stable ref in sync.
+  loadStatusRef.current = loadStatus;
 
   useEffect(() => { void loadStatus(); }, [loadStatus]);
 
@@ -404,6 +440,8 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
       totalFiles={totalFiles}
       splitView={splitView}
       onToggleSplit={() => setSplitView((v) => !v)}
+      mergeType={activeMergeEntry?.state.type}
+      conflictCount={totalConflicts}
     />
   );
 
@@ -412,6 +450,29 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
       <div className="flex min-h-0 flex-1">
         {/* Left panel */}
         <div className="flex w-80 shrink-0 flex-col border-r border-border/60 bg-panel">
+          {/* Merge state banner — shown when any repo is in a merge operation */}
+          {activeMergeEntry && (
+            <MergeStateBanner
+              type={activeMergeEntry.state.type}
+              headLabel={activeMergeEntry.state.headLabel}
+              incomingLabel={activeMergeEntry.state.incomingLabel}
+              mergeMessage={activeMergeEntry.state.mergeMessage}
+              conflictCount={activeMergeEntry.state.conflictCount}
+              rebaseProgress={activeMergeEntry.state.rebaseProgress}
+              aborting={aborting}
+              continuing={continuing}
+              error={actionError}
+              onAbort={() => void abort(activeMergeEntry.root, activeMergeEntry.state.type)}
+              onContinue={() =>
+                void continueMerge(
+                  activeMergeEntry.root,
+                  activeMergeEntry.state.mergeMessage ?? 'Merge commit',
+                  activeMergeEntry.state.type,
+                )
+              }
+              onClearError={clearError}
+            />
+          )}
           <GitLeftPanel
             statusLoading={statusLoading}
             statusError={statusError}
@@ -433,18 +494,26 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
           />
         </div>
 
-        {/* Right panel: Monaco with glyph margin hunk checkboxes */}
+        {/* Right panel: conflict view OR Monaco diff + hunk panel */}
         <div className="flex min-w-0 flex-1 flex-col bg-panel">
-          <div className="min-h-0 flex-1">
-            <GitDiffView
-              diff={diff}
-              splitView={splitView}
-              changes={currentChanges}
-              stagedHunks={selectedHunks ?? undefined}
-              onToggleHunk={handleToggleHunk}
-              onDiffComputed={handleDiffComputed}
+          {selected?.status === 'U' ? (
+            <ConflictView
+              key={selected.absolutePath}
+              file={selected}
+              onResolved={handleConflictResolved}
             />
-          </div>
+          ) : (
+            <div className="min-h-0 flex-1">
+              <GitDiffView
+                diff={diff}
+                splitView={splitView}
+                changes={currentChanges}
+                stagedHunks={selectedHunks ?? undefined}
+                onToggleHunk={handleToggleHunk}
+                onDiffComputed={handleDiffComputed}
+              />
+            </div>
+          )}
         </div>
       </div>
     </ExpandModal>

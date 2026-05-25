@@ -1353,6 +1353,58 @@ export function registerIpc(): void {
     },
   );
 
+  // ---- Git merge / conflict resolution ------------------------------------
+
+  ipcMain.handle('git:mergeState', async (_e, repoRoot: string) => {
+    const { getMergeState } = await import('./git/merge');
+    return getMergeState(repoRoot);
+  });
+
+  ipcMain.handle(
+    'git:conflictContent',
+    async (
+      _e,
+      args: { repoRoot: string; relativePath: string; absolutePath: string },
+    ) => {
+      const { getConflictContent } = await import('./git/merge');
+      return getConflictContent(args.repoRoot, args.relativePath, args.absolutePath);
+    },
+  );
+
+  ipcMain.handle(
+    'git:resolveConflict',
+    async (
+      _e,
+      args: { repoRoot: string; relativePath: string; absolutePath: string; content: string },
+    ) => {
+      const { resolveConflict } = await import('./git/merge');
+      return resolveConflict(args.repoRoot, args.relativePath, args.absolutePath, args.content);
+    },
+  );
+
+  ipcMain.handle(
+    'git:abortOperation',
+    async (_e, args: { repoRoot: string; type: string }) => {
+      const { abortOperation } = await import('./git/merge');
+      return abortOperation(
+        args.repoRoot,
+        args.type as import('./git/merge').MergeOperationType,
+      );
+    },
+  );
+
+  ipcMain.handle(
+    'git:continueMerge',
+    async (_e, args: { repoRoot: string; message: string; type: string }) => {
+      const { continueMerge } = await import('./git/merge');
+      return continueMerge(
+        args.repoRoot,
+        args.message,
+        args.type as import('./git/merge').MergeOperationType,
+      );
+    },
+  );
+
   // ---- Terminal ----------------------------------------------------------
 
   ipcMain.handle('terminal:resolveShell', () =>

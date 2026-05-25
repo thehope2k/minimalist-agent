@@ -171,6 +171,23 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     ],
   },
   {
+    title: 'Conflict Resolution',
+    shortcuts: [
+      {
+        macKeys: ['Alt', '↓'],
+        winKeys: ['Alt', '↓'],
+        label: 'Jump to next conflict block',
+        condition: 'Result pane of conflict editor has focus',
+      },
+      {
+        macKeys: ['Alt', '↑'],
+        winKeys: ['Alt', '↑'],
+        label: 'Jump to previous conflict block',
+        condition: 'Result pane of conflict editor has focus',
+      },
+    ],
+  },
+  {
     title: 'Terminal',
     shortcuts: [
       { macKeys: ['⌘', 'T'],       winKeys: ['Ctrl', 'T'],       label: 'Open / close terminal panel' },

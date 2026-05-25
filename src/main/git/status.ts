@@ -10,7 +10,7 @@ import { join } from 'node:path';
 
 const execFileAsync = promisify(execFile);
 
-export type GitFileStatus = 'M' | 'A' | 'D' | 'R' | '?';
+export type GitFileStatus = 'M' | 'A' | 'D' | 'R' | '?' | 'U';
 
 export interface GitFileEntry {
   absolutePath: string;
@@ -79,7 +79,11 @@ async function discoverGitRoots(cwd: string): Promise<string[]> {
   return [...roots];
 }
 
+// XY pairs that indicate an unmerged / conflict state.
+const CONFLICT_XY = new Set(['UU', 'AA', 'DD', 'AU', 'UA', 'DU', 'UD']);
+
 function parseStatusCode(xy: string): GitFileStatus {
+  if (CONFLICT_XY.has(xy)) return 'U';
   const x = xy[0] ?? ' ';
   const y = xy[1] ?? ' ';
   if (x === '?' && y === '?') return '?';

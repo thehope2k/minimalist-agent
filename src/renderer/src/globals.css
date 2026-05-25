@@ -180,6 +180,31 @@ body {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Crect x='0.5' y='0.5' width='11' height='11' rx='2' fill='none' stroke='%237B5CF6' stroke-opacity='0.7'/%3E%3C/svg%3E");
   background-size: 13px 13px;
 }
+
+/* ── Git conflict marker decorations (ConflictView) ─────────────────────
+ * Applied via Monaco IModelDecorationOptions.className.
+ * Colors are hex approximations of OKLCH tokens — CSS vars not available
+ * inside Monaco's rendering pipeline.
+ *   ours   → emerald tint  (#1a3828 ≈ --added-bg)
+ *   theirs → blue tint     (#1a2838)
+ *   marker → amber tint    (#38281a)
+ */
+.conflict-ours-line {
+  background-color: rgba(26, 56, 40, 0.45);
+}
+.conflict-theirs-line {
+  background-color: rgba(26, 40, 56, 0.45);
+}
+.conflict-marker-line {
+  background-color: rgba(56, 40, 26, 0.55);
+}
+/* Inline word highlights */
+.conflict-ours-word {
+  background-color: rgba(42, 84, 56, 0.6);
+}
+.conflict-theirs-word {
+  background-color: rgba(42, 56, 84, 0.6);
+}
  * Visual treatment for spec.md acceptance scenario blocks and task checkboxes.
  */
 .sdd-acceptance-block {

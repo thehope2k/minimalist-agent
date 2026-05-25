@@ -626,6 +626,23 @@ const api = {
       sessionId?: string;
       cwd?: string;
     }) => ipcRenderer.invoke('git:generateCommitMessage', args),
+    mergeState: (repoRoot: string) =>
+      ipcRenderer.invoke('git:mergeState', repoRoot),
+    conflictContent: (args: {
+      repoRoot: string;
+      relativePath: string;
+      absolutePath: string;
+    }) => ipcRenderer.invoke('git:conflictContent', args),
+    resolveConflict: (args: {
+      repoRoot: string;
+      relativePath: string;
+      absolutePath: string;
+      content: string;
+    }) => ipcRenderer.invoke('git:resolveConflict', args),
+    abortOperation: (args: { repoRoot: string; type: string }) =>
+      ipcRenderer.invoke('git:abortOperation', args),
+    continueMerge: (args: { repoRoot: string; message: string; type: string }) =>
+      ipcRenderer.invoke('git:continueMerge', args),
   },
   terminal: {
     resolveShell: (): Promise<string> =>

@@ -6,7 +6,7 @@
 // "what changed" review.
 
 import { useEffect, useRef } from 'react';
-import { Check, FolderGit2, Minus } from 'lucide-react';
+import { AlertTriangle, Check, FolderGit2, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { GitFileEntry, GitFileStatus, GitRepo } from './types';
 
@@ -51,6 +51,12 @@ const STATUS_STYLES: Record<GitFileStatus, {
     label: 'N',
     badgeClasses: 'text-emerald-400 bg-emerald-500/15',
     nameClasses: 'text-emerald-300',
+  },
+  // U = unmerged / conflict — amber with warning icon
+  U: {
+    label: 'C',
+    badgeClasses: 'text-orange-400 bg-orange-500/15',
+    nameClasses: 'text-orange-300',
   },
 };
 
@@ -109,7 +115,13 @@ export function GitFileList({ repos, selected, onSelect, stagedPaths, onToggleSt
       tabIndex={0}
       className="scroll-thin flex h-full flex-col overflow-y-auto outline-none"
     >
-      {repos.map((repo, repoIdx) => (
+      {repos.map((repo, repoIdx) => {
+        // Surface conflict files before regular changed files.
+        const sortedFiles = [
+          ...repo.files.filter((f) => f.status === 'U'),
+          ...repo.files.filter((f) => f.status !== 'U'),
+        ];
+        return (
         <div key={repo.root}>
           {/* ── Repo section header ── */}
           <div
@@ -161,8 +173,11 @@ export function GitFileList({ repos, selected, onSelect, stagedPaths, onToggleSt
           </div>
 
           {/* ── File rows — indented under the repo header ── */}
-          {repo.files.map((file) => {
+          {sortedFiles.map((file) => {
             const isSelected = selected?.absolutePath === file.absolutePath;
+            const isConflict = file.status === 'U';
+            // Conflict files can't be manually staged/unstaged — git add is
+            // triggered by the conflict resolution flow instead.
             const isStaged = stagedPaths.has(file.absolutePath);
             const hs = hunkStates?.get(file.absolutePath);
             // Indeterminate: file is staged but only some hunks are selected.
@@ -183,26 +198,34 @@ export function GitFileList({ repos, selected, onSelect, stagedPaths, onToggleSt
                     : 'border-l-2 border-transparent pl-[26px] hover:bg-elevated',
                 )}
               >
-                {/* Stage checkbox with indeterminate support */}
-                <div
-                  role="checkbox"
-                  aria-checked={isIndeterminate ? 'mixed' : isFullyStaged}
-                  aria-label={`Stage ${file.relativePath}`}
-                  onClick={(e) => { e.stopPropagation(); onToggleStage(file); }}
-                  className={cn(
-                    'flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border transition-colors cursor-pointer',
-                    isFullyStaged || isIndeterminate
-                      ? 'border-accent bg-accent'
-                      : 'border-border-strong bg-transparent hover:border-accent/70',
-                  )}
-                >
-                  {isIndeterminate
-                    ? <Minus className="h-3 w-3 text-accent-fg" strokeWidth={3} />
-                    : isFullyStaged
-                      ? <Check className="h-3 w-3 text-accent-fg" strokeWidth={2.5} />
-                      : null
-                  }
-                </div>
+                {/* Stage checkbox — hidden for conflict files */}
+                {isConflict ? (
+                  <AlertTriangle
+                    className="h-4 w-4 shrink-0 text-orange-400"
+                    strokeWidth={1.75}
+                    aria-label="Conflict"
+                  />
+                ) : (
+                  <div
+                    role="checkbox"
+                    aria-checked={isIndeterminate ? 'mixed' : isFullyStaged}
+                    aria-label={`Stage ${file.relativePath}`}
+                    onClick={(e) => { e.stopPropagation(); onToggleStage(file); }}
+                    className={cn(
+                      'flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border transition-colors cursor-pointer',
+                      isFullyStaged || isIndeterminate
+                        ? 'border-accent bg-accent'
+                        : 'border-border-strong bg-transparent hover:border-accent/70',
+                    )}
+                  >
+                    {isIndeterminate
+                      ? <Minus className="h-3 w-3 text-accent-fg" strokeWidth={3} />
+                      : isFullyStaged
+                        ? <Check className="h-3 w-3 text-accent-fg" strokeWidth={2.5} />
+                        : null
+                    }
+                  </div>
+                )}
 
                 {/* Status badge */}
                 <span
@@ -229,7 +252,8 @@ export function GitFileList({ repos, selected, onSelect, stagedPaths, onToggleSt
             );
           })}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
