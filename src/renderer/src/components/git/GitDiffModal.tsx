@@ -17,12 +17,8 @@
 //     staged hunks via applySelectedHunks(); use git hash-object + update-index.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { GitBranch, Columns2, AlignLeft } from 'lucide-react';
 import { ExpandModal } from '@/components/ui';
-import { cn } from '@/lib/utils';
-import { GitFileList } from './GitFileList';
 import { GitDiffView } from './GitDiffView';
-import { CommitPanel } from './CommitPanel';
 import { applySelectedHunks } from './git-util';
 import { buildDiffContext } from './git-generate';
 import {
@@ -31,6 +27,10 @@ import {
   toggleHunkStage,
   toggleRepoStage,
 } from './staging-state';
+import { buildRestorePlan, hunkKey, type PersistedGitReviewState } from './git-review-state';
+import { GitHeader } from './git-flow/GitHeader';
+import { GitLeftPanel } from './git-flow/GitLeftPanel';
+import { useGitReviewPersistence } from './git-flow/useGitReviewPersistence';
 import type { GitFileEntry, GitFileDiff, GitRepo, LineChange } from './types';
 
 interface GitDiffModalProps {
@@ -40,10 +40,6 @@ interface GitDiffModalProps {
   model?: string;
   /** Active session id — required for Copilot/Pi commit message generation. */
   sessionId?: string;
-}
-
-function shortenCwd(p: string): string {
-  return p.replace(/^\/Users\/[^/]+\//, '~/');
 }
 
 export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }: GitDiffModalProps) {
@@ -73,9 +69,63 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
   const [commitError, setCommitError] = useState<string | null>(null);
   const [splitView, setSplitView] = useState(true);
 
+  const pendingHunkRestoreRef = useRef<Map<string, Set<string>>>(new Map());
+  const restoredPartialContentRef = useRef<Map<string, string>>(new Map());
+  // Paths that have pending hunk restore (diff not yet loaded) — tracked in state
+  // so hunkStates can show indeterminate rather than fully-checked while waiting.
+  const [pendingPartialPaths, setPendingPartialPaths] = useState<Set<string>>(new Set());
+
+  const applyRestoreSnapshot = useCallback((snapshot: PersistedGitReviewState, repoList: GitRepo[]) => {
+    const allFiles = repoList.flatMap((r) => r.files);
+    const plan = buildRestorePlan(snapshot, allFiles);
+
+    pendingHunkRestoreRef.current = plan.pendingHunkKeys;
+    restoredPartialContentRef.current = plan.partialContents;
+    setPendingPartialPaths(new Set(plan.pendingHunkKeys.keys()));
+    setStagedPaths(plan.stagedPaths);
+    setStagedHunks(plan.stagedHunks);
+    setSelected((prev) => {
+      if (plan.selectedPath) {
+        const found = allFiles.find((f) => f.absolutePath === plan.selectedPath);
+        if (found) return found;
+      }
+      return prev ?? allFiles[0] ?? null;
+    });
+  }, []);
+
+  const {
+    onNoCwd,
+    prepareForRepos,
+    clearPersisted,
+  } = useGitReviewPersistence({
+    cwd,
+    repos,
+    statusLoading,
+    committing,
+    selected,
+    stagedPaths,
+    stagedHunks,
+    lineChangesByPath: lineChangesCacheRef.current,
+    partialContentByPath: useMemo(() => {
+      const map = new Map<string, string>();
+      for (const [path, hs] of stagedHunks) {
+        if (hs.size === 0) continue;
+        const fileDiff = diffCacheRef.current.get(path);
+        const fileChanges = lineChangesCacheRef.current.get(path) ?? [];
+        if (!fileDiff || hs.size >= fileChanges.length) continue;
+        map.set(path, applySelectedHunks(fileDiff.original, fileDiff.modified, fileChanges, hs));
+      }
+      return map;
+    }, [stagedHunks]),
+    onApplySnapshot: applyRestoreSnapshot,
+    pendingHunkKeysRef: pendingHunkRestoreRef,
+  });
+
   const loadStatus = useCallback(async () => {
+    setStatusLoading(true);
     if (!cwd) {
       setStatusError('no_cwd');
+      onNoCwd();
       setStatusLoading(false);
       return;
     }
@@ -86,20 +136,27 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
       setRepos(newRepos);
       if (result.error === 'no_git_repos') setStatusError('no_git_repos');
       else if (result.error) setStatusError(result.error);
+
       const allFiles = newRepos.flatMap((r) => r.files);
       setSelected((prev) => {
         if (!prev) return allFiles[0] ?? null;
         return allFiles.find((f) => f.absolutePath === prev.absolutePath) ?? (allFiles[0] ?? null);
       });
-      setStagedPaths(new Set(allFiles.map((f) => f.absolutePath)));
+      setStagedPaths(new Set());
       setStagedHunks(new Map());
       setCurrentChanges([]);
+      setPendingPartialPaths(new Set());
       diffCacheRef.current.clear();
       lineChangesCacheRef.current.clear();
+      pendingHunkRestoreRef.current.clear();
+      restoredPartialContentRef.current.clear();
+
+      // Apply persisted state last so it is not overwritten by default init.
+      await prepareForRepos(newRepos);
     } finally {
       setStatusLoading(false);
     }
-  }, [cwd]);
+  }, [cwd, onNoCwd, prepareForRepos]);
 
   useEffect(() => { void loadStatus(); }, [loadStatus]);
 
@@ -132,15 +189,44 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
   const handleDiffComputed = useCallback((changes: LineChange[]) => {
     setCurrentChanges(changes);
     if (!selected) return;
-    lineChangesCacheRef.current.set(selected.absolutePath, changes);
+    const path = selected.absolutePath;
+    lineChangesCacheRef.current.set(path, changes);
+
+    const pending = pendingHunkRestoreRef.current.get(path);
+    if (pending) {
+      const selectedIndices = new Set<number>();
+      changes.forEach((c, i) => {
+        if (pending.has(hunkKey(c))) selectedIndices.add(i);
+      });
+      pendingHunkRestoreRef.current.delete(path);
+      setPendingPartialPaths((prev) => { const n = new Set(prev); n.delete(path); return n; });
+
+      setStagedPaths((prev) => {
+        const n = new Set(prev);
+        if (selectedIndices.size > 0) n.add(path);
+        else n.delete(path);
+        return n;
+      });
+      setStagedHunks((prev) => {
+        const next = new Map(prev);
+        if (selectedIndices.size === 0) next.set(path, new Set());
+        else if (selectedIndices.size === changes.length) next.delete(path);
+        else next.set(path, selectedIndices);
+        return next;
+      });
+      if (selectedIndices.size === changes.length) restoredPartialContentRef.current.delete(path);
+      return;
+    }
+
     // Initialize hunk staging for this file if not already set.
     setStagedHunks((prev) => {
-      if (prev.has(selected.absolutePath)) return prev;
+      if (prev.has(path)) return prev;
       const next = new Map(prev);
-      next.set(selected.absolutePath, new Set(changes.map((_, i) => i)));
+      if (stagedPaths.has(path)) next.set(path, new Set(changes.map((_, i) => i)));
+      else next.set(path, new Set());
       return next;
     });
-  }, [selected]);
+  }, [selected, stagedPaths]);
 
   const handleToggleHunk = useCallback((index: number) => {
     if (!selected) return;
@@ -152,18 +238,34 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
     );
     setStagedPaths(next.stagedPaths);
     setStagedHunks(next.stagedHunks);
+
+    const path = selected.absolutePath;
+    const hs = next.stagedHunks.get(path);
+    if (!hs || hs.size === 0 || hs.size >= currentChanges.length) {
+      restoredPartialContentRef.current.delete(path);
+    }
   }, [selected, currentChanges.length, stagedPaths, stagedHunks]);
 
   const handleToggleStage = useCallback((file: GitFileEntry) => {
     const next = toggleFileStage({ stagedPaths, stagedHunks }, file);
     setStagedPaths(next.stagedPaths);
     setStagedHunks(next.stagedHunks);
+
+    if (!next.stagedPaths.has(file.absolutePath) || !next.stagedHunks.has(file.absolutePath)) {
+      restoredPartialContentRef.current.delete(file.absolutePath);
+    }
   }, [stagedPaths, stagedHunks]);
 
   const handleToggleRepoStage = useCallback((repo: GitRepo) => {
     const next = toggleRepoStage({ stagedPaths, stagedHunks }, repo);
     setStagedPaths(next.stagedPaths);
     setStagedHunks(next.stagedHunks);
+
+    for (const f of repo.files) {
+      if (!next.stagedPaths.has(f.absolutePath) || !next.stagedHunks.has(f.absolutePath)) {
+        restoredPartialContentRef.current.delete(f.absolutePath);
+      }
+    }
   }, [stagedPaths, stagedHunks]);
 
   // Derive hunk state map for file list indeterminate display.
@@ -172,8 +274,17 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
     for (const [path, changes] of lineChangesCacheRef.current) {
       hunkTotalsByPath.set(path, changes.length);
     }
-    return buildHunkStates(stagedPaths, stagedHunks, hunkTotalsByPath);
-  }, [stagedPaths, stagedHunks]);
+    const map = buildHunkStates(stagedPaths, stagedHunks, hunkTotalsByPath);
+    // Files with a pending hunk restore haven't had their diff loaded yet, so
+    // buildHunkStates has no total count and omits them from the map — causing the
+    // file list to fall back to isFullyStaged=true. Inject an indeterminate
+    // placeholder so the checkbox correctly shows ⊟ until Monaco resolves the hunks.
+    for (const path of pendingPartialPaths) {
+      if (!map.has(path)) map.set(path, { staged: 1, total: 2 });
+    }
+    return map;
+  }, [stagedPaths, stagedHunks, pendingPartialPaths]);
+
 
   const handleCommit = useCallback(async (message: string, amend: boolean) => {
     setCommitting(true);
@@ -206,9 +317,12 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
             const fileChanges = lineChangesCacheRef.current.get(f.absolutePath) ?? [];
             const allStaged = hs.size >= fileChanges.length;
 
-            const content = allStaged || !fileDiff
+            const restoredPartial = restoredPartialContentRef.current.get(f.absolutePath);
+            const content = allStaged
               ? undefined
-              : applySelectedHunks(fileDiff.original, fileDiff.modified, fileChanges, hs);
+              : fileDiff
+                ? applySelectedHunks(fileDiff.original, fileDiff.modified, fileChanges, hs)
+                : restoredPartial;
 
             return {
               relativePath: f.relativePath,
@@ -222,13 +336,15 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
       }
       setStagedHunks(new Map());
       setCurrentChanges([]);
+      restoredPartialContentRef.current.clear();
+      clearPersisted();
       await loadStatus();
     } catch (e) {
       setCommitError(e instanceof Error ? e.message : String(e));
     } finally {
       setCommitting(false);
     }
-  }, [repos, stagedPaths, stagedHunks, loadStatus]);
+  }, [repos, stagedPaths, stagedHunks, loadStatus, clearPersisted]);
 
   const handleGenerateMessage = useCallback(async (amend: boolean) => {
     if (!cwd) return null;
@@ -271,64 +387,34 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
   }, [repos, stagedPaths, cwd]);
 
   const totalFiles = repos.reduce((n, r) => n + r.files.length, 0);
-  const selectedHunks = selected ? (stagedHunks.get(selected.absolutePath) ?? null) : null;
+  const selectedHunks = selected
+    ? (stagedPaths.has(selected.absolutePath)
+      ? (stagedHunks.get(selected.absolutePath) ?? null)
+      : new Set<number>())
+    : null;
 
   // Repo folder names with at least one staged file — shown in commit panel.
   const stagedRepos = repos
     .filter((r) => r.files.some((f) => stagedPaths.has(f.absolutePath)))
     .map((r) => r.root.split('/').filter(Boolean).pop() ?? r.root);
 
-  const title = (
-    <>
-      <GitBranch className="h-4 w-4 shrink-0 text-accent" strokeWidth={1.75} />
-      <span className="text-sm font-medium text-fg">Git Changes</span>
-      {totalFiles > 0 && (
-        <span className="rounded bg-elevated px-1.5 py-0.5 text-[10px] tabular-nums text-fg-muted">
-          {totalFiles}
-        </span>
-      )}
-      <span className="text-fg-subtle">·</span>
-      <span className="min-w-0 flex-1 truncate font-mono text-xs text-fg-muted">
-        {cwd ? shortenCwd(cwd) : 'No working directory'}
-      </span>
-    </>
-  );
-
-  const headerActions = (
-    <div className="flex shrink-0 items-center gap-1">
-      <button
-        type="button"
-        onClick={() => setSplitView((v) => !v)}
-        title={splitView ? 'Switch to unified view' : 'Switch to split view'}
-        className={cn(
-          'flex items-center gap-1 rounded px-2 py-1 text-[11px] transition-colors',
-          'text-fg-muted hover:bg-elevated hover:text-fg focus-visible:outline-none',
-        )}
-      >
-        {splitView
-          ? <><Columns2 className="h-3.5 w-3.5" strokeWidth={1.75} /> Split</>
-          : <><AlignLeft className="h-3.5 w-3.5" strokeWidth={1.75} /> Unified</>
-        }
-      </button>
-    </div>
-  );
-
   const fullTitle = (
-    <div className="flex w-full items-center gap-2">
-      <div className="flex min-w-0 flex-1 items-center gap-2">{title}</div>
-      {headerActions}
-    </div>
+    <GitHeader
+      cwd={cwd}
+      totalFiles={totalFiles}
+      splitView={splitView}
+      onToggleSplit={() => setSplitView((v) => !v)}
+    />
   );
 
-  const leftPanelContent = () => {
-    if (statusLoading && !repos.length) return <div className="flex h-full items-center justify-center"><span className="text-xs text-fg-subtle">Loading…</span></div>;
-    if (statusError === 'no_cwd') return <div className="flex h-full items-center justify-center p-6"><p className="text-center text-xs text-fg-subtle">Set a working directory for this session to use git review</p></div>;
-    if (statusError === 'no_git_repos') return <div className="flex h-full items-center justify-center p-6"><p className="text-center text-xs text-fg-subtle">No git repositories found in this directory</p></div>;
-    if (statusError) return <div className="flex h-full items-center justify-center p-6"><p className="text-center text-xs text-red-400">{statusError}</p></div>;
-    return (
-      <>
-        <div className="min-h-0 flex-1 overflow-hidden">
-          <GitFileList
+  return (
+    <ExpandModal title={fullTitle} onClose={onClose} className="w-[95vw] h-[90vh]">
+      <div className="flex min-h-0 flex-1">
+        {/* Left panel */}
+        <div className="flex w-80 shrink-0 flex-col border-r border-border/60 bg-panel">
+          <GitLeftPanel
+            statusLoading={statusLoading}
+            statusError={statusError}
             repos={repos}
             selected={selected}
             onSelect={setSelected}
@@ -336,28 +422,15 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
             onToggleStage={handleToggleStage}
             onToggleRepoStage={handleToggleRepoStage}
             hunkStates={hunkStates}
+            stagedCount={stagedPaths.size}
+            totalCount={totalFiles}
+            stagedRepos={stagedRepos}
+            onCommit={handleCommit}
+            onFetchLastMessage={handleFetchLastMessage}
+            onGenerateMessage={handleGenerateMessage}
+            committing={committing}
+            error={commitError}
           />
-        </div>
-        <CommitPanel
-          stagedCount={stagedPaths.size}
-          totalCount={totalFiles}
-          stagedRepos={stagedRepos}
-          onCommit={handleCommit}
-          onFetchLastMessage={handleFetchLastMessage}
-          onGenerateMessage={handleGenerateMessage}
-          committing={committing}
-          error={commitError}
-        />
-      </>
-    );
-  };
-
-  return (
-    <ExpandModal title={fullTitle} onClose={onClose} className="w-[95vw] h-[90vh]">
-      <div className="flex min-h-0 flex-1">
-        {/* Left panel */}
-        <div className="flex w-80 shrink-0 flex-col border-r border-border/60 bg-panel">
-          {leftPanelContent()}
         </div>
 
         {/* Right panel: Monaco with glyph margin hunk checkboxes */}
