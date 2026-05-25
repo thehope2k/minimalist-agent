@@ -1,6 +1,7 @@
 import * as pty from 'node-pty';
 import { BrowserWindow } from 'electron';
 import { randomUUID } from 'node:crypto';
+import { basename } from 'node:path';
 import type { TerminalTabInfo } from './types';
 
 // 2 MB rolling scrollback per tab. Large enough for rich test output,
@@ -41,7 +42,7 @@ class TerminalManager {
 
     const entry: TabEntry = {
       pty:    ptyProcess,
-      title:  resolvedShell.split('/').pop() ?? resolvedShell,
+      title:  basename(cwd) || cwd,
       cwd,
       shell:  resolvedShell,
       buffer: '',
@@ -63,9 +64,14 @@ class TerminalManager {
       // Reflect process-name changes (e.g. vim, npm) back to the renderer
       // by piggybacking on the data event. pty.process updates in real time.
       const currentProcess = ptyProcess.process;
-      if (currentProcess && currentProcess !== entry.title) {
-        entry.title = currentProcess;
-        this.broadcast('terminal:titleChange', { tabId, title: currentProcess });
+      // When back at the shell prompt, show the folder name instead of the
+      // shell binary (e.g. 'zsh') so multi-tab context stays meaningful.
+      const shellBin = entry.shell.split('/').pop() ?? entry.shell;
+      const nextTitle =
+        currentProcess === shellBin ? (basename(entry.cwd) || entry.cwd) : currentProcess;
+      if (nextTitle && nextTitle !== entry.title) {
+        entry.title = nextTitle;
+        this.broadcast('terminal:titleChange', { tabId, title: nextTitle });
       }
       this.broadcast('terminal:data', { tabId, data });
     });
