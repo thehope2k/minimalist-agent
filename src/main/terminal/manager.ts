@@ -51,9 +51,14 @@ class TerminalManager {
 
     ptyProcess.onData((data) => {
       entry.buffer += data;
-      // Trim the leading bytes once we exceed the cap so memory stays bounded.
+      // Trim the leading chars once we exceed the cap so memory stays bounded.
+      // Advance past any low-surrogate at the cut point to avoid splitting a
+      // surrogate pair and producing an invalid JS string.
       if (entry.buffer.length > SCROLLBACK_MAX_BYTES) {
-        entry.buffer = entry.buffer.slice(entry.buffer.length - SCROLLBACK_MAX_BYTES);
+        let cut = entry.buffer.length - SCROLLBACK_MAX_BYTES;
+        const code = entry.buffer.charCodeAt(cut);
+        if (code >= 0xdc00 && code <= 0xdfff) cut++;
+        entry.buffer = entry.buffer.slice(cut);
       }
       // Reflect process-name changes (e.g. vim, npm) back to the renderer
       // by piggybacking on the data event. pty.process updates in real time.
@@ -118,9 +123,8 @@ class TerminalManager {
   }
 
   private broadcast(channel: string, payload: unknown): void {
-    const win = BrowserWindow.getAllWindows()[0];
-    if (win && !win.isDestroyed()) {
-      win.webContents.send(channel, payload);
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) win.webContents.send(channel, payload);
     }
   }
 }

@@ -54,7 +54,11 @@ export const TerminalInstance = forwardRef<TerminalInstanceHandle, TerminalInsta
     const fitRef        = useRef<FitAddon | null>(null);
     const searchRef     = useRef<SearchAddon | null>(null);
     const cleanupRef    = useRef<(() => void) | null>(null);
+    const aliveRef      = useRef(alive);
     const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
+
+    // Keep aliveRef current without re-mounting the heavy xterm effect.
+    useEffect(() => { aliveRef.current = alive; }, [alive]);
 
     // Expose imperative handles to TerminalPanel.
     useImperativeHandle(ref, () => ({
@@ -129,9 +133,10 @@ export const TerminalInstance = forwardRef<TerminalInstanceHandle, TerminalInsta
           if (tid === tabId) term.write(data);
         });
 
-        // Keystrokes → PTY.
+        // Keystrokes → PTY. Use aliveRef so we always read the current value
+        // without re-running this effect (which would tear down and re-mount xterm).
         const onDataDispose = term.onData((data) => {
-          if (alive) void window.api.terminal.write(tabId, data);
+          if (aliveRef.current) void window.api.terminal.write(tabId, data);
         });
 
         // Cmd+K — clear terminal (only fires when xterm canvas has focus).
