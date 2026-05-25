@@ -87,7 +87,7 @@ export function useGitReviewPersistence({
       lineChangesByPath,
       partialContentByPath,
       branches: branchByRepoRef.current,
-      pendingHunkKeys: pendingHunkKeysRef.current,
+      pendingHunkKeys: pendingHunkKeysRef.current ?? undefined,
     });
     saveGitReviewState(snapshot);
   }, [
