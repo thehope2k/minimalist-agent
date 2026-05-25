@@ -129,6 +129,7 @@ export function GitDiffView({
     editor.updateOptions({ renderSideBySide: splitView });
 
     const modEditor = editor.getModifiedEditor();
+    modEditor.focus();
 
     // Create the decoration collection once on mount.
     decoRef.current = modEditor.createDecorationsCollection([]);

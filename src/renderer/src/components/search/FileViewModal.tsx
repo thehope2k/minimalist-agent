@@ -282,6 +282,7 @@ function CodeViewer({
 
   const handleMount: OnMount = useCallback((editor) => {
     editorRef.current = editor;
+    editor.focus();
     if (lineNumber > 1) {
       setTimeout(() => { editor.revealLineInCenter(lineNumber); }, 80);
     }

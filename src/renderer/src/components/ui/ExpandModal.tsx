@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -29,6 +29,15 @@ export interface ExpandModalProps {
 }
 
 export function ExpandModal({ title, onClose, children, className }: ExpandModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  // Focus the dialog on open so keyboard works immediately (Escape, arrow
+  // keys, etc.) without requiring a mouse click. Child components that need
+  // focus themselves (Monaco editors, inputs) will steal it after they mount.
+  useEffect(() => {
+    dialogRef.current?.focus();
+  }, []);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -52,10 +61,12 @@ export function ExpandModal({ title, onClose, children, className }: ExpandModal
       onMouseDown={(e) => e.stopPropagation()}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
+        tabIndex={-1}
         className={cn(
-          'relative flex max-h-[90vh] w-[min(90vw,1200px)] flex-col overflow-hidden rounded-xl border border-border bg-panel shadow-2xl',
+          'relative flex max-h-[90vh] w-[min(90vw,1200px)] flex-col overflow-hidden rounded-xl border border-border bg-panel shadow-2xl focus:outline-none',
           className,
         )}
         onClick={(e) => e.stopPropagation()}
