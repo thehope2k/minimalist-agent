@@ -5,6 +5,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.17.0] — 2026-05-25
+
+Adds new-session draft persistence for mode, folder, and model; fixes terminal keyboard shortcuts broken in v0.16.0.
+
+### Added
+
+**Chat**
+
+- Permission mode, working folder, and connection/model selection are now preserved when switching away from an unsaved new session and back — only text and attachments were previously saved
+
+### Fixed
+
+**Terminal**
+
+- `Cmd+←/→` tab switching and `Cmd+Shift+↑/↓` panel resize shortcuts no longer silently fail when the terminal has keyboard focus (regression introduced by the auto-focus change in v0.16.0)
+
+---
+
 ## [0.16.0] — 2026-05-25
 
 Adds merge conflict detection and three-way resolution UI; terminal tab enhancements and UI focus fixes.
