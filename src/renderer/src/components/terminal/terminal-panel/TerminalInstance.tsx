@@ -113,6 +113,7 @@ export const TerminalInstance = forwardRef<TerminalInstanceHandle, TerminalInsta
         term.loadAddon(searchAddon);
         term.open(containerRef.current);
         fitAddon.fit();
+        term.focus();
 
         termRef.current   = term;
         fitRef.current    = fitAddon;
@@ -191,6 +192,7 @@ export const TerminalInstance = forwardRef<TerminalInstanceHandle, TerminalInsta
         if (!fitRef.current || !termRef.current) return;
         fitRef.current.fit();
         void window.api.terminal.resize(tabId, termRef.current.cols, termRef.current.rows);
+        termRef.current.focus();
       }, 50);
       return () => clearTimeout(t);
     }, [isActive, tabId]);
