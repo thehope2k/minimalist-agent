@@ -121,6 +121,9 @@ export default function App() {
   useEffect(() => {
     const isTextInput = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement;
+      // xterm.js focuses an internal textarea for key capture — don't treat it
+      // as a user text field or resize shortcuts silently stop working.
+      if (t.tagName === 'TEXTAREA' && t.closest('.xterm')) return false;
       return (
         t.tagName === 'INPUT' ||
         t.tagName === 'TEXTAREA' ||
@@ -193,8 +196,9 @@ export default function App() {
       }
     };
 
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    // capture: true so this fires before xterm can call stopPropagation.
+    window.addEventListener('keydown', handler, { capture: true });
+    return () => window.removeEventListener('keydown', handler, { capture: true });
   }, [toggleTerminal]);
 
   // Collapse terminal on mount (starts closed).

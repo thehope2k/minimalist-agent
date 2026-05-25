@@ -84,6 +84,9 @@ export function TerminalPanel({ isOpen, initialCwd, onClose }: TerminalPanelProp
   useEffect(() => {
     const isTextInput = (e: KeyboardEvent): boolean => {
       const t = e.target as HTMLElement;
+      // xterm.js focuses an internal textarea for key capture — don't treat it
+      // as a user text field or all terminal shortcuts silently stop working.
+      if (t.tagName === 'TEXTAREA' && t.closest('.xterm')) return false;
       return t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable;
     };
 
@@ -122,6 +125,7 @@ export function TerminalPanel({ isOpen, initialCwd, onClose }: TerminalPanelProp
 
       if (e.key === 'ArrowLeft' && !e.shiftKey && !e.altKey) {
         e.preventDefault();
+        e.stopPropagation(); // prevent xterm from also processing the key
         const { tabs, activeTabId, setActiveTab } = managerRef.current;
         if (tabs.length < 2) return;
         const idx = tabs.findIndex((t) => t.tabId === activeTabId);
@@ -131,6 +135,7 @@ export function TerminalPanel({ isOpen, initialCwd, onClose }: TerminalPanelProp
 
       if (e.key === 'ArrowRight' && !e.shiftKey && !e.altKey) {
         e.preventDefault();
+        e.stopPropagation(); // prevent xterm from also processing the key
         const { tabs, activeTabId, setActiveTab } = managerRef.current;
         if (tabs.length < 2) return;
         const idx = tabs.findIndex((t) => t.tabId === activeTabId);
