@@ -12,6 +12,7 @@ export interface UseTerminalManagerResult {
   setActiveTab: (tabId: string) => void;
   createTab:    (cwd: string) => Promise<void>;
   closeTab:     (tabId: string) => Promise<void>;
+  renameTab:    (tabId: string, customTitle: string | undefined) => void;
 }
 
 export function useTerminalManager(): UseTerminalManagerResult {
@@ -73,9 +74,18 @@ export function useTerminalManager(): UseTerminalManagerResult {
     });
   }, []);
 
+  const renameTab = useCallback((tabId: string, customTitle: string | undefined) => {
+    setState((prev) => ({
+      ...prev,
+      tabs: prev.tabs.map((t) =>
+        t.tabId === tabId ? { ...t, customTitle: customTitle || undefined } : t,
+      ),
+    }));
+  }, []);
+
   const setActiveTab = useCallback((tabId: string) => {
     setState((prev) => ({ ...prev, activeTabId: tabId }));
   }, []);
 
-  return { tabs: state.tabs, activeTabId: state.activeTabId, setActiveTab, createTab, closeTab };
+  return { tabs: state.tabs, activeTabId: state.activeTabId, setActiveTab, createTab, closeTab, renameTab };
 }

@@ -156,6 +156,7 @@ export function TerminalPanel({ isOpen, initialCwd, onClose }: TerminalPanelProp
         onClose={manager.closeTab}
         onNew={newTab}
         onClosePanel={onClose}
+        onRename={manager.renameTab}
       />
 
       <div className="relative min-h-0 flex-1 bg-[#0c0c0c] p-1">
