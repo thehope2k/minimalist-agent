@@ -12,6 +12,7 @@ import { useChat } from '@/hooks/useChat';
 import { useAiData } from '@/hooks/useAiData';
 import { branchSession, loadFullSession, setSessionPermissionMode, updateSessionMeta } from '@/lib/sessions';
 import { findProject } from '@/lib/projects';
+import { getNewSessionStateDraft, patchNewSessionStateDraft } from '@/lib/new-session-draft';
 import { useProjects } from '@/hooks/useProjects';
 import { homedir } from '@/lib/path';
 import type { PermissionMode } from '@/lib/electron';
@@ -64,6 +65,11 @@ export function ChatArea({
   const [sddMode, setSddMode] = useState<'auto' | 'off'>('off');
   const sddModeRef = useRef<'auto' | 'off'>('off');
   sddModeRef.current = sddMode;
+  // Always-current mirrors for permissionMode and cwd — used when snapshotting
+  // the null-slot draft on session switch (same pattern as sddModeRef).
+  const permissionModeRef = useRef<PermissionMode>('ask');
+  const cwdRef            = useRef<string | undefined>(undefined);
+  const prevSessionIdRef  = useRef<string | null | undefined>(undefined);
   const [sddPanelOpen, setSddPanelOpen] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
   const [pendingMessage, setPendingMessage] = useState<string | undefined>(undefined);
@@ -127,17 +133,34 @@ export function ChatArea({
 
   // Rehydrate cwd + title when switching sessions.
   useEffect(() => {
+    const prevId = prevSessionIdRef.current;
+    prevSessionIdRef.current = sessionId;
+
+    // Leaving the null (new) slot → snapshot mode + cwd so they survive
+    // switching to another session and back.
+    if (prevId === null) {
+      patchNewSessionStateDraft({
+        permissionMode: permissionModeRef.current,
+        cwd:            cwdRef.current,
+      });
+    }
+
     if (!sessionId) {
       setTitle('New session');
       sessionModeLoadedRef.current = false;
-      // Fresh chat picks defaults from the active project filter (when
-      // the user is filtered to a specific project) and falls back to
-      // global settings otherwise.
       const projForFresh = findProject(newSessionDefaultProjectId);
-      setCwd(projForFresh?.rootPath ?? undefined);
-      onCwdChange?.(projForFresh?.rootPath ?? undefined);
+
+      // Restore from draft when switching back; fall back to project/global
+      // defaults only when there is no saved pick (first visit to null slot).
+      const d = getNewSessionStateDraft();
+      const restoredCwd = d.cwd !== undefined
+        ? d.cwd
+        : (projForFresh?.rootPath ?? undefined);
+      setCwd(restoredCwd);
+      onCwdChange?.(restoredCwd);
       setPermissionMode(
-        projForFresh?.defaultPermissionMode ??
+        d.permissionMode ??
+          projForFresh?.defaultPermissionMode ??
           aiData?.settings.defaultPermissionMode ??
           'ask',
       );
@@ -187,12 +210,18 @@ export function ChatArea({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, newSessionDefaultProjectId]);
 
+  // Keep refs current so the snapshot above always reads the latest values.
+  permissionModeRef.current = permissionMode;
+  cwdRef.current            = cwd;
+
   // For unsaved fresh chats, keep tracking the cascade (project default →
   // global default) so changes in those defaults reflect on the pill
-  // before the user explicitly picks a mode.
+  // before the user explicitly picks a mode — but only when the user
+  // hasn't already chosen a value (stored in the null-slot draft).
   useEffect(() => {
     if (sessionId) return;
     if (!aiData) return;
+    if (getNewSessionStateDraft().permissionMode) return; // user pick wins
     const projForFresh = findProject(newSessionDefaultProjectId);
     setPermissionMode(
       projForFresh?.defaultPermissionMode ??

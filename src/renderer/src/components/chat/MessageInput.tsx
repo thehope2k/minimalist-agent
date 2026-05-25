@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { getDraft, setDraft } from '@/lib/input-drafts';
 import { getAttachmentDraft, setAttachmentDraft } from '@/lib/attachment-drafts';
+import { getNewSessionStateDraft, patchNewSessionStateDraft } from '@/lib/new-session-draft';
 import { ArrowUp, AtSign, Paperclip, Square } from 'lucide-react';
 import { IconButton } from '../ui';
 import { ConnectionModelPicker } from './ConnectionModelPicker';
@@ -121,10 +122,18 @@ export function MessageInput({
   const draftPrevIdRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {
     const prevId = draftPrevIdRef.current;
-    // prevId is `undefined` only on the very first mount — skip saving then.
     if (prevId !== undefined) {
       setDraft(prevId, draftValueRef.current);
       setAttachmentDraft(prevId, draftAttachmentsRef.current);
+      // Leaving the null slot → snapshot the picker so it survives a
+      // session switch and is restored when the user comes back.
+      if (prevId === null) {
+        const pick = pickerOverrideRef.current;
+        patchNewSessionStateDraft({
+          connectionSlug: pick?.slug,
+          modelId:        pick?.modelId,
+        });
+      }
     }
     draftPrevIdRef.current = sessionId;
     setValue(getDraft(sessionId));
@@ -220,14 +229,24 @@ export function MessageInput({
     slug: string;
     modelId: string;
   } | null>(null);
+  // Always-current mirror so the session-switch effect can snapshot it
+  // without a stale closure (same pattern as draftValueRef).
+  const pickerOverrideRef = useRef(pickerOverride);
+  pickerOverrideRef.current = pickerOverride;
 
   const lastSyncedSessionIdRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {
     if (sessionId === null) {
-      // Fresh chat — clear any leftover pick from the previous session.
+      // Fresh chat — restore picker from draft if the user had previously
+      // chosen one; clear it only when there is no saved pick.
       if (lastSyncedSessionIdRef.current !== null) {
         lastSyncedSessionIdRef.current = null;
-        setPickerOverride(null);
+        const d = getNewSessionStateDraft();
+        setPickerOverride(
+          d.connectionSlug && d.modelId
+            ? { slug: d.connectionSlug, modelId: d.modelId }
+            : null,
+        );
       }
       return;
     }
