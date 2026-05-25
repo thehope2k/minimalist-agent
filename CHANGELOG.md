@@ -5,6 +5,33 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.16.0] — 2026-05-25
+
+Adds merge conflict detection and three-way resolution UI; terminal tab enhancements and UI focus fixes.
+
+### Added
+
+**Git**
+
+- Merge conflicts are now detected automatically and surfaced with a three-way resolution UI — choose incoming, current, or manually edit the merged result
+
+**Terminal**
+
+- Tab titles automatically display the current folder name when the shell is at a prompt
+- Double-click any terminal tab to rename it with a custom title that persists for that session
+
+### Fixed
+
+**Terminal**
+
+- Terminal instances now auto-focus when mounted, preventing missed keystrokes after opening a new tab
+
+**UI**
+
+- Expanded modals (fullscreen code blocks) now receive focus immediately on open, enabling keyboard interaction without an extra click
+
+---
+
 ## [0.15.0] — 2026-05-25
 
 Adds persistent hunk-level staging state in the Git diff panel; selections survive restarts.
