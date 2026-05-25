@@ -5,6 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.15.0] — 2026-05-25
+
+Adds persistent hunk-level staging state in the Git diff panel; selections survive restarts.
+
+### Added
+
+**Git**
+
+- Hunk-level staging selections are now persisted and restored across sessions — partial stage state survives editor restarts
+
+---
+
 ## [0.14.0] — 2026-05-25
 
 Adds Claude OAuth usage badges in Settings and persistent attachment drafts across session switches.
