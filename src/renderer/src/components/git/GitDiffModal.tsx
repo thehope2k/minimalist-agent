@@ -25,6 +25,12 @@ import { GitDiffView } from './GitDiffView';
 import { CommitPanel } from './CommitPanel';
 import { applySelectedHunks } from './git-util';
 import { buildDiffContext } from './git-generate';
+import {
+  buildHunkStates,
+  toggleFileStage,
+  toggleHunkStage,
+  toggleRepoStage,
+} from './staging-state';
 import type { GitFileEntry, GitFileDiff, GitRepo, LineChange } from './types';
 
 interface GitDiffModalProps {
@@ -138,90 +144,35 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
 
   const handleToggleHunk = useCallback((index: number) => {
     if (!selected) return;
-    const path = selected.absolutePath;
-    setStagedHunks((prev) => {
-      const current = prev.get(path) ?? new Set(currentChanges.map((_, i) => i));
-      const next = new Set(current);
-      next.has(index) ? next.delete(index) : next.add(index);
-
-      const updated = new Map(prev).set(path, next);
-
-      // Keep file-level stage state in sync with hunk selection.
-      setStagedPaths((prevPaths) => {
-        const n = new Set(prevPaths);
-        if (next.size > 0) n.add(path);
-        else n.delete(path);
-        return n;
-      });
-
-      // "All hunks selected" is represented by missing map entry.
-      if (next.size === currentChanges.length) {
-        updated.delete(path);
-      }
-
-      return updated;
-    });
-  }, [selected, currentChanges]);
+    const next = toggleHunkStage(
+      { stagedPaths, stagedHunks },
+      selected.absolutePath,
+      index,
+      currentChanges.length,
+    );
+    setStagedPaths(next.stagedPaths);
+    setStagedHunks(next.stagedHunks);
+  }, [selected, currentChanges.length, stagedPaths, stagedHunks]);
 
   const handleToggleStage = useCallback((file: GitFileEntry) => {
-    const isStaged = stagedPaths.has(file.absolutePath);
-    if (isStaged) {
-      // Any staged state → fully unstage: remove from paths AND empty hunks.
-      setStagedPaths((prev) => { const n = new Set(prev); n.delete(file.absolutePath); return n; });
-      setStagedHunks((prev) => new Map(prev).set(file.absolutePath, new Set()));
-    } else {
-      // Unstaged → stage all: add to paths AND clear hunk entry (undefined = all staged).
-      setStagedPaths((prev) => new Set(prev).add(file.absolutePath));
-      setStagedHunks((prev) => { const n = new Map(prev); n.delete(file.absolutePath); return n; });
-    }
-  }, [stagedPaths]);
+    const next = toggleFileStage({ stagedPaths, stagedHunks }, file);
+    setStagedPaths(next.stagedPaths);
+    setStagedHunks(next.stagedHunks);
+  }, [stagedPaths, stagedHunks]);
 
   const handleToggleRepoStage = useCallback((repo: GitRepo) => {
-    const allStaged = repo.files.every((f) => stagedPaths.has(f.absolutePath));
-    if (allStaged) {
-      // All staged → unstage every file in this repo.
-      setStagedPaths((prev) => {
-        const n = new Set(prev);
-        repo.files.forEach((f) => n.delete(f.absolutePath));
-        return n;
-      });
-      setStagedHunks((prev) => {
-        const n = new Map(prev);
-        repo.files.forEach((f) => n.set(f.absolutePath, new Set()));
-        return n;
-      });
-    } else {
-      // Some or none staged → stage every file in this repo.
-      setStagedPaths((prev) => {
-        const n = new Set(prev);
-        repo.files.forEach((f) => n.add(f.absolutePath));
-        return n;
-      });
-      setStagedHunks((prev) => {
-        const n = new Map(prev);
-        repo.files.forEach((f) => n.delete(f.absolutePath));
-        return n;
-      });
-    }
-  }, [stagedPaths]);
+    const next = toggleRepoStage({ stagedPaths, stagedHunks }, repo);
+    setStagedPaths(next.stagedPaths);
+    setStagedHunks(next.stagedHunks);
+  }, [stagedPaths, stagedHunks]);
 
   // Derive hunk state map for file list indeterminate display.
   const hunkStates = useMemo(() => {
-    const map = new Map<string, { staged: number; total: number }>();
-    for (const path of stagedPaths) {
-      const total = lineChangesCacheRef.current.get(path)?.length;
-      const indices = stagedHunks.get(path);
-      if (!indices) {
-        // Undefined means "all hunks staged".
-        if (typeof total === 'number') map.set(path, { staged: total, total });
-        continue;
-      }
-      map.set(path, {
-        staged: indices.size,
-        total: typeof total === 'number' ? total : indices.size,
-      });
+    const hunkTotalsByPath = new Map<string, number>();
+    for (const [path, changes] of lineChangesCacheRef.current) {
+      hunkTotalsByPath.set(path, changes.length);
     }
-    return map;
+    return buildHunkStates(stagedPaths, stagedHunks, hunkTotalsByPath);
   }, [stagedPaths, stagedHunks]);
 
   const handleCommit = useCallback(async (message: string, amend: boolean) => {
