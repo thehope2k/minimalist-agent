@@ -101,6 +101,15 @@ What's shipped, what's coming, and what's intentionally out of scope.
 
 ---
 
+### 🟡 Medium priority
+
+| What | Notes |
+|---|---|
+| **Agent Definitions (AGENT.md system)** | Define reusable AI agents with specialized prompts, tool restrictions, and model choices. Similar to Skills but for spawning sub-agents. Both Claude SDK (native parallel execution) and Pi backend (via custom Agent tool). Unified file format; separate UI panels for management and creation. See [Agent System Design](./designs/agent-system.md) for feasibility and open questions. |
+| **Mode Architecture: Built-in Agents + Plan/Task UI** | Current modes (Plan/Ask/Auto) are flat permission gates — no dedicated agent intelligence or UI behind them. Worth a deeper design pass: introducing `Explore` (read-only, fast codebase search) and `Plan` (research-then-propose) as built-in runtime agents; rethinking modes as *agent postures* rather than permission toggles; and a proper plan/task canvas where the user can review, edit, and approve a proposed task list before any writes happen. Needs design discussion before scoping. |
+
+---
+
 ### 🟢 Long-term
 
 | What | Notes |
