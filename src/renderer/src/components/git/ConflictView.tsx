@@ -78,6 +78,12 @@ const SHARED_OPTIONS: MonacoType.editor.IDiffEditorConstructionOptions = {
   renderSideBySide: true,
   ignoreTrimWhitespace: false,
   renderIndicators: true,
+  // Disable semantic features since language workers aren't available
+  semanticValidation: false,
+  syntaxValidation: false,
+  quickSuggestions: false,
+  suggest: { enabled: false },
+  parameterHints: { enabled: false },
 };
 
 const RESULT_OPTIONS: MonacoType.editor.IStandaloneEditorConstructionOptions = {
@@ -88,6 +94,12 @@ const RESULT_OPTIONS: MonacoType.editor.IStandaloneEditorConstructionOptions = {
   scrollBeyondLastLine: false,
   wordWrap: 'off',
   lineNumbers: 'on',
+  // Disable semantic features since language workers aren't available
+  semanticValidation: false,
+  syntaxValidation: false,
+  quickSuggestions: false,
+  suggest: { enabled: false },
+  parameterHints: { enabled: false },
 };
 
 // Hardcoded hex approximations of OKLCH tokens (CSS vars unavailable in Monaco).

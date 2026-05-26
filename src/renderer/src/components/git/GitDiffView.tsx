@@ -52,6 +52,12 @@ const EDITOR_OPTIONS: MonacoType.editor.IDiffEditorConstructionOptions = {
   renderSideBySide: true,
   ignoreTrimWhitespace: false,
   renderIndicators: true,
+  // Disable semantic features since language workers aren't available
+  semanticValidation: false,
+  syntaxValidation: false,
+  quickSuggestions: false,
+  suggest: { enabled: false },
+  parameterHints: { enabled: false },
 };
 
 // Options for the plain single-panel view (new / deleted files).
@@ -65,6 +71,12 @@ const PLAIN_EDITOR_OPTIONS: MonacoType.editor.IStandaloneEditorConstructionOptio
   scrollBeyondLastLine: false,
   wordWrap: 'off',
   lineNumbers: 'on',
+  // Disable semantic features since language workers aren't available
+  semanticValidation: false,
+  syntaxValidation: false,
+  quickSuggestions: false,
+  suggest: { enabled: false },
+  parameterHints: { enabled: false },
 };
 
 export function GitDiffView({

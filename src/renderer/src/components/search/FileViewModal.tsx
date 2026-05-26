@@ -248,6 +248,11 @@ function ErrorMsg({ children }: { children: React.ReactNode }) {
 }
 
 // Monaco read-only editor — used for code files and markdown source view.
+// Note: Only the base editor worker is registered (see monaco-setup.ts).
+// Language-specific workers (TypeScript, JSON, CSS) would require file:// URIs.
+// Since this is a read-only viewer, we disable all semantic features to avoid
+// errors like "Missing requestHandler: getDocumentHighlights" when the editor
+// tries to call methods on unregistered workers.
 const MONACO_OPTIONS: MonacoType.editor.IStandaloneEditorConstructionOptions = {
   readOnly: true,
   minimap: { enabled: false },
@@ -263,6 +268,12 @@ const MONACO_OPTIONS: MonacoType.editor.IStandaloneEditorConstructionOptions = {
   folding: false,
   contextmenu: false,
   scrollbar: { verticalScrollbarSize: 8, horizontalScrollbarSize: 8 },
+  // Disable semantic features since language workers aren't available
+  semanticValidation: false,
+  syntaxValidation: false,
+  quickSuggestions: false,
+  suggest: { enabled: false },
+  parameterHints: { enabled: false },
 };
 
 function CodeViewer({
