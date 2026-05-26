@@ -46,12 +46,11 @@ function nextRenderId(): string {
 /**
  * Normalise common model-generated Mermaid quirks before handing to the parser.
  *
- * Models frequently write `\n` as a literal backslash-n inside node labels
- * (e.g. `A[line one\nline two]`). That is not valid Mermaid syntax.
- * The fix is two-fold:
- *   1. Replace `\n` with `<br/>` so HTML line-breaks are used.
- *   2. Wrap the bracket content in double-quotes (`["..."]`) so the Mermaid
- *      parser accepts the `<` / `>` angle-bracket characters without choking.
+ * 1. Literal `\n` inside node labels → `<br/>` + quote-wrap so the Mermaid
+ *    parser accepts the HTML angle brackets.
+ * 2. `@` or `/` inside an unquoted bracket label (common with npm scoped
+ *    package names like `[@scope/pkg]`) → quote-wrap, because `@` is not a
+ *    valid bare character in Mermaid label syntax and causes a parse error.
  *
  * Special case: cylinder / database shapes use `[("...")]` or `[(...))]`.
  * We must preserve the `(…)` delimiters or Mermaid will lose the shape
@@ -60,8 +59,12 @@ function nextRenderId(): string {
 function preprocessMermaid(code: string): string {
   // Match bracket node labels: [content] or ["content"] — no nested brackets.
   return code.replace(/\[([^\[\]]*)\]/g, (match, inner) => {
-    // Only touch labels that contain a literal backslash-n.
-    if (!inner.includes('\\n')) return match;
+    const alreadyQuoted = /^"[\s\S]*"$/.test(inner.trim());
+    const hasNewline = inner.includes('\\n');
+    // `@` is illegal in bare labels; `/` alongside `@` appears in scoped pkg names.
+    const hasSpecialChar = inner.includes('@');
+
+    if (!hasNewline && !hasSpecialChar) return match;
 
     // Cylinder / database shape [(...)] or [("...")] — preserve the (…) wrapper.
     if (inner.trimStart().startsWith('(')) {
@@ -72,7 +75,7 @@ function preprocessMermaid(code: string): string {
     }
 
     // Strip existing surrounding quotes (if any), replace \n, re-quote.
-    const unquoted = inner.replace(/^"(.*)"$/s, '$1');
+    const unquoted = alreadyQuoted ? inner.trim().slice(1, -1) : inner;
     const processed = unquoted.replace(/\\n/g, '<br/>');
     return `["${processed}"]`;
   });
