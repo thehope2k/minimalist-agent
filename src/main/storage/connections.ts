@@ -29,6 +29,11 @@ export interface ModelDef {
   shortName: string;
   description: string;
   contextWindow: number;
+  supportsVision?: boolean;
+  supportsToolCalls?: boolean;
+  supportsStreaming?: boolean;
+  category?: 'powerful' | 'versatile' | 'lightweight';
+  recommendedFor?: string[];
 }
 
 /** Metadata persisted on disk — secrets are NOT in here. */

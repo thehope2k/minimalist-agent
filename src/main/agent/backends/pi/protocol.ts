@@ -76,6 +76,21 @@ export interface MsgInit {
   baseUrl?: string;
   /** Custom endpoint protocol — required when baseUrl is set. */
   customEndpoint?: { api: 'openai-completions' | 'anthropic-messages'; supportsImages?: boolean };
+  /** Available agents (serialized from main process) — used by Agent tool. */
+  availableAgents?: Array<{
+    slug: string;
+    metadata: {
+      name: string;
+      description: string;
+      model?: string;
+      tools?: string[];
+      permissionMode?: 'plan' | 'ask' | 'auto';
+      maxTurns?: number;
+    };
+    content: string; // system prompt
+    path: string;
+    iconPath?: string;
+  }>;
 }
 
 export interface MsgPrompt {

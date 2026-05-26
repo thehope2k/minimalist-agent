@@ -42,6 +42,7 @@ import { getModel, completeSimple, type ThinkingLevel } from '@mariozechner/pi-a
 import { getOAuthProvider } from '@mariozechner/pi-ai/oauth';
 import { adaptPiEvent } from './event-adapter';
 import { createPiWebFetchTool, createPiWebSearchTool } from './web-tools';
+import { createPiAgentTool } from '../agent/backends/pi/agent-tool';
 import type {
   MsgAuthRequired,
   MsgEvent,
@@ -57,11 +58,17 @@ import type {
   MsgReady,
   MsgSessionIdUpdate,
   MsgTokenUpdate,
+  PiAuthProvider,
   PiPermissionMode,
   PiThinkingLevel,
   SubprocessInbound,
   SubprocessOutbound,
 } from '../agent/backends/pi/protocol';
+import { fileURLToPath } from 'node:url';
+import type { LoadedAgent } from '../agents/types';
+
+// Derive the path to this pi-server bundle for spawning agent subprocesses
+const PI_SERVER_PATH = fileURLToPath(import.meta.url);
 
 /* ============================================================ */
 /*  stdio framing                                                */
@@ -96,6 +103,8 @@ interface State {
   authStorage?: AuthStorage;
   session?: AgentSession;
   resourceLoader?: DefaultResourceLoader;
+  /** Available agents passed from main process. */
+  availableAgents: LoadedAgent[];
   /** Mutable array passed by reference into resourceLoader — update in-place
    *  before reload() so per-turn SDD context takes effect without recreating
    *  the session. */
@@ -118,6 +127,7 @@ const state: State = {
   permissionMode: 'auto',
   pendingPermission: new Map(),
   appendArr: [],
+  availableAgents: [],
 };
 
 /**
@@ -260,8 +270,21 @@ function requestPermission(
   });
 }
 
-function buildWrappedTools(cwd: string): ToolDefinition<any, any, any>[] {
-  return [
+function buildWrappedTools(
+  cwd: string,
+  agentContext?: {
+    sessionId: string;
+    sessionPath: string;
+    piServerPath: string;
+    availableAgents: LoadedAgent[];
+    piAuthProvider: string; // Will be validated as PiAuthProvider at runtime
+    getAuth: () => Promise<{ access: string; refresh?: string; expires?: number }>;
+    baseUrl?: string;
+    customEndpoint?: { api: 'openai-completions' | 'anthropic-messages'; supportsImages?: boolean };
+    permissionMode: 'plan' | 'ask' | 'auto';
+  },
+): ToolDefinition<any, any, any>[] {
+  const tools: ToolDefinition<any, any, any>[] = [
     wrapWithPermissionGate(createReadToolDefinition(cwd)),
     wrapWithPermissionGate(createBashToolDefinition(cwd)),
     wrapWithPermissionGate(createEditToolDefinition(cwd)),
@@ -274,6 +297,17 @@ function buildWrappedTools(cwd: string): ToolDefinition<any, any, any>[] {
     wrapWithPermissionGate(createPiWebFetchTool()),
     wrapWithPermissionGate(createPiWebSearchTool()),
   ];
+
+  // Add Agent tool if we have the necessary context
+  if (agentContext) {
+    tools.push(wrapWithPermissionGate(createPiAgentTool({
+      ...agentContext,
+      piAuthProvider: agentContext.piAuthProvider as PiAuthProvider,
+      cwd,
+    })));
+  }
+
+  return tools;
 }
 
 /* ============================================================ */
@@ -285,6 +319,15 @@ async function handleInit(msg: MsgInit): Promise<void> {
   state.permissionMode = msg.permissionMode;
   state.appendArr = msg.systemPrompt ? [msg.systemPrompt] : [];
   state.lastAppend = msg.systemPrompt ?? '';
+
+  // Store available agents (passed from main process)
+  state.availableAgents = (msg.availableAgents || []).map(a => ({
+    slug: a.slug,
+    metadata: a.metadata,
+    content: a.content,
+    path: a.path,
+    iconPath: a.iconPath,
+  }));
 
   const authStorage = AuthStorage.inMemory();
   if (msg.piAuth) {
@@ -361,7 +404,36 @@ async function handleInit(msg: MsgInit): Promise<void> {
   // (our userData-backed dir), or creates a new one if none exists yet.
   const sessionManager = SessionManager.continueRecent(msg.cwd, msg.sessionPath);
 
-  const tools = buildWrappedTools(msg.cwd);
+  // Build agent context for the Agent tool
+  const agentContext = {
+    sessionId: msg.sessionId,
+    sessionPath: msg.sessionPath,
+    piServerPath: PI_SERVER_PATH,
+    availableAgents: state.availableAgents,
+    piAuthProvider: msg.piAuthProvider,
+    getAuth: async () => {
+      if (!state.authStorage) {
+        throw new Error('Auth storage not initialized');
+      }
+      const apiKey = await state.authStorage.getApiKey(msg.piAuthProvider);
+      const cred = state.authStorage.get(msg.piAuthProvider);
+      if (cred?.type === 'oauth') {
+        return {
+          access: cred.access,
+          refresh: cred.refresh,
+          expires: cred.expires,
+        };
+      }
+      return { access: apiKey || '' };
+    },
+    ...(hasCustomEndpoint ? {
+      baseUrl: msg.baseUrl,
+      customEndpoint: msg.customEndpoint,
+    } : {}),
+    permissionMode: msg.permissionMode as 'plan' | 'ask' | 'auto',
+  };
+
+  const tools = buildWrappedTools(msg.cwd, agentContext);
 
   const agentDir = join(homedir(), '.pi', 'agent');
   const resourceLoader = new DefaultResourceLoader({

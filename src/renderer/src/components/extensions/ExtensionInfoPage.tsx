@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { Plug, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Check, Copy, Plug } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   displayDescription,
@@ -26,40 +26,52 @@ type Props = {
 };
 
 export function ExtensionInfoPage({ extension, onClose }: Props) {
-  if (!extension) return <EmptyState />;
-  return <Inner extension={extension} onClose={onClose} />;
+  if (!extension) {
+    return <EmptyView />;
+  }
+
+  return (
+    <Body extension={extension} onClose={onClose} />
+  );
 }
 
-function Inner({
+function EmptyView() {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-2 text-fg-subtle">
+      <Plug className="h-6 w-6" strokeWidth={1.5} />
+      <p className="text-sm">Select an extension to view its details</p>
+    </div>
+  );
+}
+
+function Body({
   extension,
   onClose,
 }: {
   extension: LoadedExtension;
-  onClose: () => void;
+  onClose?: () => void;
 }) {
   const enabled = isEnabled(extension);
   const configJson = useMemo(
     () => JSON.stringify(extension.config, null, 2),
     [extension.config],
   );
+  const [copied, setCopied] = useState(false);
+
+  const copySlug = async () => {
+    await navigator.clipboard.writeText(extension.slug);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <header className="flex items-center gap-3 border-b border-border px-4 py-3">
-        <ExtensionAvatar extension={extension} size="lg" />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <h1 className="truncate text-base font-medium text-fg">
-              {displayName(extension)}
-            </h1>
-            <span className="rounded bg-elevated/80 px-1.5 py-px font-mono text-[10px] uppercase tracking-wide text-fg-subtle">
-              {VARIANT_LABEL[extension.variant]}
-            </span>
-          </div>
-          <p className="truncate text-xs text-fg-subtle">
-            {displayDescription(extension)}
-          </p>
-        </div>
+    <div className="flex h-full flex-col">
+      <header className="flex h-10 shrink-0 items-center gap-3 border-b border-border px-4">
+        <ExtensionAvatar extension={extension} size="sm" />
+        <span className="truncate text-sm font-medium text-fg">
+          {displayName(extension)}
+        </span>
+        <div className="flex-1" />
         <Toggle
           value={enabled}
           onChange={(v) => void setEnabled(extension.slug, v)}
@@ -73,42 +85,77 @@ function Inner({
         >
           {enabled ? 'Enabled' : 'Disabled'}
         </span>
-        <ExtensionMenu extension={extension} variant="header" />
         <button
           type="button"
-          onClick={onClose}
-          className="rounded-md p-1 text-fg-subtle hover:bg-elevated hover:text-fg"
-          aria-label="Close"
+          onClick={copySlug}
+          title="Copy slug to clipboard"
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-panel/40 px-2 py-1 font-mono text-[11px]',
+            copied ? 'text-emerald-300' : 'text-fg-muted hover:bg-elevated hover:text-fg',
+          )}
         >
-          <X className="h-4 w-4" strokeWidth={1.75} />
+          {copied ? (
+            <Check className="h-3 w-3" strokeWidth={2} />
+          ) : (
+            <Copy className="h-3 w-3" strokeWidth={2} />
+          )}{' '}
+          {extension.slug}
         </button>
+        <ExtensionMenu extension={extension} variant="header" onAfterDelete={onClose} />
       </header>
 
       <div className="scroll-thin min-h-0 flex-1 overflow-y-auto">
-        {extension.variant === 'mcp-backed' && (
-          <div className="mx-4 mt-4 rounded-md border border-border/60 bg-elevated/40 px-3 py-2 text-xs text-fg-muted">
-            <strong className="text-fg">Anthropic-only.</strong> The MCP
-            server is spawned by the Claude Agent SDK; Pi-backed sessions
-            will skip this extension. Use a <code>guide-only</code> or{' '}
-            <code>cli-bound</code> variant for Pi compatibility.
-          </div>
-        )}
+        <div className="mx-auto max-w-[1100px] space-y-6 px-6 py-6">
+          <PageHeader extension={extension} />
 
-        <Section title="Metadata">
-          <MetaTable extension={extension} />
-        </Section>
+          {extension.variant === 'mcp-backed' && (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-fg-muted">
+              <strong className="text-fg">Anthropic-only.</strong> The MCP
+              server is spawned by the Claude Agent SDK; Pi-backed sessions
+              will skip this extension. Use a <code>guide-only</code> or{' '}
+              <code>cli-bound</code> variant for Pi compatibility.
+            </div>
+          )}
 
-        <SecretsSection extension={extension} />
+          <Section title="Metadata">
+            <KeyValueTable rows={metadataRows(extension)} />
+          </Section>
 
-        <Section title="Guide">
-          <Markdown text={extension.guideBody} />
-        </Section>
+          <SecretsSection extension={extension} />
 
-        <Section title="extension.json">
-          <pre className="scroll-thin overflow-x-auto rounded-md border border-border bg-elevated/40 p-3 font-mono text-[12px] leading-relaxed text-fg">
-            {configJson}
-          </pre>
-        </Section>
+          <Section title="Guide">
+            <div className="markdown px-4 py-4">
+              <Markdown text={extension.guideBody} />
+            </div>
+          </Section>
+
+          <Section title="extension.json">
+            <div className="px-4 py-3">
+              <pre className="scroll-thin overflow-x-auto font-mono text-[12px] leading-relaxed text-fg">
+                {configJson}
+              </pre>
+            </div>
+          </Section>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- compound layout primitives ---------- */
+
+function PageHeader({ extension }: { extension: LoadedExtension }) {
+  return (
+    <div className="flex items-start gap-3">
+      <ExtensionAvatar extension={extension} size="lg" />
+      <div className="min-w-0 flex-1">
+        <h1 className="text-xl font-semibold text-fg">{displayName(extension)}</h1>
+        <p className="mt-0.5 text-sm text-fg-muted">
+          {displayDescription(extension)}
+        </p>
+        <div className="mt-2 inline-block rounded bg-elevated/80 px-2 py-1 font-mono text-[10px] uppercase tracking-wide text-fg-subtle">
+          {VARIANT_LABEL[extension.variant]}
+        </div>
       </div>
     </div>
   );
@@ -122,72 +169,97 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="border-b border-border/60 px-4 py-4">
-      <h2 className="mb-2 text-[11px] font-medium uppercase tracking-wide text-fg-subtle">
-        {title}
-      </h2>
-      {children}
+    <section>
+      <div className="mb-2">
+        <h2 className="text-sm font-semibold text-fg">{title}</h2>
+      </div>
+      <div className="overflow-hidden rounded-lg border border-border/50 bg-elevated/20">
+        {children}
+      </div>
     </section>
   );
 }
 
-function MetaTable({ extension }: { extension: LoadedExtension }) {
-  const rows: Array<[string, React.ReactNode]> = [
-    ['Slug', <code className="font-mono">{extension.slug}</code>],
-    ['Variant', VARIANT_LABEL[extension.variant]],
-    ['Path', <code className="font-mono text-xs">{extension.path}</code>],
+/* ---------- metadata rows ---------- */
+
+interface KeyValueRow {
+  label: string;
+  value: React.ReactNode;
+}
+
+function metadataRows(extension: LoadedExtension): KeyValueRow[] {
+  const rows: KeyValueRow[] = [
+    { label: 'Slug', value: <code className="text-xs">{extension.slug}</code> },
+    { label: 'Variant', value: VARIANT_LABEL[extension.variant] },
+    { label: 'Path', value: <code className="text-xs break-all">{extension.path}</code> },
   ];
-  if (extension.config.version) rows.push(['Version', extension.config.version]);
-  if (extension.config.tags?.length) {
-    rows.push(['Tags', extension.config.tags.join(', ')]);
+
+  if (extension.config.version) {
+    rows.push({ label: 'Version', value: extension.config.version });
   }
+
+  if (extension.config.tags?.length) {
+    rows.push({
+      label: 'Tags',
+      value: (
+        <div className="flex flex-wrap gap-1">
+          {extension.config.tags.map((tag) => (
+            <span
+              key={tag}
+              className="rounded bg-elevated px-2 py-0.5 text-xs text-fg"
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+      ),
+    });
+  }
+
   if (extension.config.mcp) {
     const mcp = extension.config.mcp;
     if (mcp.transport === 'stdio') {
-      rows.push([
-        'MCP command',
-        <code className="font-mono text-xs">
-          {[mcp.command, ...(mcp.args ?? [])].join(' ')}
-        </code>,
-      ]);
+      rows.push({
+        label: 'MCP command',
+        value: (
+          <code className="text-xs break-all">
+            {[mcp.command, ...(mcp.args ?? [])].join(' ')}
+          </code>
+        ),
+      });
     } else {
-      rows.push([
-        'MCP URL',
-        <code className="font-mono text-xs">{mcp.url}</code>,
-      ]);
+      rows.push({
+        label: 'MCP URL',
+        value: <code className="text-xs break-all">{mcp.url}</code>,
+      });
     }
   }
+
   if (extension.config.env && Object.keys(extension.config.env).length > 0) {
-    rows.push([
-      'Env keys',
-      <code className="font-mono text-xs">
-        {Object.keys(extension.config.env).join(', ')}
-      </code>,
-    ]);
+    rows.push({
+      label: 'Env keys',
+      value: (
+        <code className="text-xs">
+          {Object.keys(extension.config.env).join(', ')}
+        </code>
+      ),
+    });
   }
-  return (
-    <table className="w-full text-sm">
-      <tbody>
-        {rows.map(([k, v]) => (
-          <tr key={k} className="border-b border-border/30 last:border-b-0">
-            <td className="w-32 py-1.5 align-top text-xs text-fg-subtle">
-              {k}
-            </td>
-            <td className="py-1.5 text-fg">{v}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
+
+  return rows;
 }
 
-function EmptyState() {
+function KeyValueTable({ rows }: { rows: KeyValueRow[] }) {
   return (
-    <div className="flex h-full items-center justify-center text-sm text-fg-subtle">
-      <div className="flex flex-col items-center gap-2 text-center">
-        <Plug className="h-6 w-6" strokeWidth={1.5} />
-        <span>Select an extension to see its details.</span>
-      </div>
+    <div className="divide-y divide-border/40">
+      {rows.map((row, i) => (
+        <div key={i} className="flex gap-3 px-4 py-2.5">
+          <div className="w-28 shrink-0 text-xs font-medium text-fg-subtle">
+            {row.label}
+          </div>
+          <div className="min-w-0 flex-1 text-sm text-fg">{row.value}</div>
+        </div>
+      ))}
     </div>
   );
 }

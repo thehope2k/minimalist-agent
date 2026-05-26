@@ -28,6 +28,7 @@ import {createInterface, type Interface as ReadlineInterface} from 'node:readlin
 import {app} from 'electron';
 import {join} from 'node:path';
 import {existsSync, readFileSync} from 'node:fs';
+import {resolvePiServerPath} from './spawn-utils';
 import type {StoredAttachment} from '../../../storage/sessions';
 import {updateSessionMeta} from '../../../storage/sessions';
 import type {AgentChatEvent} from '../../events';
@@ -38,6 +39,7 @@ import type {PermissionMode} from '../../permissions';
 import type {CopilotOAuthAuth, LocalApiAuth} from '../types';
 import {decidePiPermission, type PiPermissionDecisionArgs,} from './permission-bridge';
 import {resolveAuthForSlug} from '../../../auth/resolve';
+import {loadAllAgents} from '../../../agents/storage';
 import type {
   MsgAuthRequired,
   MsgEvent,
@@ -178,20 +180,6 @@ const handles = new Map<string, SubprocessHandle>();
 /*  Subprocess lifecycle                                         */
 /* ============================================================ */
 
-function resolvePiServerPath(): string {
-  const candidates = [
-    join(app.getAppPath(), 'out', 'main', 'pi-server.js'),
-    join(app.getAppPath(), 'pi-server.js'),
-    join(process.cwd(), 'out', 'main', 'pi-server.js'),
-  ];
-  for (const p of candidates) {
-    if (existsSync(p)) return p;
-  }
-  throw new Error(
-    `pi-server.js not found in any of:\n  ${candidates.join('\n  ')}\nRun \`npm run build\` so electron-vite emits the subprocess bundle.`,
-  );
-}
-
 function send(handle: SubprocessHandle, msg: SubprocessInbound): void {
   if (!handle.child.stdin || handle.child.stdin.destroyed) return;
   handle.child.stdin.write(JSON.stringify(msg) + '\n');
@@ -213,7 +201,7 @@ function ensureSubprocess(
     return existing;
   }
 
-  const piServer = resolvePiServerPath();
+  const piServer = resolvePiServerPath(app.getAppPath());
   const child = spawn(process.execPath, [piServer], {
     stdio: ['pipe', 'pipe', 'pipe'],
     env: {
@@ -350,6 +338,13 @@ function ensureSubprocess(
     ...(baseUrl ? { baseUrl, customEndpoint: { api: 'openai-completions' as const } } : {}),
     permissionMode: (req.permissionMode ?? 'auto') as MsgInit['permissionMode'],
     systemPrompt,
+    availableAgents: loadAllAgents().map(a => ({
+      slug: a.slug,
+      metadata: a.metadata,
+      content: a.content,
+      path: a.path,
+      iconPath: a.iconPath,
+    })),
   };
   send(handle, init);
 

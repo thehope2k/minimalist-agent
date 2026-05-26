@@ -1,11 +1,11 @@
 import matter from 'gray-matter';
 import { z } from 'zod';
-import type { SkillMetadata } from './types';
+import type { AgentMetadata } from './types';
 
 /* ---------- validation result types ---------- */
 
 export interface ValidationIssue {
-  /** dotted path or filename — e.g. `name`, `frontmatter`, `SKILL.md`. */
+  /** dotted path or filename — e.g. `name`, `frontmatter`, `AGENT.md`. */
   path: string;
   message: string;
   suggestion?: string;
@@ -48,20 +48,21 @@ export function validateSlug(slug: string): ValidationResult {
   return invalidResult(
     'slug',
     'Slug must be lowercase alphanumeric with hyphens',
-    `Suggested: '${suggested || 'valid-slug-name'}'`,
+    `Suggested: '${suggested || 'valid-agent-name'}'`,
   );
 }
 
 /* ---------- frontmatter schema ---------- */
 
-export const SkillMetadataSchema = z
+export const AgentMetadataSchema = z
   .object({
     name: z.string().min(1, "Add a 'name' field with a human-readable title"),
-    description: z
-      .string()
-      .min(1, "Add a 'description' field explaining what this skill does"),
-    globs: z.array(z.string()).optional(),
-    alwaysAllow: z.array(z.string()).optional(),
+    description: z.string().min(1, "Add a 'description' field explaining when to use this agent"),
+    model: z.string().optional(),
+    tools: z.array(z.string()).optional(),
+    maxTurns: z.number().int().min(1).optional(),
+    permissionMode: z.enum(['plan', 'ask', 'auto']).optional(),
+    effort: z.enum(['low', 'medium', 'high']).optional(),
     icon: z.string().optional(),
   })
   .passthrough();
@@ -69,12 +70,12 @@ export const SkillMetadataSchema = z
 /* ---------- parse + validate ---------- */
 
 /**
- * Parse SKILL.md content into metadata + body. Returns null if frontmatter
+ * Parse AGENT.md content into metadata + body. Returns null if frontmatter
  * is unparseable or required fields are missing.
  */
-export function parseSkillFile(
+export function parseAgentFile(
   content: string,
-): { metadata: SkillMetadata; body: string } | null {
+): { metadata: AgentMetadata; body: string } | null {
   try {
     const parsed = matter(content);
     if (!parsed.data.name || !parsed.data.description) return null;
@@ -84,18 +85,23 @@ export function parseSkillFile(
         ? parsed.data.icon.trim()
         : undefined;
 
+    const tools = Array.isArray(parsed.data.tools)
+      ? (parsed.data.tools as string[])
+      : undefined;
+
     return {
       metadata: {
         name: String(parsed.data.name),
         description: String(parsed.data.description),
-        globs: Array.isArray(parsed.data.globs)
-          ? (parsed.data.globs as string[])
+        model: parsed.data.model ? String(parsed.data.model) : undefined,
+        tools,
+        maxTurns: parsed.data.maxTurns ? Number(parsed.data.maxTurns) : undefined,
+        permissionMode: parsed.data.permissionMode
+          ? String(parsed.data.permissionMode)
           : undefined,
-        alwaysAllow: Array.isArray(parsed.data.alwaysAllow)
-          ? (parsed.data.alwaysAllow as string[])
-          : undefined,
+        effort: parsed.data.effort ? String(parsed.data.effort) : undefined,
         icon,
-      },
+      } as AgentMetadata,
       body: parsed.content,
     };
   } catch {
@@ -104,12 +110,12 @@ export function parseSkillFile(
 }
 
 /**
- * Full SKILL.md content validation. Used by the validate button in the UI.
+ * Full AGENT.md content validation. Used by the validate button in the UI.
  *
  * @param markdownContent — full file content
  * @param slug — folder name (validated against slug regex)
  */
-export function validateSkillContent(
+export function validateAgentContent(
   markdownContent: string,
   slug: string,
 ): ValidationResult {
@@ -136,23 +142,23 @@ export function validateSkillContent(
   }
 
   // 3. schema
-  const metaResult = SkillMetadataSchema.safeParse(frontmatter);
+  const metaResult = AgentMetadataSchema.safeParse(frontmatter);
   if (!metaResult.success) {
     for (const issue of metaResult.error.issues) {
       errors.push({
-        path: issue.path.join('.') || 'SKILL.md',
+        path: issue.path.join('.') || 'AGENT.md',
         message: issue.message,
       });
     }
   }
 
-  // 4. non-empty body
+  // 4. non-empty body (system prompt)
   if (!body || body.trim().length === 0) {
     errors.push({
       path: 'content',
-      message: 'Skill content is empty (nothing after frontmatter)',
+      message: 'Agent system prompt is empty (nothing after frontmatter)',
       suggestion:
-        'Add instructions after the frontmatter describing what the skill should do',
+        'Add a system prompt after the frontmatter describing the agent\'s behavior and instructions',
     });
   }
 

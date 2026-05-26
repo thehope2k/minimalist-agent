@@ -12,6 +12,7 @@ import {
   Settings,
   Sparkles,
   SquareTerminal,
+  Bot,
 } from 'lucide-react';
 import * as Popover from '@radix-ui/react-popover';
 import {useEffect, useState} from 'react';
@@ -21,7 +22,7 @@ import {useProjects} from '@/hooks/useProjects';
 import {hasUnseenChangelog, markChangelogSeen} from '@/lib/changelog';
 import {WhatsNewDialog} from './WhatsNewDialog';
 
-export type View = 'all' | 'archived' | 'skills' | 'extensions' | 'settings';
+export type View = 'all' | 'archived' | 'skills' | 'agents' | 'extensions' | 'settings';
 
 /** "all" = no project filter; "inbox" = sessions with projectId === null; otherwise a project id. */
 export type ProjectFilter = 'all' | 'inbox' | string;
@@ -106,6 +107,12 @@ export function TopBar({
           label="Sessions"
           active={view === 'all'}
           onClick={() => onViewChange('all')}
+        />
+        <NavTab
+          icon={Bot}
+          label="Agents"
+          active={view === 'agents'}
+          onClick={() => onViewChange('agents')}
         />
         <NavTab
           icon={Sparkles}

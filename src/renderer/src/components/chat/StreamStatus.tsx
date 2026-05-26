@@ -72,8 +72,12 @@ function verbFor(name: string, input: unknown): string {
     case 'WebSearch':
       return 'Searching the web';
     case 'Task':
-    case 'Agent':
-      return 'Spawning subagent';
+    case 'Agent': {
+      const sub = o && typeof o.subagent_type === 'string'
+        ? o.subagent_type
+        : (o && typeof o.agent === 'string' ? o.agent : '');
+      return sub ? `Spawning ${sub}` : 'Spawning subagent';
+    }
     case 'TodoWrite':
       return 'Updating tasks';
     default:

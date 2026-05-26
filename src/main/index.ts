@@ -6,6 +6,7 @@ import { cleanupPower } from './power';
 import { terminalManager } from './terminal/manager';
 import { installSkillsReferenceDoc } from './skills/install-reference';
 import { installExtensionsReferenceDoc } from './extensions/install-reference';
+import { installAgentsReferenceDoc } from './agents/install-reference';
 import { getAppIcon } from './app-icon';
 import { checkOnLaunch } from './auto-update';
 import { unwatchAll } from './sdd/watcher';
@@ -86,6 +87,7 @@ function createWindow(icon?: Electron.NativeImage | null) {
 app.whenReady().then(async () => {
   installSkillsReferenceDoc();
   installExtensionsReferenceDoc();
+  installAgentsReferenceDoc();
   registerIpc();
   const icon = await getAppIcon();
   if (process.platform === 'darwin' && app.dock && icon) {
@@ -141,4 +143,6 @@ app.on('will-quit', () => {
   // Best-effort SIGTERM/KILL to any running Pi subprocesses so they don't
   // outlive the parent.
   void import('./agent/backends/pi/agent').then((m) => m.shutdownAllPiSubprocesses());
+  // Kill any active agent sub-subprocesses.
+  void import('./agent/backends/pi/agent-tool').then((m) => m.shutdownAllAgentSubprocesses());
 });

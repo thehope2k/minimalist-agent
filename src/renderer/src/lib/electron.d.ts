@@ -210,6 +210,11 @@ export interface ModelDef {
   shortName: string;
   description: string;
   contextWindow: number;
+  supportsVision?: boolean;
+  supportsToolCalls?: boolean;
+  supportsStreaming?: boolean;
+  category?: 'powerful' | 'versatile' | 'lightweight';
+  recommendedFor?: string[];
 }
 
 
@@ -433,6 +438,31 @@ export interface LoadedSkill {
 export type SkillFileNode =
   | { kind: 'file'; name: string; path: string; size: number }
   | { kind: 'dir'; name: string; path: string; children: SkillFileNode[] };
+
+/* ---------- Agents ---------- */
+
+export interface AgentMetadata {
+  name: string;
+  description: string;
+  model?: string;
+  tools?: string[];
+  maxTurns?: number;
+  permissionMode?: 'plan' | 'ask' | 'auto';
+  effort?: 'low' | 'medium' | 'high';
+  icon?: string;
+}
+
+export interface LoadedAgent {
+  slug: string;
+  metadata: AgentMetadata;
+  content: string;
+  iconPath?: string;
+  path: string;
+}
+
+export type AgentFileNode =
+  | { kind: 'file'; name: string; path: string; size: number }
+  | { kind: 'dir'; name: string; path: string; children: AgentFileNode[] };
 
 /* ---------- Extensions ---------- */
 
@@ -789,6 +819,21 @@ export interface AppApi {
     /** Reveal the directory in Finder/Explorer. */
     revealInFinder: (dirPath: string) => Promise<void>;
     /** Validate SKILL.md schema + body. Returns formatted text report. */
+    validate: (
+      dirPath: string,
+      slug: string,
+    ) => Promise<{ ok: boolean; report: string }>;
+  };
+  agents: {
+    getDir: () => Promise<string>;
+    getReferenceDocPath: () => Promise<string>;
+    list: () => Promise<LoadedAgent[]>;
+    get: (slug: string) => Promise<LoadedAgent | null>;
+    listFiles: (dirPath: string) => Promise<AgentFileNode[]>;
+    delete: (slug: string) => Promise<boolean>;
+    invalidateCache: () => Promise<void>;
+    openInEditor: (dirPath: string) => Promise<string>;
+    revealInFinder: (dirPath: string) => Promise<void>;
     validate: (
       dirPath: string,
       slug: string,

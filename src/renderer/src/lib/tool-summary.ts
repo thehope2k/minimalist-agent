@@ -58,7 +58,7 @@ export function canonicalToolName(name: string): string {
     case 'websearch':
     case 'web_search': return 'WebSearch';
     case 'task':
-    case 'agent': return 'Task';
+    case 'agent': return 'Agent';
     default: return name;
   }
 }
@@ -144,8 +144,12 @@ export function summarizeToolCall(name: string, input: unknown): string {
 
     case 'Task':
     case 'Agent': {
-      const desc = typeof o.description === 'string' ? o.description : '';
-      const sub = typeof o.subagent_type === 'string' ? o.subagent_type : '';
+      const desc = typeof o.description === 'string'
+        ? o.description
+        : (typeof o.task === 'string' ? o.task : '');
+      const sub = typeof o.subagent_type === 'string'
+        ? o.subagent_type
+        : (typeof o.agent === 'string' ? o.agent : '');
       return clip(sub ? `${sub}: ${desc}` : desc);
     }
 

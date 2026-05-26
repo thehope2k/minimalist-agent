@@ -268,12 +268,7 @@ const MONACO_OPTIONS: MonacoType.editor.IStandaloneEditorConstructionOptions = {
   folding: false,
   contextmenu: false,
   scrollbar: { verticalScrollbarSize: 8, horizontalScrollbarSize: 8 },
-  // Disable semantic features since language workers aren't available
-  semanticValidation: false,
-  syntaxValidation: false,
   quickSuggestions: false,
-  suggest: { enabled: false },
-  parameterHints: { enabled: false },
 };
 
 function CodeViewer({

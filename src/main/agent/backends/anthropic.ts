@@ -8,6 +8,7 @@ import {
   type Options,
   type SDKMessage,
   type SDKUserMessage,
+  type AgentDefinition,
 } from '@anthropic-ai/claude-agent-sdk';
 import { readFileSync, writeFileSync, chmodSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -34,6 +35,9 @@ import {
   extractSkillPaths,
   formatSkillDirective,
 } from '../../skills/directive';
+import {
+  loadAllAgents,
+} from '../../agents/storage';
 import type { AnthropicApiKeyAuth, AnthropicOAuthAuth } from './types';
 
 export type AnthropicAuth = AnthropicApiKeyAuth | AnthropicOAuthAuth;
@@ -108,6 +112,31 @@ class SteerableInput {
 
 /** Per-turn handle so `steerAnthropicTurn` can push more messages in. */
 const inputsByTurnId = new Map<string, SteerableInput>();
+
+/**
+ * Convert loaded agents to SDK AgentDefinition format.
+ * Returns a mapping of slug → AgentDefinition for available agents.
+ */
+function buildSdkAgentDefinitions(): Record<string, AgentDefinition> | undefined {
+  const agents = loadAllAgents();
+  if (agents.length === 0) return undefined;
+
+  const result: Record<string, AgentDefinition> = {};
+  for (const agent of agents) {
+    result[agent.slug] = {
+      description: agent.metadata.description,
+      prompt: agent.content,
+      ...(agent.metadata.model && { model: agent.metadata.model }),
+      ...(agent.metadata.tools && { tools: agent.metadata.tools }),
+      ...(agent.metadata.maxTurns && { maxTurns: agent.metadata.maxTurns }),
+      ...(agent.metadata.permissionMode && {
+        permissionMode: toSdkPermissionMode(agent.metadata.permissionMode as PermissionMode),
+      }),
+      ...(agent.metadata.effort && { effort: agent.metadata.effort }),
+    };
+  }
+  return result;
+}
 
 /** Inject a user message into an in-flight Anthropic turn. */
 export function steerAnthropicTurn(
@@ -334,6 +363,9 @@ export async function* runAnthropicChat(
     ...(req.resumeSessionId ? { resume: req.resumeSessionId } : {}),
 
     tools: { type: 'preset', preset: 'claude_code' },
+
+    // Load agent definitions (AGENT.md files) for this workspace
+    agents: buildSdkAgentDefinitions(),
 
     mcpServers: buildSdkMcpServers(),
 

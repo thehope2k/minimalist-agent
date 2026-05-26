@@ -11,15 +11,19 @@ import {
 import { SettingsContent } from './components/settings/SettingsContent';
 import { SkillsPanel } from './components/skills/SkillsPanel';
 import { SkillInfoPage } from './components/skills/SkillInfoPage';
+import { AgentsPanel } from '@/components/agents';
+import { AgentInfoPage } from '@/components/agents';
 import { ExtensionsPanel } from './components/extensions/ExtensionsPanel';
 import { ExtensionInfoPage } from './components/extensions/ExtensionInfoPage';
 import { TerminalPanel } from './components/terminal/TerminalPanel';
 import { TooltipProvider } from './components/ui';
 import { useSkills } from './hooks/useSkills';
+import { useAgents } from './hooks/useAgents';
 import { useExtensions } from './hooks/useExtensions';
 import { useSessions } from './hooks/useSessions';
 import { deleteSession } from './lib/sessions';
 import { reload as reloadSkills } from './lib/skills';
+import { reload as reloadAgents } from './lib/agents';
 import { reload as reloadExtensions } from './lib/extensions';
 
 /** Payload pushed from non-chat surfaces (e.g. New Skill) into a fresh chat. */
@@ -206,12 +210,15 @@ export default function App() {
 
   const inSettings = view === 'settings';
   const inSkills = view === 'skills';
+  const inAgents = view === 'agents';
   const inExtensions = view === 'extensions';
   const [activeSkillSlug, setActiveSkillSlug] = useState<string | null>(null);
+  const [activeAgentSlug, setActiveAgentSlug] = useState<string | null>(null);
   const [activeExtensionSlug, setActiveExtensionSlug] = useState<string | null>(
     null,
   );
   const skills = useSkills();
+  const agents = useAgents();
   const extensions = useExtensions();
   const sessions = useSessions();
   // Stable ref for the delete shortcut — avoids re-registering the handler
@@ -220,6 +227,9 @@ export default function App() {
   sessionsRef.current = sessions;
   const activeSkill = inSkills
     ? skills?.find((s) => s.slug === activeSkillSlug) ?? null
+    : null;
+  const activeAgent = inAgents
+    ? agents?.find((a) => a.slug === activeAgentSlug) ?? null
     : null;
   const activeExtension = inExtensions
     ? extensions?.find((e) => e.slug === activeExtensionSlug) ?? null
@@ -233,19 +243,27 @@ export default function App() {
   }, [inSkills, activeSkillSlug, skills]);
 
   useEffect(() => {
+    if (!inAgents || !activeAgentSlug || !agents) return;
+    if (!agents.some((a) => a.slug === activeAgentSlug)) {
+      setActiveAgentSlug(null);
+    }
+  }, [inAgents, activeAgentSlug, agents]);
+
+  useEffect(() => {
     if (!inExtensions || !activeExtensionSlug || !extensions) return;
     if (!extensions.some((e) => e.slug === activeExtensionSlug)) {
       setActiveExtensionSlug(null);
     }
   }, [inExtensions, activeExtensionSlug, extensions]);
 
-  // Whenever a chat turn ends, the agent may have written a new SKILL.md
-  // or extension files via the Write tool. Refresh both caches.
+  // Whenever a chat turn ends, the agent may have written SKILL.md,
+  // AGENT.md, or extension files via the Write tool. Refresh caches.
   useEffect(() => {
     if (!window.api?.chat) return;
     return window.api.chat.onEvent((evt) => {
       if (evt.type === 'turn_done') {
         void reloadSkills();
+        void reloadAgents();
         void reloadExtensions();
       }
     });
@@ -261,7 +279,7 @@ export default function App() {
   const handleNewSession = () => {
     intentNewChatRef.current = true;
     setActiveSessionId(null);
-    if (inSettings || inSkills || inExtensions) setView('all');
+    if (inSettings || inSkills || inAgents || inExtensions) setView('all');
   };
   handleNewSessionRef.current = handleNewSession;
 
@@ -342,6 +360,12 @@ export default function App() {
                   onSelect={setActiveSkillSlug}
                   onStartChatWithSubmission={startSessionWithSubmission}
                 />
+              ) : inAgents ? (
+                <AgentsPanel
+                  activeSlug={activeAgentSlug}
+                  onSelect={setActiveAgentSlug}
+                  onStartChatWithSubmission={startSessionWithSubmission}
+                />
               ) : inExtensions ? (
                 <ExtensionsPanel
                   activeSlug={activeExtensionSlug}
@@ -373,7 +397,7 @@ export default function App() {
                     className="h-full w-full"
                     style={{
                       display:
-                        inSettings || inSkills || inExtensions ? 'none' : 'block',
+                        inSettings || inSkills || inAgents || inExtensions ? 'none' : 'block',
                     }}
                   >
                     <ChatArea
@@ -397,6 +421,13 @@ export default function App() {
                     <SkillInfoPage
                       skill={activeSkill}
                       onClose={() => setActiveSkillSlug(null)}
+                      onStartChatWithSubmission={startSessionWithSubmission}
+                    />
+                  )}
+                  {inAgents && (
+                    <AgentInfoPage
+                      agent={activeAgent}
+                      onClose={() => setActiveAgentSlug(null)}
                       onStartChatWithSubmission={startSessionWithSubmission}
                     />
                   )}

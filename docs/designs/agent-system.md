@@ -1,21 +1,21 @@
 # Agent System Design
 
-**Status:** Exploratory — open for discussion before implementation
+**Status:** Phase 1 Complete — Backend ready, UI coming next
 
 ---
 
 ## Overview
 
-Currently, Minimalist Agent has one persona per session (the model you're talking to). The **Agent System** would enable defining specialized sub-agents that can be spawned within a session to handle focused tasks, similar to how Skills extend capabilities but for delegation.
+Currently, Minimalist Agent has one persona per session (the model you're talking to). The **Agent System** enables defining specialized sub-agents that can be spawned within a session to handle focused tasks.
 
 ### Examples
 
-- **Researcher** — Read-only agent that analyzes code and documentation without risking accidental edits
-- **Test Runner** — Agent with only bash and file tools, confined to `test/` directory
-- **API Explorer** — Agent with web fetch and grep, no write permission, for investigating third-party APIs
-- **Migration Guide** — Agent with a specialized system prompt teaching database schema patterns
+- **Researcher** — Read-only agent that analyzes code and documentation without risking edits
+- **Test Runner** — Agent with only Bash, confined to `test/` directory
+- **API Explorer** — Agent with web fetch and grep, no write permission, for investigating APIs
+- **Code Reviewer** — Agent with custom system prompt teaching patterns, cheaper model for cost
 
-Instead of the main agent trying to do all jobs, you delegate specific work to specialized agents. Each agent has:
+Instead of the main agent trying to do all jobs, you delegate specific work to specialized agents. Each has:
 - A **custom system prompt** tailored to its role
 - **Restricted tools** (read-only, write-only, specific commands)
 - Optional **model choice** (cheaper model for simple tasks)
@@ -27,7 +27,7 @@ Instead of the main agent trying to do all jobs, you delegate specific work to s
 
 ### Creating an Agent
 
-Similar to Skills (`@slug`), you'd create an `AGENT.md` file:
+Similar to Skills, you create an `AGENT.md` file:
 
 ```markdown
 ---
@@ -36,6 +36,7 @@ description: Reads code and identifies issues. Never writes.
 model: haiku  # optional, cheaper model for review
 tools: [Read, Grep, Find, WebFetch]  # restricted set
 maxTurns: 10
+permissionMode: plan  # optional
 ---
 
 You are a code review expert. Your job is to:
@@ -47,29 +48,52 @@ You are a code review expert. Your job is to:
 Never write or modify files. Always explain your reasoning.
 ```
 
-Files live in:
-- Global: `~/.agents/agents/code-reviewer/AGENT.md`
-- Project: `.agents/agents/code-reviewer/AGENT.md`
+**All agents are global:**
+```
+~/.agents/agents/code-reviewer/AGENT.md
+~/.agents/agents/researcher/AGENT.md
+...
+```
+
+**Scope:** Global only (consistent with Skills & Extensions). Users name distinctly if they want project-specific variations.
 
 ### Using an Agent
 
-In the chat, the model can spawn the agent:
+The model automatically sees available agents in the system prompt:
+
+```xml
+<agents>
+Enabled:
+- researcher (model: haiku, tools: Read/Grep/Find): Reads and analyzes code
+- code-reviewer (model: haiku, tools: Read/Grep): Reviews for issues
+- refactor-planner (model: sonnet, tools: Read/Edit): Plans refactoring
+
+Agents are invoked automatically by the model when needed.
+</agents>
+```
+
+When you ask the model to delegate, it decides to use an agent:
 
 ```
 You: "Review the auth module for security issues"
 
-Agent spawns: "Researcher" sub-agent
+Model says: "I'll use the code-reviewer agent"
+  ↓
+Claude SDK spawns: Code Reviewer sub-agent
   → agent reads src/auth/*.ts
-  → agent runs grep for common patterns
-  → agent returns summary
+  → agent runs grep for patterns
+  → agent returns findings
+  ↓
+You see: "Code Reviewer found 3 issues: [list]"
 
-You see: "[Running Code Reviewer] → Found 3 issues: ..."
-Main agent continues with the findings
+Main agent uses the findings to continue
 ```
+
+**Key:** The model sees agent metadata upfront and decides when to use them (not user-controlled like Skills).
 
 ### Management UI
 
-Settings → Agents panel:
+Top-level **Agents** tab (same level as Skills and Extensions):
 - List of installed agents
 - "Build with AI" button → scaffolds new agent with Claude's suggestions
 - Delete / inspect definitions
@@ -139,59 +163,103 @@ Define once, use across sessions and projects. Share agent definitions with team
 
 ---
 
-## Questions & Unknowns
+## Decisions Made (Phase 1)
 
-These are intentionally left open for discussion:
+### ✅ Scope: Global-Only
+- All agents live in `~/.agents/agents/`
+- Consistent with Skills and Extensions (simpler mental model)
+- Users name distinctly if they need project-specific variations
+- No project-local complexity
 
-1. **Agent discovery & visibility**
-   - Should agents appear as options in a UI menu or only be discoverable in code?
-   - Should main agent know what agents are available (system prompt injection)?
-   - How do we prevent agent name collisions (global vs project)?
+### ✅ Discovery: System Prompt Injection
+- Agents surface via `<agents>` XML block in system prompt
+- Model sees them automatically (like `<extensions>` block)
+- Not in @mention picker (different pattern than Skills)
+- Transparent and discoverable upfront
 
-2. **Tool filtering complexity**
-   - Do we support regex patterns or wildcards (`bash:*` for read-only bash)?
-   - Should we auto-generate restricted versions (e.g., `Grep` vs `Grep-readonly`)?
-   - How granular should restrictions be (command allowlists for bash)?
+### ✅ Architecture: SDK Native
+- Anthropic: Use Claude SDK's native Agent tool (Phase 1)
+- Pi: Custom `Agent` tool wrapper (Phase 2)
+- No bundled agents (users define their own — minimalist)
 
-3. **Permission & safety**
-   - Should sub-agents inherit the session's permission mode (Plan/Ask/Auto) or override it?
-   - Should we enforce stronger restrictions (read-only agents always in Plan mode)?
-   - Multi-agent coordination — if Agent A runs first, can Agent B see its outputs?
+### ✅ IPC Endpoints: 9 Simple
+```
+Agents:list() → LoadedAgent[]
+Agents:get(slug) → LoadedAgent
+Agents:delete(slug) → bool
+Agents:validate(path, slug) → {ok, report}
+Agents:getDir() → path
+Agents:listFiles(path) → tree
+Agents:openInEditor(path) → void
+Agents:revealInFinder(path) → void
+Agents:invalidateCache() → void
+```
 
-4. **UI/UX**
-   - How should nested agent calls appear in the chat? Tree view? Expandable sections?
-   - Should users be able to manually invoke an agent, or only let the model decide?
-   - Progress indicators for parallel agents?
-
-5. **Observability**
-   - Should sub-agent tool calls be fully visible or summarized?
-   - How much token usage breakdown per agent?
-
-6. **Fallback for Pi**
-   - If Pi can't run an agent for some reason, what's the degradation path?
-   - Should the main model be told "Agent X unavailable on this backend"?
+### ✅ UI Tier: Phase 2
+- Top-level Agents tab (list, delete, inspect)
+- "Build with AI" dialog (scaffold with Claude)
+- Agent details page (prompt + metadata)
 
 ---
 
-## Rough Implementation Phases
+## Open Questions (Phase 2+)
 
-**Phase 1: Anthropic Foundation**
-- Parse AGENT.md files
+These can be revisited if usage demands:
+
+1. **Nested UI visibility**
+   - How should sub-agent tool calls appear in chat?
+   - Tree view? Expandable sections? Collapsible summary?
+
+2. **Tool filtering edge cases**
+   - Regex patterns or wildcards (e.g., `bash:*` for read-only bash)?
+   - Auto-generate restricted tool variants?
+   - Command allowlists for specific tools?
+
+3. **Permission inheritance**
+   - Should sub-agents inherit session permission mode (Plan/Ask/Auto)?
+   - Should we enforce stronger restrictions for read-only agents?
+
+4. **Manual invocation**
+   - Should users be able to manually trigger agents (vs model-only)?
+   - Useful for testing / debugging?
+
+5. **Pi fallback strategy**
+   - If agent unavailable on Pi backend, graceful degradation?
+   - Inform model: "Agent X only available on Anthropic"?
+
+6. **Observability**
+   - How detailed should sub-agent tool calls be shown?
+   - Token usage breakdown per agent?
+
+## Implementation Status
+
+**Phase 1: Core Backend** ✅ **COMPLETE**
+- Parse AGENT.md files → LoadedAgent model
 - Wire into Claude SDK's `agents:` option
-- Settings panel to list agents
-- Test with 2–3 built-in agents
+- System prompt injection (`<agents>` block)
+- 9 IPC endpoints for CRUD + utilities
+- 5-minute cache + invalidation
+- Validation with helpful errors
 
-**Phase 2: Pi Support**
-- Implement custom `Agent` tool for Pi sessions
-- Verify parallelism works
-- Add backend indicator to UI
+**Phase 2: UI** ✅ **IMPLEMENTED**
+- Top-level Agents tab (list, delete, inspect)
+- "Build with AI" dialog (scaffold agents with Claude)
+- Agent detail page (show prompt + metadata)
 
-**Phase 3: Polish & Safety**
-- "Build with AI" dialog to scaffold agents
-- Validation/linting for agent definitions
-- Stronger tool restrictions if needed
+**Phase 3: Polish** 💯 **FUTURE**
+- Nested sub-agent visibility in chat tree
+- Manual invocation UX (optional)
+- Advanced validation + lint hints
 
-**Phase 4: Enhancements** (if justified by usage)
+**Phase 4: Pi Support** 🔨 **LATER**
+- Custom `Agent` tool wrapper for Pi sessions
+- Feature parity with Anthropic backend
+
+**Phase 5+: Enhancements** (if justified)
+- Agent marketplace / sharing
+- Agent versioning
+- Stronger tool filtering
+- Manual agent invocation UI
 - Agent chaining (Agent A's output → Agent B's input)
 - Conditional agent dispatch (model chooses based on context)
 - Agent marketplace / community sharing
@@ -200,19 +268,22 @@ These are intentionally left open for discussion:
 
 ## Rationale
 
-This feature mirrors the existing **Skills** system (file-based, global + project, @-mention interface) but extends it to runtime behavior. The analogy:
-- **Skills** = read-only reference tools
-- **Agents** = delegated work
+This feature mirrors the existing **Skills** system (file-based, global scope, no @-mention needed) but extends it to runtime behavior. The analogy:
+- **Skills** = read-only reference tools (@mention to invoke)
+- **Agents** = delegated work (model-invoked automatically)
 
 Both solve the same pattern: reusable, composable capabilities without cluttering the UI.
 
-The technical feasibility is high because both backends already support (or can support) sub-agent execution. We're not inventing a new model capability — we're wrapping existing infrastructure and making it discoverable.
+The technical feasibility is high because both backends already support (or can support) sub-agent execution. We're not inventing a new model capability — we're wrapping existing infrastructure and making it discoverable via system prompt injection.
+
+The system prompt injection approach is consistent with how `<extensions>` and `<working_directory>` blocks surface context — using XML tags for clarity and structure.
 
 ---
 
-## Next Steps
+## Final Status
 
-1. **Feedback:** Which benefits matter most? Which open questions should we resolve first?
-2. **Prioritization:** Does this fit the current roadmap, or should it wait for other features?
-3. **Prototyping:** If approved, start with Anthropic backend only (lower risk, higher adoption).
-4. **Design:** Resolve at least questions 1–3 before coding (affects AGENT.md format and system prompts).
+**Phase 1 backend is complete and ready for testing.** System prompt injection is live. Users can already create agents and the model will see them in the `<agents>` block.
+
+**Phase 2 core UI is implemented** with a dedicated top-level Agents tab + Build with AI flow.
+
+Next: validate end-to-end behavior and polish nested visibility.

@@ -73,7 +73,7 @@ function getRecommendations(raw: RawCopilotModel): string[] {
     recommendations.push('long-context');
   }
   
-  if (raw.capabilities?.limits?.vision) {
+  if (raw.capabilities?.supports?.vision) {
     recommendations.push('vision');
   }
   
@@ -111,9 +111,9 @@ function modelDefFrom(raw: RawCopilotModel): ModelDef | null {
   const description = describe(raw, family);
   
   // Extract capabilities from raw model
-  const supportsVision = !!raw.capabilities?.limits?.vision;
+  const supportsVision = !!raw.capabilities?.supports?.vision;
   const supportsToolCalls = raw.capabilities?.supports?.tool_calls ?? false;
-  const supportsStreaming = raw.capabilities?.supports?.streaming ?? false;
+  const supportsStreaming = true; // Assume streaming support for all models
   const category = raw.model_picker_category;
   const recommendedFor = getRecommendations(raw);
 

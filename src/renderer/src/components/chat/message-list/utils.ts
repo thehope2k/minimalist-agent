@@ -22,6 +22,9 @@ export function labelForIntent(tag?: string): string | null {
     case 'add-skill': return 'Add Skill';
     case 'edit-skill-metadata': return 'Edit Metadata';
     case 'edit-skill-instructions': return 'Edit Instructions';
+    case 'add-agent': return 'Add Agent';
+    case 'edit-agent-metadata': return 'Edit Metadata';
+    case 'edit-agent-instructions': return 'Edit System Prompt';
     case 'add-extension': return 'Add Extension';
     case 'edit-extension-metadata': return 'Edit Extension';
     case 'edit-extension-instructions': return 'Edit Guide';

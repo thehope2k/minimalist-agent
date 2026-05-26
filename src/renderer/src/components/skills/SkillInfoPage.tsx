@@ -91,7 +91,7 @@ function Body({
       </header>
 
       <div className="scroll-thin min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-[760px] space-y-6 px-6 py-6">
+        <div className="mx-auto max-w-[1100px] space-y-6 px-6 py-6">
           <PageHeader skill={skill} />
 
           <Section

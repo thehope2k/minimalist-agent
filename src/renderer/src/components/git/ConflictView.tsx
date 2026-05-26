@@ -24,7 +24,6 @@ import {
   Suspense,
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -34,7 +33,6 @@ import type * as MonacoType from 'monaco-editor';
 import { Check, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { cn } from '@/lib/utils';
-import { IS_MAC as _IS_MAC } from '@/lib/shortcuts';
 import { registerAppMonacoTheme } from '@/lib/monaco-setup';
 import { parseConflictBlocks, hasConflictMarkers, resolveBlock } from './conflict-parser';
 import { ConflictBlockWidget } from './conflict-flow/ConflictBlockWidget';
@@ -78,12 +76,7 @@ const SHARED_OPTIONS: MonacoType.editor.IDiffEditorConstructionOptions = {
   renderSideBySide: true,
   ignoreTrimWhitespace: false,
   renderIndicators: true,
-  // Disable semantic features since language workers aren't available
-  semanticValidation: false,
-  syntaxValidation: false,
   quickSuggestions: false,
-  suggest: { enabled: false },
-  parameterHints: { enabled: false },
 };
 
 const RESULT_OPTIONS: MonacoType.editor.IStandaloneEditorConstructionOptions = {
@@ -94,21 +87,8 @@ const RESULT_OPTIONS: MonacoType.editor.IStandaloneEditorConstructionOptions = {
   scrollBeyondLastLine: false,
   wordWrap: 'off',
   lineNumbers: 'on',
-  // Disable semantic features since language workers aren't available
-  semanticValidation: false,
-  syntaxValidation: false,
   quickSuggestions: false,
-  suggest: { enabled: false },
-  parameterHints: { enabled: false },
 };
-
-// Hardcoded hex approximations of OKLCH tokens (CSS vars unavailable in Monaco).
-// Keep in sync with globals.css conflict decoration classes.
-const CONFLICT_COLORS = {
-  oursLine:    '#1a3828',
-  theirsLine:  '#1a2838',
-  markerLine:  '#382810',
-} as const;
 
 // ---------------------------------------------------------------------------
 // Component

@@ -511,6 +511,29 @@ const api = {
     ): Promise<{ ok: boolean; report: string }> =>
       ipcRenderer.invoke('skills:validate', dirPath, slug),
   },
+  agents: {
+    getDir: (): Promise<string> => ipcRenderer.invoke('agents:getDir'),
+    getReferenceDocPath: (): Promise<string> =>
+      ipcRenderer.invoke('agents:getReferenceDocPath'),
+    list: (): Promise<unknown[]> => ipcRenderer.invoke('agents:list'),
+    get: (slug: string): Promise<unknown | null> =>
+      ipcRenderer.invoke('agents:get', slug),
+    listFiles: (dirPath: string): Promise<unknown[]> =>
+      ipcRenderer.invoke('agents:listFiles', dirPath),
+    delete: (slug: string): Promise<boolean> =>
+      ipcRenderer.invoke('agents:delete', slug),
+    invalidateCache: (): Promise<void> =>
+      ipcRenderer.invoke('agents:invalidateCache'),
+    openInEditor: (dirPath: string): Promise<string> =>
+      ipcRenderer.invoke('agents:openInEditor', dirPath),
+    revealInFinder: (dirPath: string): Promise<void> =>
+      ipcRenderer.invoke('agents:revealInFinder', dirPath),
+    validate: (
+      dirPath: string,
+      slug: string,
+    ): Promise<{ ok: boolean; report: string }> =>
+      ipcRenderer.invoke('agents:validate', dirPath, slug),
+  },
   extensions: {
     getDir: (): Promise<string> => ipcRenderer.invoke('extensions:getDir'),
     getReferenceDocPath: (): Promise<string> =>

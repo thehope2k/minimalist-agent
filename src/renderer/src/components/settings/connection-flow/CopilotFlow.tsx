@@ -55,7 +55,9 @@ export function CopilotFlow({ onBack, onClose, onSaved, editingMeta }: FlowProps
   );
   const [error, setError] = useState<string | null>(null);
   // Track live models fetched during OAuth (replaces the fallback list in the UI).
-  const [liveModels, setLiveModels] = useState<ModelDef[]>(editingMeta?.models ?? FALLBACK_COPILOT_MODELS);
+  const [liveModels, setLiveModels] = useState<ModelDef[]>(
+    editingMeta?.models ?? ([...FALLBACK_COPILOT_MODELS] as ModelDef[])
+  );
   // Track whether a flow is in flight so unmount cancels it.
   const inFlight = useRef(false);
 

@@ -17,6 +17,7 @@ import {formatPreferencesForPrompt, getCoAuthorPreference,} from '../storage/pre
 import { findProjectForPath } from '../storage/projects';
 import {formatExtensionsAwareness} from '../extensions/directive';
 import { buildSddPromptBlock } from '../sdd/system-prompt';
+import { loadAllAgents } from '../agents/storage';
 import { getSettings, DEFAULT_CONTEXT_FILE_NAMES } from '../storage/settings';
 
 /* ===================================================================== *
@@ -482,7 +483,32 @@ export function getSystemPrompt(opts: SystemPromptOptions = {}): string {
     sddBlock = buildSddPromptBlock(opts.sessionId, opts.userMessage);
   }
 
-  return `${basePrompt}${userPreferences}${projectContextFiles}${sddBlock ? `\n\n${sddBlock}` : ''}`;
+  // Agents awareness block — injected once per session (like extensions).
+  let agentsBlock = '';
+  const agents = loadAllAgents();
+  if (agents.length > 0) {
+    const agentsList = agents.map((a) => {
+      const toolsStr = a.metadata.tools?.join('/') || 'all';
+      const modelStr = a.metadata.model || 'session-default';
+      return `- ${a.slug} (name: ${a.metadata.name}, model: ${modelStr}, tools: ${toolsStr}): ${a.metadata.description}`;
+    }).join('\n');
+    agentsBlock = `<agents>
+Enabled:
+${agentsList}
+
+Use your judgment to balance direct work vs delegation for best performance and quality.
+
+Delegation guidance:
+- Prefer delegation when a listed agent is a strong match for the task (for example: focused code review, deep research, or specialized analysis).
+- A small amount of upfront context gathering is fine before delegating when it helps produce a better task brief.
+- After a sub-agent returns, avoid unnecessary duplicate work; focus on verification, synthesis, and clear final recommendations.
+- When delegating, provide clear scope, target files, constraints, and expected output format.
+
+Use the Agent tool to delegate focused tasks to specialized sub-agents when it improves outcomes.
+</agents>`;
+  }
+
+  return `${basePrompt}${userPreferences}${projectContextFiles}${sddBlock ? `\n\n${sddBlock}` : ''}${agentsBlock ? `\n\n${agentsBlock}` : ''}`;
 }
 
 /**
