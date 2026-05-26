@@ -181,8 +181,24 @@ const handles = new Map<string, SubprocessHandle>();
 /* ============================================================ */
 
 function send(handle: SubprocessHandle, msg: SubprocessInbound): void {
-  if (!handle.child.stdin || handle.child.stdin.destroyed) return;
-  handle.child.stdin.write(JSON.stringify(msg) + '\n');
+  const stdin = handle.child.stdin;
+  if (!stdin) return;
+  if (stdin.destroyed || stdin.writableEnded || !stdin.writable) return;
+  const payload = JSON.stringify(msg) + '\n';
+  try {
+    stdin.write(payload, (err?: Error | null) => {
+      if (!err) return;
+      const code = (err as Error & { code?: string }).code;
+      // The subprocess can exit between our liveness check and write().
+      // Ignore EPIPE/ERR_STREAM_DESTROYED during shutdown races.
+      if (code === 'EPIPE' || code === 'ERR_STREAM_DESTROYED') return;
+      console.warn('[pi] failed to write to subprocess stdin:', err.message);
+    });
+  } catch (e) {
+    const code = (e as Error & { code?: string }).code;
+    if (code === 'EPIPE' || code === 'ERR_STREAM_DESTROYED') return;
+    throw e;
+  }
 }
 
 function ensureSubprocess(

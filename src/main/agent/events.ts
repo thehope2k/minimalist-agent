@@ -26,6 +26,46 @@ export interface AgentUsage {
   cacheCreationInputTokens?: number;
 }
 
+export type NestedAgentChatEvent =
+  | { type: 'text_delta'; text: string }
+  | { type: 'text_complete'; text: string }
+  | { type: 'thinking_delta'; text: string }
+  | {
+      type: 'tool_start';
+      toolUseId: string;
+      name: string;
+      input?: unknown;
+    }
+  | { type: 'tool_input_delta'; toolUseId: string; partialJson: string }
+  | {
+      type: 'tool_result';
+      toolUseId: string;
+      content: string;
+      isError?: boolean;
+    }
+  | {
+      type: 'turn_done';
+      sessionId?: string;
+      stopReason?: string;
+      usage?: AgentUsage;
+    }
+  | {
+      type: 'assistant_usage';
+      usage: AgentUsage;
+    }
+  | { type: 'error'; error: AgentError; sessionId?: string };
+
+export interface SubagentProgressUpdate {
+  kind: 'subagent';
+  execId: string;
+  agentSlug: string;
+  agentName?: string;
+  phase?: 'spawning' | 'running' | 'finalizing' | 'done' | 'error';
+  detail?: string;
+  event?: NestedAgentChatEvent;
+  at?: number;
+}
+
 export type AgentChatEvent =
   | { type: 'text_delta'; text: string }
   /** Emitted only when the SDK sent the assistant message without partial events. */
@@ -44,6 +84,11 @@ export type AgentChatEvent =
       toolUseId: string;
       content: string;
       isError?: boolean;
+    }
+  | {
+      type: 'tool_progress';
+      toolUseId: string;
+      update: SubagentProgressUpdate;
     }
   | {
       type: 'turn_done';
@@ -191,6 +236,25 @@ function stringifyToolResult(content: unknown): string {
   }
 }
 
+function pushNestedEvent(
+  events: AgentChatEvent[],
+  parentToolUseId: string,
+  event: NestedAgentChatEvent,
+): void {
+  events.push({
+    type: 'tool_progress',
+    toolUseId: parentToolUseId,
+    update: {
+      kind: 'subagent',
+      execId: parentToolUseId,
+      agentSlug: 'subagent',
+      phase: event.type === 'turn_done' ? 'finalizing' : event.type === 'error' ? 'error' : 'running',
+      event,
+      at: Date.now(),
+    },
+  });
+}
+
 /* ---------- main entry ------------------------------------------ */
 
 export interface AdaptState {
@@ -236,6 +300,8 @@ export function adaptSdkMessage(
     }
 
     case 'assistant': {
+      const parentToolUseId = (msg as { parent_tool_use_id?: string | null }).parent_tool_use_id ?? null;
+
       // Per-API-call usage. The Anthropic API attaches `usage` to every
       // assistant message it returns; the SDK forwards it verbatim. We
       // emit a dedicated event so the renderer can track the *latest*
@@ -247,19 +313,47 @@ export function adaptSdkMessage(
         cache_read_input_tokens?: number;
         cache_creation_input_tokens?: number;
       } }).usage;
+      const usageEvt: NestedAgentChatEvent = {
+        type: 'assistant_usage',
+        usage: {
+          inputTokens: rawUsage?.input_tokens,
+          outputTokens: rawUsage?.output_tokens,
+          cacheReadInputTokens: rawUsage?.cache_read_input_tokens,
+          cacheCreationInputTokens: rawUsage?.cache_creation_input_tokens,
+        },
+      };
       if (rawUsage) {
-        events.push({
-          type: 'assistant_usage',
-          usage: {
-            inputTokens: rawUsage.input_tokens,
-            outputTokens: rawUsage.output_tokens,
-            cacheReadInputTokens: rawUsage.cache_read_input_tokens,
-            cacheCreationInputTokens: rawUsage.cache_creation_input_tokens,
-          },
-        });
+        if (parentToolUseId) pushNestedEvent(events, parentToolUseId, usageEvt);
+        else events.push(usageEvt);
       }
+
       const blocks = (msg.message.content as AssistantBlock[]) ?? [];
       for (const b of blocks) {
+        if (parentToolUseId) {
+          if (b.type === 'text' && b.text) {
+            pushNestedEvent(events, parentToolUseId, { type: 'text_delta', text: b.text });
+          } else if (b.type === 'thinking' && b.thinking) {
+            pushNestedEvent(events, parentToolUseId, { type: 'thinking_delta', text: b.thinking });
+          } else if (b.type === 'tool_use' && b.id && b.name) {
+            pushNestedEvent(events, parentToolUseId, {
+              type: 'tool_start',
+              toolUseId: b.id,
+              name: b.name,
+              input: b.input,
+            });
+            try {
+              pushNestedEvent(events, parentToolUseId, {
+                type: 'tool_input_delta',
+                toolUseId: b.id,
+                partialJson: JSON.stringify(b.input ?? {}),
+              });
+            } catch {
+              /* skip */
+            }
+          }
+          continue;
+        }
+
         if (b.type === 'text' && b.text) {
           state.fallbackText += b.text;
         } else if (b.type === 'tool_use' && b.id && b.name) {
@@ -293,18 +387,21 @@ export function adaptSdkMessage(
     }
 
     case 'user': {
+      const parentToolUseId = (msg as { parent_tool_use_id?: string | null }).parent_tool_use_id ?? null;
       // The SDK feeds tool results back in as a user message whose content
       // is an array of tool_result blocks.
       const content = (msg.message?.content as ToolResultBlock[] | string) ?? [];
       if (Array.isArray(content)) {
         for (const b of content) {
           if (b.type === 'tool_result' && b.tool_use_id) {
-            events.push({
+            const resultEvt: NestedAgentChatEvent = {
               type: 'tool_result',
               toolUseId: b.tool_use_id,
               content: stringifyToolResult(b.content),
               isError: !!b.is_error,
-            });
+            };
+            if (parentToolUseId) pushNestedEvent(events, parentToolUseId, resultEvt);
+            else events.push(resultEvt);
           }
         }
       }
@@ -353,6 +450,32 @@ export function adaptSdkMessage(
         });
       }
       return { events, terminal: true };
+    }
+
+    case 'tool_progress': {
+      const p = msg as {
+        tool_use_id?: string;
+        tool_name?: string;
+        parent_tool_use_id?: string | null;
+        elapsed_time_seconds?: number;
+      };
+      if (p.parent_tool_use_id) {
+        events.push({
+          type: 'tool_progress',
+          toolUseId: p.parent_tool_use_id,
+          update: {
+            kind: 'subagent',
+            execId: p.parent_tool_use_id,
+            agentSlug: 'subagent',
+            phase: 'running',
+            detail: p.tool_name
+              ? `${p.tool_name}${typeof p.elapsed_time_seconds === 'number' ? ` · ${Math.floor(p.elapsed_time_seconds)}s` : ''}`
+              : undefined,
+            at: Date.now(),
+          },
+        });
+      }
+      return { events, terminal: false };
     }
 
     case 'system': {

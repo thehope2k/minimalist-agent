@@ -14,6 +14,23 @@ export type { AgentError };
  * in the order the SDK produced them; user messages are always a single
  * `text` part.
  */
+export interface SubagentTranscript {
+  execId: string;
+  agentSlug: string;
+  agentName?: string;
+  phase?: 'spawning' | 'running' | 'finalizing' | 'done' | 'error';
+  detail?: string;
+  startedAt: number;
+  updatedAt: number;
+  parts: MessagePart[];
+  isStreaming: boolean;
+  stopReason?: string;
+  usage?: AgentUsage;
+  latestCallUsage?: AgentUsage;
+  error?: string;
+  errorInfo?: AgentError;
+}
+
 export type MessagePart =
   | { kind: 'text'; text: string }
   | { kind: 'thinking'; text: string; collapsed?: boolean }
@@ -27,6 +44,8 @@ export type MessagePart =
       partialInputJson?: string;
       result?: { content: string; isError?: boolean };
       status: 'running' | 'done' | 'error';
+      /** Full nested transcript when this tool spawns a sub-agent. */
+      subagent?: SubagentTranscript;
     };
 
 export interface ChatMessage {

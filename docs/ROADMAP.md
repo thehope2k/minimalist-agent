@@ -25,13 +25,14 @@ What's shipped, what's coming, and what's intentionally out of scope.
 | Capability | Detail |
 |---|---|
 | **Built-in tools** | Read, Write, Edit, Bash, Grep, Glob, WebFetch, WebSearch, Task — via `claude_code` SDK preset (Anthropic). Pi/Copilot backend has its own equivalent set excluding Task |
-| **Subagents** | Task tool on Anthropic connections allows the model to spawn subagents within a turn. Not available on Copilot/Pi backend |
+| **Subagents** | Agent/Task delegation available on both Anthropic and Pi backends, including parallel-safe spawning on Pi |
 | **Permission modes** | Plan (no mutations), Ask (per-tool prompt), Auto (bypass) — per-session and global default |
 | **Safe bash auto-allow** | ~55 read-only bash commands auto-allowed in Ask mode. Dangerous constructs (`$()`, redirects, `&`, env assignment, `find -exec`) always blocked. Both backends covered |
 | **Mid-turn steering** | Inject a message (with attachments) into a live agent turn without cancelling it |
 | **Continue after max turns** | One-click resume when the agent hits `max_turns` |
 | **Thinking / reasoning** | Extended thinking with collapsible panels |
 | **Compaction** | Persistent inline divider at compaction boundaries with token delta; survives reload |
+| **Agent Definitions (AGENT.md system)** | Implemented end-to-end: global AGENT.md storage, Agents tab management UI, Build with AI flow, system-prompt discovery, Pi custom Agent tool, and nested sub-agent visibility in chat |
 
 ---
 
@@ -105,7 +106,7 @@ What's shipped, what's coming, and what's intentionally out of scope.
 
 | What | Notes |
 |---|---|
-| **Agent Definitions (AGENT.md system)** | Define reusable AI agents with specialized prompts, tool restrictions, and model choices. Similar to Skills but for spawning sub-agents. Both Claude SDK (native parallel execution) and Pi backend (via custom Agent tool). Unified file format; separate UI panels for management and creation. See [Agent System Design](./designs/agent-system.md) for feasibility and open questions. |
+| **Agent Enhancements** | Next-step improvements on top of shipped AGENT.md system: optional manual invocation UX, advanced validation/lint hints, stronger tool filtering controls, and orchestration features (agent chaining + conditional dispatch) |
 | **Mode Architecture: Built-in Agents + Plan/Task UI** | Current modes (Plan/Ask/Auto) are flat permission gates — no dedicated agent intelligence or UI behind them. Worth a deeper design pass: introducing `Explore` (read-only, fast codebase search) and `Plan` (research-then-propose) as built-in runtime agents; rethinking modes as *agent postures* rather than permission toggles; and a proper plan/task canvas where the user can review, edit, and approve a proposed task list before any writes happen. Needs design discussion before scoping. |
 
 ---

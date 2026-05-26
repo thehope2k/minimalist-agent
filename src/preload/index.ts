@@ -60,6 +60,50 @@ interface AgentError {
   originalError?: string;
 }
 
+type NestedChatStreamEvent =
+  | { type: 'text_delta'; text: string }
+  | { type: 'text_complete'; text: string }
+  | { type: 'thinking_delta'; text: string }
+  | {
+      type: 'tool_start';
+      toolUseId: string;
+      name: string;
+      input?: unknown;
+    }
+  | {
+      type: 'tool_input_delta';
+      toolUseId: string;
+      partialJson: string;
+    }
+  | {
+      type: 'tool_result';
+      toolUseId: string;
+      content: string;
+      isError?: boolean;
+    }
+  | {
+      type: 'turn_done';
+      sessionId?: string;
+      stopReason?: string;
+      usage?: AgentUsage;
+    }
+  | {
+      type: 'assistant_usage';
+      usage: AgentUsage;
+    }
+  | { type: 'error'; error: AgentError; sessionId?: string };
+
+interface SubagentProgressUpdate {
+  kind: 'subagent';
+  execId: string;
+  agentSlug: string;
+  agentName?: string;
+  phase?: 'spawning' | 'running' | 'finalizing' | 'done' | 'error';
+  detail?: string;
+  event?: NestedChatStreamEvent;
+  at?: number;
+}
+
 type ChatStreamEvent =
   | { id: string; type: 'text_delta'; text: string }
   | { id: string; type: 'text_complete'; text: string }
@@ -83,6 +127,12 @@ type ChatStreamEvent =
       toolUseId: string;
       content: string;
       isError?: boolean;
+    }
+  | {
+      id: string;
+      type: 'tool_progress';
+      toolUseId: string;
+      update: SubagentProgressUpdate;
     }
   | {
       id: string;

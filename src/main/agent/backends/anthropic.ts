@@ -355,6 +355,9 @@ export async function* runAnthropicChat(
     ...baseDefaults,
     model: req.model,
     includePartialMessages: true,
+    // Forward full sub-agent transcript (text/thinking/tool blocks) so the
+    // renderer can show nested progress for Task/Agent tool calls.
+    forwardSubagentText: true,
     abortController: abortCtrl,
     maxTurns: req.maxTurns ?? DEFAULT_MAX_TURNS,
     permissionMode: sdkMode,

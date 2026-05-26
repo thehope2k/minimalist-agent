@@ -44,7 +44,11 @@ export function StreamStatus({ parts, startedAt }: { parts: MessagePart[]; start
 }
 
 /** Best-effort verb for an in-flight tool call. Falls back to `Using ${name}`. */
-function verbFor(name: string, input: unknown): string {
+function verbFor(
+  name: string,
+  input: unknown,
+  subagent?: { phase?: 'spawning' | 'running' | 'finalizing' | 'done' | 'error'; agentName?: string; agentSlug?: string },
+): string {
   const o = (input && typeof input === 'object' ? input : null) as
     | Record<string, unknown>
     | null;
@@ -73,10 +77,14 @@ function verbFor(name: string, input: unknown): string {
       return 'Searching the web';
     case 'Task':
     case 'Agent': {
-      const sub = o && typeof o.subagent_type === 'string'
-        ? o.subagent_type
-        : (o && typeof o.agent === 'string' ? o.agent : '');
-      return sub ? `Spawning ${sub}` : 'Spawning subagent';
+      const sub = subagent?.agentSlug
+        ?? (o && typeof o.subagent_type === 'string' ? o.subagent_type : (o && typeof o.agent === 'string' ? o.agent : ''));
+      const display = subagent?.agentName ?? sub;
+      const phase = subagent?.phase ?? 'spawning';
+      if (phase === 'running') return display ? `Running ${display}` : 'Running subagent';
+      if (phase === 'finalizing') return display ? `Finalizing ${display}` : 'Finalizing subagent';
+      if (phase === 'error') return display ? `${display} failed` : 'Subagent failed';
+      return display ? `Spawning ${display}` : 'Spawning subagent';
     }
     case 'TodoWrite':
       return 'Updating tasks';
@@ -91,7 +99,7 @@ function deriveLabel(parts: MessagePart[]): string {
   if (last.kind === 'thinking') return 'Reasoning';
   if (last.kind === 'text') return 'Writing';
   if (last.kind === 'tool') {
-    if (last.status === 'running') return verbFor(last.name, last.input);
+    if (last.status === 'running') return verbFor(last.name, last.input, last.subagent);
     return 'Working';
   }
   return 'Working';

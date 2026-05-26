@@ -7,7 +7,7 @@
 //     (so Read/Write/Edit/etc. render with the same chip labels)
 
 import type { AgentSessionEvent } from '@mariozechner/pi-coding-agent';
-import type { AgentChatEvent } from '../agent/events';
+import type { AgentChatEvent, SubagentProgressUpdate } from '../agent/events';
 import { parseError } from '../agent/errors';
 
 interface AdapterState {
@@ -97,6 +97,23 @@ function extractDelta(fullText: string): string {
   }
   // Out-of-band edit (rare) — emit the entire content as a fresh delta.
   return fullText;
+}
+
+function parseSubagentUpdate(update: unknown): SubagentProgressUpdate | null {
+  if (!update || typeof update !== 'object') return null;
+  const u = update as Partial<SubagentProgressUpdate> & { kind?: unknown };
+  if (u.kind !== 'subagent') return null;
+  if (typeof u.execId !== 'string' || typeof u.agentSlug !== 'string') return null;
+  return {
+    kind: 'subagent',
+    execId: u.execId,
+    agentSlug: u.agentSlug,
+    agentName: typeof u.agentName === 'string' ? u.agentName : undefined,
+    phase: u.phase,
+    detail: typeof u.detail === 'string' ? u.detail : undefined,
+    event: u.event,
+    at: typeof u.at === 'number' ? u.at : undefined,
+  };
 }
 
 function pickAssistantText(message: unknown): string {
@@ -321,6 +338,15 @@ export function adaptPiEvent(event: AgentSessionEvent): AgentChatEvent[] {
 
     case 'tool_execution_update': {
       const e = event as { toolCallId: string; partialResult: unknown };
+      const sub = parseSubagentUpdate(e.partialResult);
+      if (sub) {
+        out.push({
+          type: 'tool_progress',
+          toolUseId: e.toolCallId,
+          update: sub,
+        });
+        return out;
+      }
       // Best-effort: Pi's partial result is freeform; surface as a tool
       // input delta only if it serializes to something compact.
       try {

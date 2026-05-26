@@ -147,6 +147,7 @@ function PartView({ part }: { part: MessagePart }) {
           partialInputJson={part.partialInputJson}
           result={part.result}
           status={part.status}
+          subagent={part.subagent}
         />
       );
     default: return null;
