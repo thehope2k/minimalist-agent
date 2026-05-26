@@ -160,7 +160,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
         macKeys: ['⌘', 'G'],
         winKeys: ['Ctrl', 'G'],
         label: 'Open / close Git diff review modal',
-        condition: 'Requires an active working directory',
+        condition: 'Chat view only; requires active session + working directory',
       },
       {
         macKeys: ['⌘', '↵'],

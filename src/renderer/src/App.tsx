@@ -389,6 +389,7 @@ export default function App() {
                       }
                       onStreamingChange={setStreamingSessionIds}
                       onCwdChange={setActiveCwd}
+                      shortcutsEnabled={view === 'all'}
                     />
                   </div>
                   {inSettings && <SettingsContent category={settingsCategory} />}

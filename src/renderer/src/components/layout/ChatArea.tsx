@@ -43,6 +43,8 @@ type Props = {
   onStreamingChange?: (ids: ReadonlySet<string>) => void;
   /** Reports CWD changes so the global terminal panel can seed new tabs. */
   onCwdChange?: (cwd: string | undefined) => void;
+  /** Global chat visibility gate (e.g. disabled while Settings/Skills/Extensions are shown). */
+  shortcutsEnabled?: boolean;
 };
 
 export function ChatArea({
@@ -54,6 +56,7 @@ export function ChatArea({
   newSessionDefaultProjectId,
   onStreamingChange,
   onCwdChange,
+  shortcutsEnabled = true,
 }: Props) {
   const { messages, isStreaming, streamingTurnId, streamingSessionIds, send, abort, retry, steer, activeSessionId, lastCompaction } = useChat(sessionId, newSessionDefaultProjectId);
   const aiData = useAiData();
@@ -363,10 +366,14 @@ export function ChatArea({
 
   const activeSession = activeSessionId ?? sessionId;
 
-  // Git diff modal state - Cmd+G toggles it, button in the header opens it.
+  // Git diff modal state - Cmd/Ctrl+G toggles it.
+  // Scope: chat view only, with an active session and working directory.
   const [gitModalOpen, setGitModalOpen] = useState(false);
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if (!shortcutsEnabled) return;
+      if (!activeSession) return;
+      if (!cwd) return;
       if ((e.metaKey || e.ctrlKey) && e.key === 'g' && !e.shiftKey && !e.altKey) {
         e.preventDefault();
         setGitModalOpen((v) => !v);
@@ -374,7 +381,7 @@ export function ChatArea({
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, []);
+  }, [shortcutsEnabled, activeSession, cwd]);
 
   // Search Everything - Double Shift opens the unified search palette.
   // Any other key between the two Shifts resets the sequence.
