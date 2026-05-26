@@ -38,6 +38,8 @@ interface RawCopilotModel {
   };
   policy?: { state?: string };
   model_picker_enabled?: boolean;
+  model_picker_category?: 'powerful' | 'versatile' | 'lightweight';
+  preview?: boolean;
 }
 
 function getBaseUrlFromToken(token: string): string | null {
@@ -56,6 +58,10 @@ function dropReason(raw: RawCopilotModel): string {
     return `policy=${raw.policy.state}`;
   }
   if (NON_CHAT_PREFIXES.some((p) => raw.id.startsWith(p))) return 'non-chat';
+  // Respect GitHub's "model_picker_enabled" flag — only show models approved for user selection.
+  if (!raw.model_picker_enabled) return 'not-user-facing';
+  // Filter out preview/experimental models to avoid confusing users.
+  if (raw.preview) return 'preview';
   return 'unknown';
 }
 
@@ -67,6 +73,10 @@ function modelDefFrom(raw: RawCopilotModel): ModelDef | null {
   // gating on `capabilities.type` (which excluded valid completion-style
   // chat models like Codex variants), drop the few known non-chat prefixes.
   if (NON_CHAT_PREFIXES.some((p) => raw.id.startsWith(p))) return null;
+  // NEW: Respect GitHub's curation — only models GitHub marks as user-facing.
+  if (!raw.model_picker_enabled) return null;
+  // NEW: Skip preview/experimental models.
+  if (raw.preview) return null;
 
   const ctx = raw.capabilities?.limits?.max_context_window_tokens ?? 128_000;
   const family = raw.capabilities?.family ?? '';
@@ -147,34 +157,62 @@ export async function fetchCopilotModels(
     | { data?: RawCopilotModel[] }
     | { models?: RawCopilotModel[] }
     | RawCopilotModel[];
+  
+  // DEBUG: Log the raw API response
+  console.log('[fetchCopilotModels] Raw API Response:', JSON.stringify(body, null, 2));
+  
   const list: RawCopilotModel[] = Array.isArray(body)
     ? body
     : ('data' in body && body.data) || ('models' in body && body.models) || [];
 
   const out: ModelDef[] = [];
-  const dropped: Array<{ id: string; reason: string }> = [];
+  const dropped: Array<{ id: string; reason: string; details: Partial<RawCopilotModel> }> = [];
   for (const raw of list) {
     const def = modelDefFrom(raw);
     if (def) {
       out.push(def);
     } else if (raw?.id) {
-      dropped.push({ id: raw.id, reason: dropReason(raw) });
+      dropped.push({
+        id: raw.id,
+        reason: dropReason(raw),
+        details: {
+          name: raw.name,
+          model_picker_enabled: raw.model_picker_enabled,
+          preview: raw.preview,
+          model_picker_category: raw.model_picker_category,
+        },
+      });
     }
   }
-  // One-line breakdown so we can debug "why is my list short?" without
-  // needing to re-run the request. Mirrors craft-agents-oss' approach.
+  // Detailed breakdown for debugging.
+  const pickerDisabled = dropped.filter((d) => d.reason === 'not-user-facing').length;
+  const previewModels = dropped.filter((d) => d.reason === 'preview').length;
+  const otherDropped = dropped.filter((d) => !['not-user-facing', 'preview'].includes(d.reason));
   console.warn(
     `[fetchCopilotModels] received=${list.length} kept=${out.length} dropped=${dropped.length}` +
-      (dropped.length
-        ? ` | dropped: ${dropped.map((d) => `${d.id}(${d.reason})`).join(', ')}`
-        : ''),
+      ` | picker_disabled=${pickerDisabled} preview=${previewModels} other=${otherDropped.length}`,
   );
-  // Stable, useful sort: Sonnet first (most-used coding model), then by name.
+  if (dropped.length) {
+    console.log('[fetchCopilotModels] Dropped models:', dropped);
+  }
+  // NEW: Sort by category (powerful → versatile → lightweight) then by name.
+  // Build a category map from raw data to apply consistent ordering.
+  const categoryMap = new Map<string, number>();
+  for (const raw of list) {
+    if (raw?.id && raw.model_picker_category) {
+      const order = raw.model_picker_category === 'powerful' ? 0 : raw.model_picker_category === 'versatile' ? 1 : 2;
+      categoryMap.set(raw.id, order);
+    }
+  }
   out.sort((a, b) => {
-    const sa = a.shortName === 'Sonnet' ? 0 : 1;
-    const sb = b.shortName === 'Sonnet' ? 0 : 1;
-    if (sa !== sb) return sa - sb;
+    const catA = categoryMap.get(a.id) ?? 999;
+    const catB = categoryMap.get(b.id) ?? 999;
+    if (catA !== catB) return catA - catB;
     return a.name.localeCompare(b.name);
   });
+  
+  // DEBUG: Log the final curated list
+  console.log('[fetchCopilotModels] Final curated list (sorted):', JSON.stringify(out, null, 2));
+  
   return out;
 }
