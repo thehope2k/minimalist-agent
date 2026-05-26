@@ -57,7 +57,8 @@ export function canonicalToolName(name: string): string {
     case 'web_fetch': return 'WebFetch';
     case 'websearch':
     case 'web_search': return 'WebSearch';
-    case 'task': return 'Task';
+    case 'task':
+    case 'agent': return 'Task';
     default: return name;
   }
 }
@@ -141,7 +142,8 @@ export function summarizeToolCall(name: string, input: unknown): string {
       return clip(`${todos.length} item${todos.length === 1 ? '' : 's'}`);
     }
 
-    case 'Task': {
+    case 'Task':
+    case 'Agent': {
       const desc = typeof o.description === 'string' ? o.description : '';
       const sub = typeof o.subagent_type === 'string' ? o.subagent_type : '';
       return clip(sub ? `${sub}: ${desc}` : desc);
@@ -190,6 +192,7 @@ export function iconForTool(name: string): LucideIcon {
     case 'TodoWrite':
       return ListChecks;
     case 'Task':
+    case 'Agent':
       return Bot;
     case 'ExitPlanMode':
       return FolderTree;

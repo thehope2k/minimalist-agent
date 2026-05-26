@@ -72,6 +72,7 @@ function verbFor(name: string, input: unknown): string {
     case 'WebSearch':
       return 'Searching the web';
     case 'Task':
+    case 'Agent':
       return 'Spawning subagent';
     case 'TodoWrite':
       return 'Updating tasks';
