@@ -54,6 +54,8 @@ export function CopilotFlow({ onBack, onClose, onSaved, editingMeta }: FlowProps
     null,
   );
   const [error, setError] = useState<string | null>(null);
+  // Track live models fetched during OAuth (replaces the fallback list in the UI).
+  const [liveModels, setLiveModels] = useState<ModelDef[]>(editingMeta?.models ?? FALLBACK_COPILOT_MODELS);
   // Track whether a flow is in flight so unmount cancels it.
   const inFlight = useRef(false);
 
@@ -90,7 +92,7 @@ export function CopilotFlow({ onBack, onClose, onSaved, editingMeta }: FlowProps
       // Live model discovery — query Copilot's /models with the fresh
       // refresh token. Fall back to the curated list on any failure so
       // setup never blocks on a transient network hiccup.
-      let models: ModelDef[] = [...FALLBACK_COPILOT_MODELS];
+      let models: ModelDef[] = [...liveModels]; // Start with what we have (either saved or fallback)
       try {
         if (tokens.refreshToken && window.api.copilot) {
           const result = await window.api.copilot.fetchModels({
@@ -98,10 +100,12 @@ export function CopilotFlow({ onBack, onClose, onSaved, editingMeta }: FlowProps
           });
           if ('models' in result && result.models.length > 0) {
             models = result.models;
+            // Update UI immediately so the dropdown shows fresh live models
+            setLiveModels(models);
           }
         }
       } catch {
-        // Silent fallback — curated list is fine.
+        // Silent fallback — use what we already have (liveModels).
       }
       // If the user's pre-OAuth `model` choice isn't in the live list,
       // pick the first live model as the default.
@@ -215,9 +219,10 @@ export function CopilotFlow({ onBack, onClose, onSaved, editingMeta }: FlowProps
 
       <Field label="Default model">
         <Select
+          disabled={!editing || step !== 'idle'}
           value={model}
           onChange={setModel}
-          options={FALLBACK_COPILOT_MODELS.map((m) => ({
+          options={liveModels.map((m) => ({
             value: m.id,
             label: `${m.name} — ${m.description}`,
           }))}
