@@ -5,6 +5,40 @@ export interface ModelDef {
   shortName: string;
   description: string;
   contextWindow: number;
+  // Capabilities
+  supportsVision?: boolean;
+  supportsToolCalls?: boolean;
+  supportsStreaming?: boolean;
+  category?: 'powerful' | 'versatile' | 'lightweight';
+  recommendedFor?: string[];
+}
+
+/** Generate recommendations based on model capabilities and size. */
+export function getRecommendedUseFor(model: ModelDef): string[] {
+  if (model.recommendedFor) return model.recommendedFor;
+  
+  const recommendations: string[] = [];
+  
+  if (model.contextWindow >= 200000) {
+    recommendations.push('long-context');
+  }
+  if (model.supportsVision) {
+    recommendations.push('vision');
+  }
+  if (model.supportsToolCalls) {
+    recommendations.push('tool-use');
+  }
+  
+  // Category-based recommendations
+  if (model.category === 'powerful') {
+    recommendations.push('complex-reasoning');
+  } else if (model.category === 'lightweight') {
+    recommendations.push('quick-tasks');
+  } else {
+    recommendations.push('general-purpose');
+  }
+  
+  return recommendations;
 }
 
 export const ANTHROPIC_MODELS: ModelDef[] = [
@@ -14,6 +48,11 @@ export const ANTHROPIC_MODELS: ModelDef[] = [
     shortName: 'Opus',
     description: 'Most capable for complex work',
     contextWindow: 1_000_000,
+    supportsVision: true,
+    supportsToolCalls: true,
+    supportsStreaming: true,
+    category: 'powerful',
+    recommendedFor: ['complex-reasoning', 'long-context', 'tool-use', 'vision'],
   },
   {
     id: 'claude-sonnet-4-6',
@@ -21,6 +60,11 @@ export const ANTHROPIC_MODELS: ModelDef[] = [
     shortName: 'Sonnet',
     description: 'Best for everyday tasks',
     contextWindow: 200_000,
+    supportsVision: true,
+    supportsToolCalls: true,
+    supportsStreaming: true,
+    category: 'versatile',
+    recommendedFor: ['general-purpose', 'long-context', 'tool-use', 'vision'],
   },
   {
     id: 'claude-haiku-4-5-20251001',
@@ -28,5 +72,10 @@ export const ANTHROPIC_MODELS: ModelDef[] = [
     shortName: 'Haiku',
     description: 'Fastest for quick answers',
     contextWindow: 200_000,
+    supportsVision: true,
+    supportsToolCalls: true,
+    supportsStreaming: true,
+    category: 'lightweight',
+    recommendedFor: ['quick-tasks', 'long-context', 'tool-use'],
   },
 ];

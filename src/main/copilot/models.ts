@@ -65,6 +65,34 @@ function dropReason(raw: RawCopilotModel): string {
   return 'unknown';
 }
 
+function getRecommendations(raw: RawCopilotModel): string[] {
+  const recommendations: string[] = [];
+  
+  const ctx = raw.capabilities?.limits?.max_context_window_tokens ?? 128_000;
+  if (ctx >= 200000) {
+    recommendations.push('long-context');
+  }
+  
+  if (raw.capabilities?.limits?.vision) {
+    recommendations.push('vision');
+  }
+  
+  if (raw.capabilities?.supports?.tool_calls) {
+    recommendations.push('tool-use');
+  }
+  
+  // Category-based recommendations
+  if (raw.model_picker_category === 'powerful') {
+    recommendations.push('complex-reasoning');
+  } else if (raw.model_picker_category === 'lightweight') {
+    recommendations.push('quick-tasks');
+  } else {
+    recommendations.push('general-purpose');
+  }
+  
+  return recommendations;
+}
+
 function modelDefFrom(raw: RawCopilotModel): ModelDef | null {
   if (!raw?.id) return null;
   // Only surface models the user's tier has enabled.
@@ -81,6 +109,13 @@ function modelDefFrom(raw: RawCopilotModel): ModelDef | null {
   const ctx = raw.capabilities?.limits?.max_context_window_tokens ?? 128_000;
   const family = raw.capabilities?.family ?? '';
   const description = describe(raw, family);
+  
+  // Extract capabilities from raw model
+  const supportsVision = !!raw.capabilities?.limits?.vision;
+  const supportsToolCalls = raw.capabilities?.supports?.tool_calls ?? false;
+  const supportsStreaming = raw.capabilities?.supports?.streaming ?? false;
+  const category = raw.model_picker_category;
+  const recommendedFor = getRecommendations(raw);
 
   return {
     id: raw.id,
@@ -88,6 +123,11 @@ function modelDefFrom(raw: RawCopilotModel): ModelDef | null {
     shortName: shortNameFrom(raw.id, family),
     description,
     contextWindow: ctx,
+    supportsVision,
+    supportsToolCalls,
+    supportsStreaming,
+    category,
+    recommendedFor,
   };
 }
 
