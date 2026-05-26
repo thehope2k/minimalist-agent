@@ -372,8 +372,32 @@ export function MessageInput({
 
   const handlePickFiles = async () => {
     setError(null);
+    
+    // ✨ NEW: Check if current model supports vision
+    const currentModelDef = connection?.models.find(m => m.id === model);
+    const supportsVision = currentModelDef?.supportsVision ?? false;
+    
     try {
       const drafts = await pickAttachments();
+      
+      // ✨ NEW: Filter images if vision not supported
+      const imageCount = drafts.filter(d => d.type === 'image').length;
+      if (imageCount > 0 && !supportsVision) {
+        // Find vision-capable models the user actually has
+        const visionModels = connection?.models.filter(m => m.supportsVision) ?? [];
+        const suggestion = visionModels.length > 0
+          ? `Try ${visionModels.slice(0, 2).map(m => m.shortName || m.name).join(' or ')} instead.`
+          : 'This connection has no models with vision support.';
+        
+        setError(
+          `📸 ${currentModelDef?.name} doesn't support images. ${suggestion}`
+        );
+        // Only add non-image attachments
+        const nonImages = drafts.filter(d => d.type !== 'image');
+        addDrafts(nonImages);
+        return;
+      }
+      
       addDrafts(drafts);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to read files.');
@@ -394,7 +418,13 @@ export function MessageInput({
 
     setLoadingCount(dropped.length);
     try {
+      // ✨ NEW: Check if current model supports vision
+      const currentModelDef = connection?.models.find(m => m.id === model);
+      const supportsVision = currentModelDef?.supportsVision ?? false;
+      
       const out: DraftAttachment[] = [];
+      let skippedImageCount = 0;
+      
       for (const f of dropped) {
         try {
           // Prefer the native path (lets main re-read large files / detect type
@@ -402,11 +432,33 @@ export function MessageInput({
           const draft = f.path
             ? await readAttachmentPath(f.path)
             : await fileToDraft(f);
-          if (draft) out.push(draft);
+          if (draft) {
+            // ✨ NEW: Filter images if model doesn't support vision
+            if (draft.type === 'image' && !supportsVision) {
+              skippedImageCount++;
+            } else {
+              out.push(draft);
+            }
+          }
         } catch (e) {
           setError(e instanceof Error ? e.message : 'Failed to read a file.');
         }
       }
+      
+      // ✨ NEW: Warn if images were skipped
+      if (skippedImageCount > 0) {
+        // Find vision-capable models the user actually has
+        const visionModels = connection?.models.filter(m => m.supportsVision) ?? [];
+        const suggestion = visionModels.length > 0
+          ? `Try ${visionModels.slice(0, 2).map(m => m.shortName || m.name).join(' or ')}.`
+          : 'This connection has no models with vision support.';
+        
+        setError(
+          `📸 Skipped ${skippedImageCount} image(s) — ` +
+          `${currentModelDef?.name} doesn't support images. ${suggestion}`
+        );
+      }
+      
       addDrafts(out);
     } finally {
       setLoadingCount(0);
@@ -579,6 +631,8 @@ return (
               icon={Paperclip}
               label="Attach file"
               onClick={handlePickFiles}
+              disabled={isStreaming || (attachments.length > 0 && !(connection?.models.find(m => m.id === model)?.supportsVision))}
+              title={!connection?.models.find(m => m.id === model)?.supportsVision ? '📸 Images not supported by this model' : 'Attach file'}
             />
             <IconButton
               icon={AtSign}
