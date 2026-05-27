@@ -2,6 +2,43 @@
 
 Guidance for any agent (human or AI) modifying this codebase.
 
+## Agent worktree isolation
+
+When multiple sub-agents run in parallel on the same project, each gets its own
+**git worktree** for complete file isolation. This prevents resource contention
+(Maven locks, npm locks, git operations, etc.).
+
+### How it works
+
+- Each agent execution creates a worktree at `.minimalist-agent/worktrees/<execId>/`
+- The worktree branches from `origin/HEAD` (fresh checkout)
+- Local config files are copied via `.worktreeinclude` patterns
+- Worktree is cleaned up automatically if no changes were made
+- Worktrees with changes/commits are kept for user review
+
+### Configuration
+
+Create `.worktreeinclude` in your project root to specify which local files
+should be copied into agent worktrees:
+
+```gitignore
+# .worktreeinclude
+.env
+.env.local
+.npmrc
+.mvn/settings.xml
+```
+
+See `.worktreeinclude.example` for a full template.
+
+**Important:** Only gitignored files are copied (safety check). Committed
+files are already present in the worktree from git.
+
+### Fallback behavior
+
+If the project is not a git repository, agents run in the original working
+directory (no isolation). This ensures the feature degrades gracefully.
+
 ## Shared UI components
 
 We have a small in-house UI library at `src/renderer/src/components/ui/`:

@@ -106,7 +106,6 @@ What's shipped, what's coming, and what's intentionally out of scope.
 
 | What | Notes |
 |---|---|
-| **Agent Enhancements** | Next-step improvements on top of shipped AGENT.md system: optional manual invocation UX, advanced validation/lint hints, stronger tool filtering controls, and orchestration features (agent chaining + conditional dispatch) |
 | **Mode Architecture: Built-in Agents + Plan/Task UI** | Current modes (Plan/Ask/Auto) are flat permission gates — no dedicated agent intelligence or UI behind them. Worth a deeper design pass: introducing `Explore` (read-only, fast codebase search) and `Plan` (research-then-propose) as built-in runtime agents; rethinking modes as *agent postures* rather than permission toggles; and a proper plan/task canvas where the user can review, edit, and approve a proposed task list before any writes happen. Needs design discussion before scoping. |
 
 ---

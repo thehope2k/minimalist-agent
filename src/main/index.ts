@@ -11,6 +11,7 @@ import { getAppIcon } from './app-icon';
 import { checkOnLaunch } from './auto-update';
 import { unwatchAll } from './sdd/watcher';
 import { clearAll as sddClearAll } from './sdd/session-state';
+import { isWorktreeSupported } from './agent/backends/pi/worktree-manager';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -88,6 +89,15 @@ app.whenReady().then(async () => {
   installSkillsReferenceDoc();
   installExtensionsReferenceDoc();
   installAgentsReferenceDoc();
+  
+  // Check git/worktree support for parallel agent isolation
+  const worktreeSupported = await isWorktreeSupported();
+  if (worktreeSupported) {
+    console.log('[app] Git worktree support available - parallel agents will use isolated workspaces');
+  } else {
+    console.warn('[app] Git not found - parallel agents will share workspace (install git for better isolation)');
+  }
+  
   registerIpc();
   const icon = await getAppIcon();
   if (process.platform === 'darwin' && app.dock && icon) {

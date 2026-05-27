@@ -1,0 +1,36 @@
+# .worktreeinclude
+# 
+# Files matching these patterns will be copied from the main project into each
+# agent worktree. Only gitignored files are copied (safety check).
+#
+# Use this for local config files that agents need but aren't committed to git.
+#
+# Syntax: .gitignore-style patterns (one per line, # for comments)
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# NPM/Yarn/pnpm configuration
+.npmrc
+.yarnrc
+.yarnrc.yml
+
+# Maven configuration
+.mvn/settings.xml
+.mvn/maven.config
+
+# Gradle configuration  
+gradle.properties
+
+# Docker configuration
+.docker/config.json
+
+# IDE configuration (if you have project-specific gitignored IDE settings)
+# .vscode/settings.json
+# .idea/workspace.xml
+
+# Custom secrets or config
+# config/secrets.json
+# credentials.yml

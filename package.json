@@ -43,6 +43,7 @@
     "electron-updater": "^6.8.3",
     "gray-matter": "^4.0.3",
     "ignore": "^7.0.5",
+    "minimatch": "^10.2.5",
     "node-pty": "^1.0.0",
     "sharp": "^0.34.5",
     "zod": "^4.4.1"

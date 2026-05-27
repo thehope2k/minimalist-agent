@@ -71,7 +71,7 @@ Announce a phase only when entering it or enforcing a gate — not on every resp
 
 4. **One task at a time** — implement and validate each task before starting the next.
 
-5. **Parallel tasks** — tasks marked \`[P]\` in tasks.md can run concurrently. In Minimalist Agent, use the **Task tool** to spawn one sub-agent per \`[P]\` task.
+5. **Parallel tasks** — tasks marked \`[P]\` in tasks.md can run concurrently. In Minimalist Agent, use the **Agent tool** to spawn one sub-agent per \`[P]\` task.
 
 6. **Spec drift** — if implementation reveals a spec gap: pause, describe the mismatch, ask whether to update spec or adjust code. Never silently deviate.
 
@@ -113,10 +113,3 @@ When \`.specify/\` already exists:
 4. Propose the next phase — never restart from constitution if it exists
 `;
 }
-
-/**
- * Pre-built skill block using the bundled fallback version.
- * Prefer calling buildSddSkillBlock(state.cliVersion) in system-prompt.ts
- * so the version matches the user's actual installed CLI.
- */
-export const BUNDLED_SDD_SKILL = buildSddSkillBlock();

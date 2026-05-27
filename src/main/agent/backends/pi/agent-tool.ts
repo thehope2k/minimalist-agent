@@ -32,6 +32,13 @@ import type {
   SubprocessOutbound,
   PiAuthProvider,
 } from './protocol';
+import {
+  createAgentWorktree,
+  removeAgentWorktree,
+  cleanupAllWorktrees,
+  cleanupOrphanedWorktrees,
+  type WorktreeResult,
+} from './worktree-manager';
 
 /* ============================================================ */
 /*  Types                                                        */
@@ -73,6 +80,8 @@ interface SpawnedAgentHandle {
   finished: boolean;
   /** Timestamp when spawned. */
   startedAt: number;
+  /** Worktree info (if created). */
+  worktree?: WorktreeResult;
 }
 
 /* ============================================================ */
@@ -87,6 +96,9 @@ const MAX_CONCURRENT_AGENTS = 5;
 
 /** Maximum runtime per agent (minutes). */
 const MAX_AGENT_RUNTIME_MINUTES = 5;
+
+/** Track if we've done orphaned cleanup this session (lazy, once per app run). */
+let orphanedCleanupDone = false;
 
 function generateExecId(agentSlug: string): string {
   const timestamp = Date.now().toString(36);
@@ -138,6 +150,13 @@ function killHandle(handle: SpawnedAgentHandle): void {
   
   handle.finished = true;
   unregisterHandle(handle.execId);
+  
+  // Clean up worktree (async, non-blocking)
+  if (handle.worktree?.created) {
+    void removeAgentWorktree(handle.execId).catch(err => {
+      console.warn(`[agent-tool] Failed to cleanup worktree for ${handle.execId}:`, err);
+    });
+  }
 }
 
 /** Periodic cleanup of stale handles. */
@@ -160,6 +179,11 @@ export function shutdownAllAgentSubprocesses(): void {
     killHandle(handle);
   }
   activeHandles.clear();
+  
+  // Clean up all worktrees
+  void cleanupAllWorktrees().catch(err => {
+    console.warn('[agent-tool] Failed to cleanup worktrees on shutdown:', err);
+  });
 }
 
 /* ============================================================ */
@@ -377,11 +401,21 @@ async function initializeAgent(
     console.warn(`[pi-agent-tool:${handle.execId}] Failed to create storage dir:`, err);
   }
 
+  // Create isolated git worktree for this agent (if in git repo)
+  const worktree = await createAgentWorktree(ctx.cwd, handle.execId);
+  handle.worktree = worktree;
+
+  const agentCwd = worktree.path; // Use worktree path (or fallback to original CWD)
+
+  if (worktree.created) {
+    console.log(`[pi-agent-tool:${handle.execId}] Running in isolated worktree: ${agentCwd}`);
+  }
+
   const init: MsgInit = {
     type: 'init',
     sessionId: `${ctx.sessionId}-agent-${handle.execId}`, // Guaranteed unique
     sessionPath: agentSessionPath, // Isolated storage
-    cwd: ctx.cwd,
+    cwd: agentCwd, // Use worktree path for complete isolation
     model,
     thinkingLevel: 'low' as const, // Agents should be focused and fast
     providerType: 'pi',
@@ -540,6 +574,15 @@ export function createPiAgentTool(ctx: AgentToolContext): ToolDefinition<typeof 
       let handle: SpawnedAgentHandle | null = null;
 
       try {
+        // Lazy cleanup of orphaned worktrees (once per app run)
+        if (!orphanedCleanupDone) {
+          orphanedCleanupDone = true;
+          console.log('[pi-agent-tool] Checking for orphaned worktrees...');
+          void cleanupOrphanedWorktrees(ctx.cwd, 7).catch(err => {
+            console.warn('[pi-agent-tool] Orphaned worktree cleanup failed:', err);
+          });
+        }
+
         // Check resource limits
         if (getActiveAgentCount() >= MAX_CONCURRENT_AGENTS) {
           console.warn(`[pi-agent-tool] At maximum capacity (${MAX_CONCURRENT_AGENTS} agents). Waiting for a slot...`);
@@ -620,6 +663,12 @@ export function createPiAgentTool(ctx: AgentToolContext): ToolDefinition<typeof 
         // Clean up
         if (!handle.finished) {
           killHandle(handle);
+        } else if (handle.worktree?.created) {
+          // Agent finished normally, clean up worktree
+          const execId = handle.execId; // Capture for closure
+          await removeAgentWorktree(execId).catch(err => {
+            console.warn(`[agent-tool] Failed to cleanup worktree for ${execId}:`, err);
+          });
         }
 
         emitSubagentUpdate(onUpdate, {
