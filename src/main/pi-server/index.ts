@@ -43,7 +43,6 @@ import { getOAuthProvider } from '@mariozechner/pi-ai/oauth';
 import { adaptPiEvent } from './event-adapter';
 import { createPiWebFetchTool, createPiWebSearchTool } from './web-tools';
 import { createPiAgentTool } from '../agent/backends/pi/agent-tool';
-import { KNOWN_MODEL_IDS } from '../../shared/agent-models';
 import type {
   MsgAuthRequired,
   MsgEvent,
@@ -55,6 +54,8 @@ import type {
   MsgMiniCompletionResult,
   MsgPreToolUseRequest,
   MsgPreToolUseResponse,
+  MsgCollaborationRequest,
+  MsgCollaborationResponse,
   MsgPrompt,
   MsgReady,
   MsgSessionIdUpdate,
@@ -120,6 +121,10 @@ interface State {
     string,
     { resolve: (r: MsgPreToolUseResponse) => void }
   >;
+  pendingCollaboration: Map<
+    string,
+    { resolve: (r: MsgCollaborationResponse) => void }
+  >;
   turnAbort?: AbortController;
   shuttingDown?: boolean;
 }
@@ -127,6 +132,7 @@ interface State {
 const state: State = {
   permissionMode: 'auto',
   pendingPermission: new Map(),
+  pendingCollaboration: new Map(),
   appendArr: [],
   availableAgents: [],
 };
@@ -271,6 +277,262 @@ function requestPermission(
   });
 }
 
+function requestCollaboration(
+  turnId: string,
+  sessionId: string,
+  engagementType: 'decision' | 'preference' | 'feedback' | 'guidance' | 'approval',
+  payload: unknown,
+): Promise<MsgCollaborationResponse> {
+  return new Promise((resolve) => {
+    const requestId = `collab_${Date.now().toString(36)}_${Math.random()
+      .toString(36)
+      .slice(2, 8)}`;
+    state.pendingCollaboration.set(requestId, { resolve });
+
+    const req: MsgCollaborationRequest = {
+      type: 'collaboration_request',
+      requestId,
+      turnId,
+      sessionId,
+      engagementType,
+      payload,
+    };
+    send(req);
+
+    // If the turn is aborted before main responds, auto-deny
+    state.turnAbort?.signal.addEventListener('abort', () => {
+      const pending = state.pendingCollaboration.get(requestId);
+      if (pending) {
+        state.pendingCollaboration.delete(requestId);
+        pending.resolve({
+          type: 'collaboration_response',
+          requestId,
+          response: {
+            type: engagementType,
+            decision: 'denied',
+            custom_response: 'Turn aborted',
+          },
+        });
+      }
+    });
+  });
+}
+
+/**
+ * Helper to create collaboration tool executor with common response handling.
+ */
+function createCollaborationExecutor(
+  sessionId: string,
+  engagementType: 'decision' | 'preference' | 'feedback' | 'guidance' | 'approval',
+  formatResponse: (result: any) => string,
+) {
+  return async (
+    _toolCallId: string,
+    params: unknown,
+    _signal: AbortSignal | undefined,
+    _onUpdate: any,
+    _ctx: any,
+  ) => {
+    const response = await requestCollaboration(
+      state.currentTurnId || '',
+      sessionId,
+      engagementType,
+      params,
+    );
+    const result = response.response as any;
+    
+    // For approval, check if denied
+    if (engagementType === 'approval' && result.decision === 'denied') {
+      return {
+        isError: true,
+        content: [
+          {
+            type: 'text' as const,
+            text: `User denied this operation${
+              result.custom_response ? `: ${result.custom_response}` : ''
+            }`,
+          },
+        ],
+        details: {},
+      };
+    }
+    
+    return {
+      isError: false,
+      content: [
+        {
+          type: 'text' as const,
+          text: formatResponse(result),
+        },
+      ],
+      details: {},
+    };
+  };
+}
+
+/**
+ * Schema helpers for collaboration tool parameters.
+ */
+const schema = {
+  string: (description: string) => ({ type: 'string' as const, description }),
+  number: (description: string, min: number, max: number) => ({
+    type: 'number' as const,
+    minimum: min,
+    maximum: max,
+    description,
+  }),
+  stringArray: (description: string) => ({
+    type: 'array' as const,
+    items: { type: 'string' as const },
+    description,
+  }),
+  object: (description?: string) => ({
+    type: 'object' as const,
+    ...(description && { description }),
+  }),
+  array: <T>(items: T, min: number, max: number) => ({
+    type: 'array' as const,
+    items,
+    minItems: min,
+    maxItems: max,
+  }),
+};
+
+function createCollaborationTools(sessionId: string): ToolDefinition<any, any, any>[] {
+  return [
+    {
+      name: 'RequestDecision',
+      label: 'Request user decision',
+      description: 'Ask user to decide between multiple valid alternatives',
+      parameters: {
+        type: 'object' as const,
+        properties: {
+          question: schema.string('Clear question to ask the user'),
+          alternatives: schema.array(
+            {
+              type: 'object' as const,
+              properties: {
+                name: schema.string('Option name'),
+                description: schema.string('Option description'),
+                pros: schema.stringArray('Advantages'),
+                cons: schema.stringArray('Disadvantages'),
+              },
+              required: ['name', 'description', 'pros', 'cons'],
+            },
+            2,
+            5,
+          ),
+          recommended: schema.string('Your recommended option'),
+          context: schema.string('Additional context about why this decision matters'),
+        },
+        required: ['question', 'alternatives'],
+      },
+      execute: createCollaborationExecutor(sessionId, 'decision', (result) =>
+        `User selected: ${result.selected_option || result.custom_response || 'no_selection'}${
+          result.custom_response ? `\n\nUser response: ${result.custom_response}` : ''
+        }`,
+      ),
+    },
+    {
+      name: 'RequestPreference',
+      label: 'Request user preference',
+      description: "Ask for user's subjective preference",
+      parameters: {
+        type: 'object' as const,
+        properties: {
+          question: schema.string('Clear question about preference'),
+          options: schema.array(
+            {
+              type: 'object' as const,
+              properties: {
+                name: schema.string('Option name'),
+                description: schema.string('Option description'),
+              },
+              required: ['name', 'description'],
+            },
+            2,
+            4,
+          ),
+          context: schema.string('Why this preference matters'),
+        },
+        required: ['question', 'options'],
+      },
+      execute: createCollaborationExecutor(sessionId, 'preference', (result) =>
+        `User preference: ${result.selected_option || result.custom_response || 'no_selection'}${
+          result.custom_response ? `\n\nDetails: ${result.custom_response}` : ''
+        }`,
+      ),
+    },
+    {
+      name: 'RequestFeedback',
+      label: 'Request user feedback',
+      description: 'Request feedback on completed work',
+      parameters: {
+        type: 'object' as const,
+        properties: {
+          work_completed: schema.string('Summary of work completed'),
+          preview: schema.string('Preview of the work (code snippet, file content, etc.)'),
+          specific_questions: schema.stringArray('Specific questions to ask about the work'),
+        },
+        required: ['work_completed'],
+      },
+      execute: createCollaborationExecutor(sessionId, 'feedback', (result) =>
+        `User feedback: ${result.feedback || result.custom_response || 'No feedback provided'}`,
+      ),
+    },
+    {
+      name: 'RequestGuidance',
+      label: 'Request user guidance',
+      description: 'Request guidance on trade-offs and priorities',
+      parameters: {
+        type: 'object' as const,
+        properties: {
+          situation: schema.string('Description of the situation requiring guidance'),
+          trade_offs: schema.array(
+            {
+              type: 'object' as const,
+              properties: {
+                option: schema.string('Trade-off option'),
+                pros: schema.stringArray('Advantages'),
+                cons: schema.stringArray('Disadvantages'),
+              },
+              required: ['option', 'pros', 'cons'],
+            },
+            2,
+            4,
+          ),
+          what_guidance_needed: schema.string('What specific guidance you need from the user'),
+        },
+        required: ['situation', 'trade_offs', 'what_guidance_needed'],
+      },
+      execute: createCollaborationExecutor(sessionId, 'guidance', (result) =>
+        `User guidance: ${result.custom_response || result.guidance || 'No guidance provided'}`,
+      ),
+    },
+    {
+      name: 'RequestApproval',
+      label: 'Request operation approval',
+      description: 'Request approval for a risky operation',
+      parameters: {
+        type: 'object' as const,
+        properties: {
+          operation: schema.string('Description of the operation requiring approval'),
+          risk_level: schema.number('Risk score (0-100)', 0, 100),
+          risk_factors: schema.stringArray('Risk factors identified'),
+          reason: schema.string('Why this operation is needed'),
+          details: schema.object('Operation details (file paths, commands, etc.)'),
+        },
+        required: ['operation', 'risk_level', 'risk_factors', 'reason'],
+      },
+      execute: createCollaborationExecutor(sessionId, 'approval', (result) =>
+        `Approved${
+          result.custom_response ? ` - User note: ${result.custom_response}` : ''
+        }`,
+      ),
+    },
+  ];
+}
+
 function buildWrappedTools(
   cwd: string,
   agentContext?: {
@@ -283,7 +545,7 @@ function buildWrappedTools(
     getAuth: () => Promise<{ access: string; refresh?: string; expires?: number }>;
     baseUrl?: string;
     customEndpoint?: { api: 'openai-completions' | 'anthropic-messages'; supportsImages?: boolean };
-    permissionMode: 'plan' | 'ask' | 'auto';
+    permissionMode: 'plan' | 'auto';
   },
 ): ToolDefinition<any, any, any>[] {
   const tools: ToolDefinition<any, any, any>[] = [
@@ -295,7 +557,7 @@ function buildWrappedTools(
     wrapWithPermissionGate(createFindToolDefinition(cwd)),
     wrapWithPermissionGate(createLsToolDefinition(cwd)),
     // Web tools — read-only, but still routed through the permission
-    // gate so plan/ask modes stay in control.
+    // gate so plan/auto modes stay in control.
     wrapWithPermissionGate(createPiWebFetchTool()),
     wrapWithPermissionGate(createPiWebSearchTool()),
   ];
@@ -308,6 +570,9 @@ function buildWrappedTools(
       cwd,
     })));
   }
+
+  // Add collaboration tools (not wrapped with permission gate - they ARE the engagement)
+  tools.push(...createCollaborationTools(agentContext?.sessionId || ''));
 
   return tools;
 }
@@ -447,7 +712,7 @@ async function handleInit(msg: MsgInit): Promise<void> {
       baseUrl: msg.baseUrl,
       customEndpoint: msg.customEndpoint,
     } : {}),
-    permissionMode: msg.permissionMode as 'plan' | 'ask' | 'auto',
+    permissionMode: msg.permissionMode as 'plan' | 'auto',
   };
 
   const tools = buildWrappedTools(msg.cwd, agentContext);
@@ -885,6 +1150,14 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
       const pending = state.pendingPermission.get(msg.requestId);
       if (!pending) return;
       state.pendingPermission.delete(msg.requestId);
+      pending.resolve(msg);
+      return;
+    }
+
+    case 'collaboration_response': {
+      const pending = state.pendingCollaboration.get(msg.requestId);
+      if (!pending) return;
+      state.pendingCollaboration.delete(msg.requestId);
       pending.resolve(msg);
       return;
     }

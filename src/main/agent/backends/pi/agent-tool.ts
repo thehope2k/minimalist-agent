@@ -64,7 +64,7 @@ interface AgentToolContext {
   /** Custom endpoint config (optional). */
   customEndpoint?: { api: 'openai-completions' | 'anthropic-messages'; supportsImages?: boolean };
   /** Permission mode inherited from parent session. */
-  permissionMode: 'plan' | 'ask' | 'auto';
+  permissionMode: 'plan' | 'auto';
   /** Parent session's model (for resolving session-default). */
   sessionModel: string;
 }
@@ -508,8 +508,8 @@ function buildAgentSystemPrompt(agent: LoadedAgent): string {
 }
 
 function mapAgentPermissionMode(
-  mode: 'plan' | 'ask' | 'auto' | undefined,
-): 'plan' | 'ask' | 'auto' {
+  mode: 'plan' | 'auto' | undefined,
+): 'plan' | 'auto' {
   return mode || 'auto';
 }
 

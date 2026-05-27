@@ -33,9 +33,23 @@ const DEFAULTS: ProjectsFile = { projects: [] };
 
 const SCHEMA: FileSchema<ProjectsFile> = {
   path: Paths.projects(),
-  currentVersion: 1,
+  currentVersion: 2,
   defaultValue: DEFAULTS,
-  migrations: [],
+  migrations: [
+    // v1 → v2: migrate 'ask' permission mode → 'auto'
+    (prev) => {
+      const data = prev as ProjectsFile;
+      return {
+        ...data,
+        projects: data.projects.map((p) => {
+          if (p.defaultPermissionMode === 'ask' as any) {
+            return { ...p, defaultPermissionMode: 'auto' as PermissionMode };
+          }
+          return p;
+        }),
+      };
+    },
+  ],
 };
 
 function genId(): string {
@@ -52,10 +66,6 @@ function writeAll(projects: Project[]): void {
 
 export function listProjects(): Project[] {
   return readAll();
-}
-
-export function getProject(id: string): Project | null {
-  return readAll().find((p) => p.id === id) ?? null;
 }
 
 export type ProjectInput = Pick<Project, 'name' | 'rootPath'> &

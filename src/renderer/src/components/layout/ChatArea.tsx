@@ -4,13 +4,13 @@ import { ChatScroll } from '../chat/ChatScroll';
 import { MessageInput } from '../chat/MessageInput';
 import { MessageList } from '../chat/MessageList';
 import { EmptyState } from '../chat/EmptyState';
-import { PermissionPrompt } from '../chat/PermissionPrompt';
+import { CollaborationPrompt } from '../chat/CollaborationPrompt';
 import { IconButton } from '../ui';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '../ui';
 import { useResizablePanels } from '@/hooks/useResizablePanels';
 import { useChat } from '@/hooks/useChat';
 import { useAiData } from '@/hooks/useAiData';
-import { branchSession, loadFullSession, setSessionPermissionMode, updateSessionMeta } from '@/lib/sessions';
+import { branchSession, loadFullSession, setSessionPermissionMode, setSessionAutonomyLevel, updateSessionMeta } from '@/lib/sessions';
 import { findProject } from '@/lib/projects';
 import { getNewSessionStateDraft, patchNewSessionStateDraft } from '@/lib/new-session-draft';
 import { useProjects } from '@/hooks/useProjects';
@@ -70,7 +70,8 @@ export function ChatArea({
   sddModeRef.current = sddMode;
   // Always-current mirrors for permissionMode and cwd — used when snapshotting
   // the null-slot draft on session switch (same pattern as sddModeRef).
-  const permissionModeRef = useRef<PermissionMode>('ask');
+  const permissionModeRef = useRef<PermissionMode>('auto');
+  const autonomyLevelRef = useRef<number>(50);
   const cwdRef            = useRef<string | undefined>(undefined);
   const prevSessionIdRef  = useRef<string | null | undefined>(undefined);
   const [sddPanelOpen, setSddPanelOpen] = useState(false);
@@ -106,10 +107,15 @@ export function ChatArea({
   );
   /**
    * Per-session permission mode. Falls back to the global default until a
-   * session-level value is set explicitly. Initialized to 'ask' so the
+   * session-level value is set explicitly. Initialized to 'auto' so the
    * pill always has a sane label even before AI settings have loaded.
    */
-  const [permissionMode, setPermissionMode] = useState<PermissionMode>('ask');
+  const [permissionMode, setPermissionMode] = useState<PermissionMode>('auto');
+  /**
+   * Autonomy level (0-100) for intelligent collaboration in auto mode.
+   * Defaults to 50 (balanced) until AI settings load.
+   */
+  const [autonomyLevel, setAutonomyLevel] = useState<number>(50);
   /**
    * `true` once we've adopted the per-session value (or confirmed there
    * isn't one). Prevents the pill from briefly flashing the global default
@@ -144,7 +150,8 @@ export function ChatArea({
     if (prevId === null) {
       patchNewSessionStateDraft({
         permissionMode: permissionModeRef.current,
-        cwd:            cwdRef.current,
+        autonomyLevel: autonomyLevelRef.current,
+        cwd: cwdRef.current,
       });
     }
 
@@ -165,7 +172,12 @@ export function ChatArea({
         d.permissionMode ??
           projForFresh?.defaultPermissionMode ??
           aiData?.settings.defaultPermissionMode ??
-          'ask',
+          'auto',
+      );
+      setAutonomyLevel(
+        d.autonomyLevel ??
+          aiData?.settings.defaultAutonomyLevel ??
+          50,
       );
       setProjectDefaultConnectionSlug(
         projForFresh?.defaultConnectionSlug ?? '',
@@ -197,7 +209,12 @@ export function ChatArea({
         data.meta.permissionMode ??
           project?.defaultPermissionMode ??
           aiData?.settings.defaultPermissionMode ??
-          'ask',
+          'auto',
+      );
+      setAutonomyLevel(
+        data.meta.autonomyLevel ??
+          aiData?.settings.defaultAutonomyLevel ??
+          50,
       );
       setProjectDefaultConnectionSlug(project?.defaultConnectionSlug ?? '');
       setSessionConnectionSlug(data.meta.connectionSlug ?? '');
@@ -229,7 +246,10 @@ export function ChatArea({
     setPermissionMode(
       projForFresh?.defaultPermissionMode ??
         aiData.settings.defaultPermissionMode ??
-        'ask',
+        'auto',
+    );
+    setAutonomyLevel(
+      aiData.settings.defaultAutonomyLevel ?? 50,
     );
   }, [
     sessionId,
@@ -531,8 +551,17 @@ export function ChatArea({
                   permissionMode={permissionMode}
                   onChangePermissionMode={(mode) => {
                     setPermissionMode(mode);
+                    permissionModeRef.current = mode;
                     if (activeSessionId) {
                       void setSessionPermissionMode(activeSessionId, mode);
+                    }
+                  }}
+                  autonomyLevel={autonomyLevel}
+                  onChangeAutonomyLevel={(level) => {
+                    setAutonomyLevel(level);
+                    autonomyLevelRef.current = level;
+                    if (activeSessionId) {
+                      void setSessionAutonomyLevel(activeSessionId, level);
                     }
                   }}
                   onSend={(args) =>
@@ -556,7 +585,7 @@ export function ChatArea({
               </div>
             </div>
 
-            <PermissionPrompt />
+            <CollaborationPrompt />
           </div>
         </ResizablePanel>
 

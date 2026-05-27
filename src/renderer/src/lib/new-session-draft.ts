@@ -9,6 +9,7 @@ import type { PermissionMode } from './electron';
 
 interface NewSessionStateDraft {
   permissionMode?: PermissionMode;
+  autonomyLevel?: number;
   cwd?: string;
   connectionSlug?: string;
   modelId?: string;

@@ -43,18 +43,39 @@ export interface AgentError {
   originalError?: string;
 }
 
-/** Three-mode safety floor (see `src/main/agent/permissions.ts`). */
-export type PermissionMode = 'plan' | 'ask' | 'auto';
-export type PermissionDecision = 'allow_once' | 'allow_session' | 'deny';
+/** Two-mode execution control (see `src/main/agent/permissions.ts`). */
+export type PermissionMode = 'plan' | 'auto';
 
-export interface PermissionRequest {
-  reqId: string;
-  /** Owning chat turn (assistant message id). */
-  turnId: string;
-  sessionId: string;
-  toolName: string;
-  input: Record<string, unknown>;
-}
+/** Collaboration engagement types for intelligent agent autonomy. */
+import type {
+  EngagementType,
+  EngagementRequest,
+  EngagementResponse,
+  DecisionPayload,
+  PreferencePayload,
+  FeedbackPayload,
+  GuidancePayload,
+  ApprovalPayload,
+  NamedOption,
+  TradeOffAnalysis,
+  Alternative,
+  TradeOff,
+} from '../../../shared/collaboration-types';
+
+export type {
+  EngagementType,
+  EngagementRequest,
+  EngagementResponse,
+  DecisionPayload,
+  PreferencePayload,
+  FeedbackPayload,
+  GuidancePayload,
+  ApprovalPayload,
+  NamedOption,
+  TradeOffAnalysis,
+  Alternative,
+  TradeOff,
+};
 
 export interface ChatSendRequest {
   id: string;
@@ -300,6 +321,8 @@ export interface AiSettings {
   maxTurns?: number;
   /** Mode applied to brand-new chats; switch per-session above the composer. */
   defaultPermissionMode?: PermissionMode;
+  /** Default autonomy level (0-100) for new sessions in auto mode. Default 50. */
+  defaultAutonomyLevel?: number;
   /**
    * Filenames (case-insensitive) scanned as project context files each turn.
    * Defaults to ['agents.md', 'claude.md', 'copilot-instructions.md'].
@@ -412,6 +435,8 @@ export interface SessionMeta {
   lastMessageAt: number;
   usage?: SessionUsage;
   permissionMode?: PermissionMode;
+  /** Per-session autonomy level (0-100) for intelligent collaboration. Default 50. */
+  autonomyLevel?: number;
   projectId?: string | null;
   connectionSlug?: string;
   model?: string;
@@ -511,7 +536,7 @@ export interface AgentMetadata {
   model?: string;
   tools?: string[];
   maxTurns?: number;
-  permissionMode?: 'plan' | 'ask' | 'auto';
+  permissionMode?: 'plan' | 'auto';
   effort?: 'low' | 'medium' | 'high';
   icon?: string;
 }
@@ -770,13 +795,10 @@ export interface AppApi {
       attachments?: StoredAttachment[],
     ) => Promise<{ ok: boolean; reason?: string }>;
     onEvent: (cb: (event: ChatStreamEvent) => void) => () => void;
-    onPermissionRequest: (
-      cb: (req: PermissionRequest) => void,
+    onCollaborationRequest: (
+      cb: (req: EngagementRequest) => void,
     ) => () => void;
-    respondPermission: (
-      reqId: string,
-      decision: PermissionDecision,
-    ) => Promise<void>;
+    respondCollaboration: (response: EngagementResponse) => Promise<void>;
     generateTitle: (args: {
       connectionSlug: string;
       messages: Array<{ role: 'user' | 'assistant'; content: string }>;

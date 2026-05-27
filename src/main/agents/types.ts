@@ -10,8 +10,8 @@ export interface AgentMetadata {
   tools?: string[];
   /** Maximum turns this agent can take before returning (default: 10). */
   maxTurns?: number;
-  /** Permission mode for this agent: "plan" (no mutations), "ask" (per-tool prompt), or "auto" (bypass). */
-  permissionMode?: 'plan' | 'ask' | 'auto';
+  /** Permission mode for this agent: "plan" (no mutations) or "auto" (intelligent autonomy-based collaboration). */
+  permissionMode?: 'plan' | 'auto';
   /** Optional effort level for Claude SDK (Anthropic only): "low", "medium", "high". */
   effort?: 'low' | 'medium' | 'high';
   /** Optional icon — emoji or URL only. */
@@ -30,22 +30,4 @@ export interface LoadedAgent {
   iconPath?: string;
   /** Absolute path to the agent directory. */
   path: string;
-}
-
-/** For Claude SDK: AgentDefinition as described in the API. */
-export interface SDKAgentDefinition {
-  /** Human-readable description. */
-  description: string;
-  /** System prompt. */
-  prompt: string;
-  /** Optional model override. */
-  model?: string;
-  /** Optional tool restrictions. */
-  tools?: string[];
-  /** Optional max turns. */
-  maxTurns?: number;
-  /** Optional permission mode. */
-  permissionMode?: 'plan' | 'ask' | 'auto';
-  /** Optional effort level. */
-  effort?: 'low' | 'medium' | 'high';
 }

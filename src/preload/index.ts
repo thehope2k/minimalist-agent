@@ -1,15 +1,24 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { homedir as osHomedir } from 'node:os';
 
-type PermissionMode = 'plan' | 'ask' | 'auto';
-type PermissionDecision = 'allow_once' | 'allow_session' | 'deny';
+type PermissionMode = 'plan' | 'auto';
 
-interface PermissionRequest {
+type EngagementType = 'decision' | 'preference' | 'feedback' | 'guidance' | 'approval';
+
+interface EngagementRequest {
   reqId: string;
   turnId: string;
   sessionId: string;
-  toolName: string;
-  input: Record<string, unknown>;
+  type: EngagementType;
+  payload: Record<string, unknown>;
+}
+
+interface EngagementResponse {
+  reqId: string;
+  decision: 'approved' | 'denied' | 'custom';
+  selected_option?: string;
+  custom_response?: string;
+  feedback?: string;
 }
 
 interface ChatSendRequest {
@@ -429,18 +438,15 @@ const api = {
       ipcRenderer.on('chat:event', handler);
       return () => ipcRenderer.removeListener('chat:event', handler);
     },
-    onPermissionRequest: (
-      cb: (req: PermissionRequest) => void,
+    onCollaborationRequest: (
+      cb: (req: EngagementRequest) => void,
     ): (() => void) => {
-      const handler = (_e: unknown, payload: PermissionRequest) => cb(payload);
-      ipcRenderer.on('chat:permission-request', handler);
-      return () => ipcRenderer.removeListener('chat:permission-request', handler);
+      const handler = (_e: unknown, payload: EngagementRequest) => cb(payload);
+      ipcRenderer.on('chat:collaboration-request', handler);
+      return () => ipcRenderer.removeListener('chat:collaboration-request', handler);
     },
-    respondPermission: (
-      reqId: string,
-      decision: PermissionDecision,
-    ): Promise<void> =>
-      ipcRenderer.invoke('chat:permission-response', { reqId, decision }),
+    respondCollaboration: (response: EngagementResponse): Promise<void> =>
+      ipcRenderer.invoke('chat:collaboration-response', response),
   },
   connections: {
     list: (): Promise<ConnectionMeta[]> =>
@@ -486,17 +492,11 @@ const api = {
     }): Promise<SessionMeta> => ipcRenderer.invoke('sessions:create', opts),
     setProject: (id: string, projectId: string | null): Promise<SessionMeta> =>
       ipcRenderer.invoke('sessions:setProject', id, projectId),
-    appendMessage: (id: string, msg: StoredMessage): Promise<void> =>
-      ipcRenderer.invoke('sessions:appendMessage', id, msg),
-    replaceLastMessage: (id: string, msg: StoredMessage): Promise<void> =>
-      ipcRenderer.invoke('sessions:replaceLastMessage', id, msg),
     updateMeta: (
       id: string,
       patch: Partial<Omit<SessionMeta, 'id' | 'createdAt'>>,
     ): Promise<SessionMeta> =>
       ipcRenderer.invoke('sessions:updateMeta', id, patch),
-    truncateFrom: (id: string, firstDroppedId: string): Promise<number> =>
-      ipcRenderer.invoke('sessions:truncateFrom', id, firstDroppedId),
     delete: (id: string): Promise<void> =>
       ipcRenderer.invoke('sessions:delete', id),
     branch: (parentId: string, upToMessageId: string): Promise<unknown> =>

@@ -39,6 +39,7 @@ import {
   loadAllAgents,
 } from '../../agents/storage';
 import type { AnthropicApiKeyAuth, AnthropicOAuthAuth } from './types';
+import type { CollaborationAsk } from '../claude';
 
 export type AnthropicAuth = AnthropicApiKeyAuth | AnthropicOAuthAuth;
 
@@ -51,7 +52,9 @@ export interface AnthropicChatRequest {
   resumeSessionId?: string;
   maxTurns?: number;
   permissionMode?: PermissionMode;
-  canUseTool?: CanUseTool;
+  askCollaboration?: CollaborationAsk;
+  /** User's autonomy level (0-100) for intelligent collaboration. */
+  autonomyLevel?: number;
   signal?: AbortSignal;
   /**
    * Caller-provided turn id. Used by `steerAnthropicTurn` to find the
@@ -338,7 +341,7 @@ export async function* runAnthropicChat(
     else req.signal.addEventListener('abort', () => abortCtrl.abort());
   }
 
-  const mode: PermissionMode = req.permissionMode ?? 'ask';
+  const mode: PermissionMode = req.permissionMode ?? 'auto';
   const sdkMode = toSdkPermissionMode(mode);
 
   const baseDefaults = getDefaultOptions({
@@ -361,7 +364,6 @@ export async function* runAnthropicChat(
     abortController: abortCtrl,
     maxTurns: req.maxTurns ?? DEFAULT_MAX_TURNS,
     permissionMode: sdkMode,
-    ...(mode === 'ask' && req.canUseTool ? { canUseTool: req.canUseTool } : {}),
     ...(req.cwd ? { cwd: req.cwd } : {}),
     ...(req.resumeSessionId ? { resume: req.resumeSessionId } : {}),
 
@@ -382,7 +384,13 @@ export async function* runAnthropicChat(
     systemPrompt: {
       type: 'preset',
       preset: 'claude_code',
-      append: buildSystemPromptAppend({ cwd: req.cwd, sessionId: req.chatSessionId, userMessage: req.prompt, authType: req.auth.type }),
+      append: buildSystemPromptAppend({
+        cwd: req.cwd,
+        sessionId: req.chatSessionId,
+        userMessage: req.prompt,
+        authType: req.auth.type,
+        autonomyLevel: req.autonomyLevel,
+      }),
     },
 
     settingSources: ['user', 'project', 'local'],

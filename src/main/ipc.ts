@@ -37,12 +37,12 @@ import { generateTitle } from './agent/title';
 import { parseError } from './agent/errors';
 import { resolveAuthForSlug } from './auth/resolve';
 import {
-  clearSessionAllow,
-  makeCanUseTool,
-  type PermissionDecision,
   type PermissionMode,
-  type PermissionRequest,
-} from './agent/permissions';
+} from './storage/settings';
+import type {
+  EngagementRequest,
+  EngagementResponse,
+} from '../shared/collaboration-types';
 import { getKeepAwake, setAgentActive, setKeepAwake } from './power';
 import { getAppIcon } from './app-icon';
 import {
@@ -131,7 +131,6 @@ import {
 import { searchFiles, type FileSearchEntry } from './files/search';
 import { readFileSync } from 'node:fs';
 import { invalidateContextFileCache } from './agent/system-prompt';
-import { clearPiSessionAllow } from './agent/backends/pi/permission-bridge';
 import {
   clearState as sddClearState,
   getState as sddGetState,
@@ -189,7 +188,7 @@ export interface ChatSendRequest {
   resumeSessionId?: string;
   /** Bound for tool-use loops in this turn. */
   maxTurns?: number;
-  /** Permission mode for this turn ('plan' | 'ask' | 'auto'). */
+  /** Permission mode for this turn ('plan' | 'auto'). */
   permissionMode?: PermissionMode;
   /**
    * Owning session id - required so per-session "Allow for session"
@@ -219,9 +218,13 @@ const turnInfo = new Map<string, TurnInfo>();
  * Pending permission prompts - one entry per outstanding renderer round
  * trip. Keyed by reqId; cleared on response, abort, or window close.
  */
-const pendingPermissions = new Map<
+/**
+ * Pending collaboration prompts (RequestDecision, RequestPreference, etc.).
+ * Handles intelligent engagement system where LLM decides when to collaborate.
+ */
+const pendingCollaborations = new Map<
   string,
-  { resolve: (d: PermissionDecision) => void; turnId: string }
+  { resolve: (r: EngagementResponse) => void; turnId: string }
 >();
 
 export function registerIpc(): void {
@@ -458,20 +461,20 @@ export function registerIpc(): void {
     const ctrl = new AbortController();
     inFlight.set(req.id, ctrl);
 
-    // Renderer-round-trip permission ask. Reused by both backends:
-    //   - Anthropic: wrapped via `makeCanUseTool()` (SDK-style CanUseTool)
-    //   - Pi: passed directly via `ask` (the Pi permission bridge calls it)
-    const askRenderer = (preq: PermissionRequest) => {
+    // Renderer-round-trip for collaboration engagement.
+    // Used by RequestDecision, RequestPreference, RequestFeedback,
+    // RequestGuidance, and RequestApproval tools.
+    const askCollaboration = (ereq: EngagementRequest) => {
       if (event.sender.isDestroyed()) {
         return Promise.reject(new Error('Window destroyed'));
       }
-      return new Promise<PermissionDecision>((resolve, reject) => {
-        pendingPermissions.set(preq.reqId, {
+      return new Promise<EngagementResponse>((resolve, reject) => {
+        pendingCollaborations.set(ereq.reqId, {
           resolve,
-          turnId: preq.turnId,
+          turnId: ereq.turnId,
         });
         const onAbort = () => {
-          pendingPermissions.delete(preq.reqId);
+          pendingCollaborations.delete(ereq.reqId);
           reject(new Error('Turn aborted'));
         };
         if (ctrl.signal.aborted) {
@@ -479,18 +482,9 @@ export function registerIpc(): void {
           return;
         }
         ctrl.signal.addEventListener('abort', onAbort, { once: true });
-        event.sender.send('chat:permission-request', preq);
+        event.sender.send('chat:collaboration-request', ereq);
       });
     };
-
-    const canUseTool =
-      req.permissionMode === 'ask' && req.sessionId
-        ? makeCanUseTool({
-            sessionId: req.sessionId,
-            turnId: req.id,
-            ask: askRenderer,
-          })
-        : undefined;
 
     try {
       // Resolve the connection's credential and refresh the OAuth token if
@@ -519,9 +513,12 @@ export function registerIpc(): void {
       // Ensure SDD session state is initialised before the first turn so
       // the system-prompt injection can read it. This is a no-op on
       // subsequent turns (initState is idempotent when state already exists).
+      let autonomyLevel = 50; // Default: balanced
       if (req.sessionId && req.cwd) {
+        const sessionMeta = loadSession(req.sessionId)?.meta;
+        autonomyLevel = sessionMeta?.autonomyLevel ?? 50;
+        
         if (!sddGetState(req.sessionId)) {
-          const sessionMeta = loadSession(req.sessionId)?.meta;
           const mode = sessionMeta?.sddMode ?? 'off';
           if (mode !== 'off') {
             // Lazy init for system-prompt injection before the renderer calls
@@ -550,8 +547,8 @@ export function registerIpc(): void {
         resumeSessionId: req.resumeSessionId,
         maxTurns: req.maxTurns,
         permissionMode: req.permissionMode,
-        canUseTool,
-        ask: askRenderer,
+        askCollaboration,
+        autonomyLevel,
         signal: ctrl.signal,
       })) {
         if (event.sender.isDestroyed()) break;
@@ -559,11 +556,15 @@ export function registerIpc(): void {
         if (chunk.type === 'turn_done' || chunk.type === 'error') break;
       }
     } finally {
-      // Resolve any outstanding prompts for this turn so they don't leak.
-      for (const [reqId, entry] of pendingPermissions) {
+      // Resolve any outstanding collaboration prompts for this turn.
+      for (const [reqId, entry] of pendingCollaborations) {
         if (entry.turnId === req.id) {
-          entry.resolve('deny');
-          pendingPermissions.delete(reqId);
+          entry.resolve({
+            reqId,
+            decision: 'denied',
+            custom_response: 'Turn aborted',
+          });
+          pendingCollaborations.delete(reqId);
         }
       }
       inFlight.delete(req.id);
@@ -631,17 +632,16 @@ export function registerIpc(): void {
   );
 
   /**
-   * Renderer's response to a `chat:permission-request` event. Pending
-   * prompts not answered before the turn ends are auto-denied (see the
-   * `chat:send` `finally` block above).
+   * Renderer's response to a `chat:collaboration-request` event.
+   * Used by intelligent collaboration system (RequestDecision, etc.).
    */
   ipcMain.handle(
-    'chat:permission-response',
-    (_e, payload: { reqId: string; decision: PermissionDecision }) => {
-      const entry = pendingPermissions.get(payload.reqId);
+    'chat:collaboration-response',
+    (_e, payload: EngagementResponse) => {
+      const entry = pendingCollaborations.get(payload.reqId);
       if (!entry) return;
-      entry.resolve(payload.decision);
-      pendingPermissions.delete(payload.reqId);
+      entry.resolve(payload);
+      pendingCollaborations.delete(payload.reqId);
     },
   );
 
@@ -801,9 +801,6 @@ export function registerIpc(): void {
   );
   ipcMain.handle('sessions:delete', (_e, id: string) => {
     deleteSession(id);
-    // Clear Anthropic permission approvals for this session.
-    clearSessionAllow(id);
-    clearPiSessionAllow(id);
     const sddState = sddGetState(id);
     if (sddState) {
       for (const entity of sddState.entities) {
@@ -1226,11 +1223,6 @@ export function registerIpc(): void {
       const watchCb = (_rootPath: string): void => {
         const currentMode = sddGetState(sessionId)?.mode ?? 'auto';
         void sddScanForEntities(cwd).then((fresh) => {
-          // Snapshot current entity roots before reinit so we can detect new ones.
-          const prevRoots = new Set(
-            sddGetState(sessionId)?.entities.map((e) => e.rootPath) ?? [],
-          );
-
           // Reinit, preserving confidence='manual' mappings (BUG-SDD-02).
           // Re-read session pin from disk so feature.json changes are picked up
           // when the user has not explicitly pinned a feature.

@@ -17,6 +17,7 @@ import {formatPreferencesForPrompt, getCoAuthorPreference,} from '../storage/pre
 import { findProjectForPath } from '../storage/projects';
 import {formatExtensionsAwareness} from '../extensions/directive';
 import { buildSddPromptBlock } from '../sdd/system-prompt';
+import { getCollaborationGuidance } from './collaboration-prompt';
 import { loadAllAgents } from '../agents/storage';
 import { getSettings, DEFAULT_CONTEXT_FILE_NAMES } from '../storage/settings';
 
@@ -458,6 +459,12 @@ export interface SystemPromptOptions {
   piAuthProvider?: string;
   /** Active model ID forwarded for display in the identity line. */
   model?: string;
+  /**
+   * User's autonomy level (0-100). Determines how often the agent engages
+   * the user for decisions, approvals, and feedback.
+   * Default: 50 (balanced collaboration)
+   */
+  autonomyLevel?: number;
 }
 
 /**
@@ -482,6 +489,10 @@ export function getSystemPrompt(opts: SystemPromptOptions = {}): string {
   if (opts.sessionId) {
     sddBlock = buildSddPromptBlock(opts.sessionId, opts.userMessage);
   }
+
+  // Collaboration system guidance — teaches LLM when to engage user
+  const autonomyLevel = opts.autonomyLevel ?? 50; // Default: balanced
+  const collaborationBlock = getCollaborationGuidance(autonomyLevel);
 
   // Agents awareness block — injected once per session (like extensions).
   let agentsBlock = '';
@@ -508,7 +519,7 @@ Use the Agent tool to delegate focused tasks to specialized sub-agents when it i
 </agents>`;
   }
 
-  return `${basePrompt}${userPreferences}${projectContextFiles}${sddBlock ? `\n\n${sddBlock}` : ''}${agentsBlock ? `\n\n${agentsBlock}` : ''}`;
+  return `${basePrompt}${userPreferences}${projectContextFiles}${collaborationBlock ? `\n\n${collaborationBlock}` : ''}${sddBlock ? `\n\n${sddBlock}` : ''}${agentsBlock ? `\n\n${agentsBlock}` : ''}`;
 }
 
 /**
@@ -527,6 +538,8 @@ export function buildSystemPromptAppend(input: {
   piAuthProvider?: string;
   /** Active model ID — forwarded to resolveProviderDescription(). */
   model?: string;
+  /** User's autonomy level (0-100) — forwarded to collaboration system. */
+  autonomyLevel?: number;
 }): string {
   return getSystemPrompt({
     workingDirectory: input.cwd,
@@ -536,6 +549,7 @@ export function buildSystemPromptAppend(input: {
     authType: input.authType,
     piAuthProvider: input.piAuthProvider,
     model: input.model,
+    autonomyLevel: input.autonomyLevel,
   });
 }
 

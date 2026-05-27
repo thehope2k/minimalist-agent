@@ -3,7 +3,6 @@ import {
   Keyboard,
   Sparkles,
   Folders,
-  Shield,
   SquareTerminal,
   User,
 } from 'lucide-react';
@@ -13,7 +12,6 @@ export const SETTINGS_CATEGORIES = [
   { id: 'app',         label: 'App',         hint: 'Notifications and updates',     icon: Cog },
   { id: 'ai',          label: 'AI',          hint: 'Model, thinking, connections',  icon: Sparkles },
   { id: 'projects',    label: 'Projects',    hint: 'Group sessions by project',     icon: Folders },
-  { id: 'permissions', label: 'Permissions', hint: 'Explore mode rules',            icon: Shield },
   { id: 'preferences', label: 'Preferences', hint: 'Name, timezone, language, notes',  icon: User },
   { id: 'terminal',    label: 'Terminal',    hint: 'Shell, font, scrollback',           icon: SquareTerminal },
   { id: 'shortcuts',    label: 'Shortcuts',   hint: 'Keyboard shortcut reference',       icon: Keyboard },

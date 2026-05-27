@@ -1,8 +1,8 @@
 // Main-process Pi backend.
 //
 // Owns the per-chat-session subprocess that runs `@mariozechner/pi-coding-agent`.
-// Bridges JSONL events to the AgentChatEvent stream and round-trips the
-// permission gate, OAuth refresh, and mini-completion RPCs with main.
+// Bridges JSONL events to the AgentChatEvent stream and handles OAuth refresh
+// and mini-completion RPCs with main.
 //
 // Lifecycle:
 //   1. First chat turn lazy-spawns `out/main/pi-server.js` under node
@@ -11,10 +11,10 @@
 //   4. Sends `prompt`; forwards `event` messages until `turn_done`/`error`
 //   5. On window close / app quit / abort: sends `shutdown` then SIGKILL fallback
 //
-// Permission gate:
-//   Each non-readonly tool call by Pi triggers a `pre_tool_use_request`.
-//   We resolve it via the same renderer-side permission UI used by the
-//   Anthropic backend — same allow-once / allow-session / deny semantics.
+// Execution modes:
+//   - Plan mode: Read-only tools (Read, Grep, Find, Ls) allowed, others blocked
+//   - Auto mode: All tools allowed; agent uses collaboration tools for intelligent
+//     engagement (RequestDecision, RequestPreference, RequestApproval, etc.)
 //
 // Token refresh:
 //   When the subprocess detects an auth failure (typed `auth_required`),
@@ -26,8 +26,7 @@ import {type ChildProcess, spawn} from 'node:child_process';
 import {resolveExtensionEnv} from '../../../extensions/env-resolver';
 import {createInterface, type Interface as ReadlineInterface} from 'node:readline';
 import {app} from 'electron';
-import {join} from 'node:path';
-import {existsSync, readFileSync} from 'node:fs';
+import {readFileSync} from 'node:fs';
 import {resolvePiServerPath} from './spawn-utils';
 import type {StoredAttachment} from '../../../storage/sessions';
 import {updateSessionMeta} from '../../../storage/sessions';
@@ -37,11 +36,13 @@ import {buildPromptPrefix, buildSystemPromptAppend,} from '../../system-prompt';
 import {extractSkillPaths, formatSkillDirective} from '../../../skills/directive';
 import type {PermissionMode} from '../../permissions';
 import type {CopilotOAuthAuth, LocalApiAuth} from '../types';
-import {decidePiPermission, type PiPermissionDecisionArgs,} from './permission-bridge';
+import type {CollaborationAsk} from '../../claude';
+import type {EngagementRequest} from '../../../../shared/collaboration-types';
 import {resolveAuthForSlug} from '../../../auth/resolve';
 import {loadAllAgents} from '../../../agents/storage';
 import type {
   MsgAuthRequired,
+  MsgCollaborationRequest,
   MsgEvent,
   MsgInit,
   MsgLlmQueryResult,
@@ -63,16 +64,6 @@ import type {
 /*  Public types                                                 */
 /* ============================================================ */
 
-export interface PiPermissionAsk {
-  (req: {
-    reqId: string;
-    turnId: string;
-    sessionId: string;
-    toolName: string;
-    input: Record<string, unknown>;
-  }): Promise<'allow_once' | 'allow_session' | 'deny'>;
-}
-
 export interface PiChatRequest {
   /** Connection slug — needed by the resolver for mid-session token refresh. */
   connectionSlug: string;
@@ -90,8 +81,10 @@ export interface PiChatRequest {
   cwd?: string;
   thinkingLevel?: PiThinkingLevel;
   permissionMode?: PermissionMode;
-  /** Renderer-side permission prompt callback. */
-  ask?: PiPermissionAsk;
+  /** Collaboration callback for intelligent engagement tools. */
+  askCollaboration?: CollaborationAsk;
+  /** User's autonomy level (0-100) for intelligent collaboration. */
+  autonomyLevel?: number;
   signal?: AbortSignal;
 }
 
@@ -146,10 +139,10 @@ interface SubprocessHandle {
   ready: Promise<void>;
   /** turnId → event queue. */
   queues: Map<string, EventQueue>;
-  /** turnId → permission-ask callback (mode + ask + sessionId). */
+  /** turnId → permission context (mode + sessionId). */
   permissionContext: Map<
     string,
-    { mode: PermissionMode; ask: PiPermissionAsk; sessionId: string }
+    { mode: PermissionMode; sessionId: string }
   >;
   /** RequestId → resolver for mini_completion / llm_query. */
   pendingMini: Map<
@@ -171,6 +164,8 @@ interface SubprocessHandle {
   refreshing?: boolean;
   /** Model ID currently active in the subprocess. */
   currentModel?: string;
+  /** Collaboration callback to show engagement dialogs. */
+  askCollaboration?: CollaborationAsk;
 }
 
 /** Per-chat-session subprocess. */
@@ -244,7 +239,7 @@ function ensureSubprocess(
   const queues = new Map<string, EventQueue>();
   const permissionContext = new Map<
     string,
-    { mode: PermissionMode; ask: PiPermissionAsk; sessionId: string }
+    { mode: PermissionMode; sessionId: string }
   >();
   const pendingMini = new Map<
     string,
@@ -277,6 +272,7 @@ function ensureSubprocess(
     connectionSlug: req.connectionSlug,
     piAuthProvider: req.piAuthProvider,
     currentModel: req.model,
+    askCollaboration: req.askCollaboration,
   };
 
   rl.on('line', (line) => {
@@ -405,20 +401,76 @@ async function handleOutbound(
         });
         return;
       }
-      const decision = await decidePiPermission({
-        mode: piModeFromPermissionMode(ctx.mode),
-        sessionId: ctx.sessionId,
-        turnId: req.turnId,
-        toolName: req.toolName,
-        input: req.input,
-        ask: ctx.ask as never,
-      } as PiPermissionDecisionArgs);
+      const decision: { action: 'allow' | 'block'; reason?: string } = { action: 'allow', reason: undefined };
+      
+      // In plan mode, block write operations
+      if (ctx.mode === 'plan') {
+        const readOnlyTools = new Set(['Read', 'Grep', 'Find', 'Ls']);
+        if (!readOnlyTools.has(req.toolName)) {
+          decision.action = 'block';
+          decision.reason = 'Plan mode: write operations not allowed';
+        }
+      }
+      // In auto mode, allow all tools (agent uses collaboration tools for engagement)
+      
       send(handle, {
         type: 'pre_tool_use_response',
         requestId: req.requestId,
         action: decision.action,
         reason: decision.reason,
       });
+      return;
+    }
+
+    case 'collaboration_request': {
+      const req = msg as MsgCollaborationRequest;
+      
+      // Forward to askCollaboration callback if available
+      if (!handle.askCollaboration) {
+        console.warn('[Pi agent] Collaboration request received but no askCollaboration callback');
+        // Return a default "no" response
+        send(handle, {
+          type: 'collaboration_response',
+          requestId: req.requestId,
+          response: {
+            type: req.engagementType,
+            decision: 'denied',
+            custom_response: 'Collaboration not available',
+          },
+        });
+        return;
+      }
+
+      // Convert to EngagementRequest format
+      const engagementRequest: EngagementRequest = {
+        reqId: req.requestId,
+        turnId: req.turnId,
+        sessionId: req.sessionId,
+        type: req.engagementType,
+        payload: req.payload as any, // Payload is validated by collaboration handlers
+      };
+
+      // Call the renderer callback
+      handle.askCollaboration(engagementRequest)
+        .then((response: any) => {
+          send(handle, {
+            type: 'collaboration_response',
+            requestId: req.requestId,
+            response,
+          });
+        })
+        .catch((err: any) => {
+          console.error('[Pi agent] Collaboration request failed:', err);
+          send(handle, {
+            type: 'collaboration_response',
+            requestId: req.requestId,
+            response: {
+              type: req.engagementType,
+              decision: 'denied',
+              custom_response: 'Error: ' + String(err),
+            },
+          });
+        });
       return;
     }
 
@@ -522,10 +574,6 @@ async function handleOutbound(
   }
 }
 
-function piModeFromPermissionMode(mode: PermissionMode): 'plan' | 'ask' | 'auto' {
-  return mode;
-}
-
 /* ============================================================ */
 /*  Public API: chat turn                                        */
 /* ============================================================ */
@@ -582,7 +630,15 @@ export async function* runPiChat(
   // of a new session if initSessionState hasn't completed yet (race with the
   // React useEffect that fires after the send handler). Re-computed after
   // handle.ready to capture any state that settled during the spawn window.
-  const initAppend = buildSystemPromptAppend({ cwd: req.cwd, sessionId: req.chatSessionId, userMessage: req.prompt, authType: req.auth.type, piAuthProvider: req.piAuthProvider, model: req.model });
+  const initAppend = buildSystemPromptAppend({
+    cwd: req.cwd,
+    sessionId: req.chatSessionId,
+    userMessage: req.prompt,
+    authType: req.auth.type,
+    piAuthProvider: req.piAuthProvider,
+    model: req.model,
+    autonomyLevel: req.autonomyLevel,
+  });
   const prefix = buildPromptPrefix({ cwd: req.cwd });
 
   // Resolve `@slug` / `@path` mentions exactly as the Anthropic backend does.
@@ -625,19 +681,24 @@ export async function* runPiChat(
   }
 
   // Re-compute after ready: initSessionState may have completed during spawn.
-  const append = buildSystemPromptAppend({ cwd: req.cwd, sessionId: req.chatSessionId, userMessage: req.prompt, authType: req.auth.type, piAuthProvider: req.piAuthProvider, model: req.model });
+  const append = buildSystemPromptAppend({
+    cwd: req.cwd,
+    sessionId: req.chatSessionId,
+    userMessage: req.prompt,
+    authType: req.auth.type,
+    piAuthProvider: req.piAuthProvider,
+    model: req.model,
+    autonomyLevel: req.autonomyLevel,
+  });
 
   // Update mode in case the user changed it between turns.
   send(handle, { type: 'set_permission_mode', mode: req.permissionMode ?? 'auto' });
 
   // Register permission context for this turn.
-  if (req.ask) {
-    handle.permissionContext.set(req.turnId, {
-      mode: req.permissionMode ?? 'auto',
-      ask: req.ask,
-      sessionId: req.chatSessionId,
-    });
-  }
+  handle.permissionContext.set(req.turnId, {
+    mode: req.permissionMode ?? 'auto',
+    sessionId: req.chatSessionId,
+  });
 
   const queue = new EventQueue();
   handle.queues.set(req.turnId, queue);

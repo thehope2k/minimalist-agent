@@ -1,7 +1,6 @@
 import { AIPanel } from './panels/AIPanel';
 import { AppPanel } from './panels/AppPanel';
 import { KeyboardShortcutsPanel } from './panels/KeyboardShortcutsPanel';
-import { PermissionsPanel } from './panels/PermissionsPanel';
 import { PreferencesPanel } from './panels/PreferencesPanel';
 import { ProjectsPanel } from './panels/ProjectsPanel';
 import { StubPanel } from './panels/StubPanel';
@@ -23,8 +22,6 @@ export function SettingsContent({ category }: { category: SettingsCategory }) {
           <AIPanel />
         ) : category === 'app' ? (
           <AppPanel />
-        ) : category === 'permissions' ? (
-          <PermissionsPanel />
         ) : category === 'preferences' ? (
           <PreferencesPanel />
         ) : category === 'projects' ? (

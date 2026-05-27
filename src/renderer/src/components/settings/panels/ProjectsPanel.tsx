@@ -339,7 +339,6 @@ function ProjectEditDialog({
               options={[
                 { value: '', label: 'Use global default' },
                 { value: 'plan', label: 'Plan' },
-                { value: 'ask', label: 'Ask' },
                 { value: 'auto', label: 'Auto' },
               ]}
             />

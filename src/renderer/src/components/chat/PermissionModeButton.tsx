@@ -1,21 +1,24 @@
-// Permission mode pill — sits directly above the message composer.
-// Three modes mapped onto the SDK's `permissionMode` (see
-// src/main/agent/permissions.ts):
+// Permission mode pill + autonomy slider — sits directly above the message composer.
+// Two modes:
 //
-//   plan  → SDK 'plan'              read-only, agent produces a plan
-//   ask   → SDK 'default' + canUseTool   user confirms each mutation
-//   auto  → SDK 'bypassPermissions' no prompts, max speed
+//   plan → SDK 'plan'               read-only, agent produces a plan
+//   auto → SDK 'default' + canUseTool    intelligent collaboration based on autonomy level
+//
+// In auto mode, shows an autonomy slider (0-100%) controlling how often
+// the agent engages the user in collaborative decision-making.
 
 import { useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
-import { Check, ChevronDown, Compass, ShieldCheck, Zap } from 'lucide-react';
+import { Check, ChevronDown, Compass, Zap } from 'lucide-react';
 import { Button } from '../ui';
 import type { PermissionMode } from '@/lib/electron';
 import { cn } from '@/lib/utils';
 
 type Props = {
-  value: PermissionMode;
-  onChange: (mode: PermissionMode) => void;
+  mode: PermissionMode;
+  onModeChange: (mode: PermissionMode) => void;
+  autonomyLevel: number; // 0-100
+  onAutonomyChange: (level: number) => void;
   disabled?: boolean;
 };
 
@@ -38,70 +41,91 @@ const MODES: Record<PermissionMode, ModeMeta> = {
     pill: 'border-sky-400/30 bg-sky-400/10 text-sky-300 hover:bg-sky-400/15 hover:text-sky-200',
     iconTone: 'text-sky-300',
   },
-  ask: {
-    label: 'Ask',
-    description:
-      'Default. Confirm before each file edit, write, or shell command.',
-    icon: ShieldCheck,
-    pill: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300 hover:bg-emerald-400/15 hover:text-emerald-200',
-    iconTone: 'text-emerald-300',
-  },
   auto: {
     label: 'Auto',
     description:
-      'Trusted automation. Tools run without asking — use with care.',
+      'Intelligent execution. Agent adapts collaboration based on autonomy level.',
     icon: Zap,
     pill: 'border-amber-400/30 bg-amber-400/10 text-amber-300 hover:bg-amber-400/15 hover:text-amber-200',
     iconTone: 'text-amber-300',
   },
 };
 
-const ORDER: PermissionMode[] = ['plan', 'ask', 'auto'];
+const ORDER: PermissionMode[] = ['plan', 'auto'];
 
-export function PermissionModeButton({ value, onChange, disabled }: Props) {
+export function PermissionModeButton({
+  mode,
+  onModeChange,
+  autonomyLevel,
+  onAutonomyChange,
+  disabled,
+}: Props) {
   const [open, setOpen] = useState(false);
-  const meta = MODES[value];
+  const meta = MODES[mode];
 
   return (
-    <Popover.Root open={open} onOpenChange={setOpen}>
-      <Popover.Trigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          icon={meta.icon}
-          iconRight={ChevronDown}
-          disabled={disabled}
-          title={meta.description}
-          className={cn('rounded-full px-2.5', meta.pill)}
-        >
-          {meta.label}
-        </Button>
-      </Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Content
-          align="start"
-          side="top"
-          sideOffset={6}
-          collisionPadding={8}
-          className="z-50 w-72 overflow-hidden rounded-lg border border-border bg-panel p-1 shadow-2xl"
-        >
-          <div className="px-2.5 pb-1 pt-2 text-[10px] uppercase tracking-wider text-fg-subtle">
-            Permission mode
-          </div>
-          {ORDER.map((m) => (
-            <ModeItem
-              key={m}
-              meta={MODES[m]}
-              selected={m === value}
-              onSelect={() => {
-                onChange(m);
-                setOpen(false);
-              }}
-            />
-          ))}
-        </Popover.Content>
-      </Popover.Portal>
-    </Popover.Root>
+    <div className="flex items-center gap-2">
+      {/* Mode Selector */}
+      <Popover.Root open={open} onOpenChange={setOpen}>
+        <Popover.Trigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            icon={meta.icon}
+            iconRight={ChevronDown}
+            disabled={disabled}
+            title={meta.description}
+            className={cn('rounded-full px-2.5', meta.pill)}
+          >
+            {meta.label}
+          </Button>
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Content
+            align="start"
+            side="top"
+            sideOffset={6}
+            collisionPadding={8}
+            className="z-50 w-72 overflow-hidden rounded-lg border border-border bg-panel p-1 shadow-2xl"
+          >
+            <div className="px-2.5 pb-1 pt-2 text-[10px] uppercase tracking-wider text-fg-subtle">
+              Execution mode
+            </div>
+            {ORDER.map((m) => (
+              <ModeItem
+                key={m}
+                meta={MODES[m]}
+                selected={m === mode}
+                onSelect={() => {
+                  onModeChange(m);
+                  setOpen(false);
+                }}
+              />
+            ))}
+          </Popover.Content>
+        </Popover.Portal>
+      </Popover.Root>
+
+      {/* Autonomy Slider (only in Auto mode) */}
+      {mode === 'auto' && (
+        <div className="flex items-center gap-2 px-2 py-1 rounded-full border border-border bg-elevated-1">
+          <span className="text-xs text-fg-subtle whitespace-nowrap">Autonomy:</span>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={autonomyLevel}
+            onChange={(e) => onAutonomyChange(Number(e.target.value))}
+            disabled={disabled}
+            className="w-24 h-1 bg-border rounded-full appearance-none cursor-pointer accent-amber-400 disabled:opacity-50 disabled:cursor-not-allowed"
+            title={getAutonomyDescription(autonomyLevel)}
+          />
+          <span className="text-xs font-medium text-fg tabular-nums min-w-[2.5rem] text-right">
+            {autonomyLevel}%
+          </span>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -144,4 +168,19 @@ function ModeItem({
       </span>
     </Button>
   );
+}
+
+/* ---- autonomy tooltips ------------------------------------------- */
+
+function getAutonomyDescription(level: number): string {
+  if (level <= 30) {
+    return 'Collaborative — Frequent engagement for decisions, preferences, and feedback';
+  }
+  if (level <= 60) {
+    return 'Balanced — Moderate engagement for complex decisions and risky operations';
+  }
+  if (level <= 80) {
+    return 'Independent — Minimal engagement, only for significant decisions';
+  }
+  return 'Autonomous — Rare engagement, very high independence';
 }

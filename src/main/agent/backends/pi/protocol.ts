@@ -27,7 +27,7 @@ export interface PiAuth {
 }
 
 /** Permission modes as the renderer expresses them. */
-export type PiPermissionMode = 'plan' | 'ask' | 'auto';
+export type PiPermissionMode = 'plan' | 'auto';
 
 export type PiThinkingLevel =
   | 'off'
@@ -84,7 +84,7 @@ export interface MsgInit {
       description: string;
       model?: string;
       tools?: string[];
-      permissionMode?: 'plan' | 'ask' | 'auto';
+      permissionMode?: 'plan' | 'auto';
       maxTurns?: number;
     };
     content: string; // system prompt
@@ -124,6 +124,13 @@ export interface MsgPreToolUseResponse {
   input?: unknown;
   /** Reason shown to the model when action === 'block'. */
   reason?: string;
+}
+
+/** Collaboration engagement response from main → subprocess. */
+export interface MsgCollaborationResponse {
+  type: 'collaboration_response';
+  requestId: string;
+  response: unknown; // EngagementResponse from collaboration-types
 }
 
 export interface MsgSetModel {
@@ -176,6 +183,7 @@ export type SubprocessInbound =
   | MsgAbort
   | MsgTokenUpdate
   | MsgPreToolUseResponse
+  | MsgCollaborationResponse
   | MsgSetModel
   | MsgSetThinkingLevel
   | MsgSetPermissionMode
@@ -212,6 +220,16 @@ export interface MsgPreToolUseRequest {
   toolCallId: string;
   toolName: string;
   input: unknown;
+}
+
+/** Collaboration engagement request from subprocess → main. */
+export interface MsgCollaborationRequest {
+  type: 'collaboration_request';
+  requestId: string;
+  turnId: string;
+  sessionId: string;
+  engagementType: 'decision' | 'preference' | 'feedback' | 'guidance' | 'approval';
+  payload: unknown;
 }
 
 export interface MsgMiniCompletionResult {
@@ -254,24 +272,9 @@ export type SubprocessOutbound =
   | MsgReady
   | MsgEvent
   | MsgPreToolUseRequest
+  | MsgCollaborationRequest
   | MsgMiniCompletionResult
   | MsgLlmQueryResult
   | MsgSessionIdUpdate
   | MsgAuthRequired
   | MsgFatalError;
-
-/* ============================================================ */
-/*  Helpers                                                      */
-/* ============================================================ */
-
-/** Read-only tool names that the permission gate can auto-allow even in
- *  `plan` mode. The same set the Anthropic backend treats as safe. */
-export const READ_ONLY_TOOL_NAMES: ReadonlySet<string> = new Set([
-  'read',
-  'grep',
-  'find',
-  'ls',
-  'glob',
-  'web_fetch',
-  'web_search',
-]);

@@ -122,6 +122,13 @@ export async function setSessionPermissionMode(
   await updateSessionMeta(id, { permissionMode: mode });
 }
 
+export async function setSessionAutonomyLevel(
+  id: string,
+  level: number,
+): Promise<void> {
+  await updateSessionMeta(id, { autonomyLevel: level });
+}
+
 export async function deleteSession(id: string): Promise<void> {
   await window.api.sessions.delete(id);
   await reload();

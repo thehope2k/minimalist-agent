@@ -66,7 +66,7 @@ export const AgentMetadataSchema = z
     model: z.string().optional(),
     tools: z.array(z.string()).optional(),
     maxTurns: z.number().int().min(1).optional(),
-    permissionMode: z.enum(['plan', 'ask', 'auto']).optional(),
+    permissionMode: z.enum(['plan', 'auto']).optional(),
     effort: z.enum(['low', 'medium', 'high']).optional(),
     icon: z.string().optional(),
   })

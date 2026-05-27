@@ -106,7 +106,7 @@ What's shipped, what's coming, and what's intentionally out of scope.
 
 | What | Notes                                             |
 |---|---------------------------------------------------|
-| **Mode Architecture: Built-in Agents + Plan/Task UI** | Details in docs/intelligent-automation-system.md. |
+| **Mode Architecture: Built-in Agents + Plan/Task UI** | Agent intelligently decides when to show planning phases vs. execute directly in Auto mode. Agent assesses task complexity and shows structured planning workflow for complex tasks. Details in docs/COLLABORATION.md (see "Missing: Intelligent Plan/Execute Decision") |
 
 ---
 

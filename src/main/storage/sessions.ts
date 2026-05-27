@@ -151,6 +151,12 @@ export interface SessionMeta {
    * injection is enabled. Added in v7. Defaults to null when absent.
    */
   activeFeatureSlug?: string | null;
+  /**
+   * Per-session autonomy level (0-100) for intelligent collaboration.
+   * Higher = more independent, lower = more collaborative.
+   * Defaults to 50 (balanced) when absent. Added in v8.
+   */
+  autonomyLevel?: number;
 }
 
 export type SessionSummary = SessionMeta;
@@ -166,7 +172,7 @@ const META_DEFAULT_FACTORY = (): SessionMeta => ({
 function metaSchema(id: string): FileSchema<SessionMeta> {
   return {
     path: join(Paths.sessionsDir(), id, 'session.json'),
-    currentVersion: 6,
+    currentVersion: 9,
     defaultValue: META_DEFAULT_FACTORY(),
     // Index 0 → v0 (legacy/unset). Index 1 → v1 (no usage field).
     // Index 2 → v2 (no permissionMode field). Index 3 → v3 (no projectId).
@@ -177,14 +183,29 @@ function metaSchema(id: string): FileSchema<SessionMeta> {
     // to 'auto' at every call-site — no migration step needed.
     // NOTE: activeFeatureSlug (added in v7) is a fully optional field that
     // defaults to null at every call-site — no migration step needed.
+    // NOTE: autonomyLevel (added in v8) is a fully optional field that
+    // defaults to 50 at every call-site — no migration step needed.
+    // v9: Remove 'ask' permission mode (replaced by intelligent collaboration).
     migrations: [
       (prev) => ({ ...META_DEFAULT_FACTORY(), ...(prev as object) }) as SessionMeta,
       (prev) => ({ ...(prev as SessionMeta) }),
       (prev) => ({ ...(prev as SessionMeta) }),
       (prev) => ({ ...(prev as SessionMeta), projectId: null }) as SessionMeta,
       (prev) => ({ ...(prev as SessionMeta) }),
-      // v5 → v6: adds activeFeatureSlug (optional field, no-op migration).
+      // v5 → v6: adds sddMode (optional field, no-op migration).
       (prev) => ({ ...(prev as SessionMeta) }),
+      // v6 → v7: adds activeFeatureSlug (optional field, no-op migration).
+      (prev) => ({ ...(prev as SessionMeta) }),
+      // v7 → v8: adds autonomyLevel (optional field, no-op migration).
+      (prev) => ({ ...(prev as SessionMeta) }),
+      // v8 → v9: migrate 'ask' → 'auto' (breaking change).
+      (prev) => {
+        const session = prev as SessionMeta;
+        if (session.permissionMode === 'ask' as any) {
+          return { ...session, permissionMode: 'auto' };
+        }
+        return session;
+      },
     ],
   };
 }

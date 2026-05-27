@@ -1,23 +1,29 @@
 // Public agent entry point. Dispatches to a provider-specific backend
 // based on the resolved auth shape.
 //
-//   anthropic_api_key | anthropic_oauth → backends/anthropic.ts
-//   copilot_oauth                       → backends/pi/agent.ts
+//   anthropic related → backends/anthropic.ts
+//   others                       → backends/pi/agent.ts
 
-import type { CanUseTool } from '@anthropic-ai/claude-agent-sdk';
 import type { StoredAttachment } from '../storage/sessions';
 import { sessionPath } from '../storage/sessions';
 import type { AgentChatEvent } from './events';
 import type { PermissionMode } from './permissions';
 import type { PiAuthProvider } from '../../shared/pi-types';
 import { runAnthropicChat, type AnthropicAuth } from './backends/anthropic';
-import { runPiChat, type PiPermissionAsk } from './backends/pi/agent';
+import { runPiChat } from './backends/pi/agent';
 import type { ResolvedAuth } from './backends/types';
+import type { EngagementRequest, EngagementResponse } from '../../shared/collaboration-types';
 
 export type { AgentChatEvent };
 export type { AnthropicAuth };
 export type { ResolvedAuth };
-export type { PiPermissionAsk };
+
+/**
+ * Collaboration callback for intelligent engagement.
+ */
+export type CollaborationAsk = (
+  request: EngagementRequest,
+) => Promise<EngagementResponse>;
 
 export interface AgentChatRequest {
   /**
@@ -44,10 +50,10 @@ export interface AgentChatRequest {
   resumeSessionId?: string;
   maxTurns?: number;
   permissionMode?: PermissionMode;
-  /** Anthropic-only: SDK callback for tool-use prompts. */
-  canUseTool?: CanUseTool;
-  /** Pi-only: renderer-side permission prompt callback. */
-  ask?: PiPermissionAsk;
+  /** Collaboration callback for intelligent engagement tools. */
+  askCollaboration?: CollaborationAsk;
+  /** User's autonomy level (0-100) for intelligent collaboration. */
+  autonomyLevel?: number;
   signal?: AbortSignal;
 }
 
@@ -80,7 +86,8 @@ export function runAgentChat(
       attachments: req.attachments,
       cwd: req.cwd,
       permissionMode: req.permissionMode,
-      ask: req.ask,
+      askCollaboration: req.askCollaboration,
+      autonomyLevel: req.autonomyLevel,
       signal: req.signal,
     });
   }
@@ -95,7 +102,8 @@ export function runAgentChat(
     resumeSessionId: req.resumeSessionId,
     maxTurns: req.maxTurns,
     permissionMode: req.permissionMode,
-    canUseTool: req.canUseTool,
+    askCollaboration: req.askCollaboration,
+    autonomyLevel: req.autonomyLevel,
     signal: req.signal,
   });
 }

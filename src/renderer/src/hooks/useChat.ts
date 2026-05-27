@@ -23,7 +23,7 @@ interface SendArgs {
   cwd?: string;
   /** Bound for tool-use loops in this turn. */
   maxTurns?: number;
-  /** Permission mode for this turn ('plan' | 'ask' | 'auto'). */
+  /** Permission mode for this turn ('plan' | 'auto'). */
   permissionMode: PermissionMode;
   /** Draft attachments — persisted to the session before send. */
   attachments?: DraftAttachment[];

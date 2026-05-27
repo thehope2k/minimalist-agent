@@ -53,6 +53,8 @@ type Props = {
   cwdLocked?: boolean;
   permissionMode: PermissionMode;
   onChangePermissionMode: (mode: PermissionMode) => void;
+  autonomyLevel: number;
+  onChangeAutonomyLevel: (level: number) => void;
   onSend: (args: SendArgs) => void;
   onAbort: () => void;
   /**
@@ -93,6 +95,8 @@ export function MessageInput({
   cwdLocked,
   permissionMode,
   onChangePermissionMode,
+  autonomyLevel,
+  onChangeAutonomyLevel,
   onSend,
   onAbort,
   onSteer,
@@ -526,8 +530,10 @@ return (
 
       <div className="mb-2 flex items-center gap-2 px-1">
         <PermissionModeButton
-          value={permissionMode}
-          onChange={onChangePermissionMode}
+          mode={permissionMode}
+          onModeChange={onChangePermissionMode}
+          autonomyLevel={autonomyLevel}
+          onAutonomyChange={onChangeAutonomyLevel}
           disabled={isStreaming}
         />
         <div className="flex-1" />

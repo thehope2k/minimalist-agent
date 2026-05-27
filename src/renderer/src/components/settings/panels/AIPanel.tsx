@@ -45,18 +45,16 @@ const THINKING_DESCRIPTIONS: Record<ThinkingLevel, string> = {
   max: 'Maximum reasoning budget',
 };
 
-const PERMISSION_MODES: PermissionMode[] = ['plan', 'ask', 'auto'];
+const PERMISSION_MODES: PermissionMode[] = ['plan', 'auto'];
 
 const PERMISSION_LABELS: Record<PermissionMode, string> = {
   plan: 'Plan',
-  ask: 'Ask',
   auto: 'Auto',
 };
 
 const PERMISSION_DESCRIPTIONS: Record<PermissionMode, string> = {
   plan: 'Read-only research; agent proposes a plan',
-  ask: 'Confirm each tool call (recommended)',
-  auto: 'Run all tools without asking',
+  auto: 'Intelligent execution with configurable autonomy',
 };
 
 export function AIPanel() {
@@ -202,7 +200,7 @@ export function AIPanel() {
             control={
               <Select
                 variant="compact"
-                value={settings.defaultPermissionMode ?? 'ask'}
+                value={settings.defaultPermissionMode ?? 'auto'}
                 onChange={(v) => void setDefaultPermissionMode(v as PermissionMode)}
                 options={PERMISSION_MODES.map((m) => ({
                   value: m,
