@@ -106,6 +106,15 @@ export async function replaceLastMessage(
   // jump in the sidebar while multiple turns ran simultaneously.
 }
 
+export async function rewriteMessages(
+  id: string,
+  messages: StoredMessage[],
+): Promise<void> {
+  await window.api.sessions.rewriteMessages(id, messages);
+  // No reload needed — rewriteMessages is used for mid-turn insertions
+  // (compaction markers, steer messages) which don't affect session metadata.
+}
+
 export async function updateSessionMeta(
   id: string,
   patch: Partial<Omit<SessionMeta, 'id' | 'createdAt'>>,

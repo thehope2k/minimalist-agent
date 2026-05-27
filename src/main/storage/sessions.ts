@@ -398,6 +398,27 @@ export function replaceLastMessage(id: string, msg: StoredMessage): void {
   // and createSession.
 }
 
+/**
+ * Rewrite the entire messages file with the provided array. Used when
+ * mid-turn insertion changes the order (e.g., compaction markers, steer
+ * messages) and we need to persist the correct in-memory order to disk.
+ */
+export function rewriteMessages(id: string, messages: StoredMessage[]): void {
+  ensureSessionDir(id);
+  const mp = messagesPath(id);
+  const lines = messages.map((m) => JSON.stringify(m));
+  writeFileSync(mp, lines.length ? lines.join('\n') + '\n' : '', 'utf-8');
+  
+  // Update lastMessageAt from the last message's createdAt
+  if (messages.length > 0) {
+    const lastMsg = messages[messages.length - 1];
+    const meta = load(metaSchema(id));
+    meta.id = id;
+    meta.lastMessageAt = lastMsg.createdAt;
+    save(metaSchema(id), meta);
+  }
+}
+
 export function updateSessionMeta(
   id: string,
   patch: Partial<Omit<SessionMeta, 'id' | 'createdAt'>>,

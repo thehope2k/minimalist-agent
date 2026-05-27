@@ -43,6 +43,8 @@ import type {
   EngagementRequest,
   EngagementResponse,
 } from '../shared/collaboration-types';
+import { getActivePlan, updatePlanCache as updatePlan } from './agent/plan-cache';
+import type { Phase } from '../shared/planning-types';
 import { getKeepAwake, setAgentActive, setKeepAwake } from './power';
 import { getAppIcon } from './app-icon';
 import {
@@ -154,6 +156,7 @@ import {
   listSessions,
   loadSession,
   replaceLastMessage,
+  rewriteMessages,
   listSessionFiles,
   sessionPath,
   setSessionProject,
@@ -645,6 +648,95 @@ export function registerIpc(): void {
     },
   );
 
+  // ---- Planning Workflow ------------------------------------------------
+
+  /**
+   * Planning workflow IPC handlers - manages multi-phase execution plans.
+   * Plan state is managed by the pi-server subprocess via PlanManager.
+   * Events from subprocess update the cache, which is queried here.
+   */
+  
+  ipcMain.handle('planning:getActivePlan', async (_e, sessionId: string) => {
+    return getActivePlan(sessionId);
+  });
+
+  ipcMain.handle('planning:pausePlan', async (_e, sessionId: string) => {
+    // Pause functionality would require sending a message to pi-server
+    // For now, just update the local cache
+    const plan = getActivePlan(sessionId);
+    if (plan) {
+      plan.status = 'paused';
+      updatePlan(sessionId, plan);
+    }
+  });
+
+
+  ipcMain.handle('planning:cancelPlan', async (_e, sessionId: string) => {
+    const plan = getActivePlan(sessionId);
+    if (plan) {
+      plan.status = 'cancelled';
+      updatePlan(sessionId, plan);
+      // Notify renderer
+      BrowserWindow.getAllWindows()[0]?.webContents.send('planning:cancelled', plan.id);
+    }
+    updatePlan(sessionId, null);
+  });
+
+  ipcMain.handle('planning:approvePhase', async (_e, sessionId: string, phaseId: string, notes?: string) => {
+    const plan = getActivePlan(sessionId);
+    if (!plan) return;
+
+    // Find and update the phase
+    const phase = plan.phases.find((p: Phase) => p.id === phaseId);
+    if (phase) {
+      // Mark as approved (metadata)
+      phase.findings = phase.findings 
+        ? `${phase.findings}\n[User approved${notes ? `: ${notes}` : ''}]`
+        : `[User approved${notes ? `: ${notes}` : ''}]`;
+      updatePlan(sessionId, plan);
+    }
+  });
+
+  ipcMain.handle('planning:denyPhase', async (_e, sessionId: string, phaseId: string, reason?: string) => {
+    const plan = getActivePlan(sessionId);
+    if (!plan) return;
+
+    // Find and skip the phase
+    const phase = plan.phases.find((p: Phase) => p.id === phaseId);
+    if (phase && (phase.status === 'pending' || phase.status === 'blocked')) {
+      phase.status = 'skipped';
+      phase.error = reason || 'Denied by user';
+      updatePlan(sessionId, plan);
+    }
+  });
+
+  ipcMain.handle('planning:retryPhase', async (_e, sessionId: string, phaseId: string) => {
+    const plan = getActivePlan(sessionId);
+    if (!plan) return;
+
+    // Reset phase to pending
+    const phase = plan.phases.find((p: Phase) => p.id === phaseId);
+    if (phase && phase.status === 'error') {
+      phase.status = 'pending';
+      phase.error = undefined;
+      phase.startedAt = undefined;
+      phase.completedAt = undefined;
+      updatePlan(sessionId, plan);
+    }
+  });
+
+  ipcMain.handle('planning:skipPhase', async (_e, sessionId: string, phaseId: string) => {
+    const plan = getActivePlan(sessionId);
+    if (!plan) return;
+
+    // Mark phase as skipped
+    const phase = plan.phases.find((p: Phase) => p.id === phaseId);
+    if (phase && (phase.status === 'error' || phase.status === 'blocked')) {
+      phase.status = 'skipped';
+      updatePlan(sessionId, plan);
+    }
+  });
+
   // ---- Connections + AI settings -----------------------------------------
 
   ipcMain.handle('connections:list', () => listConnections());
@@ -774,6 +866,10 @@ export function registerIpc(): void {
   ipcMain.handle(
     'sessions:replaceLastMessage',
     (_e, id: string, msg: StoredMessage) => replaceLastMessage(id, msg),
+  );
+  ipcMain.handle(
+    'sessions:rewriteMessages',
+    (_e, id: string, messages: StoredMessage[]) => rewriteMessages(id, messages),
   );
   ipcMain.handle(
     'sessions:updateMeta',
@@ -1382,7 +1478,7 @@ export function registerIpc(): void {
     'git:generateCommitMessage',
     async (
       _e,
-      args: { connectionSlug: string; model?: string; diffContext: string; sessionId?: string; cwd?: string },
+      args: { connectionSlug: string; model?: string; diffContext: string; userContext?: string; sessionId?: string; cwd?: string },
     ) => {
       try {
         const { resolveAuthForSlug } = await import('./auth/resolve');
@@ -1393,6 +1489,7 @@ export function registerIpc(): void {
         const result = await generateCommitMessage({
           auth,
           diffContext: args.diffContext,
+          userContext: args.userContext,
           model: args.model,
           connectionSlug: args.connectionSlug,
           chatSessionId: args.sessionId,

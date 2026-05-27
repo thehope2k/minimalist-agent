@@ -839,6 +839,7 @@ export interface AppApi {
     setProject: (id: string, projectId: string | null) => Promise<SessionMeta>;
     appendMessage: (id: string, msg: StoredMessage) => Promise<void>;
     replaceLastMessage: (id: string, msg: StoredMessage) => Promise<void>;
+    rewriteMessages: (id: string, messages: StoredMessage[]) => Promise<void>;
     updateMeta: (
       id: string,
       patch: Partial<Omit<SessionMeta, 'id' | 'createdAt'>>,

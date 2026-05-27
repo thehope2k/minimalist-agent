@@ -492,6 +492,12 @@ const api = {
     }): Promise<SessionMeta> => ipcRenderer.invoke('sessions:create', opts),
     setProject: (id: string, projectId: string | null): Promise<SessionMeta> =>
       ipcRenderer.invoke('sessions:setProject', id, projectId),
+    appendMessage: (id: string, msg: StoredMessage): Promise<void> =>
+      ipcRenderer.invoke('sessions:appendMessage', id, msg),
+    replaceLastMessage: (id: string, msg: StoredMessage): Promise<void> =>
+      ipcRenderer.invoke('sessions:replaceLastMessage', id, msg),
+    rewriteMessages: (id: string, messages: StoredMessage[]): Promise<void> =>
+      ipcRenderer.invoke('sessions:rewriteMessages', id, messages),
     updateMeta: (
       id: string,
       patch: Partial<Omit<SessionMeta, 'id' | 'createdAt'>>,
