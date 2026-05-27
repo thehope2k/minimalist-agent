@@ -39,6 +39,23 @@ files are already present in the worktree from git.
 If the project is not a git repository, agents run in the original working
 directory (no isolation). This ensures the feature degrades gracefully.
 
+### Limitations and Resource Contention
+
+Git worktrees **only isolate file system paths**. They do NOT prevent:
+
+- **System-wide package caches** — shared by all processes (e.g., `~/.m2/repository/`, `~/.npm/`, `~/.gradle/`, `~/.cargo/`, pip cache)
+- **Port conflicts** — multiple processes binding the same port
+- **Daemon/service locks** — Docker, databases, system services
+- **Global lock files** — package managers coordinating across the system
+
+**If you are a sub-agent running in parallel with others:**
+
+1. **Before running builds or installs**, check if you actually need to — read existing build outputs, use offline/cached modes, or skip if another agent is handling it.
+2. **Avoid starting servers** — don't run dev servers, databases, or anything that binds ports unless absolutely necessary.
+3. **Use unique ports if required** — if you must run a server, allocate a random high port to avoid conflicts.
+4. **Serialize heavy operations** — if another agent is clearly doing the same expensive task (building, installing dependencies), coordinate or wait.
+5. **Prefer read-only operations** — focus on analysis, code generation, or reporting over builds/installs when possible.
+
 ## Shared UI components
 
 We have a small in-house UI library at `src/renderer/src/components/ui/`:
