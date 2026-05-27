@@ -28,6 +28,7 @@ What's shipped, what's coming, and what's intentionally out of scope.
 | **Subagents** | Agent/Task delegation available on both Anthropic and Pi backends, including parallel-safe spawning on Pi |
 | **Permission modes** | Plan (read-only exploration) · Auto (intelligent execution with 0-100% autonomy slider) — per-session and global default |
 | **Intelligent collaboration** | Auto mode includes autonomy slider (0-100%) controlling how often the agent engages the user for decisions, approvals, preferences, feedback, and guidance. Higher autonomy = more independence; lower autonomy = more collaboration. See [COLLABORATION.md](COLLABORATION.md) |
+| **Planning workflow** | Intelligent multi-phase execution for complex tasks. Agent creates structured plans with safety-classified phases, real-time progress tracking, dynamic revision, and human-in-the-loop controls. Plan mode auto-executes safe phases; Auto mode uses autonomy for approvals. Full UI with progress widget, approval dialogs, error recovery. See [PLANNING_WORKFLOW_USER_GUIDE.md](PLANNING_WORKFLOW_USER_GUIDE.md) |
 | **Mid-turn steering** | Inject a message (with attachments) into a live agent turn without cancelling it |
 | **Continue after max turns** | One-click resume when the agent hits `max_turns` |
 | **Thinking / reasoning** | Extended thinking with collapsible panels |
@@ -104,9 +105,7 @@ What's shipped, what's coming, and what's intentionally out of scope.
 
 ### 🟡 Medium priority
 
-| What | Notes                                             |
-|---|---------------------------------------------------|
-| **Mode Architecture: Built-in Agents + Plan/Task UI** | Agent intelligently decides when to show planning phases vs. execute directly in Auto mode. Agent assesses task complexity and shows structured planning workflow for complex tasks. Details in docs/COLLABORATION.md (see "Missing: Intelligent Plan/Execute Decision") |
+- Mode fine tuning
 
 ---
 

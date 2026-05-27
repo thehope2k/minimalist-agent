@@ -21,6 +21,44 @@ interface EngagementResponse {
   feedback?: string;
 }
 
+type PlanStatus = 'active' | 'paused' | 'completed' | 'cancelled' | 'error';
+
+type PhaseStatus = 'pending' | 'running' | 'complete' | 'blocked' | 'error' | 'skipped';
+
+interface Phase {
+  id: string;
+  index: number;
+  name: string;
+  description: string;
+  actions: string[];
+  isSafe: boolean;
+  risk: number;
+  status: PhaseStatus;
+  startedAt?: number;
+  completedAt?: number;
+  findings?: string;
+  error?: string;
+}
+
+interface PlanRevision {
+  version: number;
+  timestamp: number;
+  reason: string;
+  changedPhases: number[];
+  changeSummary: string;
+}
+
+interface Plan {
+  id: string;
+  version: number;
+  task: string;
+  phases: Phase[];
+  status: PlanStatus;
+  createdAt: number;
+  lastUpdatedAt: number;
+  revisions: PlanRevision[];
+}
+
 interface ChatSendRequest {
   id: string;
   connectionSlug: string;
@@ -447,6 +485,58 @@ const api = {
     },
     respondCollaboration: (response: EngagementResponse): Promise<void> =>
       ipcRenderer.invoke('chat:collaboration-response', response),
+  },
+  planning: {
+    getActivePlan: (sessionId: string): Promise<Plan | null> =>
+      ipcRenderer.invoke('planning:getActivePlan', sessionId),
+    cancelPlan: (sessionId: string): Promise<void> =>
+      ipcRenderer.invoke('planning:cancelPlan', sessionId),
+    approvePhase: (sessionId: string, phaseId: string, notes?: string): Promise<void> =>
+      ipcRenderer.invoke('planning:approvePhase', sessionId, phaseId, notes),
+    denyPhase: (sessionId: string, phaseId: string, reason?: string): Promise<void> =>
+      ipcRenderer.invoke('planning:denyPhase', sessionId, phaseId, reason),
+    retryPhase: (sessionId: string, phaseId: string): Promise<void> =>
+      ipcRenderer.invoke('planning:retryPhase', sessionId, phaseId),
+    skipPhase: (sessionId: string, phaseId: string): Promise<void> =>
+      ipcRenderer.invoke('planning:skipPhase', sessionId, phaseId),
+    onPlanCreated: (cb: (plan: Plan) => void): (() => void) => {
+      const handler = (_e: unknown, payload: Plan) => cb(payload);
+      ipcRenderer.on('planning:created', handler);
+      return () => ipcRenderer.removeListener('planning:created', handler);
+    },
+    onPlanUpdated: (cb: (plan: Plan) => void): (() => void) => {
+      const handler = (_e: unknown, payload: Plan) => cb(payload);
+      ipcRenderer.on('planning:updated', handler);
+      return () => ipcRenderer.removeListener('planning:updated', handler);
+    },
+    onPhaseUpdated: (cb: (planId: string, phase: Phase) => void): (() => void) => {
+      const handler = (_e: unknown, payload: { planId: string; phase: Phase }) =>
+        cb(payload.planId, payload.phase);
+      ipcRenderer.on('planning:phase-updated', handler);
+      return () => ipcRenderer.removeListener('planning:phase-updated', handler);
+    },
+    onPlanRevised: (cb: (plan: Plan, revision: PlanRevision) => void): (() => void) => {
+      const handler = (_e: unknown, payload: { plan: Plan; revision: PlanRevision }) =>
+        cb(payload.plan, payload.revision);
+      ipcRenderer.on('planning:revised', handler);
+      return () => ipcRenderer.removeListener('planning:revised', handler);
+    },
+    onPlanCompleted: (cb: (planId: string) => void): (() => void) => {
+      const handler = (_e: unknown, payload: string) => cb(payload);
+      ipcRenderer.on('planning:completed', handler);
+      return () => ipcRenderer.removeListener('planning:completed', handler);
+    },
+    onPlanCancelled: (cb: (planId: string) => void): (() => void) => {
+      const handler = (_e: unknown, payload: string) => cb(payload);
+      ipcRenderer.on('planning:cancelled', handler);
+      return () => ipcRenderer.removeListener('planning:cancelled', handler);
+    },
+    onPlanError: (cb: (planId: string, error: string, phaseId?: string) => void): (() => void) => {
+      const handler = (_e: unknown, payload: { planId: string; error: string; phaseId?: string }) => 
+        cb(payload.planId, payload.error, payload.phaseId);
+      ipcRenderer.on('planning:error', handler);
+      return () => ipcRenderer.removeListener('planning:error', handler);
+    },
   },
   connections: {
     list: (): Promise<ConnectionMeta[]> =>

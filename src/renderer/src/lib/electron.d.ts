@@ -62,6 +62,20 @@ import type {
   TradeOff,
 } from '../../../shared/collaboration-types';
 
+import type {
+  Plan,
+  Phase,
+  PlanStatus,
+  PhaseStatus,
+  PlanRevision,
+  CreatePlanInput,
+  CreatePlanOutput,
+  ReportPhaseProgressInput,
+  ReportPhaseProgressOutput,
+  RevisePlanInput,
+  RevisePlanOutput,
+} from '../../../shared/planning-types';
+
 export type {
   EngagementType,
   EngagementRequest,
@@ -75,6 +89,20 @@ export type {
   TradeOffAnalysis,
   Alternative,
   TradeOff,
+};
+
+export type {
+  Plan,
+  Phase,
+  PlanStatus,
+  PhaseStatus,
+  PlanRevision,
+  CreatePlanInput,
+  CreatePlanOutput,
+  ReportPhaseProgressInput,
+  ReportPhaseProgressOutput,
+  RevisePlanInput,
+  RevisePlanOutput,
 };
 
 export interface ChatSendRequest {
@@ -806,6 +834,21 @@ export interface AppApi {
       sessionId?: string;
       cwd?: string;
     }) => Promise<string | null>;
+  };
+  planning: {
+    getActivePlan: (sessionId: string) => Promise<Plan | null>;
+    cancelPlan: (sessionId: string) => Promise<void>;
+    approvePhase: (sessionId: string, phaseId: string, notes?: string) => Promise<void>;
+    denyPhase: (sessionId: string, phaseId: string, reason?: string) => Promise<void>;
+    retryPhase: (sessionId: string, phaseId: string) => Promise<void>;
+    skipPhase: (sessionId: string, phaseId: string) => Promise<void>;
+    onPlanCreated: (cb: (plan: Plan) => void) => () => void;
+    onPlanUpdated: (cb: (plan: Plan) => void) => () => void;
+    onPhaseUpdated: (cb: (planId: string, phase: Phase) => void) => () => void;
+    onPlanRevised: (cb: (plan: Plan, revision: PlanRevision) => void) => () => void;
+    onPlanCompleted: (cb: (planId: string) => void) => () => void;
+    onPlanCancelled: (cb: (planId: string) => void) => () => void;
+    onPlanError: (cb: (planId: string, error: string, phaseId?: string) => void) => () => void;
   };
   connections: {
     list: () => Promise<ConnectionMeta[]>;

@@ -132,40 +132,37 @@ export function TurnSummaryCard({ parts }: { parts: MessagePart[] }) {
 
   return (
     <>
-      <div className="overflow-hidden rounded-md border border-border/40 text-xs">
-        {/* ── card header ── */}
-        <button
-          type="button"
-          onClick={() => setCardOpen((v) => !v)}
-          className="flex w-full items-center gap-2 px-2.5 py-1.5 hover:bg-elevated/40 focus-visible:outline-none"
-        >
-          <ChevronRight
-            className={cn(
-              'h-3 w-3 shrink-0 text-fg-subtle transition-transform',
-              cardOpen && 'rotate-90',
-            )}
-            strokeWidth={2}
-          />
-          <GitCommit className="h-3.5 w-3.5 shrink-0 text-accent" strokeWidth={1.75} />
-          <span className="font-medium text-fg">
-            {summaries.length} file{summaries.length !== 1 ? 's' : ''} changed
+      <button
+        type="button"
+        onClick={() => setCardOpen((v) => !v)}
+        className="inline-flex items-center gap-1.5 rounded border border-border/30 bg-panel/30 px-2 py-0.5 text-xs hover:bg-elevated/40 transition-colors text-fg-muted hover:text-fg"
+      >
+        <ChevronRight
+          className={cn(
+            'h-3 w-3 shrink-0 transition-transform',
+            cardOpen && 'rotate-90',
+          )}
+          strokeWidth={2}
+        />
+        <GitCommit className="h-3 w-3 shrink-0" strokeWidth={1.75} />
+        <span className="whitespace-nowrap">
+          {summaries.length} file{summaries.length !== 1 ? 's' : ''}
+        </span>
+        {totalStats.deletions > 0 && (
+          <span className="whitespace-nowrap rounded bg-red-500/10 px-1 py-0.5 text-[10px] font-medium text-red-400 tabular-nums">
+            −{totalStats.deletions}
           </span>
-          <span className="flex shrink-0 items-center gap-1 tabular-nums">
-            {totalStats.deletions > 0 && (
-              <span className="rounded bg-red-500/10 px-1.5 py-0.5 text-[10px] font-medium text-red-400">
-                −{totalStats.deletions}
-              </span>
-            )}
-            {totalStats.additions > 0 && (
-              <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400">
-                +{totalStats.additions}
-              </span>
-            )}
+        )}
+        {totalStats.additions > 0 && (
+          <span className="whitespace-nowrap rounded bg-emerald-500/10 px-1 py-0.5 text-[10px] font-medium text-emerald-400 tabular-nums">
+            +{totalStats.additions}
           </span>
-        </button>
+        )}
+      </button>
 
-        {/* ── expanded file list ── */}
-        {cardOpen && (
+      {/* Expanded view - modal or inline */}
+      {cardOpen && (
+        <div className="mt-2 overflow-hidden rounded-md border border-border/40 text-xs">
           <div className="border-t border-border/60">
             {summaries.map((s, i) => (
               <FileRow
@@ -178,8 +175,8 @@ export function TurnSummaryCard({ parts }: { parts: MessagePart[] }) {
               />
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {modalFile && (
         <DiffExpandModal

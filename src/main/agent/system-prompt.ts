@@ -18,6 +18,7 @@ import { findProjectForPath } from '../storage/projects';
 import {formatExtensionsAwareness} from '../extensions/directive';
 import { buildSddPromptBlock } from '../sdd/system-prompt';
 import { getCollaborationGuidance } from './collaboration-prompt';
+import { getPlanningGuidance } from './planning-prompt';
 import { loadAllAgents } from '../agents/storage';
 import { getSettings, DEFAULT_CONTEXT_FILE_NAMES } from '../storage/settings';
 
@@ -502,6 +503,9 @@ export function getSystemPrompt(opts: SystemPromptOptions = {}): string {
   const autonomyLevel = opts.autonomyLevel ?? 50; // Default: balanced
   const collaborationBlock = getCollaborationGuidance(autonomyLevel);
 
+  // Planning workflow guidance — teaches LLM when and how to use planning
+  const planningBlock = getPlanningGuidance();
+
   // Agents awareness block — injected once per session (like extensions).
   // Cached to avoid repeated disk I/O for AGENT.md files.
   let agentsBlock = '';
@@ -537,7 +541,7 @@ Use the Agent tool to delegate focused tasks to specialized sub-agents when it i
     agentsBlock = agentsBlockCache.block;
   }
 
-  return `${basePrompt}${userPreferences}${projectContextFiles}${collaborationBlock ? `\n\n${collaborationBlock}` : ''}${sddBlock ? `\n\n${sddBlock}` : ''}${agentsBlock ? `\n\n${agentsBlock}` : ''}`;
+  return `${basePrompt}${userPreferences}${projectContextFiles}${collaborationBlock ? `\n\n${collaborationBlock}` : ''}${planningBlock ? `\n\n${planningBlock}` : ''}${sddBlock ? `\n\n${sddBlock}` : ''}${agentsBlock ? `\n\n${agentsBlock}` : ''}`;
 }
 
 /**

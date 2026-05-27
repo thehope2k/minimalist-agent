@@ -209,7 +209,7 @@ function debug(event: AgentSessionEvent): void {
     if (t === 'message_end' || t === 'agent_end' || t === 'turn_end') {
       try {
         process.stderr.write(
-          `[pi-event-detail] ${JSON.stringify(event).slice(0, 1000)}\n`,
+          `[pi-event-detail] ${JSON.stringify(event).slice(0, 10000)}\n`,
         );
       } catch { /* */ }
     }

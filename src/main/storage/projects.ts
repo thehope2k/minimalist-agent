@@ -36,6 +36,8 @@ const SCHEMA: FileSchema<ProjectsFile> = {
   currentVersion: 2,
   defaultValue: DEFAULTS,
   migrations: [
+    // v0 → v1: no-op (initial version)
+    (prev) => prev as ProjectsFile,
     // v1 → v2: migrate 'ask' permission mode → 'auto'
     (prev) => {
       const data = prev as ProjectsFile;

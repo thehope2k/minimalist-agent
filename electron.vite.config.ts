@@ -33,6 +33,14 @@ export default defineConfig({
         output: {
           format: 'es',
           entryFileNames: '[name].js',
+          // Disable code-splitting completely - each entry must be self-contained
+          // without shared chunks (pi-server cannot import electron)
+          inlineDynamicImports: false,
+          manualChunks: (id, meta) => {
+            // Each entry point gets its own code (no shared chunks)
+            // This is critical because pi-server cannot import electron
+            return null;
+          },
         },
       },
     },

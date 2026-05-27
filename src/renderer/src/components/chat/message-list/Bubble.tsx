@@ -10,6 +10,7 @@ import { ErrorBubble } from '../ErrorBubble';
 import { MentionText } from '../MentionText';
 import { MessageAttachments } from '../MessageAttachments';
 import { StreamStatus } from '../StreamStatus';
+import { PlanProgress } from '../PlanProgress';
 import { TextPart } from '../parts/TextPart';
 import { ThinkingPart } from '../parts/ThinkingPart';
 import { ToolPart } from '../parts/ToolPart';
@@ -22,12 +23,16 @@ export function Bubble({
   isRetrying,
   onContinue,
   onBranch,
+  sessionId,
+  showPlan,
 }: {
   message: ChatMessage;
   onRetry?: () => void;
   isRetrying?: boolean;
   onContinue?: () => void;
   onBranch?: () => void;
+  sessionId?: string;
+  showPlan?: boolean;
 }) {
   const isUser = m.role === 'user';
   const parts = m.parts;
@@ -73,6 +78,12 @@ export function Bubble({
             ))}
             {!m.isStreaming && <TurnSummaryCard parts={m.parts} />}
             {m.isStreaming && <StreamStatus parts={parts} startedAt={m.createdAt} />}
+            {/* Plan Progress - Show at end of last assistant message (even while streaming) */}
+            {showPlan && sessionId && (
+              <div className="mt-3 pt-3 border-t border-border/30">
+                <PlanProgress sessionId={sessionId} />
+              </div>
+            )}
           </AssistantCard>
         ) : (
           !m.errorInfo && !m.error && m.stopReason && m.stopReason !== 'end_turn' && (

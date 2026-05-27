@@ -660,16 +660,6 @@ export function registerIpc(): void {
     return getActivePlan(sessionId);
   });
 
-  ipcMain.handle('planning:pausePlan', async (_e, sessionId: string) => {
-    // Pause functionality would require sending a message to pi-server
-    // For now, just update the local cache
-    const plan = getActivePlan(sessionId);
-    if (plan) {
-      plan.status = 'paused';
-      updatePlan(sessionId, plan);
-    }
-  });
-
 
   ipcMain.handle('planning:cancelPlan', async (_e, sessionId: string) => {
     const plan = getActivePlan(sessionId);

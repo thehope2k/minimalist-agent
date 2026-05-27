@@ -121,12 +121,12 @@ function DecisionDialog({ reqId, payload, onRespond }: DecisionDialogProps) {
         onClick={handleSubmit}
       />
       
-      <div className="relative w-[min(640px,calc(100vw-32px))] max-h-[85vh] overflow-y-auto rounded-xl border border-border bg-panel shadow-2xl">
-        <div className="border-b border-border px-5 py-4">
+      <div className="relative w-[min(640px,calc(100vw-32px))] max-h-[85vh] flex flex-col rounded-xl border border-border bg-panel shadow-2xl">
+        <div className="shrink-0 border-b border-border px-5 py-4">
           <h2 className="text-lg font-semibold text-fg">Decision Needed</h2>
         </div>
 
-        <div className="space-y-4 p-5">
+        <div className="flex-1 overflow-y-auto scroll-thin space-y-4 p-5">
           <p className="text-fg">{payload.question}</p>
 
           {payload.context && (

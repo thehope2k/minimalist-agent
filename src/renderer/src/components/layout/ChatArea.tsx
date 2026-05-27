@@ -3,6 +3,9 @@ import { GitBranch, X, PanelRight } from 'lucide-react';
 import { ChatScroll } from '../chat/ChatScroll';
 import { MessageInput } from '../chat/MessageInput';
 import { MessageList } from '../chat/MessageList';
+import { PhaseApprovalDialog } from '../chat/PhaseApprovalDialog';
+import { PlanRevisionNotification } from '../chat/PlanRevisionNotification';
+import { PlanErrorNotification } from '../chat/PlanErrorNotification';
 import { EmptyState } from '../chat/EmptyState';
 import { CollaborationPrompt } from '../chat/CollaborationPrompt';
 import { IconButton } from '../ui';
@@ -58,7 +61,28 @@ export function ChatArea({
   onCwdChange,
   shortcutsEnabled = true,
 }: Props) {
-  const { messages, isStreaming, streamingTurnId, streamingSessionIds, send, abort, retry, steer, activeSessionId, lastCompaction } = useChat(sessionId, newSessionDefaultProjectId);
+  const {
+    messages,
+    isStreaming,
+    streamingTurnId,
+    streamingSessionIds,
+    send,
+    abort,
+    retry,
+    steer,
+    activeSessionId,
+    lastCompaction,
+    activePlan,
+    showPhaseApproval,
+    phaseAwaitingApproval,
+    showPlanRevision,
+    latestRevision,
+    planError,
+    setShowPhaseApproval,
+    setPhaseAwaitingApproval,
+    setShowPlanRevision,
+    setPlanError,
+  } = useChat(sessionId, newSessionDefaultProjectId);
   const aiData = useAiData();
   // Bootstraps the project store; we read it imperatively below via findProject.
   useProjects();
@@ -531,6 +555,7 @@ export function ChatArea({
                     isStreaming={isStreaming}
                     onContinue={isStreaming ? undefined : handleContinue}
                     onBranch={isStreaming ? undefined : (id) => void handleBranch(id)}
+                    sessionId={activeSessionId ?? sessionId}
                   />
                 </div>
               )}
@@ -667,6 +692,59 @@ export function ChatArea({
           absolutePath={viewFile.absolutePath}
           lineNumber={viewFile.lineNumber}
           onClose={() => setViewFile(null)}
+        />
+      )}
+
+      {/* Planning workflow UI */}
+      {showPhaseApproval && phaseAwaitingApproval && (
+        <PhaseApprovalDialog
+          phase={phaseAwaitingApproval}
+          onApprove={async (notes) => {
+            if (sessionId) {
+              await window.api.planning.approvePhase(sessionId, phaseAwaitingApproval.id, notes);
+            }
+            setShowPhaseApproval(false);
+            setPhaseAwaitingApproval(null);
+          }}
+          onDeny={async (reason) => {
+            if (sessionId) {
+              await window.api.planning.denyPhase(sessionId, phaseAwaitingApproval.id, reason);
+            }
+            setShowPhaseApproval(false);
+            setPhaseAwaitingApproval(null);
+          }}
+        />
+      )}
+
+      {showPlanRevision && latestRevision && (
+        <PlanRevisionNotification
+          revision={latestRevision}
+          onDismiss={() => setShowPlanRevision(false)}
+        />
+      )}
+
+      {planError && activePlan && (
+        <PlanErrorNotification
+          error={planError}
+          onRetry={async () => {
+            if (activeSessionId && planError.phaseId) {
+              await window.api.planning.retryPhase(activeSessionId, planError.phaseId);
+            }
+            setPlanError(null);
+          }}
+          onSkip={async () => {
+            if (activeSessionId && planError.phaseId) {
+              await window.api.planning.skipPhase(activeSessionId, planError.phaseId);
+            }
+            setPlanError(null);
+          }}
+          onCancel={async () => {
+            if (activeSessionId) {
+              await window.api.planning.cancelPlan(activeSessionId);
+            }
+            setPlanError(null);
+          }}
+          onDismiss={() => setPlanError(null)}
         />
       )}
     </main>

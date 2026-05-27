@@ -142,7 +142,7 @@ const state: State = {
   pendingCollaboration: new Map(),
   appendArr: [],
   availableAgents: [],
-  planManager: new PlanManager(),
+  // planManager initialized in handleInit with sessions directory
 };
 
 /**
@@ -840,6 +840,10 @@ async function handleInit(msg: MsgInit): Promise<void> {
   state.permissionMode = msg.permissionMode;
   state.appendArr = msg.systemPrompt ? [msg.systemPrompt] : [];
   state.lastAppend = msg.systemPrompt ?? '';
+
+  // Initialize PlanManager with sessions directory (parent of sessionPath)
+  const sessionsDir = join(msg.sessionPath, '..');
+  state.planManager = new PlanManager(sessionsDir);
 
   // Store available agents (passed from main process)
   state.availableAgents = (msg.availableAgents || []).map(a => ({

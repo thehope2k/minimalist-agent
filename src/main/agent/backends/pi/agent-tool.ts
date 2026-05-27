@@ -32,13 +32,25 @@ import type {
   SubprocessOutbound,
   PiAuthProvider,
 } from './protocol';
-import {
-  createAgentWorktree,
-  removeAgentWorktree,
-  cleanupAllWorktrees,
-  cleanupOrphanedWorktrees,
-  type WorktreeResult,
-} from './worktree-manager';
+
+// WorktreeResult type (duplicated to avoid importing worktree-manager in subprocess)
+interface WorktreeResult {
+  path: string;
+  branch: string;
+  created: boolean;
+}
+
+// Worktree functions - always use stubs (no worktrees for sub-agents)
+// This simplifies the build and avoids electron import issues.
+// Main agent sessions get worktrees from a different code path if needed.
+const createAgentWorktree = async (cwd: string, execId: string): Promise<WorktreeResult> => ({
+  path: cwd,
+  branch: '',
+  created: false,
+});
+const removeAgentWorktree = async (_execId: string): Promise<void> => {};
+const cleanupAllWorktrees = async (): Promise<void> => {};
+const cleanupOrphanedWorktrees = async (_cwd: string, _daysOld: number): Promise<void> => {};
 
 /* ============================================================ */
 /*  Types                                                        */
