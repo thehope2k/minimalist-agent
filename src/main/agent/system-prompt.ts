@@ -70,6 +70,22 @@ export function invalidateContextFileCache(directory?: string): void {
   else contextFileCache.clear();
 }
 
+// ── Agents awareness cache ─────────────────────────────────────────────────
+// The agents list is loaded from disk (AGENT.md files) on every prompt assembly.
+// Since agents rarely change during a session, we cache the formatted block with
+// a 1-minute TTL. Explicit invalidation happens when agents are added/removed.
+
+let agentsBlockCache: { block: string; ts: number } | null = null;
+const AGENTS_CACHE_TTL = 60_000; // 1 minute
+
+/** 
+ * Invalidate the cached agents awareness block. Call when agents are added/removed.
+ * Exported so agents/storage.ts can call it alongside its own cache invalidation.
+ */
+export function invalidateAgentsPromptCache(): void {
+  agentsBlockCache = null;
+}
+
 /**
  * Recursive walker that respects EXCLUDED_DIRECTORIES, caps depth, and is
  * case-insensitive for the trailing filename. Returns paths relative to
@@ -487,15 +503,19 @@ export function getSystemPrompt(opts: SystemPromptOptions = {}): string {
   const collaborationBlock = getCollaborationGuidance(autonomyLevel);
 
   // Agents awareness block — injected once per session (like extensions).
+  // Cached to avoid repeated disk I/O for AGENT.md files.
   let agentsBlock = '';
-  const agents = loadAllAgents();
-  if (agents.length > 0) {
-    const agentsList = agents.map((a) => {
-      const toolsStr = a.metadata.tools?.join('/') || 'all';
-      const modelStr = a.metadata.model || 'session-default';
-      return `- ${a.slug} (name: ${a.metadata.name}, model: ${modelStr}, tools: ${toolsStr}): ${a.metadata.description}`;
-    }).join('\n');
-    agentsBlock = `<agents>
+  const now = Date.now();
+  
+  if (!agentsBlockCache || now - agentsBlockCache.ts > AGENTS_CACHE_TTL) {
+    const agents = loadAllAgents(); // Expensive: reads AGENT.md files from disk
+    if (agents.length > 0) {
+      const agentsList = agents.map((a) => {
+        const toolsStr = a.metadata.tools?.join('/') || 'all';
+        const modelStr = a.metadata.model || 'session-default';
+        return `- ${a.slug} (name: ${a.metadata.name}, model: ${modelStr}, tools: ${toolsStr}): ${a.metadata.description}`;
+      }).join('\n');
+      agentsBlock = `<agents>
 Enabled:
 ${agentsList}
 
@@ -509,6 +529,12 @@ Delegation guidance:
 
 Use the Agent tool to delegate focused tasks to specialized sub-agents when it improves outcomes.
 </agents>`;
+      agentsBlockCache = { block: agentsBlock, ts: now };
+    } else {
+      agentsBlockCache = { block: '', ts: now };
+    }
+  } else {
+    agentsBlock = agentsBlockCache.block;
   }
 
   return `${basePrompt}${userPreferences}${projectContextFiles}${collaborationBlock ? `\n\n${collaborationBlock}` : ''}${sddBlock ? `\n\n${sddBlock}` : ''}${agentsBlock ? `\n\n${agentsBlock}` : ''}`;

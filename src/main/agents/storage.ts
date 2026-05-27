@@ -3,6 +3,7 @@ import {basename, join} from 'node:path';
 import type {LoadedAgent} from './types';
 import {parseAgentFile} from './parse';
 import {Paths} from '../storage/paths';
+import {invalidateAgentsPromptCache} from '../agent/system-prompt';
 
 /* ---------- directory resolution ---------- */
 
@@ -69,6 +70,7 @@ const CACHE_TTL = 5 * 60_000; // 5 minutes
 /** Drop the cache. Call on file events / settings changes. */
 export function invalidateAgentsCache(): void {
   cache = null;
+  invalidateAgentsPromptCache(); // Also invalidate system prompt cache
 }
 
 /* ---------- public API ---------- */
