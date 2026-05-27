@@ -129,5 +129,6 @@ export function formatSkillDirective(
   for (const path of mentionedFolders) {
     lines.push(`- ${path} (mentioned folder — use ls or find to explore its contents)`);
   }
-  return `Before proceeding with the user's request, you MUST read the following files using the Read tool before taking any other action:\n${lines.join('\n')}\n\nDo not take any other action until you have read these files.`;
+  return `Read the following files before proceeding:
+${lines.join('\n')}`;
 }

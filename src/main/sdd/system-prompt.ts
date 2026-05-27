@@ -9,18 +9,90 @@ import type { SddFeature } from './types';
 // ── SDD keyword detection ─────────────────────────────────────────────────────
 
 /**
- * Keywords that signal SDD intent. Case-insensitive match against raw user
- * message text. When any keyword is found, the full rules block is injected
- * even when an active feature is pinned (lazy injection mode).
+ * Patterns that signal SDD intent. More specific than simple keyword matching
+ * to reduce false positives from common words like "plan", "task", "implement".
+ * When any pattern matches, the full rules block is injected even when an
+ * active feature is pinned (lazy injection mode).
  */
-const SDD_KEYWORDS = [
-  'specify', 'spec', 'plan', 'task', 'phase',
-  'constitution', 'implement', 'artifact', 'speckit', '/speckit',
+const SDD_PATTERNS = [
+  // Exact SpecKit terms
+  /\bspeckit\b/i,
+  /\/speckit\b/i,
+  
+  // File references (strong signal)
+  /constitution\.md/i,
+  /spec\.md/i,
+  /plan\.md/i,
+  /tasks\.md/i,
+  /\.specify\//i,
+  
+  // SpecKit commands
+  /specify\s+(init|status|next|build|implement|integration)/i,
+  
+  // Intent phrases with action verbs + SDD artifacts
+  /(?:create|write|update|edit|review|delete|remove)\s+(?:the\s+)?(?:spec|plan|constitution|task)/i,
+  /(?:add|generate|build)\s+(?:a\s+)?(?:spec|plan|constitution)/i,
+  
+  // Phase-related (but only when combined with SDD context)
+  /(?:specify|specification)\s+phase/i,
+  /\bconstitution\b/i, // "constitution" alone is specific enough
 ];
 
+/** Track keyword detection stats for telemetry */
+interface SddKeywordStats {
+  totalChecks: number;
+  totalMatches: number;
+  patternMatches: Map<number, number>; // pattern index -> match count
+}
+
+const keywordStats: SddKeywordStats = {
+  totalChecks: 0,
+  totalMatches: 0,
+  patternMatches: new Map(),
+};
+
 function messageHasSddKeyword(message: string): boolean {
-  const lower = message.toLowerCase();
-  return SDD_KEYWORDS.some((kw) => lower.includes(kw));
+  keywordStats.totalChecks++;
+  
+  for (let i = 0; i < SDD_PATTERNS.length; i++) {
+    if (SDD_PATTERNS[i].test(message)) {
+      keywordStats.totalMatches++;
+      keywordStats.patternMatches.set(
+        i,
+        (keywordStats.patternMatches.get(i) ?? 0) + 1
+      );
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+/**
+ * Get SDD keyword detection statistics for monitoring.
+ * Useful for tuning the patterns and detecting false positive rates.
+ */
+export function getSddKeywordStats() {
+  return {
+    totalChecks: keywordStats.totalChecks,
+    totalMatches: keywordStats.totalMatches,
+    matchRate: keywordStats.totalChecks > 0
+      ? ((keywordStats.totalMatches / keywordStats.totalChecks) * 100).toFixed(1) + '%'
+      : '0%',
+    patternBreakdown: Array.from(keywordStats.patternMatches.entries()).map(
+      ([idx, count]) => ({
+        pattern: SDD_PATTERNS[idx].source,
+        matches: count,
+      })
+    ),
+  };
+}
+
+/** Reset stats (useful for testing) */
+export function resetSddKeywordStats() {
+  keywordStats.totalChecks = 0;
+  keywordStats.totalMatches = 0;
+  keywordStats.patternMatches.clear();
 }
 
 // ── Context block builders ────────────────────────────────────────────────────
