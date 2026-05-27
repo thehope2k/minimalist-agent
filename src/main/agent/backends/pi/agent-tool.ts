@@ -19,6 +19,11 @@ import { Type } from 'typebox';
 import { defineTool, type AgentToolUpdateCallback, type ToolDefinition } from '@mariozechner/pi-coding-agent';
 import type { LoadedAgent } from '../../../agents/types';
 import type { AgentChatEvent, SubagentProgressUpdate } from '../../events';
+import {
+  resolveAgentModel,
+  isValidModelId,
+  getModelValidationError,
+} from '../../../../shared/agent-models';
 import type {
   MsgInit,
   MsgPrompt,
@@ -53,6 +58,8 @@ interface AgentToolContext {
   customEndpoint?: { api: 'openai-completions' | 'anthropic-messages'; supportsImages?: boolean };
   /** Permission mode inherited from parent session. */
   permissionMode: 'plan' | 'ask' | 'auto';
+  /** Parent session's model (for resolving session-default). */
+  sessionModel: string;
 }
 
 interface SpawnedAgentHandle {
@@ -351,8 +358,16 @@ async function initializeAgent(
   // Build agent-specific system prompt
   const systemPrompt = buildAgentSystemPrompt(agent);
 
-  // Determine model - use agent's preferred model or inherit from context
-  const model = agent.metadata.model || 'gpt-4o';
+  // Resolve model - handle session-default properly
+  const model = resolveAgentModel(agent.metadata.model, ctx.sessionModel);
+  
+  // Validate the resolved model
+  if (!isValidModelId(model)) {
+    throw new Error(
+      `Agent "${agent.metadata.name}" has invalid model configuration: ${getModelValidationError(model)}. ` +
+      `Check the agent's AGENT.md frontmatter.`
+    );
+  }
 
   // Create isolated storage path for this execution
   const agentSessionPath = join(ctx.sessionPath, '.agents', handle.execId);

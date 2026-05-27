@@ -43,6 +43,7 @@ import { getOAuthProvider } from '@mariozechner/pi-ai/oauth';
 import { adaptPiEvent } from './event-adapter';
 import { createPiWebFetchTool, createPiWebSearchTool } from './web-tools';
 import { createPiAgentTool } from '../agent/backends/pi/agent-tool';
+import { KNOWN_MODEL_IDS } from '../../shared/agent-models';
 import type {
   MsgAuthRequired,
   MsgEvent,
@@ -278,6 +279,7 @@ function buildWrappedTools(
     piServerPath: string;
     availableAgents: LoadedAgent[];
     piAuthProvider: string; // Will be validated as PiAuthProvider at runtime
+    sessionModel: string; // Parent session's model for agent resolution
     getAuth: () => Promise<{ access: string; refresh?: string; expires?: number }>;
     baseUrl?: string;
     customEndpoint?: { api: 'openai-completions' | 'anthropic-messages'; supportsImages?: boolean };
@@ -379,6 +381,20 @@ async function handleInit(msg: MsgInit): Promise<void> {
     // necessary because Pi's getModel<TProvider, TModelId> signature uses
     // a typed lookup; we pass model ids dynamically.
     model = getModel(msg.piAuthProvider as 'github-copilot', msg.model as never);
+    
+    // Validate that the model resolved successfully
+    if (!model) {
+      // Show common models as examples
+      const exampleModels = 'gpt-5.5, gpt-5.4, claude-opus-4.7, claude-sonnet-4.6, gemini-3.5-flash';
+      
+      fatal(
+        `Failed to resolve model "${msg.model}" for provider "${msg.piAuthProvider}". ` +
+        `This usually means the model ID is invalid or not supported by this provider. ` +
+        `Common models: ${exampleModels}. ` +
+        `You can also use "session-default" to inherit the session model. ` +
+        `Check your connection settings or agent configuration.`
+      );
+    }
 
     // CRITICAL for github-copilot: the OAuth access token carries a
     // `proxy-ep=` claim that pins requests to the user's regional API
@@ -411,6 +427,7 @@ async function handleInit(msg: MsgInit): Promise<void> {
     piServerPath: PI_SERVER_PATH,
     availableAgents: state.availableAgents,
     piAuthProvider: msg.piAuthProvider,
+    sessionModel: msg.model,  // Pass parent model for session-default resolution
     getAuth: async () => {
       if (!state.authStorage) {
         throw new Error('Auth storage not initialized');
@@ -607,6 +624,17 @@ async function handleMiniCompletion(msg: MsgMiniCompletion): Promise<void> {
     let model = msg.model
       ? getModel(state.init.piAuthProvider as 'github-copilot', msg.model as never)
       : state.model!;
+    
+    // Validate model resolved successfully
+    if (msg.model && !model) {
+      sendMiniError(
+        msg.requestId,
+        `Failed to resolve model "${msg.model}" for provider "${state.init.piAuthProvider}". ` +
+        `Use a valid model ID or omit the model parameter to use the default.`
+      );
+      return;
+    }
+    
     // CRITICAL for github-copilot: a freshly-resolved model is not yet
     // pinned to the user's regional API host (the `proxy-ep=` claim in the
     // OAuth token). Without modifyModels we hit the default endpoint and
@@ -696,6 +724,18 @@ async function handleLlmQuery(msg: MsgLlmQuery): Promise<void> {
     const model = req.model
       ? getModel(state.init.piAuthProvider as 'github-copilot', req.model as never)
       : state.model;
+    
+    // Validate model resolved successfully
+    if (req.model && !model) {
+      const out: MsgLlmQueryResult = {
+        type: 'llm_query_result',
+        requestId: msg.requestId,
+        error: `Failed to resolve model "${req.model}" for provider "${state.init.piAuthProvider}".`,
+      };
+      send(out);
+      return;
+    }
+    
     const result = await completeSimple(model, {
       systemPrompt: req.systemPrompt,
       messages: [
@@ -770,6 +810,16 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
             state.init.piAuthProvider as 'github-copilot',
             msg.model as never,
           );
+          
+          // Validate model resolved successfully
+          if (!newModel) {
+            console.error(
+              `[pi-server] Failed to resolve model "${msg.model}" for provider "${state.init.piAuthProvider}". ` +
+              `Model change ignored.`
+            );
+            return;
+          }
+          
           // Apply modifyModels for providers that pin a regional endpoint
           // (e.g. github-copilot proxy-ep claim).
           const provider = getOAuthProvider(state.init.piAuthProvider);

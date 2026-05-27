@@ -1,6 +1,11 @@
 import matter from 'gray-matter';
 import { z } from 'zod';
 import type { AgentMetadata } from './types';
+import {
+  isValidModelId,
+  getModelValidationError,
+  SESSION_DEFAULT_MODEL,
+} from '../../shared/agent-models';
 
 /* ---------- validation result types ---------- */
 
@@ -152,7 +157,20 @@ export function validateAgentContent(
     }
   }
 
-  // 4. non-empty body (system prompt)
+  // 4. model ID validation
+  if (metaResult.success && frontmatter && typeof frontmatter === 'object') {
+    const fm = frontmatter as { model?: string };
+    if (fm.model && !isValidModelId(fm.model)) {
+      const errorMsg = getModelValidationError(fm.model);
+      errors.push({
+        path: 'model',
+        message: errorMsg,
+        suggestion: `Use a valid model ID or "${SESSION_DEFAULT_MODEL}" to inherit the session model. You can also omit the field entirely.`,
+      });
+    }
+  }
+
+  // 5. non-empty body (system prompt)
   if (!body || body.trim().length === 0) {
     errors.push({
       path: 'content',

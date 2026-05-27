@@ -20,7 +20,7 @@ Agents are specialized sub-agents that the main agent can spawn to handle focuse
 ---
 name: "Code Reviewer"
 description: "Analyzes code for bugs, performance, and security issues."
-model: haiku                      # Optional: override session model
+model: claude-haiku-4.5           # Optional: override session model (use full model ID)
 tools: [Read, Grep, Find]         # Optional: restrict to specific tools
 maxTurns: 10                       # Optional: max turns before stopping
 permissionMode: plan               # Optional: plan (read-only), ask, or auto
@@ -49,7 +49,20 @@ Your agent instructions go here. This is the agent's "job description" — what 
 
 ### Optional
 
-- **\`model\`** — Model override (e.g., \`haiku\`, \`sonnet\`, \`opus\`). If omitted, uses session model.
+- **\`model\`** — Model override. If omitted or set to \`session-default\`, inherits the session model.
+  
+  **Valid model IDs** (May 2026 - varies by your active connection):
+  - **OpenAI**: \`gpt-5.5\`, \`gpt-5.4\`, \`gpt-5.4-mini\`, \`gpt-5.3-codex\`, \`gpt-5-mini\`
+  - **Anthropic**: \`claude-opus-4.7\`, \`claude-opus-4.6\`, \`claude-sonnet-4.6\`, \`claude-haiku-4.5\`
+  - **Google**: \`gemini-3.5-flash\`, \`gemini-3.1-pro\`, \`gemini-2.5-pro\`
+  - **Custom endpoints**: any model your server supports
+  
+  **Notes:**
+  - Agents are global and work with any connection (GitHub Copilot, ChatGPT Plus, custom endpoints)
+  - Model availability depends on your active connection at runtime
+  - Use \`session-default\` to explicitly inherit the session model (same as omitting the field)
+  
+  ⚠️ **Use full model IDs only** — short names like \`sonnet\` or \`haiku\` will fail at runtime. Model availability changes over time; check provider documentation for the latest.
 - **\`tools\`** — Array of allowed tool names. If omitted, inherits all session tools.
   - Built-in tools: \`Read\`, \`Write\`, \`Edit\`, \`Bash\`, \`Grep\`, \`Glob\`, \`Find\`, \`Ls\`, \`WebFetch\`, \`WebSearch\`, \`Agent\`
   - Example: \`[Read, Grep, Find]\` for read-only work
@@ -108,7 +121,7 @@ Never modify files. Always return your analysis in a structured format:
 ---
 name: Refactor Planner
 description: Plans code changes step-by-step before executing.
-model: sonnet
+model: claude-sonnet-4.6
 tools: [Read, Bash, Edit]
 maxTurns: 20
 permissionMode: ask

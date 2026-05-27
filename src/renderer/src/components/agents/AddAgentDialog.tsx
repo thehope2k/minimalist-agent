@@ -203,7 +203,17 @@ function buildAgentScaffoldPrompt(
 <slug>${slug}</slug>
 </agent_create>
 
-Read the reference doc at \`<reference_doc>\` first — it covers the AGENT.md format, frontmatter fields, slug rules, system prompt conventions, and examples. Then create the new agent at \`<target_file>\` exactly (do NOT change the slug or location), validate it parses by reading it back, and briefly summarize what you built.
+Read the reference doc at \`<reference_doc>\` first — it covers the AGENT.md format, frontmatter fields (including valid model IDs), slug rules, system prompt conventions, and examples.
+
+Then create the new agent at \`<target_file>\` exactly (do NOT change the slug or location), validate it parses by reading it back, and briefly summarize what you built.
+
+**IMPORTANT about the 'model' field:**
+- The reference doc lists all valid model IDs with examples
+- Use FULL model IDs only (e.g., "claude-sonnet-4", "gpt-4o", "o1")
+- DO NOT use short names like "sonnet", "haiku", "opus" — they will fail validation
+- When in doubt, omit the model field entirely (agent inherits the session model)
+- You can also use "session-default" to explicitly inherit the session model
+- After creating the agent, validation will check if the model ID is valid and give clear errors if not
 
 User wants an agent that will: ${description}`;
 }
