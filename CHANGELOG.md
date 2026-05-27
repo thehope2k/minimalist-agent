@@ -5,6 +5,41 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.18.0] — 2026-05-27
+
+Adds global agent management and richer chat workflow visibility, plus model-picker improvements and targeted bug fixes.
+
+### Added
+
+**Agent system**
+
+- Added a global agent registry with IPC wiring and a dedicated management UI, making configured agents available app-wide
+
+**Chat**
+
+- Chat now surfaces nested subagent progress and transcript events so multi-agent runs are easier to follow in real time
+- Image attachments are now validated against model capabilities before send, preventing unsupported uploads
+
+**Models**
+
+- Copilot model selection now supports curated filtering and capability-based recommendations
+- Live OAuth model availability is now tracked and persisted in the model dropdown
+
+### Changed
+
+**Editor**
+
+- Monaco semantic features are now disabled when language workers are unavailable, reducing editor noise in unsupported contexts
+
+### Fixed
+
+**Chat & rendering**
+
+- `Cmd/Ctrl+G` git-diff shortcut is now scoped to the active chat view, preventing cross-view shortcut collisions
+- Mermaid preprocessing now correctly handles `@` characters in diagram data
+
+---
+
 ## [0.17.0] — 2026-05-25
 
 Adds new-session draft persistence for mode, folder, and model; fixes terminal keyboard shortcuts broken in v0.16.0.
