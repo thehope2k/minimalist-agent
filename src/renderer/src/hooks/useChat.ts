@@ -382,6 +382,8 @@ export function useChat(
   const [streamingTurnId, setStreamingTurnId] = useState<string | null>(null);
   const [lastCompaction, setLastCompaction] = useState<CompactionNotice | null>(null);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(sessionId);
+  /** Track compaction markers we've already created to prevent duplicates. */
+  const seenCompactionEvents = useRef<Set<string>>(new Set());
   /**
    * State-backed mirror of `streamingBySession`'s key set. Lets consumers
    * (e.g. SessionsPanel) render a "running" indicator on every session that
@@ -561,6 +563,22 @@ export function useChat(
         return;
       }
       let msgs = data.messages.map(chatFromStored);
+      
+      // Populate deduplication set from loaded compaction markers to prevent
+      // creating duplicates if the same turn triggers compaction again.
+      for (const msg of msgs) {
+        if (msg.markerKind === 'compaction' && msg.compactionMeta) {
+          // Find the assistant message this marker is associated with.
+          // It should be right before the marker in the list.
+          const idx = msgs.indexOf(msg);
+          const prevMsg = idx > 0 ? msgs[idx - 1] : null;
+          if (prevMsg && prevMsg.role === 'assistant') {
+            const key = `${sessionId}:${prevMsg.id}:${msg.compactionMeta.preTokens}`;
+            seenCompactionEvents.current.add(key);
+          }
+        }
+      }
+      
       // Recovery: if the trailing assistant message is a "zombie" (no
       // stop reason, no error info — the turn never reached `turn_done`),
       // mark it interrupted so the user sees a Retry button. This catches
@@ -635,25 +653,64 @@ export function useChat(
         // inserting mid-list) keeps the on-disk JSONL order in sync with
         // the in-memory order, so reloads render identically.
         const sid = turnIdToSession.current.get(evt.id);
-        if (sid) {
-          const marker: ChatMessage = {
-            id: newId(),
-            role: 'assistant',
-            parts: [],
-            markerKind: 'compaction',
-            compactionMeta: {
-              trigger: evt.trigger,
-              preTokens: evt.preTokens,
-              postTokens: evt.postTokens,
-              durationMs: evt.durationMs,
-            },
-          };
-          const prevMsgs = messagesBySession.current.get(sid) ?? [];
-          const next = [...prevMsgs, marker];
-          messagesBySession.current.set(sid, next);
-          if (sid === activeSessionIdRef.current) setMessages(next);
-          void appendMessage(sid, chatToStored(marker));
+        if (!sid) return;
+
+        // Deduplicate: Pi SDK can emit multiple compaction_end events for
+        // the same turn (on retries, errors, etc.). Create a unique key
+        // from session + turn + preTokens to detect duplicates.
+        const eventKey = `${sid}:${evt.id}:${evt.preTokens}`;
+        if (seenCompactionEvents.current.has(eventKey)) {
+          // Already created a marker for this compaction event.
+          console.debug('[useChat] Duplicate compaction event ignored:', eventKey);
+          return;
         }
+        seenCompactionEvents.current.add(eventKey);
+
+        const marker: ChatMessage = {
+          id: newId(),
+          role: 'assistant',
+          parts: [],
+          markerKind: 'compaction',
+          compactionMeta: {
+            trigger: evt.trigger,
+            preTokens: evt.preTokens,
+            postTokens: evt.postTokens,
+            durationMs: evt.durationMs,
+          },
+        };
+
+        const prevMsgs = messagesBySession.current.get(sid) ?? [];
+        
+        // Mid-turn insertion: find the assistant message with this turn ID
+        // and insert the marker right after it. If not found (compaction
+        // between turns), append at the end.
+        const turnMsgIndex = prevMsgs.findIndex((m) => m.id === evt.id);
+        const insertionMode = turnMsgIndex >= 0 ? 'after-turn' : 'append';
+        const next =
+          turnMsgIndex >= 0
+            ? [
+                ...prevMsgs.slice(0, turnMsgIndex + 1),
+                marker,
+                ...prevMsgs.slice(turnMsgIndex + 1),
+              ]
+            : [...prevMsgs, marker];
+
+        console.debug(
+          '[useChat] Compaction marker created:',
+          {
+            eventKey,
+            trigger: evt.trigger,
+            preTokens: evt.preTokens,
+            postTokens: evt.postTokens,
+            turnId: evt.id,
+            insertionMode,
+            turnMsgIndex,
+          },
+        );
+
+        messagesBySession.current.set(sid, next);
+        if (sid === activeSessionIdRef.current) setMessages(next);
+        void appendMessage(sid, chatToStored(marker));
         return;
       }
 
