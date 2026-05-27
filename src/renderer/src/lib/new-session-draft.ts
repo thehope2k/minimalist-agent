@@ -26,3 +26,8 @@ export function patchNewSessionStateDraft(
 ): void {
   stored = { ...stored, ...patch };
 }
+
+/** Clear the stored draft — called when explicitly starting a fresh new session. */
+export function clearNewSessionStateDraft(): void {
+  stored = {};
+}

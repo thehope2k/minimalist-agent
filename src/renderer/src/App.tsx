@@ -25,6 +25,7 @@ import { deleteSession } from './lib/sessions';
 import { reload as reloadSkills } from './lib/skills';
 import { reload as reloadAgents } from './lib/agents';
 import { reload as reloadExtensions } from './lib/extensions';
+import { clearNewSessionStateDraft } from './lib/new-session-draft';
 
 /** Payload pushed from non-chat surfaces (e.g. New Skill) into a fresh chat. */
 export interface SeedSubmit {
@@ -278,6 +279,7 @@ export default function App() {
 
   const handleNewSession = () => {
     intentNewChatRef.current = true;
+    clearNewSessionStateDraft();
     setActiveSessionId(null);
     if (inSettings || inSkills || inAgents || inExtensions) setView('all');
   };
@@ -311,6 +313,8 @@ export default function App() {
    */
   const [seedSubmit, setSeedSubmit] = useState<SeedSubmit | null>(null);
   const startSessionWithSubmission = (submit: SeedSubmit) => {
+    intentNewChatRef.current = true;
+    clearNewSessionStateDraft();
     setSeedSubmit(submit);
     setActiveSessionId(null);
     setView('all');
