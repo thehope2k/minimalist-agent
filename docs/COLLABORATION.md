@@ -155,117 +155,19 @@ Agent shows decision dialog:
 
 ## Known Limitations
 
-### 1. Missing: Intelligent Plan/Execute Decision
+**1. Intelligent plan/execute decision**
 
-**Issue:** Auto mode doesn't intelligently decide when to plan first vs. execute directly.
+Auto mode doesn't yet decide when to show planning phases vs. execute directly. The agent jumps straight to execution regardless of task complexity. Marked as Medium Priority in ROADMAP.md.
 
-**Current behavior:**
-```
-User: "Add authentication"
-Agent: [Immediately starts executing]
-  Reading files...
-  Creating middleware...
-  Editing package.json...
-```
+**Workaround:** Manually switch to Plan mode for complex tasks.
 
-**Intended behavior (from original design):**
-```
-User: "Add authentication" (complex task)
-Agent: [Recognizes complexity, shows planning first]
-  📋 Phase 1: Exploring codebase
-    ✓ Found patterns...
-  📋 Phase 2: Analyzing requirements
-    ✓ Recommending JWT...
-  📋 Phase 3: Designing solution
-    ✓ Proposed plan ready
-  
-  [Shows complete plan, then asks approval to execute]
+**2. No backend safety limits**
 
-Vs.
+The system trusts the agent's risk assessment completely. Dangerous operations (rm -rf, .env deletion, sudo commands) could slip through if the agent misjudges risk. Currently relies on system prompt guidance only.
 
-User: "Fix that typo" (simple task)
-Agent: [Immediately executes, no planning phase]
-  ✓ Fixed typo in README.md
-```
+**3. No decision memory**
 
-**Why it matters:**
-- Complex tasks benefit from visible planning
-- Simple tasks don't need ceremony
-- Agent should adapt to task complexity
-
-**Implementation approach (original design):**
-- Add `ReportPhase` tool for visible planning progress
-- Agent assesses task complexity in Auto mode
-- High complexity → show planning phases → present plan → execute
-- Low complexity → execute directly
-- Autonomy slider influences when to show planning
-
-**Status:** Deferred. Marked as Medium Priority in ROADMAP.md.
-
-**Workaround:** Manually switch to Plan mode for complex tasks, then switch back to Auto.
-
----
-
-### 2. No Backend Safety Limits
-
-**Issue:** System trusts agent's risk assessment completely. No backend enforcement.
-
-**Risk:** Dangerous operations (rm -rf, .env deletion, sudo commands) could slip through
-if agent misjudges risk.
-
-**Current:** System prompt guidance only ("treat .env as high risk").
-
-**Future:** Add backend hard limits for known dangerous patterns:
-```
-.env files        → always require approval
-rm -rf commands   → always require approval
-sudo commands     → always require approval
-package.json      → require approval if autonomy < 60%
-```
-
-Low effort (~2-3 hours), high safety value.
-
-### 2. No Formal Risk Scoring
-
-**Issue:** Agent decides "is this risky?" intuitively, not via calculation.
-
-**Current:** Agent thinks "package.json is config, probably ask" but doesn't
-formally compute risk = 60 based on rubrics.
-
-**Impact:** Inconsistent decisions. Same file might prompt at 50% autonomy once,
-not prompt another time.
-
-**Future:** Add assessment tool where agent calculates:
-- Risk (0-100): file type + operation + reversibility
-- Complexity (0-100): multiple approaches? trade-offs?
-- Subjectivity (0-100): style preference vs. technical best practice?
-
-Then backend validates scores and enforces minimums. See original design doc for
-full rubrics. Deferred until usage shows need.
-
-### 3. No Decision Memory
-
-**Issue:** Agent doesn't remember "user approved package.json edit 5 minutes ago."
-
-**Impact:** Asks same approval multiple times in one session.
-
-**Future:** Session-scoped memory or "apply to all similar" checkbox.
-
-### 4. Token Cost
-
-**Issue:** Dynamic autonomy guidance costs ~1,500 tokens per message.
-
-**With caching:** First turn ~$0.06, subsequent ~$0.006 (cheap).
-
-**Alternative:** Simplify to 3 static modes (Collaborative/Balanced/Independent)
-would use ~150 tokens (90% savings). Consider if usage data shows users cluster
-around 20%, 50%, 80% and don't use intermediate values.
-
-### 5. Limited Explanations
-
-**Issue:** Agent doesn't always explain WHY it's asking.
-
-**Future:** Show risk calculation, "why are you asking?" expandable section.
+The agent doesn't remember recent approvals — may ask the same approval multiple times in one session.
 
 ---
 

@@ -21,8 +21,7 @@ Main process
     │   └─ pi/agent.ts          ← Pi subprocess (GitHub Copilot)
     ├─ agent/events.ts          ← SDKMessage → AgentChatEvent adapter
     ├─ agent/options.ts         ← subprocess env, cli.js resolution
-    ├─ agent/system-prompt.ts   ← system prompt assembly
-    └─ agent/permissions.ts     ← canUseTool callback + session allow-list
+    └─ agent/system-prompt.ts   ← system prompt assembly
 ```
 
 ---
@@ -48,7 +47,7 @@ const options: Options = {
     includePartialMessages: true,
     abortController,
     maxTurns: req.maxTurns ?? DEFAULT_MAX_TURNS,
-    permissionMode: toSdkPermissionMode(req.permissionMode),
+    permissionMode: toSdkPermissionMode(req.permissionMode),  // 'plan' or 'default'
     tools: {type: 'preset', preset: 'claude_code'},
     mcpServers: buildSdkMcpServers(),
     env: resolveExtensionEnv(),
@@ -92,7 +91,7 @@ newline-delimited JSON (`SubprocessInbound` / `SubprocessOutbound` in
 
 Lifecycle:
 
-1. `init` message — session id, working directory, model, auth, permission mode, system prompt
+1. `init` message — session id, working directory, model, auth, permission mode ('plan' or 'auto'), system prompt
 2. `prompt` messages — user turns
 3. Subprocess emits `event` messages (pre-adapted to `AgentChatEvent`)
 4. `auth_required` from subprocess → main refreshes the Copilot token and
@@ -168,7 +167,7 @@ agent harness convention.
 
 ```
 <userData>/
-  settings.json          ← AI defaults (model, thinking, maxTurns, permissions)
+  settings.json          ← AI defaults (model, thinking, maxTurns, permission mode, autonomy level)
   preferences.json       ← User preferences (name, timezone, location, notes)
   connections.json       ← Connection metadata (slugs, models, auth types)
   credentials.enc        ← Encrypted API keys + OAuth tokens

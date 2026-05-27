@@ -205,18 +205,6 @@ git worktree remove .minimalist-agent/worktrees/agent-*
 
 ---
 
-## Architecture
-
-Matches Claude Code's production worktree system:
-
-- **Automatic creation** - No user configuration required
-- **Auto .gitignore update** - Prevents untracked file noise
-- **Smart cleanup** - Removes clean worktrees, keeps modified ones
-- **Orphaned cleanup** - Handles crashes/restarts gracefully
-- **Graceful fallback** - Works in non-git projects
-
----
-
 ## Performance
 
 | Metric | Value |
@@ -228,19 +216,6 @@ Matches Claude Code's production worktree system:
 
 ---
 
-## Implementation Files
-
-```
-src/main/agent/backends/pi/worktree-manager.ts    (540+ lines, core logic)
-src/main/agent/backends/pi/agent-tool.ts           (integrated)
-src/main/index.ts                                  (startup check)
-AGENTS.md                                          (developer docs)
-.worktreeinclude.example                           (user config template)
-.gitignore                                         (updated)
-```
-
----
-
 ## Summary
 
 ✅ **Problem:** Parallel agents deadlocked on resource locks  
@@ -249,3 +224,10 @@ AGENTS.md                                          (developer docs)
 ✅ **UX:** Automatic, zero configuration, production ready  
 
 The feature is complete and ready for production use.
+
+---
+
+## For Contributors
+
+Core implementation: `src/main/agent/backends/pi/worktree-manager.ts`  
+Developer guidance: See **Agent worktree isolation** section in `AGENTS.md`

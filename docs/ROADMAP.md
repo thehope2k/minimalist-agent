@@ -26,8 +26,8 @@ What's shipped, what's coming, and what's intentionally out of scope.
 |---|---|
 | **Built-in tools** | Read, Write, Edit, Bash, Grep, Glob, WebFetch, WebSearch, Task — via `claude_code` SDK preset (Anthropic). Pi/Copilot backend has its own equivalent set excluding Task |
 | **Subagents** | Agent/Task delegation available on both Anthropic and Pi backends, including parallel-safe spawning on Pi |
-| **Permission modes** | Plan (no mutations), Ask (per-tool prompt), Auto (bypass) — per-session and global default |
-| **Safe bash auto-allow** | ~55 read-only bash commands auto-allowed in Ask mode. Dangerous constructs (`$()`, redirects, `&`, env assignment, `find -exec`) always blocked. Both backends covered |
+| **Permission modes** | Plan (read-only exploration) · Auto (intelligent execution with 0-100% autonomy slider) — per-session and global default |
+| **Intelligent collaboration** | Auto mode includes autonomy slider (0-100%) controlling how often the agent engages the user for decisions, approvals, preferences, feedback, and guidance. Higher autonomy = more independence; lower autonomy = more collaboration. See [COLLABORATION.md](COLLABORATION.md) |
 | **Mid-turn steering** | Inject a message (with attachments) into a live agent turn without cancelling it |
 | **Continue after max turns** | One-click resume when the agent hits `max_turns` |
 | **Thinking / reasoning** | Extended thinking with collapsible panels |
@@ -130,5 +130,5 @@ Explicit non-goals — they belong to a different product surface or a different
 | **Codebase semantic indexing** | Claude Code and Codex don't do this either; file tools + large context window is the right approach for this product class |
 | **Self-hosted server / web UI** | Desktop-only by design |
 | **Cron / scheduled agent runs** | A separate scheduling engine — not a chat app concern |
-| **Custom rendering blocks** (datatable, html-preview, pdf-preview) | No tool architecture to produce them |
+| **Custom rendering blocks** (html-preview, pdf-preview) | No tool architecture to produce them; datatable is the only custom renderer (added in v0.9.0) |
 | **Theming / multi-language** | System theme only |

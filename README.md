@@ -20,8 +20,8 @@ Everything you need to work with Claude — nothing you don't.
 
 - **Full toolset** — Read, Write, Edit, Bash, Grep, Glob, WebFetch, WebSearch, Task via the `claude_code` SDK preset
 - **Subagents** — Task tool for Anthropic connections spawns subagents within a turn
-- **Permission modes** — Plan · Ask · Auto per session and global default
-- **Safe bash auto-allow** — ~55 read-only commands auto-allowed in Ask mode; dangerous constructs always blocked
+- **Permission modes** — Plan (read-only) · Auto (intelligent execution with autonomy slider)
+- **Intelligent collaboration** — Auto mode includes 0-100% autonomy slider controlling how often the agent asks for decisions, approvals, and feedback
 - **Mid-turn steering** — inject a message (with attachments) into a live turn without cancelling it (`Cmd+Enter`)
 - **Continue after max turns** — one-click resume when the agent hits `max_turns`
 - **Thinking / reasoning** — extended thinking with collapsible panels
@@ -127,8 +127,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development guide.
 ## Docs
 
 - [Architecture](docs/ARCHITECTURE.md) — agent pipeline, event flow, storage layout
-- [Terminal](docs/TERMINAL.md) — in-app terminal reference
+- [Agent Definitions](docs/AGENT-DEFINITIONS.md) — reusable agent configurations and sub-agent system
+- [Collaboration](docs/COLLABORATION.md) — autonomy system and intelligent engagement
 - [Roadmap](docs/ROADMAP.md) — what's in, what's coming, what's out of scope
+- [Terminal](docs/TERMINAL.md) — in-app terminal reference
+- [Worktree Isolation](docs/WORKTREE-ISOLATION.md) — parallel agent isolation via git worktrees
+- [SDD](docs/SDD.md) — Spec-Driven Development (current status)
 - [Changelog](CHANGELOG.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security](SECURITY.md)
