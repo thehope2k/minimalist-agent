@@ -5,6 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.19.0] — 2026-05-27
+
+Quality of life improvements for session management.
+
+### Added
+
+**Session management**
+
+- Draft state now clears automatically when starting a fresh session, preventing stale text and attachments from carrying over from previous sessions
+
+---
+
 ## [0.18.0] — 2026-05-27
 
 Adds global agent management and richer chat workflow visibility, plus model-picker improvements and targeted bug fixes.
