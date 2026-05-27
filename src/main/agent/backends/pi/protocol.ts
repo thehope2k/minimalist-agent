@@ -171,6 +171,7 @@ export interface MsgSteer {
   /** Turn id we're injecting into. */
   turnId: string;
   message: string;
+  images?: PiPromptImage[];
 }
 
 export interface MsgShutdown {
@@ -268,11 +269,58 @@ export interface MsgFatalError {
   message: string;
 }
 
+/** Planning workflow events from subprocess → main. */
+export interface MsgPlanCreated {
+  type: 'planning:created';
+  plan: unknown; // Plan type from planning-types.ts
+}
+
+export interface MsgPlanUpdated {
+  type: 'planning:updated';
+  plan: unknown;
+}
+
+export interface MsgPhaseUpdated {
+  type: 'planning:phase-updated';
+  planId: string;
+  phase: unknown; // Phase type from planning-types.ts
+}
+
+export interface MsgPlanRevised {
+  type: 'planning:revised';
+  plan: unknown;
+  revision: unknown; // PlanRevision type from planning-types.ts
+}
+
+export interface MsgPlanCompleted {
+  type: 'planning:completed';
+  planId: string;
+}
+
+export interface MsgPlanCancelled {
+  type: 'planning:cancelled';
+  planId: string;
+}
+
+export interface MsgPlanError {
+  type: 'planning:error';
+  planId: string;
+  error: string;
+  phaseId?: string;
+}
+
 export type SubprocessOutbound =
   | MsgReady
   | MsgEvent
   | MsgPreToolUseRequest
   | MsgCollaborationRequest
+  | MsgPlanCreated
+  | MsgPlanUpdated
+  | MsgPhaseUpdated
+  | MsgPlanRevised
+  | MsgPlanCompleted
+  | MsgPlanCancelled
+  | MsgPlanError
   | MsgMiniCompletionResult
   | MsgLlmQueryResult
   | MsgSessionIdUpdate

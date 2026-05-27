@@ -25,7 +25,7 @@
 import {type ChildProcess, spawn} from 'node:child_process';
 import {resolveExtensionEnv} from '../../../extensions/env-resolver';
 import {createInterface, type Interface as ReadlineInterface} from 'node:readline';
-import {app} from 'electron';
+import {app, BrowserWindow} from 'electron';
 import {readFileSync} from 'node:fs';
 import {resolvePiServerPath} from './spawn-utils';
 import type {StoredAttachment} from '../../../storage/sessions';
@@ -38,6 +38,7 @@ import type {PermissionMode} from '../../permissions';
 import type {CopilotOAuthAuth, LocalApiAuth} from '../types';
 import type {CollaborationAsk} from '../../claude';
 import type {EngagementRequest} from '../../../../shared/collaboration-types';
+import {getActivePlan as getCachedPlan, updatePlanCache} from '../../plan-cache';
 import {resolveAuthForSlug} from '../../../auth/resolve';
 import {loadAllAgents} from '../../../agents/storage';
 import type {
@@ -474,6 +475,97 @@ async function handleOutbound(
       return;
     }
 
+    // Planning workflow events - forward to renderer via IPC and update cache
+    case 'planning:created':
+    case 'planning:updated': {
+      const plan = (msg as any).plan;
+      if (plan) {
+        // Update the cache so getActivePlan returns the latest state
+        updatePlanCache(handle.chatSessionId, plan);
+        
+        // Forward to renderer
+        const win = BrowserWindow.getAllWindows()[0];
+        if (win && !win.isDestroyed()) {
+          win.webContents.send(msg.type, plan);
+        }
+      }
+      return;
+    }
+    
+    case 'planning:phase-updated': {
+      const { planId, phase } = msg as any;
+      // Update the cached plan's phase
+      const cachedPlan = getCachedPlan(handle.chatSessionId);
+      if (cachedPlan && cachedPlan.id === planId) {
+        const phaseIndex = cachedPlan.phases.findIndex((p: any) => p.id === phase.id);
+        if (phaseIndex >= 0) {
+          cachedPlan.phases[phaseIndex] = phase;
+          updatePlanCache(handle.chatSessionId, cachedPlan);
+        }
+      }
+      
+      // Forward to renderer
+      const win = BrowserWindow.getAllWindows()[0];
+      if (win && !win.isDestroyed()) {
+        win.webContents.send(msg.type, { planId, phase });
+      }
+      return;
+    }
+    
+    case 'planning:revised': {
+      const { plan, revision } = msg as any;
+      if (plan) {
+        updatePlanCache(handle.chatSessionId, plan);
+        
+        const win = BrowserWindow.getAllWindows()[0];
+        if (win && !win.isDestroyed()) {
+          win.webContents.send(msg.type, { plan, revision });
+        }
+      }
+      return;
+    }
+    
+    case 'planning:completed':
+    case 'planning:cancelled': {
+      const planId = (msg as any).planId;
+      
+      // Update cache status or remove
+      if (msg.type === 'planning:cancelled') {
+        updatePlanCache(handle.chatSessionId, null);
+      } else {
+        const cachedPlan = getCachedPlan(handle.chatSessionId);
+        if (cachedPlan && cachedPlan.id === planId) {
+          cachedPlan.status = 'completed';
+          updatePlanCache(handle.chatSessionId, cachedPlan);
+        }
+      }
+      
+      // Forward to renderer
+      const win = BrowserWindow.getAllWindows()[0];
+      if (win && !win.isDestroyed() && planId) {
+        win.webContents.send(msg.type, planId);
+      }
+      return;
+    }
+
+    case 'planning:error': {
+      const { planId, error, phaseId } = msg as any;
+      
+      // Update cache to error status
+      const cachedPlan = getCachedPlan(handle.chatSessionId);
+      if (cachedPlan && cachedPlan.id === planId) {
+        cachedPlan.status = 'error';
+        updatePlanCache(handle.chatSessionId, cachedPlan);
+      }
+      
+      // Forward to renderer
+      const win = BrowserWindow.getAllWindows()[0];
+      if (win && !win.isDestroyed()) {
+        win.webContents.send(msg.type, { planId, error, phaseId });
+      }
+      return;
+    }
+
     case 'session_id_update': {
       const m = msg as MsgSessionIdUpdate;
       try {
@@ -794,10 +886,16 @@ export function steerPiTurn(args: {
   chatSessionPath: string;
   turnId: string;
   message: string;
+  attachments?: StoredAttachment[];
 }): boolean {
   const handle = handles.get(args.chatSessionPath);
   if (!handle || !handle.queues.has(args.turnId)) return false;
-  send(handle, { type: 'steer', turnId: args.turnId, message: args.message });
+  send(handle, {
+    type: 'steer',
+    turnId: args.turnId,
+    message: buildPiPrompt(args.message, args.attachments),
+    images: buildImages(args.attachments),
+  });
   return true;
 }
 

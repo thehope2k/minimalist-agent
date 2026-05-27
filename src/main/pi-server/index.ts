@@ -68,6 +68,12 @@ import type {
 } from '../agent/backends/pi/protocol';
 import { fileURLToPath } from 'node:url';
 import type { LoadedAgent } from '../agents/types';
+import { PlanManager } from '../agent/planning/manager';
+import {
+  validateCreatePlanInput,
+  validateReportPhaseProgressInput,
+  validateRevisePlanInput,
+} from '../../shared/planning-types';
 
 // Derive the path to this pi-server bundle for spawning agent subprocesses
 const PI_SERVER_PATH = fileURLToPath(import.meta.url);
@@ -125,6 +131,7 @@ interface State {
     string,
     { resolve: (r: MsgCollaborationResponse) => void }
   >;
+  planManager?: PlanManager;
   turnAbort?: AbortController;
   shuttingDown?: boolean;
 }
@@ -135,6 +142,7 @@ const state: State = {
   pendingCollaboration: new Map(),
   appendArr: [],
   availableAgents: [],
+  planManager: new PlanManager(),
 };
 
 /**
@@ -533,6 +541,249 @@ function createCollaborationTools(sessionId: string): ToolDefinition<any, any, a
   ];
 }
 
+/**
+ * Create planning workflow tools.
+ */
+function createPlanningTools(sessionId: string): ToolDefinition<any, any, any>[] {
+  return [
+    {
+      name: 'CreatePlan',
+      label: 'Create execution plan',
+      description: 'Create a multi-phase execution plan for complex tasks. Use when task requires multiple steps or exploration.',
+      parameters: {
+        type: 'object' as const,
+        properties: {
+          task: schema.string('Clear description of the overall task'),
+          phases: schema.array(
+            {
+              type: 'object' as const,
+              properties: {
+                name: schema.string('Phase name'),
+                description: schema.string('Phase description'),
+                actions: schema.stringArray('Tools and actions to be executed'),
+                estimated_risk: schema.number('Estimated risk score (0-100)', 0, 100),
+                is_safe: { type: 'boolean' as const, description: 'Whether this phase is safe (read-only)' },
+              },
+              required: ['name', 'description', 'actions', 'estimated_risk', 'is_safe'],
+            },
+            1,
+            20,
+          ),
+          reasoning: schema.string('Why this approach was chosen'),
+        },
+        required: ['task', 'phases', 'reasoning'],
+      },
+      execute: async (
+        _toolCallId: string,
+        params: unknown,
+        _signal: AbortSignal | undefined,
+        _onUpdate: any,
+        _ctx: any,
+      ) => {
+        try {
+          const input = validateCreatePlanInput(params);
+          const plan = state.planManager!.createPlan(sessionId, input);
+          
+          return {
+            isError: false,
+            content: [
+              {
+                type: 'text' as const,
+                text: `Plan created successfully (ID: ${plan.id}, ${plan.phases.length} phases). Execution will proceed phase by phase.`,
+              },
+            ],
+            details: {
+              plan_id: plan.id,
+              version: plan.version,
+              phases_count: plan.phases.length,
+            },
+          };
+        } catch (error: any) {
+          return {
+            isError: true,
+            content: [
+              {
+                type: 'text' as const,
+                text: `Failed to create plan: ${error.message}`,
+              },
+            ],
+            details: {},
+          };
+        }
+      },
+    },
+    {
+      name: 'ReportPhaseProgress',
+      label: 'Report phase progress',
+      description: 'Report progress on the current phase. Call after completing actions or discovering key findings.',
+      parameters: {
+        type: 'object' as const,
+        properties: {
+          phase_index: schema.number('Phase index (0-based)', 0, 100),
+          status: { type: 'string' as const, enum: ['running', 'complete', 'blocked'], description: 'Phase status' },
+          findings: schema.string('What was discovered or accomplished'),
+          suggests_revision: { type: 'boolean' as const, description: 'Whether plan should be revised based on findings' },
+        },
+        required: ['phase_index', 'status', 'findings', 'suggests_revision'],
+      },
+      execute: async (
+        _toolCallId: string,
+        params: unknown,
+        _signal: AbortSignal | undefined,
+        _onUpdate: any,
+        _ctx: any,
+      ) => {
+        try {
+          const input = validateReportPhaseProgressInput(params);
+          const plan = state.planManager!.getActivePlan(sessionId);
+          
+          if (!plan) {
+            return {
+              isError: true,
+              content: [
+                {
+                  type: 'text' as const,
+                  text: 'No active plan found for this session',
+                },
+              ],
+              details: {},
+            };
+          }
+          
+          const phase = plan.phases[input.phase_index];
+          if (!phase) {
+            return {
+              isError: true,
+              content: [
+                {
+                  type: 'text' as const,
+                  text: `Phase index ${input.phase_index} not found in plan`,
+                },
+              ],
+              details: {},
+            };
+          }
+          
+          // Update phase status
+          const statusMap = {
+            'running': 'running' as const,
+            'complete': 'complete' as const,
+            'blocked': 'blocked' as const,
+          };
+          state.planManager!.updatePhaseStatus(
+            sessionId,
+            phase.id,
+            statusMap[input.status],
+            input.findings,
+          );
+          
+          // Check if revision needed
+          const revisionNeeded = input.suggests_revision &&
+            state.planManager!.shouldRevise(sessionId, phase.id, input.findings);
+          
+          let responseText = `Phase ${input.phase_index} (${phase.name}) status: ${input.status}`;
+          if (revisionNeeded) {
+            responseText += '\n\nRevision recommended based on findings. Use RevisePlan to update remaining phases.';
+          }
+          
+          return {
+            isError: false,
+            content: [
+              {
+                type: 'text' as const,
+                text: responseText,
+              },
+            ],
+            details: {
+              phase_index: input.phase_index,
+              status: input.status,
+              revision_needed: revisionNeeded,
+            },
+          };
+        } catch (error: any) {
+          return {
+            isError: true,
+            content: [
+              {
+                type: 'text' as const,
+                text: `Failed to report phase progress: ${error.message}`,
+              },
+            ],
+            details: {},
+          };
+        }
+      },
+    },
+    {
+      name: 'RevisePlan',
+      label: 'Revise execution plan',
+      description: 'Revise remaining phases based on new discoveries. Explain what changed and why.',
+      parameters: {
+        type: 'object' as const,
+        properties: {
+          reason: schema.string('Why revision is needed'),
+          revised_phases: schema.array(
+            {
+              type: 'object' as const,
+              properties: {
+                name: schema.string('Phase name'),
+                description: schema.string('Phase description'),
+                actions: schema.stringArray('Tools and actions to be executed'),
+                estimated_risk: schema.number('Estimated risk score (0-100)', 0, 100),
+                is_safe: { type: 'boolean' as const, description: 'Whether this phase is safe (read-only)' },
+              },
+              required: ['name', 'description', 'actions', 'estimated_risk', 'is_safe'],
+            },
+            1,
+            20,
+          ),
+          changes_summary: schema.string('Human-readable summary of changes'),
+        },
+        required: ['reason', 'revised_phases', 'changes_summary'],
+      },
+      execute: async (
+        _toolCallId: string,
+        params: unknown,
+        _signal: AbortSignal | undefined,
+        _onUpdate: any,
+        _ctx: any,
+      ) => {
+        try {
+          const input = validateRevisePlanInput(params);
+          const plan = state.planManager!.revisePlan(sessionId, input);
+          
+          return {
+            isError: false,
+            content: [
+              {
+                type: 'text' as const,
+                text: `Plan revised successfully (v${plan.version}). ${input.changes_summary}`,
+              },
+            ],
+            details: {
+              plan_id: plan.id,
+              old_version: plan.version - 1,
+              new_version: plan.version,
+              changed_phases: plan.revisions[plan.revisions.length - 1].changedPhases,
+            },
+          };
+        } catch (error: any) {
+          return {
+            isError: true,
+            content: [
+              {
+                type: 'text' as const,
+                text: `Failed to revise plan: ${error.message}`,
+              },
+            ],
+            details: {},
+          };
+        }
+      },
+    },
+  ];
+}
+
 function buildWrappedTools(
   cwd: string,
   agentContext?: {
@@ -573,6 +824,9 @@ function buildWrappedTools(
 
   // Add collaboration tools (not wrapped with permission gate - they ARE the engagement)
   tools.push(...createCollaborationTools(agentContext?.sessionId || ''));
+
+  // Add planning tools (not wrapped with permission gate - they manage the workflow)
+  tools.push(...createPlanningTools(agentContext?.sessionId || ''));
 
   return tools;
 }
@@ -741,6 +995,31 @@ async function handleInit(msg: MsgInit): Promise<void> {
   });
   state.session = session;
   state.unsubscribe = session.subscribe(forwardEvent);
+
+  // Set up PlanManager event forwarding
+  if (state.planManager) {
+    state.planManager.on('plan-created', (plan) => {
+      send({ type: 'planning:created', plan });
+    });
+    state.planManager.on('plan-updated', (plan) => {
+      send({ type: 'planning:updated', plan });
+    });
+    state.planManager.on('phase-updated', (planId, phase) => {
+      send({ type: 'planning:phase-updated', planId, phase });
+    });
+    state.planManager.on('plan-revised', (plan, revision) => {
+      send({ type: 'planning:revised', plan, revision });
+    });
+    state.planManager.on('plan-completed', (planId) => {
+      send({ type: 'planning:completed', planId });
+    });
+    state.planManager.on('plan-cancelled', (planId) => {
+      send({ type: 'planning:cancelled', planId });
+    });
+    state.planManager.on('plan-error', (planId, error, phaseId) => {
+      send({ type: 'planning:error', planId, error, phaseId });
+    });
+  }
 
   const ready: MsgReady = {
     type: 'ready',
@@ -1170,6 +1449,7 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
       try {
         await state.session.prompt(msg.message, {
           streamingBehavior: 'steer',
+          images: msg.images,
         } as never);
       } catch (e) {
         console.error('[pi-server] steer failed:', e);

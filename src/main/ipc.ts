@@ -584,11 +584,11 @@ export function registerIpc(): void {
         return { ok: false, reason: 'empty_message' };
       if (info.providerType === 'pi') {
         if (!info.chatSessionId) return { ok: false, reason: 'no_session' };
-        // Pi backend is text-only for steer; attachments are not forwarded.
         const ok = steerPiTurn({
           chatSessionPath: sessionPath(info.chatSessionId),
           turnId: args.turnId,
           message: args.message,
+          attachments: args.attachments,
         });
         return ok ? { ok: true } : { ok: false, reason: 'subprocess_unavailable' };
       }
