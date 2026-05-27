@@ -14,7 +14,7 @@ interface CommitPanelProps {
   stagedRepos: string[];
   onCommit: (message: string, amend: boolean) => Promise<void>;
   onFetchLastMessage: () => Promise<string | null>;
-  onGenerateMessage: (amend: boolean) => Promise<string | null>;
+  onGenerateMessage: (amend: boolean, userContext?: string) => Promise<string | null>;
   committing: boolean;
   error: string | null;
 }
@@ -43,7 +43,9 @@ export function CommitPanel({
     setGenerating(true);
     setGenerateError(null);
     try {
-      const generated = await onGenerateMessage(amend);
+      // Use existing message as context if present
+      const userContext = message.trim() || undefined;
+      const generated = await onGenerateMessage(amend, userContext);
       if (generated) {
         setMessage(generated);
       } else {
@@ -143,7 +145,7 @@ export function CommitPanel({
         onChange={(e) => setMessage(e.target.value)}
         onKeyDown={handleKeyDown}
         disabled={committing || fetchingAmend || generating}
-        placeholder="Commit message…"
+        placeholder="Type intent (e.g., 'fix login timeout') then Generate, or write commit message directly…"
         rows={6}
         className={cn(
           'scroll-thin w-full resize-none rounded-md border border-border bg-elevated/60',

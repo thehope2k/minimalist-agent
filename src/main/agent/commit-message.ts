@@ -27,6 +27,16 @@ RULES:
   For changesets touching 4+ files or covering multiple concerns, a concise body
   IS expected — summarise what was added, changed, or fixed at a high level.
 
+USER CONTEXT PRIORITY:
+  When the user provides context about the change's purpose (e.g., "fix login timeout",
+  "add dark mode support"), use it to:
+  1. ACCURATELY choose the commit type (fix/feat/refactor/etc.) — user intent overrides code inference
+  2. Identify the scope and affected component
+  3. Frame the description from the user's perspective
+  
+  Example: If user says "fix login bug" but the diff shows new features,
+  recognize it's actually fixing broken functionality → type = "fix", not "feat".
+
 MULTI-REPO RULE (when changes span multiple repositories):
   Write ONE message at the product/feature/business level — what shared purpose
   do ALL repos serve? Do NOT list repo names, do NOT add per-repo sections.
@@ -47,6 +57,7 @@ Reply with ONLY the commit message. No preamble, no explanations, no markdown, n
 export interface GenerateCommitMessageArgs {
   auth: ResolvedAuth;
   diffContext: string;
+  userContext?: string;
   model?: string;
   connectionSlug?: string;
   chatSessionId?: string;
@@ -80,7 +91,19 @@ export async function generateCommitMessage(
 ): Promise<string | null> {
   if (!args.diffContext.trim()) return null;
 
-  const userPrompt = `Generate a commit message for these staged changes:\n\n${args.diffContext}`;
+  let userPrompt: string;
+  if (args.userContext) {
+    userPrompt = `User's description of the change:
+"${args.userContext}"
+
+Generate a commit message based on this intent and the following diff:
+
+${args.diffContext}`;
+  } else {
+    userPrompt = `Generate a commit message for these staged changes:
+
+${args.diffContext}`;
+  }
 
   if (args.auth.type === 'copilot_oauth') {
     if (!args.connectionSlug || !args.chatSessionId) return null;

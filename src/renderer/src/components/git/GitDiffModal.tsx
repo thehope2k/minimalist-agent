@@ -382,7 +382,7 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
     }
   }, [repos, stagedPaths, stagedHunks, loadStatus, clearPersisted]);
 
-  const handleGenerateMessage = useCallback(async (amend: boolean) => {
+  const handleGenerateMessage = useCallback(async (amend: boolean, userContext?: string) => {
     if (!cwd) return null;
     const allFiles = repos.flatMap((r) => r.files);
     const staged = allFiles.filter((f) => stagedPaths.has(f.absolutePath));
@@ -408,6 +408,7 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
       connectionSlug: slug,
       model: mdl ?? undefined,
       diffContext,
+      userContext,
       sessionId: sessionId ?? undefined,
       cwd,
     });

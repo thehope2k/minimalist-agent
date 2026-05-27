@@ -696,6 +696,7 @@ const api = {
       connectionSlug: string;
       model?: string;
       diffContext: string;
+      userContext?: string;
       sessionId?: string;
       cwd?: string;
     }) => ipcRenderer.invoke('git:generateCommitMessage', args),

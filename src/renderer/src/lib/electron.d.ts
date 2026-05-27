@@ -1027,6 +1027,7 @@ export interface AppApi {
       connectionSlug: string;
       model?: string;
       diffContext: string;
+      userContext?: string;
       sessionId?: string;
       cwd?: string;
     }) => Promise<string | null>;
