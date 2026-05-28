@@ -62,7 +62,8 @@ function preprocessMermaid(code: string): string {
     const alreadyQuoted = /^"[\s\S]*"$/.test(inner.trim());
     const hasNewline = inner.includes('\\n');
     // `@` is illegal in bare labels; `/` alongside `@` appears in scoped pkg names.
-    const hasSpecialChar = inner.includes('@');
+    // `{` `}` are special chars for decision nodes and break template syntax like {{variable}}.
+    const hasSpecialChar = inner.includes('@') || inner.includes('{') || inner.includes('}');
 
     if (!hasNewline && !hasSpecialChar) return match;
 
