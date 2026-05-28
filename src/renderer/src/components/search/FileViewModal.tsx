@@ -38,7 +38,7 @@ export interface FileViewModalProps {
   onClose: () => void;
 }
 
-type ViewerType = 'markdown' | 'image-raster' | 'image-svg' | 'json' | 'code';
+type ViewerType = 'markdown' | 'image-raster' | 'image-svg' | 'json' | 'html' | 'code';
 
 // ─── Extension → viewer map ───────────────────────────────────────────────────
 
@@ -46,6 +46,7 @@ const MD_EXTS    = new Set(['.md', '.mdx']);
 const SVG_EXTS   = new Set(['.svg']);
 const RASTER_EXTS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.avif', '.bmp', '.ico']);
 const JSON_EXTS  = new Set(['.json', '.jsonc']);
+const HTML_EXTS  = new Set(['.html', '.htm']);
 
 function getViewerType(path: string): ViewerType {
   const ext = extname(path).toLowerCase();
@@ -53,6 +54,7 @@ function getViewerType(path: string): ViewerType {
   if (SVG_EXTS.has(ext))    return 'image-svg';
   if (RASTER_EXTS.has(ext)) return 'image-raster';
   if (JSON_EXTS.has(ext))   return 'json';
+  if (HTML_EXTS.has(ext))   return 'html';
   return 'code';
 }
 
@@ -116,7 +118,8 @@ export function FileViewModal({ absolutePath, lineNumber, onClose }: FileViewMod
   const [base64, setBase64]       = useState<string | null>(null);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState<string | null>(null);
-  // Markdown source-toggle: when true, show raw Monaco instead of rendered view.
+  // Source-toggle: when true, show raw Monaco instead of rendered view.
+  // Used for markdown and HTML. Both default to Preview (rendered view).
   const [showSource, setShowSource] = useState(false);
 
   // Load file data whenever the path changes.
@@ -159,8 +162,8 @@ export function FileViewModal({ absolutePath, lineNumber, onClose }: FileViewMod
         )}
       </div>
 
-      {/* Source toggle — only for markdown */}
-      {viewerType === 'markdown' && !loading && !error && (
+      {/* Source toggle — for markdown and HTML */}
+      {(viewerType === 'markdown' || viewerType === 'html') && !loading && !error && (
         <button
           type="button"
           onClick={() => setShowSource((v) => !v)}
@@ -189,6 +192,23 @@ export function FileViewModal({ absolutePath, lineNumber, onClose }: FileViewMod
           <div className="mx-auto max-w-3xl">
             <Markdown text={content ?? ''} />
           </div>
+        </div>
+      );
+    }
+
+    // HTML — sandboxed preview with Source/Preview toggle (safe to show preview by default)
+    if (viewerType === 'html') {
+      if (showSource) {
+        return <CodeViewer content={content ?? ''} language="html" lineNumber={1} />;
+      }
+      return (
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-6">
+          <iframe
+            srcDoc={content ?? ''}
+            sandbox="allow-same-origin"
+            title="HTML Preview"
+            className="w-full h-[calc(100vh-200px)] rounded border border-border bg-white"
+          />
         </div>
       );
     }

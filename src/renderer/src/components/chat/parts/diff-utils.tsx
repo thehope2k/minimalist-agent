@@ -1,11 +1,13 @@
 // Shared diff utilities used by both DiffPart (per-tool chip) and
 // TurnSummaryCard (end-of-turn aggregate view).
 
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import type { DiffMethod } from 'react-diff-viewer-continued';
-import { FilePenLine, FileText } from 'lucide-react';
+import { FilePenLine, FileText, Code } from 'lucide-react';
 import { ExpandModal } from '@/components/ui';
 import { CodeBlock } from './markdown/CodeBlock';
+import { Markdown } from './markdown/Markdown';
+import { JsonBlock } from './markdown/JsonBlock';
 
 // Lazy-loaded so react-diff-viewer-continued (~2.7 MB) stays out of the
 // initial bundle. The viewer is only rendered when the user expands a diff
@@ -37,9 +39,98 @@ export function langFromPath(filePath: string): string {
 
 /**
  * Used for Write tool results — no old content to diff, just show the
- * written file with syntax highlighting instead of an empty diff pane.
+ * written file with special rendering for markdown/JSON/images.
  */
 export function WrittenView({ filePath, content }: { filePath: string; content: string }) {
+  const ext = filePath.split('.').pop()?.toLowerCase() ?? '';
+  const isMarkdown = ext === 'md' || ext === 'mdx';
+  const isJson = ext === 'json' || ext === 'jsonc';
+  const isHtml = ext === 'html' || ext === 'htm';
+  
+  const [showSource, setShowSource] = useState(false);
+
+  // ── Markdown viewer with Preview/Source toggle ──
+  if (isMarkdown) {
+    return (
+      <div className="flex flex-col bg-panel">
+        {/* Header with toggle */}
+        <div className="flex items-center justify-between border-b border-border/60 px-3 py-1.5">
+          <span className="text-[10px] uppercase tracking-wide text-fg-subtle">markdown</span>
+          <button
+            type="button"
+            onClick={() => setShowSource((v) => !v)}
+            className="flex items-center gap-1 text-[10px] text-fg-muted transition-colors hover:text-fg"
+          >
+            <Code className="h-3 w-3" strokeWidth={1.75} />
+            {showSource ? 'Preview' : 'Source'}
+          </button>
+        </div>
+        
+        {/* Content */}
+        <div className="scroll-thin overflow-x-auto">
+          {showSource ? (
+            <div className="p-3">
+              <CodeBlock code={content} language="markdown" />
+            </div>
+          ) : (
+            <div className="px-6 py-4">
+              <Markdown text={content} />
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── HTML viewer with Source/Preview toggle (sandboxed, safe to show preview) ──
+  if (isHtml) {
+    return (
+      <div className="flex flex-col bg-panel">
+        {/* Header with toggle */}
+        <div className="flex items-center justify-between border-b border-border/60 px-3 py-1.5">
+          <span className="text-[10px] uppercase tracking-wide text-fg-subtle">html</span>
+          <button
+            type="button"
+            onClick={() => setShowSource((v) => !v)}
+            className="flex items-center gap-1 text-[10px] text-fg-muted transition-colors hover:text-fg"
+          >
+            <Code className="h-3 w-3" strokeWidth={1.75} />
+            {showSource ? 'Preview' : 'Source'}
+          </button>
+        </div>
+        
+        {/* Content */}
+        <div className="scroll-thin overflow-x-auto">
+          {showSource ? (
+            <div className="p-3">
+              <CodeBlock code={content} language="html" />
+            </div>
+          ) : (
+            <div className="px-3 py-3">
+              {/* Sandboxed iframe — blocks scripts, forms, popups, top navigation */}
+              <iframe
+                srcDoc={content}
+                sandbox="allow-same-origin"
+                title="HTML Preview"
+                className="w-full min-h-[400px] rounded border border-border bg-white"
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── JSON viewer with interactive tree ──
+  if (isJson) {
+    return (
+      <div className="bg-panel">
+        <JsonBlock code={content} />
+      </div>
+    );
+  }
+
+  // ── Default: syntax-highlighted code block ──
   return (
     <div className="scroll-thin overflow-x-auto bg-panel">
       <CodeBlock code={content} language={langFromPath(filePath)} />
