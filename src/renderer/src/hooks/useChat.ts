@@ -441,9 +441,7 @@ export function useChat(
     return null;
   }, []);
 
-  const getOrResolvePlanAnchorTurnId = useCallback((sid: string): string | null => {
-    const existing = planAnchorTurnBySession.current.get(sid);
-    if (existing) return existing;
+  const resolvePlanAnchorTurnId = useCallback((sid: string): string | null => {
     const fromStream = streamingBySession.current.get(sid)?.turnId;
     if (fromStream) return fromStream;
     return findLastAssistantTurnId(sid);
@@ -461,19 +459,18 @@ export function useChat(
 
     activePlanBySession.current.set(sid, plan);
 
-    const shouldResetAnchor = !!options?.resetAnchor;
-    if (shouldResetAnchor) {
+    if (options?.resetAnchor) {
       planAnchorTurnBySession.current.delete(sid);
-    }
-    const anchor = getOrResolvePlanAnchorTurnId(sid);
-    if (anchor) {
-      planAnchorTurnBySession.current.set(sid, anchor);
+      const anchor = resolvePlanAnchorTurnId(sid);
+      if (anchor) {
+        planAnchorTurnBySession.current.set(sid, anchor);
+      }
     }
 
     if (sid === activeSessionIdRef.current) {
       setActivePlan(plan);
     }
-  }, [getOrResolvePlanAnchorTurnId]);
+  }, [resolvePlanAnchorTurnId]);
 
   const getPlanForMessage = useCallback((sid: string | null | undefined, messageId: string): Plan | null => {
     if (!sid) return null;
@@ -618,15 +615,6 @@ export function useChat(
       setIsStreaming(!!stream);
       setStreamingTurnId(stream?.turnId ?? null);
       setActivePlan(activePlanBySession.current.get(sessionId) ?? null);
-      if (
-        activePlanBySession.current.has(sessionId) &&
-        !planAnchorTurnBySession.current.has(sessionId)
-      ) {
-        const anchor = findLastAssistantTurnId(sessionId);
-        if (anchor) {
-          planAnchorTurnBySession.current.set(sessionId, anchor);
-        }
-      }
       return;
     }
 
@@ -707,16 +695,6 @@ export function useChat(
       const stream = streamingBySession.current.get(sessionId);
       setIsStreaming(!!stream);
       setStreamingTurnId(stream?.turnId ?? null);
-
-      if (
-        activePlanBySession.current.has(sessionId) &&
-        !planAnchorTurnBySession.current.has(sessionId)
-      ) {
-        const anchor = findLastAssistantTurnId(sessionId);
-        if (anchor) {
-          planAnchorTurnBySession.current.set(sessionId, anchor);
-        }
-      }
       setActivePlan(activePlanBySession.current.get(sessionId) ?? null);
     });
     return () => {
