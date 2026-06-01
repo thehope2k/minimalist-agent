@@ -99,8 +99,7 @@ export interface MsgPrompt {
   turnId: string;
   message: string;
   images?: PiPromptImage[];
-  /** Per-turn system-prompt append (SDD coaching block + phase context).
-   *  Pi subprocess updates resourceLoader when this changes. */
+  /** Per-turn system-prompt append for dynamic context injection. Pi subprocess updates resourceLoader when this changes. */
   systemPromptAppend?: string;
 }
 

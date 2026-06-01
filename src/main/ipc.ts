@@ -133,20 +133,7 @@ import {
 import { searchFiles, type FileSearchEntry } from './files/search';
 import { readFileSync } from 'node:fs';
 import { invalidateContextFileCache } from './agent/system-prompt';
-import {
-  clearState as sddClearState,
-  getState as sddGetState,
-  initState as sddInitState,
-  reinitPreservingManual as sddReinitPreservingManual,
-  isPathInKnownEntity as sddIsPathInKnownEntity,
-  patchMapping as sddPatchMapping,
-  setMode as sddSetMode,
-  setActiveFeature as sddSetActiveFeature,
-} from './sdd/session-state';
-import { scanForEntities as sddScanForEntities } from './sdd/scan';
-import { watchEntity as sddWatchEntity, unwatchEntity as sddUnwatchEntity } from './sdd/watcher';
-import { readArtifact as sddReadArtifact, toggleTaskCheckbox as sddToggleTaskCheckbox } from './sdd/artifact';
-import { runSpecifyInit as sddRunSpecifyInit } from './sdd/wizard';
+
 import {
   appendMessage,
   branchSession,
@@ -517,25 +504,12 @@ export function registerIpc(): void {
         chatSessionId: req.sessionId,
       });
 
-      // Ensure SDD session state is initialised before the first turn so
-      // the system-prompt injection can read it. This is a no-op on
-      // subsequent turns (initState is idempotent when state already exists).
+      // Ensure session state is ready before the first turn.
+      // This is a no-op on subsequent turns (init is idempotent when state already exists).
       let autonomyLevel = 50; // Default: balanced
-      if (req.sessionId && req.cwd) {
+      if (req.sessionId) {
         const sessionMeta = loadSession(req.sessionId)?.meta;
         autonomyLevel = sessionMeta?.autonomyLevel ?? 50;
-        
-        if (!sddGetState(req.sessionId)) {
-          const mode = sessionMeta?.sddMode ?? 'off';
-          if (mode !== 'off') {
-            // Lazy init for system-prompt injection before the renderer calls
-            // sdd:initSessionState. Watchers are NOT started here - the renderer
-            // initiates the full setup (with watchers) via sdd:initSessionState.
-            const { entities, cliMissing, scannedDepth, cliVersion } = await sddScanForEntities(req.cwd);
-            const pinnedSlug = sessionMeta?.activeFeatureSlug ?? null;
-            sddInitState(req.sessionId, entities, req.cwd, mode, cliMissing, scannedDepth, cliVersion, pinnedSlug);
-          }
-        }
       }
 
       const { extendedContext } = getSettings();
@@ -868,20 +842,11 @@ export function registerIpc(): void {
   ipcMain.handle(
     'sessions:updateMeta',
     (
-      event,
+      _event,
       id: string,
       patch: Partial<Omit<SessionMeta, 'id' | 'createdAt'>>,
     ) => {
-      const result = updateSessionMeta(id, patch);
-      // When CWD changes, clear SDD state so next turn re-scans from scratch.
-      if ('workingDirectory' in patch) {
-        sddClearState(id);
-        // Notify renderer to refresh SDD panel
-        if (!event.sender.isDestroyed()) {
-          event.sender.send('sdd:state-changed', id);
-        }
-      }
-      return result;
+      return updateSessionMeta(id, patch);
     },
   );
   ipcMain.handle(
@@ -891,13 +856,6 @@ export function registerIpc(): void {
   );
   ipcMain.handle('sessions:delete', (_e, id: string) => {
     deleteSession(id);
-    const sddState = sddGetState(id);
-    if (sddState) {
-      for (const entity of sddState.entities) {
-        sddUnwatchEntity(entity.rootPath);
-      }
-      sddClearState(id);
-    }
   });
   ipcMain.handle('sessions:revealInFolder', (_e, id: string) => {
     shell.showItemInFolder(sessionPath(id));
@@ -1290,124 +1248,7 @@ export function registerIpc(): void {
     }
   });
 
-  // ---- SDD ---------------------------------------------------------------
 
-  ipcMain.handle('sdd:getSessionState', (_e, sessionId: string) => {
-    return sddGetState(sessionId);
-  });
-
-  ipcMain.handle(
-    'sdd:initSessionState',
-    async (
-      _e,
-      sessionId: string,
-      cwd: string,
-      mode: 'auto' | 'off',
-    ) => {
-      const { entities, cliMissing, scannedDepth, cliVersion } = await sddScanForEntities(cwd);
-      const sessionPinnedSlug = loadSession(sessionId)?.meta?.activeFeatureSlug ?? null;
-      const state = sddInitState(sessionId, entities, cwd, mode, cliMissing, scannedDepth, cliVersion, sessionPinnedSlug);
-
-      // Named callback so it can self-referentially add watchers for newly
-      // discovered entities (BUG-SDD-04: entities created after init never watched).
-      const watchCb = (_rootPath: string): void => {
-        const currentMode = sddGetState(sessionId)?.mode ?? 'auto';
-        void sddScanForEntities(cwd).then((fresh) => {
-          // Reinit, preserving confidence='manual' mappings (BUG-SDD-02).
-          // Re-read session pin from disk so feature.json changes are picked up
-          // when the user has not explicitly pinned a feature.
-          const pinnedSlug = loadSession(sessionId)?.meta?.activeFeatureSlug ?? null;
-          sddReinitPreservingManual(
-            sessionId,
-            fresh.entities,
-            cwd,
-            currentMode,
-            fresh.cliMissing,
-            fresh.scannedDepth,
-            fresh.cliVersion,
-            pinnedSlug,
-          );
-
-          // Update watchers for all entities - not just newly discovered ones.
-          // watchEntity now handles existing entities by adding any directories
-          // (e.g. specs/) that were created since the last watch setup. This
-          // ensures the phase badge updates even when specs/ is created after
-          // the initial scan (BUG-SDD-08).
-          for (const ent of fresh.entities) {
-            sddWatchEntity(ent, watchCb);
-          }
-
-          const win = BrowserWindow.getAllWindows()[0];
-          win?.webContents.send('sdd:artifact-changed', sessionId);
-        });
-      };
-
-      for (const entity of entities) {
-        sddWatchEntity(entity, watchCb);
-      }
-
-      return state;
-    },
-  );
-
-  ipcMain.handle(
-    'sdd:setMapping',
-    (_e, sessionId: string, patch: import('./sdd/types').SddMappingPatch) => {
-      return sddPatchMapping(sessionId, patch);
-    },
-  );
-
-  ipcMain.handle(
-    'sdd:setMode',
-    (_e, sessionId: string, mode: 'auto' | 'off') => {
-      return sddSetMode(sessionId, mode);
-    },
-  );
-
-  ipcMain.handle(
-    'sdd:setActiveFeature',
-    (_e, sessionId: string, slug: string | null) => {
-      // Persist to session metadata so it survives session close/re-open.
-      updateSessionMeta(sessionId, { activeFeatureSlug: slug });
-      return sddSetActiveFeature(sessionId, slug);
-    },
-  );
-
-  ipcMain.handle('sdd:readArtifact', async (_e, absolutePath: string) => {
-    // Defence-in-depth: verify the path is within a known entity's .specify/
-    // directory before reading (WEAK-SDD-03).
-    if (!sddIsPathInKnownEntity(absolutePath)) {
-      throw new Error('sdd:readArtifact: path is outside all known SDD entity boundaries');
-    }
-    return sddReadArtifact(absolutePath);
-  });
-
-  ipcMain.handle(
-    'sdd:toggleTaskCheckbox',
-    async (_e, absolutePath: string, checkboxIndex: number) => {
-      if (!sddIsPathInKnownEntity(absolutePath)) {
-        throw new Error('sdd:toggleTaskCheckbox: path is outside all known SDD entity boundaries');
-      }
-      return sddToggleTaskCheckbox(absolutePath, checkboxIndex);
-    },
-  );
-
-  ipcMain.handle('sdd:runInit', (_e, targetDir: string) => {
-    return sddRunSpecifyInit(targetDir);
-  });
-
-  // Called when the renderer tears down a session (e.g. session deleted or app
-  // navigates away). Unregisters any FS watchers for entities in that session
-  // so they don't accumulate across CWD changes.
-  ipcMain.handle('sdd:cleanupSession', (_e, sessionId: string) => {
-    const state = sddGetState(sessionId);
-    if (state) {
-      for (const entity of state.entities) {
-        sddUnwatchEntity(entity.rootPath);
-      }
-    }
-    sddClearState(sessionId);
-  });
 
   // ---- Git diff review (Cmd+G modal) ------------------------------------
 

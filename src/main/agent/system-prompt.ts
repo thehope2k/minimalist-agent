@@ -16,7 +16,7 @@ import {join, sep} from 'node:path';
 import {formatPreferencesForPrompt, getCoAuthorPreference,} from '../storage/preferences';
 import { findProjectForPath } from '../storage/projects';
 import {formatExtensionsAwareness} from '../extensions/directive';
-import { buildSddPromptBlock } from '../sdd/system-prompt';
+
 import { getCollaborationGuidance } from './collaboration-prompt';
 import { getPlanningGuidance } from './planning-prompt';
 import { loadAllAgents } from '../agents/storage';
@@ -442,15 +442,11 @@ export interface SystemPromptOptions {
    */
   includeCoAuthoredBy?: boolean;
   /**
-   * Session ID used to look up the session's SDD state for prompt injection.
-   * When provided and the session has active SDD entities, the bundled SDD
-   * coaching skill and phase context are appended automatically.
+   * Session ID for session-specific context.
    */
   sessionId?: string;
   /**
-   * The raw user message text for this turn. Used by lazy rule injection —
-   * when an active feature is pinned, the full SDD rules block is only
-   * injected when the message contains an SDD keyword or it's the first turn.
+   * The raw user message text for this turn.
    */
   userMessage?: string;
   /**
@@ -492,12 +488,6 @@ export function getSystemPrompt(opts: SystemPromptOptions = {}): string {
   const projectContextFiles = getProjectContextFilesPrompt(opts.workingDirectory);
   const providerDescription = resolveProviderDescription(opts.authType, opts.piAuthProvider, opts.model);
   const basePrompt = getAssistantPrompt(includeCoAuthoredBy, providerDescription);
-
-  // SDD coaching + phase context — injected when session has active entities.
-  let sddBlock = '';
-  if (opts.sessionId) {
-    sddBlock = buildSddPromptBlock(opts.sessionId, opts.userMessage);
-  }
 
   // Collaboration system guidance — teaches LLM when to engage user
   const autonomyLevel = opts.autonomyLevel ?? 50; // Default: balanced
@@ -541,7 +531,7 @@ Use the Agent tool to delegate focused tasks to specialized sub-agents when it i
     agentsBlock = agentsBlockCache.block;
   }
 
-  return `${basePrompt}${userPreferences}${projectContextFiles}${collaborationBlock ? `\n\n${collaborationBlock}` : ''}${planningBlock ? `\n\n${planningBlock}` : ''}${sddBlock ? `\n\n${sddBlock}` : ''}${agentsBlock ? `\n\n${agentsBlock}` : ''}`;
+  return `${basePrompt}${userPreferences}${projectContextFiles}${collaborationBlock ? `\n\n${collaborationBlock}` : ''}${planningBlock ? `\n\n${planningBlock}` : ''}${agentsBlock ? `\n\n${agentsBlock}` : ''}`;
 }
 
 /**

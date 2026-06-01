@@ -140,18 +140,6 @@ export interface SessionMeta {
   connectionSlug?: string;
   model?: string;
   /**
-   * Per-session SDD mode. 'auto' = scan and inject coaching when entities found.
-   * 'off' = skip scan entirely, no panel, no prompt injection. Added in v6.
-   * Defaults to 'auto' when absent.
-   */
-  sddMode?: 'auto' | 'off';
-  /**
-   * Slug of the feature pinned as active for this session. When set, only
-   * that feature's context is injected into the system prompt and lazy rule
-   * injection is enabled. Added in v7. Defaults to null when absent.
-   */
-  activeFeatureSlug?: string | null;
-  /**
    * Per-session autonomy level (0-100) for intelligent collaboration.
    * Higher = more independent, lower = more collaborative.
    * Defaults to 50 (balanced) when absent. Added in v8.
@@ -179,10 +167,6 @@ function metaSchema(id: string): FileSchema<SessionMeta> {
     // Index 4 → v4 (no connectionSlug/model). All migrations are additive
     // and idempotent: missing fields stay missing and are filled at use
     // sites with sensible defaults.
-    // NOTE: sddMode (added in v6) is a fully optional field that defaults
-    // to 'auto' at every call-site — no migration step needed.
-    // NOTE: activeFeatureSlug (added in v7) is a fully optional field that
-    // defaults to null at every call-site — no migration step needed.
     // NOTE: autonomyLevel (added in v8) is a fully optional field that
     // defaults to 50 at every call-site — no migration step needed.
     // v9: Remove 'ask' permission mode (replaced by intelligent collaboration).
@@ -192,9 +176,9 @@ function metaSchema(id: string): FileSchema<SessionMeta> {
       (prev) => ({ ...(prev as SessionMeta) }),
       (prev) => ({ ...(prev as SessionMeta), projectId: null }) as SessionMeta,
       (prev) => ({ ...(prev as SessionMeta) }),
-      // v5 → v6: adds sddMode (optional field, no-op migration).
+      // v5 → v6: (removed SDD fields, no-op migration).
       (prev) => ({ ...(prev as SessionMeta) }),
-      // v6 → v7: adds activeFeatureSlug (optional field, no-op migration).
+      // v6 → v7: (removed SDD fields, no-op migration).
       (prev) => ({ ...(prev as SessionMeta) }),
       // v7 → v8: adds autonomyLevel (optional field, no-op migration).
       (prev) => ({ ...(prev as SessionMeta) }),
@@ -481,8 +465,6 @@ export function branchSession(
     connectionSlug: parent.meta.connectionSlug,
     model: parent.meta.model,
     permissionMode: parent.meta.permissionMode,
-    sddMode: parent.meta.sddMode,
-    activeFeatureSlug: parent.meta.activeFeatureSlug,
   };
   save(metaSchema(id), meta);
 

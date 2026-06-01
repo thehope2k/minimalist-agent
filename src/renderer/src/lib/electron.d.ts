@@ -356,8 +356,6 @@ export interface AiSettings {
    * Defaults to ['agents.md', 'claude.md', 'copilot-instructions.md'].
    */
   contextFileNames?: string[];
-  /** Directory levels deep to scan for .specify/ entities. Default 3. */
-  sddScanDepth?: number;
 }
 
 export interface UserLocation {
@@ -468,7 +466,6 @@ export interface SessionMeta {
   projectId?: string | null;
   connectionSlug?: string;
   model?: string;
-  sddMode?: 'auto' | 'off';
 }
 
 export type SessionSummary = SessionMeta;
@@ -1020,34 +1017,6 @@ export interface AppApi {
     readAsBase64: (storedPath: string) => Promise<string | null>;
     /** Reveal in OS file manager. */
     reveal: (storedPath: string) => Promise<void>;
-  };
-  sdd: {
-    initSessionState: (
-      sessionId: string,
-      cwd: string,
-      mode: 'auto' | 'off',
-    ) => Promise<import('./sdd').SddSessionState>;
-    getSessionState: (sessionId: string) => Promise<import('./sdd').SddSessionState | null>;
-    setMapping: (
-      sessionId: string,
-      patch: import('./sdd').SddMappingPatch,
-    ) => Promise<import('./sdd').SddSessionState | null>;
-    setMode: (
-      sessionId: string,
-      mode: 'auto' | 'off',
-    ) => Promise<import('./sdd').SddSessionState | null>;
-    setActiveFeature: (
-      sessionId: string,
-      slug: string | null,
-    ) => Promise<import('./sdd').SddSessionState | null>;
-    readArtifact: (absolutePath: string) => Promise<string>;
-    toggleTaskCheckbox: (absolutePath: string, checkboxIndex: number) => Promise<void>;
-    runInit: (targetDir: string) => Promise<{ success: boolean; error?: string; installCmd?: string }>;
-    cleanupSession: (sessionId: string) => Promise<void>;
-    /** Returns an unsubscribe function. */
-    onArtifactChanged: (cb: (sessionId: string) => void) => () => void;
-    /** Returns an unsubscribe function. Fired when CWD changes for a session. */
-    onStateChanged: (cb: (sessionId: string) => void) => () => void;
   };
   git: {
     /**

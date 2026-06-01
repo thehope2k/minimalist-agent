@@ -40,7 +40,6 @@ Everything you need to work with Claude — nothing you don't.
 
 - **Terminal (`Cmd+T`)** — full in-app terminal (`xterm.js` + `node-pty`); real PTY, multiple tabs, in-terminal search, copy-on-select, URL click-to-open, 2 MB scrollback; three bundled fonts
 - **Git diff review (`Cmd+G`)** — full-screen Monaco DiffEditor; file list with M/N/D/R status; hunk-level staging; commit panel with amend support; multi-repo workspace
-- **SDD workspace panel** — native Spec-Driven Development support: entity cards, phase badges, artifact viewer, constitution viewer, interactive task checkboxes, file-system watchers, phase action buttons
 
 ### Search & Navigation
 
@@ -132,7 +131,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development guide.
 - [Roadmap](docs/ROADMAP.md) — what's in, what's coming, what's out of scope
 - [Terminal](docs/TERMINAL.md) — in-app terminal reference
 - [Worktree Isolation](docs/WORKTREE-ISOLATION.md) — parallel agent isolation via git worktrees
-- [SDD](docs/SDD.md) — Spec-Driven Development (current status)
 - [Changelog](CHANGELOG.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security](SECURITY.md)

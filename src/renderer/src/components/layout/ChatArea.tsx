@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { GitBranch, X, PanelRight } from 'lucide-react';
+import { GitBranch, X } from 'lucide-react';
 import { ChatScroll } from '../chat/ChatScroll';
 import { MessageInput } from '../chat/MessageInput';
 import { MessageList } from '../chat/MessageList';
@@ -9,22 +9,16 @@ import { PlanErrorNotification } from '../chat/PlanErrorNotification';
 import { EmptyState } from '../chat/EmptyState';
 import { CollaborationPrompt } from '../chat/CollaborationPrompt';
 import { IconButton } from '../ui';
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '../ui';
-import { useResizablePanels } from '@/hooks/useResizablePanels';
 import { useChat } from '@/hooks/useChat';
 import { useAiData } from '@/hooks/useAiData';
-import { branchSession, loadFullSession, setSessionPermissionMode, setSessionAutonomyLevel, updateSessionMeta } from '@/lib/sessions';
+import { branchSession, loadFullSession, setSessionPermissionMode, setSessionAutonomyLevel } from '@/lib/sessions';
 import { findProject } from '@/lib/projects';
 import { getNewSessionStateDraft, patchNewSessionStateDraft } from '@/lib/new-session-draft';
 import { useProjects } from '@/hooks/useProjects';
 import { homedir } from '@/lib/path';
 import type { PermissionMode } from '@/lib/electron';
 import type { SeedSubmit } from '@/App';
-import { useSdd } from '@/hooks/useSdd';
-import { SddPhaseBadge } from '@/components/sdd/SddPhaseBadge';
-import { SddWizardDialog } from '@/components/sdd/SddWizardDialog';
-import { SddWorkspacePanel } from './chat-area/SddWorkspacePanel';
-import { deriveEntityPhase, taskProgress } from '@/lib/sdd';
+
 import { GitDiffModal } from '@/components/git/GitDiffModal';
 import { SearchModal } from '@/components/search/SearchModal';
 import { RecentFilesModal } from '@/components/search/RecentFilesModal';
@@ -89,24 +83,13 @@ export function ChatArea({
   /** Per-session working directory; rehydrated from session metadata on switch. */
   const [cwd, setCwd] = useState<string | undefined>(undefined);
   const [title, setTitle] = useState<string>('New session');
-  const [sddMode, setSddMode] = useState<'auto' | 'off'>('off');
-  const sddModeRef = useRef<'auto' | 'off'>('off');
-  sddModeRef.current = sddMode;
   // Always-current mirrors for permissionMode and cwd — used when snapshotting
-  // the null-slot draft on session switch (same pattern as sddModeRef).
+  // the null-slot draft on session switch.
   const permissionModeRef = useRef<PermissionMode>('auto');
   const autonomyLevelRef = useRef<number>(50);
   const cwdRef            = useRef<string | undefined>(undefined);
   const prevSessionIdRef  = useRef<string | null | undefined>(undefined);
-  const [sddPanelOpen, setSddPanelOpen] = useState(false);
-  const [showWizard, setShowWizard] = useState(false);
   const [pendingMessage, setPendingMessage] = useState<string | undefined>(undefined);
-  // Persist the chat/SDD split ratio; only meaningful when panel is open.
-  const { layout: workspaceLayout, onLayoutChange: onWorkspaceLayout } =
-    useResizablePanels('workspace-sdd-v1', [68, 32]);
-
-  // SDD state for the active session - drives phase badge
-  const sdd = useSdd(activeSessionId ?? sessionId, cwd, sddMode);
   /**
    * Project-level default connection slug to seed MessageInput's resolver.
    * Re-derived on session switch (loaded session's projectId) and on filter
@@ -217,9 +200,6 @@ export function ChatArea({
     // Mark stale until the new session's data resolves.
     setLoadedSessionPickId(null);
     sessionModeLoadedRef.current = false;
-    // Clear cwd immediately so useSdd doesn't fire a scan with the previous
-    // session's directory before loadFullSession resolves (BUG-SDD-07: flash
-    // / prior-session data when switching sessions quickly).
     setCwd(undefined);
     onCwdChange?.(undefined);
     let cancelled = false;
@@ -228,7 +208,6 @@ export function ChatArea({
       setCwd(data.meta.workingDirectory);
       onCwdChange?.(data.meta.workingDirectory);
       setTitle(data.meta.title);
-      setSddMode(data.meta.sddMode ?? 'off');
       const project = findProject(data.meta.projectId);
       setPermissionMode(
         data.meta.permissionMode ??
@@ -296,11 +275,6 @@ export function ChatArea({
   useEffect(() => {
     if (activeSessionId && activeSessionId !== sessionId) {
       onSessionCreated(activeSessionId);
-      // sddMode toggled on a fresh chat is never persisted (no session yet);
-      // save it now so the rehydration effect reads it back correctly.
-      if (sddModeRef.current !== 'off') {
-        void updateSessionMeta(activeSessionId, { sddMode: sddModeRef.current });
-      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSessionId]);
@@ -482,13 +456,7 @@ export function ChatArea({
     setViewFile({ absolutePath, lineNumber });
   }, []);
 
-  const handleSddModeChange = (next: 'auto' | 'off') => {
-    setSddMode(next);
-    void sdd.setMode(next);
-    if (activeSession) {
-      void updateSessionMeta(activeSession, { sddMode: next });
-    }
-  };
+
 
   return (
     <main className="flex h-full min-h-0 flex-col overflow-hidden bg-canvas">
@@ -496,32 +464,7 @@ export function ChatArea({
       <header className="flex h-10 shrink-0 items-center justify-between border-b border-border px-4">
         <div className="flex-1" />
         <div className="flex items-center gap-2 max-w-120">
-          {(() => {
-            if (!sdd.state || sdd.state.mode === 'off') return null;
-            const entity = sdd.state.entities.length === 1
-              ? sdd.state.entities[0]
-              : sdd.state.entities.find(
-                  (e) => e.rootPath === sdd.state?.activeEntityRootPath,
-                );
-            if (!entity) return null;
-            const phase = deriveEntityPhase(entity.features, entity.hasConstitution);
-            // Find the feature that's setting the current phase for the tooltip.
-            const blockingFeature = entity.features.find((f) => f.currentPhase === phase);
-            const progress = blockingFeature ? taskProgress(blockingFeature.artifacts) : null;
-            const blockingProgress = progress
-              ? `${progress.checked}/${progress.total} tasks`
-              : undefined;
-            return (
-              <SddPhaseBadge
-                phase={phase}
-                entityName={entity.name}
-                blockingFeatureName={blockingFeature?.slug}
-                blockingProgress={blockingProgress}
-                blockingFeature={blockingFeature}
-                onPhaseAction={(text) => setPendingMessage(text)}
-              />
-            );
-          })()}
+
           <h2 className="truncate text-[15px] font-semibold text-fg">
             {title}
           </h2>
@@ -532,27 +475,12 @@ export function ChatArea({
             label="Git changes (Cmd+G)"
             onClick={() => setGitModalOpen(true)}
           />
-          <IconButton
-            icon={PanelRight}
-            label={sddPanelOpen ? 'Close workspace panel' : 'Open workspace panel'}
-            onClick={() => setSddPanelOpen((v) => !v)}
-            className={sddPanelOpen ? 'text-accent' : ''}
-          />
           <IconButton icon={X} label="New" onClick={onNewSession} />
         </div>
       </header>
 
-      {/* ── Body: resizable chat + optional SDD right panel ── */}
-      <ResizablePanelGroup
-        direction="horizontal"
-        className="flex-1 min-h-0"
-        onLayout={sddPanelOpen ? onWorkspaceLayout : undefined}
-      >
-        {/* Chat column */}
-        <ResizablePanel
-          defaultSize={sddPanelOpen ? workspaceLayout[0] : 100}
-          minSize={40}
-        >
+      {/* ── Body: chat area ── */}
+      <div className="flex-1 min-h-0">
           <div className="flex h-full min-h-0 flex-col">
             <ChatScroll sessionId={activeSessionId ?? sessionId} contentSignal={contentSignal}>
               {messages.length === 0 ? (
@@ -622,49 +550,7 @@ export function ChatArea({
 
             <CollaborationPrompt />
           </div>
-        </ResizablePanel>
-
-        {/* SDD right panel */}
-        {sddPanelOpen && (
-          <>
-            <ResizableHandle />
-            <ResizablePanel
-              defaultSize={workspaceLayout[1]}
-              minSize={20}
-              maxSize={55}
-            >
-              <SddWorkspacePanel
-                activeSession={activeSession ?? ''}
-                sddMode={sddMode}
-                sddState={sdd.state}
-                sddLoading={sdd.loading}
-                isStreaming={isStreaming}
-                onModeChange={handleSddModeChange}
-                onRefreshScan={sdd.refreshScan}
-                onMappingChange={(svcPath, entityRoot) =>
-                  void sdd.setMapping({ servicePath: svcPath, entityRootPath: entityRoot })
-                }
-                onNewProject={() => setShowWizard(true)}
-                onClose={() => setSddPanelOpen(false)}
-                onPinFeature={(slug) => void sdd.setActiveFeature(slug)}
-                onSendMessage={(text) => setPendingMessage(text)}
-              />
-            </ResizablePanel>
-          </>
-        )}
-      </ResizablePanelGroup>
-
-      {/* SDD Wizard dialog */}
-      {showWizard && (
-        <SddWizardDialog
-          onClose={() => setShowWizard(false)}
-          onSuccess={(newSessionId) => {
-            setShowWizard(false);
-            onSessionCreated(newSessionId);
-            sdd.refreshScan();
-          }}
-        />
-      )}
+      </div>
 
       {gitModalOpen && (
         <GitDiffModal

@@ -742,34 +742,6 @@ const api = {
     reveal: (storedPath: string): Promise<void> =>
       ipcRenderer.invoke('attachments:reveal', storedPath),
   },
-  sdd: {
-    initSessionState: (sessionId: string, cwd: string, mode: 'auto' | 'off') =>
-      ipcRenderer.invoke('sdd:initSessionState', sessionId, cwd, mode),
-    getSessionState: (sessionId: string) =>
-      ipcRenderer.invoke('sdd:getSessionState', sessionId),
-    setMapping: (sessionId: string, patch: import('../shared/sdd-types').SddMappingPatch) =>
-      ipcRenderer.invoke('sdd:setMapping', sessionId, patch),
-    setMode: (sessionId: string, mode: 'auto' | 'off') =>
-      ipcRenderer.invoke('sdd:setMode', sessionId, mode),
-    setActiveFeature: (sessionId: string, slug: string | null) =>
-      ipcRenderer.invoke('sdd:setActiveFeature', sessionId, slug),
-    readArtifact: (absolutePath: string) =>
-      ipcRenderer.invoke('sdd:readArtifact', absolutePath),
-    toggleTaskCheckbox: (absolutePath: string, checkboxIndex: number) =>
-      ipcRenderer.invoke('sdd:toggleTaskCheckbox', absolutePath, checkboxIndex),
-    runInit: (targetDir: string) => ipcRenderer.invoke('sdd:runInit', targetDir),
-    cleanupSession: (sessionId: string) => ipcRenderer.invoke('sdd:cleanupSession', sessionId),
-    onArtifactChanged: (cb: (sessionId: string) => void) => {
-      const listener = (_e: unknown, sessionId: string) => cb(sessionId);
-      ipcRenderer.on('sdd:artifact-changed', listener);
-      return () => ipcRenderer.removeListener('sdd:artifact-changed', listener);
-    },
-    onStateChanged: (cb: (sessionId: string) => void) => {
-      const listener = (_e: unknown, sessionId: string) => cb(sessionId);
-      ipcRenderer.on('sdd:state-changed', listener);
-      return () => ipcRenderer.removeListener('sdd:state-changed', listener);
-    },
-  },
   git: {
     status: (cwd: string) => ipcRenderer.invoke('git:status', cwd),
     diff: (args: {

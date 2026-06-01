@@ -3,7 +3,6 @@ import { Plus } from 'lucide-react';
 import {
   DEFAULT_MAX_TURNS,
   deleteConnection,
-  setSddScanDepth,
   setDefaultConnection,
   setDefaultModel,
   setDefaultPermissionMode,
@@ -240,28 +239,6 @@ export function AIPanel() {
             description="Use 1M token context window for Opus 4.7. Disable to use 200K and conserve usage limits."
             checked={!!settings.extendedContext}
             onCheckedChange={(v) => void setExtendedContext(v)}
-          />
-        </SettingsCard>
-      </SettingsSection>
-
-      <SettingsSection title="SDD" subtitle="Spec-Driven Development scan behaviour.">
-        <SettingsCard>
-          <SettingsRow
-            label="Workspace scan depth"
-            description="Directory levels MA walks when looking for .specify/ entities. Increase for deeply nested monorepos."
-            control={
-              <Input
-                type="number"
-                min={1}
-                max={8}
-                value={settings.sddScanDepth ?? 3}
-                onChange={(e) => {
-                  const v = parseInt(e.target.value, 10);
-                  void setSddScanDepth(Number.isFinite(v) && v >= 1 ? v : 3);
-                }}
-                className="w-20 text-right"
-              />
-            }
           />
         </SettingsCard>
       </SettingsSection>

@@ -138,12 +138,6 @@ export async function setContextFileNames(names: string[]): Promise<void> {
   await reload();
 }
 
-export async function setSddScanDepth(depth: number): Promise<void> {
-  const next = { ...snapshot().settings, sddScanDepth: depth };
-  await window.api.settings.save(next);
-  await reload();
-}
-
 export async function setDefaultPermissionMode(
   mode: PermissionMode,
 ): Promise<void> {

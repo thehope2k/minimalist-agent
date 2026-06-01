@@ -30,11 +30,6 @@ export interface AiSettings {
    * Defaults to ['agents.md', 'claude.md', 'copilot-instructions.md'].
    */
   contextFileNames?: string[];
-  /**
-   * How many directory levels deep MA walks when scanning for .specify/
-   * entities. Defaults to 3. Increase for deeply nested monorepos.
-   */
-  sddScanDepth?: number;
 }
 
 export const DEFAULT_CONTEXT_FILE_NAMES: readonly string[] = [
@@ -42,7 +37,6 @@ export const DEFAULT_CONTEXT_FILE_NAMES: readonly string[] = [
   'claude.md',
   'copilot-instructions.md', // GitHub Copilot Workspace standard
 ];
-export const DEFAULT_SDD_SCAN_DEPTH = 3;
 export const DEFAULT_MAX_TURNS = 50;
 export const DEFAULT_PERMISSION_MODE: PermissionMode = 'auto';
 

@@ -114,7 +114,7 @@ interface State {
   /** Available agents passed from main process. */
   availableAgents: LoadedAgent[];
   /** Mutable array passed by reference into resourceLoader — update in-place
-   *  before reload() so per-turn SDD context takes effect without recreating
+   *  before reload() so per-turn context takes effect without recreating
    *  the session. */
   appendArr: string[];
   /** Last value pushed into appendArr — avoids a redundant reload(). */
@@ -1098,7 +1098,7 @@ async function handlePrompt(msg: MsgPrompt): Promise<void> {
     await activePromptPromise;
   }
 
-  // Update the system-prompt append when it has changed (per-turn SDD context).
+  // Update the system-prompt append when it has changed (per-turn context).
   const newAppend = msg.systemPromptAppend ?? '';
   if (newAppend !== state.lastAppend && state.resourceLoader) {
     state.appendArr.length = 0;
