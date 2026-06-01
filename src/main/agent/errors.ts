@@ -127,9 +127,9 @@ const ERROR_DEFINITIONS: Record<ErrorCode, ErrorDef> = {
     retryDelayMs: 2000,
   },
   billing_error: {
-    title: 'Payment required',
+    title: 'Billing issue',
     message:
-      'Your Anthropic account has a billing issue. Check your account status at console.anthropic.com.',
+      'Your AI provider account has a billing or quota issue. Check your account status or upgrade your plan.',
     canRetry: false,
   },
   model_no_tool_support: {
