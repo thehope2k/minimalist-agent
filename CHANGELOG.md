@@ -5,6 +5,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.0.1] — 2026-06-01
+
+Bug fixes and stability improvements.
+
+### Changed
+
+- Removed broken SDD subsystem and associated prompt hooks
+
+### Fixed
+
+**Planning workflow**
+
+- Fixed IPC event leakage across sessions — planning events now properly scoped to originating session and pinned to messages
+
+**Project settings**
+
+- Fixed project-level autonomy and model defaults not being applied to new sessions
+
+---
+
 ## [1.0.0] — 2026-06-01
 
 Adds multi-phase planning workflow, AI Credits billing support, parallel agent execution with worktree isolation, and HTML previews.
