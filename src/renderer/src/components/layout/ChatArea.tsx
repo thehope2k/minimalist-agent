@@ -200,6 +200,7 @@ export function ChatArea({
       );
       setAutonomyLevel(
         d.autonomyLevel ??
+          projForFresh?.defaultAutonomyLevel ??
           aiData?.settings.defaultAutonomyLevel ??
           50,
       );
@@ -237,6 +238,7 @@ export function ChatArea({
       );
       setAutonomyLevel(
         data.meta.autonomyLevel ??
+          project?.defaultAutonomyLevel ??
           aiData?.settings.defaultAutonomyLevel ??
           50,
       );
@@ -265,16 +267,24 @@ export function ChatArea({
   useEffect(() => {
     if (sessionId) return;
     if (!aiData) return;
-    if (getNewSessionStateDraft().permissionMode) return; // user pick wins
+    const draft = getNewSessionStateDraft();
     const projForFresh = findProject(newSessionDefaultProjectId);
-    setPermissionMode(
-      projForFresh?.defaultPermissionMode ??
-        aiData.settings.defaultPermissionMode ??
-        'auto',
-    );
-    setAutonomyLevel(
-      aiData.settings.defaultAutonomyLevel ?? 50,
-    );
+    // Only update permission mode if user hasn't already chosen one
+    if (!draft.permissionMode) {
+      setPermissionMode(
+        projForFresh?.defaultPermissionMode ??
+          aiData.settings.defaultPermissionMode ??
+          'auto',
+      );
+    }
+    // Only update autonomy level if user hasn't already chosen one
+    if (draft.autonomyLevel === undefined) {
+      setAutonomyLevel(
+        projForFresh?.defaultAutonomyLevel ??
+          aiData.settings.defaultAutonomyLevel ??
+          50,
+      );
+    }
   }, [
     sessionId,
     aiData?.settings.defaultPermissionMode,

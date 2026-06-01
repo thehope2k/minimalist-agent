@@ -19,6 +19,10 @@ export interface Project {
   /** Override of the global default permission mode. */
   defaultPermissionMode?: PermissionMode;
   defaultConnectionSlug?: string;
+  /** Override of the global default autonomy level (0-100). */
+  defaultAutonomyLevel?: number;
+  /** Override of the global default model. */
+  defaultModel?: string;
   /** Override the global Co-Authored-By trailer preference. Undefined means inherit global. */
   includeCoAuthoredBy?: boolean;
   createdAt: number;
@@ -33,7 +37,7 @@ const DEFAULTS: ProjectsFile = { projects: [] };
 
 const SCHEMA: FileSchema<ProjectsFile> = {
   path: Paths.projects(),
-  currentVersion: 2,
+  currentVersion: 3,
   defaultValue: DEFAULTS,
   migrations: [
     // v0 → v1: no-op (initial version)
@@ -51,6 +55,8 @@ const SCHEMA: FileSchema<ProjectsFile> = {
         }),
       };
     },
+    // v2 → v3: add defaultAutonomyLevel and defaultModel (optional fields, no-op)
+    (prev) => prev as ProjectsFile,
   ],
 };
 
@@ -74,7 +80,7 @@ export type ProjectInput = Pick<Project, 'name' | 'rootPath'> &
   Partial<
     Pick<
       Project,
-      'color' | 'defaultPermissionMode' | 'defaultConnectionSlug' | 'includeCoAuthoredBy'
+      'color' | 'defaultPermissionMode' | 'defaultConnectionSlug' | 'defaultAutonomyLevel' | 'defaultModel' | 'includeCoAuthoredBy'
     >
   >;
 

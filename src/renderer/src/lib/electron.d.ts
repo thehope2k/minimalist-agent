@@ -482,6 +482,10 @@ export interface Project {
   defaultPermissionMode?: PermissionMode;
   /** Sessions in this project default to this connection slug; falls back to global default if missing. */
   defaultConnectionSlug?: string;
+  /** Override of the global default autonomy level (0-100). */
+  defaultAutonomyLevel?: number;
+  /** Override of the global default model. */
+  defaultModel?: string;
   /** Override the global Co-Authored-By trailer preference. Undefined means inherit global. */
   includeCoAuthoredBy?: boolean;
   createdAt: number;
@@ -494,6 +498,8 @@ export interface ProjectInput {
   color?: string;
   defaultPermissionMode?: PermissionMode;
   defaultConnectionSlug?: string;
+  defaultAutonomyLevel?: number;
+  defaultModel?: string;
   includeCoAuthoredBy?: boolean;
 }
 

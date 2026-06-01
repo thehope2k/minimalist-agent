@@ -106,15 +106,13 @@ export function ProjectsPanel() {
                         muted={!p.defaultPermissionMode}
                       />
                       <ProjectChip
-                        prefix="Co-Author"
+                        prefix="Autonomy"
                         label={
-                          p.includeCoAuthoredBy === undefined
-                            ? 'Default'
-                            : p.includeCoAuthoredBy
-                              ? 'On'
-                              : 'Off'
+                          p.defaultAutonomyLevel !== undefined
+                            ? `${p.defaultAutonomyLevel}%`
+                            : 'Default'
                         }
-                        muted={p.includeCoAuthoredBy === undefined}
+                        muted={p.defaultAutonomyLevel === undefined}
                       />
                       <ProjectChip
                         prefix="Connection"
@@ -124,6 +122,26 @@ export function ProjectsPanel() {
                             : 'Default'
                         }
                         muted={!p.defaultConnectionSlug}
+                      />
+                      <ProjectChip
+                        prefix="Model"
+                        label={
+                          p.defaultModel
+                            ? p.defaultModel
+                            : 'Default'
+                        }
+                        muted={!p.defaultModel}
+                      />
+                      <ProjectChip
+                        prefix="Co-Author"
+                        label={
+                          p.includeCoAuthoredBy === undefined
+                            ? 'Default'
+                            : p.includeCoAuthoredBy
+                              ? 'On'
+                              : 'Off'
+                        }
+                        muted={p.includeCoAuthoredBy === undefined}
                       />
                     </div>
                   </div>
@@ -219,6 +237,12 @@ function ProjectEditDialog({
   const [defaultConnectionSlug, setDefaultConnectionSlug] = useState<string>(
     project?.defaultConnectionSlug ?? '',
   );
+  const [defaultAutonomyLevel, setDefaultAutonomyLevel] = useState<number | ''>(
+    project?.defaultAutonomyLevel ?? '',
+  );
+  const [defaultModel, setDefaultModel] = useState<string>(
+    project?.defaultModel ?? '',
+  );
   const [includeCoAuthoredBy, setIncludeCoAuthoredBy] = useState<
     'true' | 'false' | ''
   >(
@@ -255,6 +279,8 @@ function ProjectEditDialog({
         color,
         defaultPermissionMode: defaultPermissionMode || undefined,
         defaultConnectionSlug: defaultConnectionSlug || undefined,
+        defaultAutonomyLevel: defaultAutonomyLevel === '' ? undefined : defaultAutonomyLevel,
+        defaultModel: defaultModel || undefined,
         includeCoAuthoredBy:
           includeCoAuthoredBy === '' ? undefined : includeCoAuthoredBy === 'true',
       };
@@ -340,6 +366,53 @@ function ProjectEditDialog({
                 { value: '', label: 'Use global default' },
                 { value: 'plan', label: 'Plan' },
                 { value: 'auto', label: 'Auto' },
+              ]}
+            />
+          </Field>
+
+          <Field
+            label="Default autonomy level"
+            hint="Autonomy level (0-100) for new sessions in this project. Higher = more independence."
+          >
+            <div className="flex items-center gap-3">
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="10"
+                value={defaultAutonomyLevel === '' ? 50 : defaultAutonomyLevel}
+                onChange={(e) => setDefaultAutonomyLevel(Number(e.target.value))}
+                disabled={defaultAutonomyLevel === ''}
+                className="flex-1"
+              />
+              <span className="w-12 text-right text-sm text-fg">
+                {defaultAutonomyLevel === '' ? '—' : `${defaultAutonomyLevel}%`}
+              </span>
+              <button
+                type="button"
+                onClick={() => setDefaultAutonomyLevel(defaultAutonomyLevel === '' ? 50 : '')}
+                className="text-xs text-accent hover:underline"
+              >
+                {defaultAutonomyLevel === '' ? 'Set' : 'Clear'}
+              </button>
+            </div>
+          </Field>
+
+          <Field
+            label="Default model"
+            hint="Model to use for new sessions in this project. Falls back to connection's default or global default."
+          >
+            <Select
+              value={defaultModel}
+              onChange={(v) => setDefaultModel(v)}
+              options={[
+                { value: '', label: 'Use connection/global default' },
+                ...connections.flatMap((c) =>
+                  c.models.map((m) => ({
+                    value: m.id,
+                    label: `${c.name}: ${m.name}`,
+                  })),
+                ),
               ]}
             />
           </Field>

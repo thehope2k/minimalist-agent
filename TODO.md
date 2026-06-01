@@ -17,7 +17,7 @@ Simple running list of things to do. Add items whenever they come to mind, clean
 
 - [ ] Fix or remove SDD feature (currently broken)
 - [ ] Implement hooks/lifecycle automation
-- [ ] Check that if the Sub-agent context are being isolated or not.
+- [x] Check that if the Sub-agent context are being isolated or not.
 
 ---
 
@@ -29,7 +29,15 @@ Simple running list of things to do. Add items whenever they come to mind, clean
 
 ## Bugs / Issues
 
-*(Nothing tracked yet)*
+- [ ] **Git worktree isolation disabled for sub-agents** (stubbed out in commit b68c671)
+  - Feature implemented in commit 77e7599 (May 27, 2026)
+  - Disabled next day due to Electron import issues in subprocess
+  - `agent-tool.ts` uses stub that always returns original CWD
+  - AGENTS.md still documents feature as active (needs update OR re-enable)
+  - Risk: Parallel sub-agents can conflict on package locks, git ops, build outputs
+  - Context isolation works ✅ (only input+output in LLM context)
+  - Storage isolation works ✅ (unique session paths per sub-agent)
+  - Full transcripts persist ✅ (nested events saved to disk)
 
 ---
 
