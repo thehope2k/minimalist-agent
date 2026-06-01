@@ -1,24 +1,27 @@
-// GitHub Copilot premium-request quota fetcher.
+// GitHub Copilot usage quota fetcher.
 //
 // IntelliJ / VS Code / all Copilot IDEs use:
 //   GET <copilot-api-base>/copilot_internal/user
-//   Authorization: Bearer <copilot-api-token>   ← the SHORT-LIVED token
+//   Authorization: Bearer <github-oauth-token>   ← LONG-LIVED GitHub OAuth token
 //   X-GitHub-Api-Version: 2025-05-01
 //
 // The api base is derived from the token's `proxy-ep=` claim:
 //   proxy.individual.githubcopilot.com  →  api.individual.githubcopilot.com
 //
-// Response for paid plans (Pro / Business / Enterprise):
-//   quota_snapshots.premium_interactions.percent_remaining  ← the % bar
-//   quota_snapshots.premium_interactions.entitlement        ← monthly limit
-//   quota_snapshots.premium_interactions.overage_count      ← billed extras
-//   quota_snapshots.premium_interactions.overage_permitted  ← grace enabled
-//   quota_reset_date                                        ← ISO date
+// Response for paid plans (Pro / Business / Enterprise) — NEW as of June 1, 2026:
+//   ai_credits.included_monthly   ← dollar amount (e.g., 10.00)
+//   ai_credits.consumed           ← dollar amount used
+//   ai_credits.remaining          ← dollar amount left
+//   ai_credits.overage            ← dollar amount over limit
+//   quota_reset_date              ← ISO date
 //
 // Response for free plan (free_limited_copilot):
-//   limited_user_quotas.chat     ← remaining count
-//   monthly_quotas.chat          ← monthly limit
-//   limited_user_reset_date      ← reset timestamp (unix seconds)
+//   limited_user_quotas.chat      ← remaining count
+//   monthly_quotas.chat           ← monthly limit
+//   limited_user_reset_date       ← reset timestamp (unix seconds)
+//
+// LEGACY: Annual plan subscribers still receive quota_snapshots.premium_interactions
+// until their plan expires. This is deprecated as of June 1, 2026.
 //
 // This approach works for ALL plan types including org/enterprise-managed
 // seats because we use our own Copilot API token, not the GitHub billing API.
@@ -35,23 +38,23 @@ const COPILOT_HEADERS = {
 } as const;
 
 export interface CopilotQuota {
-  /** Percentage of premium requests *remaining* this month (0–100). */
+  /** Percentage of usage allowance *remaining* this month (0–100). */
   percentRemaining: number;
-  /** Total monthly allowance (entitlement). Null if unlimited. */
+  /** Monthly allowance. Dollar amount for AI Credits, count for legacy. Null if unlimited. */
   entitlement: number | null;
-  /** Requests used this month, derived from percentRemaining × entitlement. */
+  /** Usage this month. Dollar amount for AI Credits, count for legacy. Null if unlimited. */
   used: number | null;
-  /** Requests billed as overage (beyond the monthly allowance). */
+  /** Overage amount (dollars for AI Credits, count for legacy). */
   overageCount: number;
   /** Whether the plan allows overage usage. */
   overagePermitted: boolean;
-  /** Whether this plan has unlimited premium requests. */
+  /** Whether this plan has unlimited usage. */
   unlimited: boolean;
   /** ISO date string — 1st of the next month at 00:00 UTC. */
   resetDate: string;
   /** Normalised plan identifier: 'free' | 'individual' | 'business' | 'enterprise' etc. */
   planType: string | null;
-  /** True when premium_interactions is not available but quota_snapshots is. */
+  /** True when using a fallback parsing strategy. */
   fallback: boolean;
 }
 
@@ -194,8 +197,13 @@ function fromFreeUser(info: CopilotUserInfoResponse): CopilotQuota {
 // ── main export ───────────────────────────────────────────────────────────────
 
 /**
- * Fetch premium-request quota using the GitHub OAuth token (long-lived,
+ * Fetch Copilot usage quota using the GitHub OAuth token (long-lived,
  * stored as `refreshToken` in OAuthCred).
+ *
+ * As of June 1, 2026, GitHub Copilot uses AI Credits (token-based billing)
+ * instead of Premium Request Units. This function handles both formats:
+ * - NEW: ai_credits (dollar amounts, token-metered)
+ * - LEGACY: premium_interactions (request counts, deprecated)
  *
  * `copilot_internal/user` is authenticated with the same GitHub OAuth
  * token as `copilot_internal/v2/token` — NOT the short-lived Copilot

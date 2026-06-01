@@ -392,9 +392,13 @@ export function registerIpc(): void {
     },
   );
   /**
-   * Fetch the current-month premium-request quota snapshot for a Copilot
-   * connection. Uses the same copilot_internal/user endpoint that IntelliJ
-   * and VS Code use - works for all plan types including org-managed seats.
+   * Fetch the current-month usage quota snapshot for a Copilot connection.
+   * Uses the same copilot_internal/user endpoint that IntelliJ and VS Code use.
+   * 
+   * As of June 1, 2026, returns AI Credits (token-based billing) for monthly
+   * subscribers, or legacy premium request counts for annual plan subscribers.
+   * 
+   * Works for all plan types including org-managed seats.
    */
   ipcMain.handle(
     'copilot:fetchQuota',

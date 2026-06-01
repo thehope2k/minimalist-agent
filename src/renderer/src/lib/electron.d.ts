@@ -272,23 +272,23 @@ export type ChatStreamEvent =
   | { id: string; type: 'error'; error: AgentError; sessionId?: string };
 
 export interface CopilotQuota {
-  /** Percentage of premium requests *remaining* this month (0–100). */
+  /** Percentage of usage allowance *remaining* this month (0–100). */
   percentRemaining: number;
-  /** Monthly allowance (entitlement). Null if unlimited. */
+  /** Monthly allowance. Dollar amount for AI Credits, count for legacy. Null if unlimited. */
   entitlement: number | null;
-  /** Requests used this month (derived). Null if unlimited. */
+  /** Usage this month. Dollar amount for AI Credits, count for legacy. Null if unlimited. */
   used: number | null;
-  /** Requests billed as overage this month. */
+  /** Overage amount (dollars for AI Credits, count for legacy). */
   overageCount: number;
   /** Whether the plan allows overage usage beyond the allowance. */
   overagePermitted: boolean;
-  /** Whether this plan has unlimited premium requests. */
+  /** Whether this plan has unlimited usage. */
   unlimited: boolean;
   /** ISO date string — 1st of the next month at 00:00 UTC. */
   resetDate: string;
   /** Normalised plan identifier: 'free' | 'individual' | 'business' | 'enterprise'. */
   planType: string | null;
-  /** True when premium_interactions was unavailable and chat was used instead. */
+  /** True when using a fallback parsing strategy (e.g., chat snapshot instead of ai_credits). */
   fallback: boolean;
 }
 
