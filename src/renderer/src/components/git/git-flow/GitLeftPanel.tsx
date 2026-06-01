@@ -6,6 +6,7 @@ interface GitLeftPanelProps {
   statusLoading: boolean;
   statusError: string | null;
   repos: GitRepo[];
+  branchesByRepo: Map<string, string | null>;
   selected: GitFileEntry | null;
   onSelect: (file: GitFileEntry) => void;
   stagedPaths: Set<string>;
@@ -27,6 +28,7 @@ export function GitLeftPanel(props: GitLeftPanelProps) {
     statusLoading,
     statusError,
     repos,
+    branchesByRepo,
     selected,
     onSelect,
     stagedPaths,
@@ -53,6 +55,7 @@ export function GitLeftPanel(props: GitLeftPanelProps) {
       <div className="min-h-0 flex-1 overflow-hidden">
         <GitFileList
           repos={repos}
+          branchesByRepo={branchesByRepo}
           selected={selected}
           onSelect={onSelect}
           stagedPaths={stagedPaths}

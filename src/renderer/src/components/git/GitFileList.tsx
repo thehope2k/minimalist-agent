@@ -5,13 +5,14 @@
 // The staged vs unstaged distinction is a git internal — irrelevant for
 // "what changed" review.
 
-import { useEffect, useRef } from 'react';
-import { AlertTriangle, Check, FolderGit2, Minus } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { AlertTriangle, Check, ChevronDown, ChevronRight, FolderGit2, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { GitFileEntry, GitFileStatus, GitRepo } from './types';
 
 interface GitFileListProps {
   repos: GitRepo[];
+  branchesByRepo?: Map<string, string | null>;
   selected: GitFileEntry | null;
   onSelect: (file: GitFileEntry) => void;
   stagedPaths: Set<string>;
@@ -77,10 +78,21 @@ function splitPath(relativePath: string): { dir: string; name: string } {
   };
 }
 
-export function GitFileList({ repos, selected, onSelect, stagedPaths, onToggleStage, onToggleRepoStage, hunkStates }: GitFileListProps) {
+export function GitFileList({ repos, branchesByRepo, selected, onSelect, stagedPaths, onToggleStage, onToggleRepoStage, hunkStates }: GitFileListProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [collapsedRoots, setCollapsedRoots] = useState<Set<string>>(new Set());
 
-  const allFiles = repos.flatMap((r) => r.files);
+  useEffect(() => {
+    setCollapsedRoots((prev) => {
+      const next = new Set([...prev].filter((root) => repos.some((r) => r.root === root)));
+      if (selected?.repoRoot) {
+        next.delete(selected.repoRoot);
+      }
+      return next;
+    });
+  }, [repos, selected?.repoRoot]);
+
+  const visibleFiles = repos.flatMap((r) => (collapsedRoots.has(r.root) ? [] : r.files));
 
   useEffect(() => {
     const el = containerRef.current;
@@ -89,17 +101,17 @@ export function GitFileList({ repos, selected, onSelect, stagedPaths, onToggleSt
       if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
       e.preventDefault();
       const idx = selected
-        ? allFiles.findIndex((f) => f.absolutePath === selected.absolutePath)
+        ? visibleFiles.findIndex((f) => f.absolutePath === selected.absolutePath)
         : -1;
       const next =
         e.key === 'ArrowDown'
-          ? Math.min(allFiles.length - 1, idx + 1)
+          ? Math.min(visibleFiles.length - 1, idx + 1)
           : Math.max(0, idx - 1);
-      if (allFiles[next]) onSelect(allFiles[next]);
+      if (visibleFiles[next]) onSelect(visibleFiles[next]);
     };
     el.addEventListener('keydown', handler);
     return () => el.removeEventListener('keydown', handler);
-  }, [allFiles, selected, onSelect]);
+  }, [visibleFiles, selected, onSelect]);
 
   if (repos.length === 0) {
     return (
@@ -121,15 +133,25 @@ export function GitFileList({ repos, selected, onSelect, stagedPaths, onToggleSt
           ...repo.files.filter((f) => f.status === 'U'),
           ...repo.files.filter((f) => f.status !== 'U'),
         ];
+        const isCollapsed = collapsedRoots.has(repo.root);
+        const branch = branchesByRepo?.get(repo.root) ?? null;
         return (
         <div key={repo.root}>
           {/* ── Repo section header ── */}
           <div
             className={cn(
-              'sticky top-0 z-10 flex items-center gap-2 bg-app px-3 py-2.5',
+              'sticky top-0 z-10 flex cursor-pointer items-center gap-2 bg-app px-3 py-2.5',
               repoIdx > 0 && 'border-t border-border',
             )}
             title={repo.root}
+            onClick={() => {
+              setCollapsedRoots((prev) => {
+                const next = new Set(prev);
+                if (next.has(repo.root)) next.delete(repo.root);
+                else next.add(repo.root);
+                return next;
+              });
+            }}
           >
             {/* Repo-level stage-all checkbox */}
             {(() => {
@@ -158,11 +180,23 @@ export function GitFileList({ repos, selected, onSelect, stagedPaths, onToggleSt
                 </div>
               );
             })()}
+            {isCollapsed ? (
+              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-fg-subtle" strokeWidth={1.75} />
+            ) : (
+              <ChevronDown className="h-3.5 w-3.5 shrink-0 text-fg-subtle" strokeWidth={1.75} />
+            )}
             <FolderGit2 className="h-3.5 w-3.5 shrink-0 text-accent" strokeWidth={1.75} />
             <div className="min-w-0 flex-1">
-              <span className="block truncate text-[13px] font-semibold text-fg">
-                {repoLabel(repo.root)}
-              </span>
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="truncate text-[13px] font-semibold text-fg">
+                  {repoLabel(repo.root)}
+                </span>
+                {branch && (
+                  <span className="shrink-0 rounded bg-elevated px-1.5 py-0.5 font-mono text-[10px] text-fg-muted">
+                    {branch}
+                  </span>
+                )}
+              </div>
               <span className="block truncate font-mono text-[11px] text-fg-subtle">
                 {shortenRoot(repo.root)}
               </span>
@@ -173,7 +207,7 @@ export function GitFileList({ repos, selected, onSelect, stagedPaths, onToggleSt
           </div>
 
           {/* ── File rows — indented under the repo header ── */}
-          {sortedFiles.map((file) => {
+          {!isCollapsed && sortedFiles.map((file) => {
             const isSelected = selected?.absolutePath === file.absolutePath;
             const isConflict = file.status === 'U';
             // Conflict files can't be manually staged/unstaged — git add is
