@@ -83,7 +83,9 @@ interface QuotaSnapshot {
 interface CopilotUserInfoResponse {
   access_type_sku?: string;
   copilot_plan?: string;
+  organization_login_list?: string[];
   // NEW: AI Credits billing (June 1, 2026+)
+  token_based_billing?: boolean;
   ai_credits?: {
     included_monthly: number;
     consumed: number;
@@ -254,11 +256,15 @@ export async function fetchCopilotQuota(
   const planType = info.copilot_plan ?? null;
   const sku = info.access_type_sku ?? '';
   const resetDate = info.quota_reset_date ?? '';
+  const isTokenBilling = info.token_based_billing ?? false;
+  const isEnterprise = sku.includes('enterprise') || planType === 'enterprise';
 
   console.log('[quota] Parsed fields:');
   console.log(`[quota]   - plan: ${planType}`);
   console.log(`[quota]   - sku: ${sku}`);
   console.log(`[quota]   - reset: ${resetDate}`);
+  console.log(`[quota]   - token_based_billing: ${isTokenBilling}`);
+  console.log(`[quota]   - is_enterprise: ${isEnterprise}`);
   console.log(`[quota]   - has ai_credits: ${!!info.ai_credits}`);
   console.log(`[quota]   - has quota_snapshots: ${!!info.quota_snapshots}`);
   console.log(`[quota]   - has limited_user_quotas: ${!!info.limited_user_quotas}`);
@@ -275,24 +281,51 @@ export async function fetchCopilotQuota(
     return fromFreeUser(info);
   }
 
+  // Enterprise with unlimited pooled credits
+  // These accounts show token_based_billing=true but no ai_credits field
+  // because billing is tracked at the organization level, not per-user.
+  if (isEnterprise && isTokenBilling) {
+    const snapshots = info.quota_snapshots;
+    const premiumSnap = snapshots?.premium_interactions;
+    
+    // Check if truly unlimited (entitlement=0 and unlimited=true)
+    if (premiumSnap?.unlimited && premiumSnap.entitlement === 0) {
+      console.log('[quota] ✓ Enterprise account with pooled AI Credits (no per-user limit)');
+      return {
+        percentRemaining: 100,
+        entitlement: null,
+        used: null,
+        overageCount: 0,
+        overagePermitted: true,
+        unlimited: true,
+        resetDate,
+        planType: 'enterprise',
+        fallback: false,
+      };
+    }
+  }
+
   // OLD: Legacy premium request billing (deprecated June 1, 2026)
   // Keep for backward compatibility with annual plan subscribers.
   const snapshots = info.quota_snapshots;
   const premiumSnap = snapshots?.premium_interactions ?? snapshots?.premium_models;
   if (premiumSnap) {
-    console.warn('[quota] Using deprecated premium_interactions format (annual plan?)');
+    // Only log as deprecated if NOT enterprise with token billing
+    if (!isEnterprise || !isTokenBilling) {
+      console.warn('[quota] ⚠️  Using deprecated premium_interactions format (annual plan?)');
+    }
     return fromSnapshot(premiumSnap, resetDate, planType, false);
   }
 
   // No premium_interactions — might be an older response or unlimited plan.
   // Try chat as a graceful fallback.
   if (snapshots?.chat) {
-    console.warn('[quota] Falling back to chat snapshot');
+    console.warn('[quota] ⚠️  Falling back to chat snapshot');
     return fromSnapshot(snapshots.chat, resetDate, planType, true);
   }
 
   // Fully unlimited plan with no quotas in the response
-  console.log('[quota] No quota data in response — treating as unlimited');
+  console.log('[quota] ℹ️  No quota data in response — treating as unlimited');
   return {
     percentRemaining: 100,
     entitlement: null,

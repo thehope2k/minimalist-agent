@@ -129,10 +129,16 @@ export function CopilotQuotaBar({ connectionSlug }: { connectionSlug: string }) 
   const unit = isAICredits ? 'AI credits' : 'requests';
 
   if (quota.unlimited) {
+    // Better messaging for Enterprise pooled credits
+    const isEnterprise = quota.planType === 'enterprise';
+    const message = isEnterprise 
+      ? 'Unlimited AI credits (org-pooled)'
+      : 'Unlimited AI credits';
+    
     return (
       <p className="mt-1.5 text-xs text-fg-subtle">
         {planLabel && <span className="font-medium text-fg-muted">{planLabel} · </span>}
-        Unlimited AI credits
+        {message}
         {quota.resetDate && (
           <> · resets <span className="text-fg-muted">{formatResetDate(quota.resetDate)}</span></>
         )}
@@ -215,10 +221,15 @@ export function CopilotQuotaPill({
   const { quota } = state;
 
   if (quota.unlimited) {
+    const isEnterprise = quota.planType === 'enterprise';
+    const title = isEnterprise
+      ? `${PLAN_LABELS[quota.planType ?? ''] ?? quota.planType ?? 'Copilot'} · unlimited AI credits (org-pooled)`
+      : `${PLAN_LABELS[quota.planType ?? ''] ?? quota.planType ?? 'Copilot'} · unlimited AI credits`;
+    
     return (
       <span
         className="inline-flex items-center rounded-full border border-border px-1.5 py-0.5 text-[10px] leading-none text-fg-subtle"
-        title={`${PLAN_LABELS[quota.planType ?? ''] ?? quota.planType ?? 'Copilot'} · unlimited AI credits`}
+        title={title}
       >
         ∞
       </span>
