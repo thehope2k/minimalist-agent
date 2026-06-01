@@ -245,14 +245,28 @@ export async function fetchCopilotQuota(
     return { error: 'Failed to parse copilot_internal/user response.' };
   }
 
+  // DEBUG: Log the entire API response
+  console.log('[quota] ═══════════════════════════════════════════════');
+  console.log('[quota] Raw API Response from GitHub:');
+  console.log(JSON.stringify(info, null, 2));
+  console.log('[quota] ═══════════════════════════════════════════════');
+
   const planType = info.copilot_plan ?? null;
   const sku = info.access_type_sku ?? '';
   const resetDate = info.quota_reset_date ?? '';
 
+  console.log('[quota] Parsed fields:');
+  console.log(`[quota]   - plan: ${planType}`);
+  console.log(`[quota]   - sku: ${sku}`);
+  console.log(`[quota]   - reset: ${resetDate}`);
+  console.log(`[quota]   - has ai_credits: ${!!info.ai_credits}`);
+  console.log(`[quota]   - has quota_snapshots: ${!!info.quota_snapshots}`);
+  console.log(`[quota]   - has limited_user_quotas: ${!!info.limited_user_quotas}`);
+
   // NEW: AI Credits billing (June 1, 2026+)
   // This is the new primary billing method — check first.
   if (info.ai_credits) {
-    console.log('[quota] Using AI Credits format (usage-based billing)');
+    console.log('[quota] ✓ Using AI Credits format (usage-based billing)');
     return fromAICredits(info.ai_credits, resetDate, planType);
   }
 
