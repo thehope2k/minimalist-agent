@@ -1144,14 +1144,13 @@ export function useChat(
 
   /**
    * Inject a user message into the running turn (mid-turn steer). The
-   * message is delivered via the SDK's streaming-input mechanism — the
-   * model picks it up on its next iteration. We render an inline ghost
-   * user bubble so the user has a visible record that it landed; the
-   * SDK doesn't acknowledge consumption explicitly so this is the best
-   * feedback signal available.
+   * message is delivered via the SDK's streaming-input mechanism.
    *
-   * In-memory only — steer messages aren't persisted as separate turns
-   * (the agent's subsequent response already reflects them).
+   * For chronological accuracy in the UI, we split the current assistant
+   * bubble into:
+   *  1) pre-steer assistant segment (finalized)
+   *  2) injected user steer message
+   *  3) post-steer assistant segment (continues streaming on same turnId)
    */
   const steer = useCallback(
     async (
@@ -1172,7 +1171,7 @@ export function useChat(
         try {
           stored.push(await storeAttachment(sid, d));
         } catch {
-          // skip unreadable drafts rather than blocking the steer
+          // Skip unreadable drafts rather than blocking the steer.
         }
       }
 
@@ -1183,8 +1182,6 @@ export function useChat(
       );
       if (!result.ok) return result;
 
-      // Insert a ghost user bubble right BEFORE the running assistant so
-      // the visual order reads "you said X then the assistant kept going".
       const current = messagesBySession.current.get(sid) ?? [];
       const idx = current.findIndex((m) => m.id === stream.turnId);
       const steerMsg: ChatMessage = {
@@ -1194,18 +1191,55 @@ export function useChat(
         attachments: stored.length > 0 ? stored : undefined,
         intentTag: 'steer',
       };
-      const next =
-        idx >= 0
-          ? [...current.slice(0, idx), steerMsg, ...current.slice(idx)]
-          : [...current, steerMsg];
+
+      let next: ChatMessage[];
+      if (idx >= 0) {
+        const liveAssistant = current[idx];
+        const preSteerAssistant: ChatMessage = {
+          ...liveAssistant,
+          id: newId(),
+          isStreaming: false,
+          durationMs:
+            liveAssistant.createdAt != null
+              ? Date.now() - liveAssistant.createdAt
+              : liveAssistant.durationMs,
+        };
+
+        const postSteerAssistant: ChatMessage = {
+          id: stream.turnId,
+          role: 'assistant',
+          parts: [],
+          isStreaming: true,
+          model: liveAssistant.model,
+          createdAt: Date.now(),
+        };
+
+        next = [
+          ...current.slice(0, idx),
+          preSteerAssistant,
+          steerMsg,
+          postSteerAssistant,
+          ...current.slice(idx + 1),
+        ];
+      } else {
+        // Defensive fallback: if the live assistant bubble is missing,
+        // at least preserve the injected message and keep stream running.
+        const postSteerAssistant: ChatMessage = {
+          id: stream.turnId,
+          role: 'assistant',
+          parts: [],
+          isStreaming: true,
+          createdAt: Date.now(),
+        };
+        next = [...current, steerMsg, postSteerAssistant];
+      }
+
       messagesBySession.current.set(sid, next);
       if (sid === activeSessionIdRef.current) setMessages(next);
-      
-      // Persist steer message at the correct position in the message list.
-      // The assistant's response will follow after the steer, so we need to
-      // maintain this order on disk for correct replay.
+
+      // Persist reordered timeline so reload preserves exact injection point.
       void rewriteMessages(sid, next.map(chatToStored));
-      
+
       return result;
     },
     [],
