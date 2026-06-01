@@ -555,7 +555,7 @@ export function ChatArea({
                     isStreaming={isStreaming}
                     onContinue={isStreaming ? undefined : handleContinue}
                     onBranch={isStreaming ? undefined : (id) => void handleBranch(id)}
-                    sessionId={activeSessionId ?? sessionId}
+                    sessionId={(activeSessionId ?? sessionId) as string | undefined}
                   />
                 </div>
               )}

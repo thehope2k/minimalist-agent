@@ -303,7 +303,6 @@ function PhaseItem({ phase, expanded, onToggle }: PhaseItemProps) {
         {phase.findings && (
           <FileText 
             className="h-3 w-3 text-fg-muted shrink-0"
-            title="Phase has findings - click to view"
           />
         )}
         {expanded ? (
