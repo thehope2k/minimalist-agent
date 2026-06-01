@@ -17,6 +17,7 @@ Simple running list of things to do. Add items whenever they come to mind, clean
 
 - [ ] Fix or remove SDD feature (currently broken)
 - [ ] Implement hooks/lifecycle automation
+- [ ] Check that if the Sub-agent context are being isolated or not.
 
 ---
 

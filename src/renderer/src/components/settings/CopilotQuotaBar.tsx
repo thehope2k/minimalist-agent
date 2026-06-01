@@ -120,11 +120,19 @@ export function CopilotQuotaBar({ connectionSlug }: { connectionSlug: string }) 
     : Math.round(100 - quota.percentRemaining);
   const hasOverage = quota.overageCount > 0;
 
+  // Detect billing format: AI Credits (dollar amounts) vs. legacy requests
+  // AI Credits: typically 10-100 range, Legacy requests: 100-10000+
+  const isAICredits = quota.entitlement != null && quota.entitlement < 1000;
+  const formatValue = (val: number) => {
+    return isAICredits ? `$${val.toFixed(2)}` : val.toLocaleString();
+  };
+  const unit = isAICredits ? 'AI credits' : 'requests';
+
   if (quota.unlimited) {
     return (
       <p className="mt-1.5 text-xs text-fg-subtle">
         {planLabel && <span className="font-medium text-fg-muted">{planLabel} · </span>}
-        Unlimited premium requests
+        Unlimited AI credits
         {quota.resetDate && (
           <> · resets <span className="text-fg-muted">{formatResetDate(quota.resetDate)}</span></>
         )}
@@ -138,12 +146,12 @@ export function CopilotQuotaBar({ connectionSlug }: { connectionSlug: string }) 
       <div className="flex items-baseline justify-between">
         <span className="text-xs text-fg-muted">
           {quota.used != null && (
-            <span className="font-medium text-fg">{quota.used.toLocaleString()}</span>
+            <span className="font-medium text-fg">{formatValue(quota.used)}</span>
           )}
           {quota.entitlement != null && quota.used != null && (
-            <> / {quota.entitlement.toLocaleString()} requests</>
+            <> / {formatValue(quota.entitlement)} {unit}</>
           )}
-          {quota.entitlement == null && quota.used != null && <> requests used</>}
+          {quota.entitlement == null && quota.used != null && <> {unit} used</>}
           {planLabel && <span className="ml-1.5 text-fg-subtle">({planLabel})</span>}
         </span>
         {quota.resetDate && (
@@ -166,7 +174,7 @@ export function CopilotQuotaBar({ connectionSlug }: { connectionSlug: string }) 
         </span>
         {hasOverage && (
           <span className="text-xs text-red-400">
-            +{quota.overageCount.toLocaleString()} over limit
+            +{isAICredits ? `$${quota.overageCount.toFixed(2)}` : quota.overageCount.toLocaleString()} over limit
             {quota.overagePermitted ? ' (grace enabled)' : ''}
           </span>
         )}
@@ -210,7 +218,7 @@ export function CopilotQuotaPill({
     return (
       <span
         className="inline-flex items-center rounded-full border border-border px-1.5 py-0.5 text-[10px] leading-none text-fg-subtle"
-        title={`${PLAN_LABELS[quota.planType ?? ''] ?? quota.planType ?? 'Copilot'} · unlimited premium requests`}
+        title={`${PLAN_LABELS[quota.planType ?? ''] ?? quota.planType ?? 'Copilot'} · unlimited AI credits`}
       >
         ∞
       </span>
@@ -232,15 +240,24 @@ export function CopilotQuotaPill({
       ? 'border-orange-400/40 text-orange-400'
       : 'border-border text-fg-subtle';
 
+  // Detect AI Credits format (dollar amounts)
+  const isAICredits = quota.entitlement != null && quota.entitlement < 1000;
+  const formatCompact = (val: number) => {
+    return isAICredits ? `$${val.toFixed(0)}` : val.toLocaleString();
+  };
+
   const label = quota.entitlement != null && quota.used != null
-    ? `${quota.used}/${quota.entitlement}`
+    ? `${formatCompact(quota.used)}/${formatCompact(quota.entitlement)}`
     : `${displayPct}%`;
 
   const planLabel = quota.planType ? (PLAN_LABELS[quota.planType] ?? quota.planType) : '';
   const tooltipParts: string[] = [];
   if (planLabel) tooltipParts.push(planLabel);
   tooltipParts.push(`${displayPct}% used`);
-  if (hasOverage) tooltipParts.push(`+${quota.overageCount} over limit`);
+  if (hasOverage) {
+    const overageStr = isAICredits ? `$${quota.overageCount.toFixed(2)}` : quota.overageCount.toLocaleString();
+    tooltipParts.push(`+${overageStr} over limit`);
+  }
   if (quota.resetDate) tooltipParts.push(`resets ${formatResetDate(quota.resetDate)}`);
 
   return (

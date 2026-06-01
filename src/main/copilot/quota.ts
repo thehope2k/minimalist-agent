@@ -80,7 +80,20 @@ interface QuotaSnapshot {
 interface CopilotUserInfoResponse {
   access_type_sku?: string;
   copilot_plan?: string;
-  // Paid plans
+  // NEW: AI Credits billing (June 1, 2026+)
+  ai_credits?: {
+    included_monthly: number;
+    consumed: number;
+    remaining: number;
+    overage: number;
+    overage_permitted?: boolean;
+  };
+  usage_breakdown?: {
+    input_tokens?: number;
+    output_tokens?: number;
+    cached_tokens?: number;
+  };
+  // OLD: Paid plans (deprecated June 1, 2026)
   quota_snapshots?: {
     chat?: QuotaSnapshot;
     completions?: QuotaSnapshot;
@@ -113,6 +126,37 @@ function fromSnapshot(snap: QuotaSnapshot, resetDate: string, planType: string |
     resetDate,
     planType,
     fallback,
+  };
+}
+
+function fromAICredits(
+  credits: NonNullable<CopilotUserInfoResponse['ai_credits']>,
+  resetDate: string,
+  planType: string | null,
+): CopilotQuota {
+  const included = credits.included_monthly;
+  const consumed = credits.consumed;
+  const remaining = credits.remaining;
+  const overage = credits.overage;
+
+  // Calculate percentage remaining
+  const pctRemaining = included > 0
+    ? Math.round((remaining / included) * 100)
+    : 100;
+
+  // Check if unlimited (included === -1 or very large number)
+  const isUnlimited = included === -1 || included >= 999999;
+
+  return {
+    percentRemaining: Math.max(0, pctRemaining),
+    entitlement: isUnlimited ? null : included,
+    used: consumed,
+    overageCount: overage,
+    overagePermitted: credits.overage_permitted ?? overage > 0,
+    unlimited: isUnlimited,
+    resetDate,
+    planType,
+    fallback: false,
   };
 }
 
@@ -195,28 +239,38 @@ export async function fetchCopilotQuota(
 
   const planType = info.copilot_plan ?? null;
   const sku = info.access_type_sku ?? '';
+  const resetDate = info.quota_reset_date ?? '';
+
+  // NEW: AI Credits billing (June 1, 2026+)
+  // This is the new primary billing method — check first.
+  if (info.ai_credits) {
+    console.log('[quota] Using AI Credits format (usage-based billing)');
+    return fromAICredits(info.ai_credits, resetDate, planType);
+  }
 
   // Free plan uses a different quota structure
   if (sku === 'free_limited_copilot') {
     return fromFreeUser(info);
   }
 
-  // Paid plans: prefer premium_interactions, fall back to premium_models
+  // OLD: Legacy premium request billing (deprecated June 1, 2026)
+  // Keep for backward compatibility with annual plan subscribers.
   const snapshots = info.quota_snapshots;
-  const resetDate = info.quota_reset_date ?? '';
-
   const premiumSnap = snapshots?.premium_interactions ?? snapshots?.premium_models;
   if (premiumSnap) {
+    console.warn('[quota] Using deprecated premium_interactions format (annual plan?)');
     return fromSnapshot(premiumSnap, resetDate, planType, false);
   }
 
   // No premium_interactions — might be an older response or unlimited plan.
   // Try chat as a graceful fallback.
   if (snapshots?.chat) {
+    console.warn('[quota] Falling back to chat snapshot');
     return fromSnapshot(snapshots.chat, resetDate, planType, true);
   }
 
   // Fully unlimited plan with no quotas in the response
+  console.log('[quota] No quota data in response — treating as unlimited');
   return {
     percentRemaining: 100,
     entitlement: null,
