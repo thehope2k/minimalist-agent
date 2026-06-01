@@ -5,6 +5,46 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.0.0] — 2026-06-01
+
+Adds multi-phase planning workflow, AI Credits billing support, parallel agent execution with worktree isolation, and HTML previews.
+
+### Added
+
+**Planning workflow**
+
+- Multi-phase execution planning workflow with approval system and user controls — the agent can now break down complex tasks into phases, present them for review, and execute with explicit user approval between phases
+
+**Agent system**
+
+- Git worktree isolation for parallel agents — sub-agents now execute in dedicated worktrees, enabling true concurrent execution without resource contention or file-system conflicts
+- Cached agents awareness block in system prompt assembly for improved performance
+
+**Billing & quota**
+
+- AI Credits billing support (June 1, 2026) with Enterprise account detection and improved messaging
+
+**Previews**
+
+- HTML preview with sandboxed iframe for written files and search results
+
+**Commit workflow**
+
+- User-provided context for commit message generation — supply custom context to guide the AI when generating commit messages
+
+### Changed
+
+- Streamlined directives and refined collaboration guidance for agent delegation
+- Unified permission model to intelligent autonomy-based collaboration
+
+### Fixed
+
+- Session recreation on token refresh when baseUrl changes
+- Mermaid template syntax breaking on curly braces
+- Billing error messages made provider-agnostic
+
+---
+
 ## [0.19.0] — 2026-05-27
 
 Quality of life improvements for session management.
