@@ -1418,7 +1418,64 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
                 expires: cred.expires ?? Date.now() + 30 * 60 * 1000,
               } as never,
             );
-            if (adjusted) state.model = adjusted as typeof state.model;
+            if (adjusted && adjusted.baseUrl !== state.model.baseUrl) {
+              // CRITICAL FIX for 421 Misdirected Request:
+              // When proxy-ep changes (token refresh, regional rotation), we MUST
+              // recreate the session so its HTTP client uses the new baseUrl.
+              // The session initializes an HTTP client on creation and caches it;
+              // updating state.model.baseUrl alone doesn't update the live client.
+              const oldBaseUrl = state.model.baseUrl;
+              state.model = adjusted as typeof state.model;
+              
+              console.log(`[pi-server] Token refresh changed baseUrl: ${oldBaseUrl} → ${state.model.baseUrl}`);
+              console.log(`[pi-server] Recreating session to apply new regional endpoint...`);
+              
+              // Destroy old session
+              if (state.session) {
+                try { state.unsubscribe?.(); } catch { /* */ }
+              }
+              
+              // Recreate session with updated model
+              const sessionManager = SessionManager.continueRecent(state.init.cwd, state.init.sessionPath);
+              const agentDir = join(homedir(), '.pi', 'agent');
+              const { session } = await createAgentSession({
+                cwd: state.init.cwd,
+                model: state.model,
+                thinkingLevel: mapThinkingLevel(state.init.thinkingLevel),
+                authStorage: state.authStorage,
+                modelRegistry: ModelRegistry.inMemory(state.authStorage),
+                sessionManager,
+                resourceLoader: state.resourceLoader!,
+                noTools: 'builtin',
+                customTools: buildWrappedTools(state.init.cwd, {
+                  sessionId: state.init.sessionId,
+                  sessionPath: state.init.sessionPath,
+                  piServerPath: PI_SERVER_PATH,
+                  availableAgents: state.availableAgents,
+                  piAuthProvider: state.init.piAuthProvider,
+                  sessionModel: state.init.model,
+                  getAuth: async () => {
+                    const apiKey = await state.authStorage!.getApiKey(state.init!.piAuthProvider);
+                    const cred = state.authStorage!.get(state.init!.piAuthProvider);
+                    if (cred?.type === 'oauth') {
+                      return {
+                        access: cred.access,
+                        refresh: cred.refresh,
+                        expires: cred.expires,
+                      };
+                    }
+                    return { access: apiKey || '' };
+                  },
+                  permissionMode: state.permissionMode,
+                }) as never,
+              });
+              state.session = session;
+              state.unsubscribe = session.subscribe(forwardEvent);
+              
+              console.log(`[pi-server] Session recreated with new baseUrl`);
+            } else if (adjusted) {
+              state.model = adjusted as typeof state.model;
+            }
           }
         }
       }
