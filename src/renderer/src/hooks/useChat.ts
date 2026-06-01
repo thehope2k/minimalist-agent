@@ -476,10 +476,20 @@ export function useChat(
     if (!sid) return null;
     const plan = activePlanBySession.current.get(sid);
     if (!plan) return null;
-    const anchor = planAnchorTurnBySession.current.get(sid);
-    if (!anchor || anchor !== messageId) return null;
+
+    if (plan.status === 'active') {
+      // Active plans follow the latest assistant bubble in real time.
+      const liveAnchor = resolvePlanAnchorTurnId(sid);
+      if (!liveAnchor) return null;
+      planAnchorTurnBySession.current.set(sid, liveAnchor);
+      return liveAnchor === messageId ? plan : null;
+    }
+
+    // Terminal plans stay frozen at their final anchor.
+    const frozenAnchor = planAnchorTurnBySession.current.get(sid);
+    if (!frozenAnchor || frozenAnchor !== messageId) return null;
     return plan;
-  }, []);
+  }, [resolvePlanAnchorTurnId]);
 
   /** Force a re-render so retry-state pills can refresh on demand. */
   const [, bump] = useState(0);
@@ -892,6 +902,10 @@ export function useChat(
     const unsubCompleted = window.api.planning.onPlanCompleted((sid: string, planId: string) => {
       const current = activePlanBySession.current.get(sid);
       if (!current || current.id !== planId) return;
+      const finalAnchor = resolvePlanAnchorTurnId(sid);
+      if (finalAnchor) {
+        planAnchorTurnBySession.current.set(sid, finalAnchor);
+      }
       setSessionPlan(sid, { ...current, status: 'completed' });
     });
 
@@ -908,6 +922,10 @@ export function useChat(
     const unsubError = window.api.planning.onPlanError((sid: string, planId: string, error: string, phaseId?: string) => {
       const current = activePlanBySession.current.get(sid);
       if (!current || current.id !== planId) return;
+      const finalAnchor = resolvePlanAnchorTurnId(sid);
+      if (finalAnchor) {
+        planAnchorTurnBySession.current.set(sid, finalAnchor);
+      }
       setSessionPlan(sid, { ...current, status: 'error' });
       if (sid === activeSessionIdRef.current) {
         setPlanError({
@@ -928,7 +946,7 @@ export function useChat(
       unsubCancelled();
       unsubError();
     };
-  }, [setSessionPlan]);
+  }, [resolvePlanAnchorTurnId, setSessionPlan]);
 
   // Load active plan on session change
   useEffect(() => {
