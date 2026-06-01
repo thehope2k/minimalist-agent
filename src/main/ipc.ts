@@ -645,7 +645,10 @@ export function registerIpc(): void {
       plan.status = 'cancelled';
       updatePlan(sessionId, plan);
       // Notify renderer
-      BrowserWindow.getAllWindows()[0]?.webContents.send('planning:cancelled', plan.id);
+      BrowserWindow.getAllWindows()[0]?.webContents.send('planning:cancelled', {
+        sessionId,
+        planId: plan.id,
+      });
     }
     updatePlan(sessionId, null);
   });

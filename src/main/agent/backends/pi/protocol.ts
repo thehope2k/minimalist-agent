@@ -271,38 +271,45 @@ export interface MsgFatalError {
 /** Planning workflow events from subprocess → main. */
 export interface MsgPlanCreated {
   type: 'planning:created';
+  sessionId: string;
   plan: unknown; // Plan type from planning-types.ts
 }
 
 export interface MsgPlanUpdated {
   type: 'planning:updated';
+  sessionId: string;
   plan: unknown;
 }
 
 export interface MsgPhaseUpdated {
   type: 'planning:phase-updated';
+  sessionId: string;
   planId: string;
   phase: unknown; // Phase type from planning-types.ts
 }
 
 export interface MsgPlanRevised {
   type: 'planning:revised';
+  sessionId: string;
   plan: unknown;
   revision: unknown; // PlanRevision type from planning-types.ts
 }
 
 export interface MsgPlanCompleted {
   type: 'planning:completed';
+  sessionId: string;
   planId: string;
 }
 
 export interface MsgPlanCancelled {
   type: 'planning:cancelled';
+  sessionId: string;
   planId: string;
 }
 
 export interface MsgPlanError {
   type: 'planning:error';
+  sessionId: string;
   planId: string;
   error: string;
   phaseId?: string;

@@ -6,20 +6,26 @@
  */
 
 import { useEffect, useState } from 'react';
-import { ChevronDown, ChevronRight, Play, Check, AlertCircle, Circle, X, Clock, RefreshCw, FileText } from 'lucide-react';
+import { ChevronDown, ChevronRight, Play, Check, AlertCircle, Circle, X, RefreshCw, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { Plan, Phase, PlanRevision } from '@/lib/electron';
+import type { Plan, Phase } from '@/lib/electron';
 
 interface PlanProgressProps {
   sessionId: string;
+  plan: Plan;
 }
 
-export function PlanProgress({ sessionId }: PlanProgressProps) {
-  const [plan, setPlan] = useState<Plan | null>(null);
+export function PlanProgress({ sessionId, plan }: PlanProgressProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set());
   const [showRevisionPopover, setShowRevisionPopover] = useState(false);
-  const [revisionButtonRef, setRevisionButtonRef] = useState<HTMLButtonElement | null>(null);
+
+  // Reset local UI state when this bubble gets a different plan.
+  useEffect(() => {
+    setCollapsed(false);
+    setExpandedPhases(new Set());
+    setShowRevisionPopover(false);
+  }, [plan.id]);
 
   // Close popover on Escape key
   useEffect(() => {
@@ -31,55 +37,7 @@ export function PlanProgress({ sessionId }: PlanProgressProps) {
     return () => window.removeEventListener('keydown', handleEscape);
   }, [showRevisionPopover]);
 
-  // Subscribe to plan events
-  useEffect(() => {
-    if (!window.api?.planning) return;
-
-    // Load active plan on mount
-    window.api.planning.getActivePlan(sessionId).then(setPlan);
-
-    const unsubscribers = [
-      window.api.planning.onPlanCreated((p) => {
-        setPlan(p);
-        setCollapsed(false);
-        setExpandedPhases(new Set());
-      }),
-      window.api.planning.onPlanUpdated((p) => {
-        setPlan(p);
-      }),
-      window.api.planning.onPhaseUpdated((planId, phase) => {
-        setPlan((prev) => {
-          if (!prev || prev.id !== planId) return prev;
-          const updated = { ...prev };
-          updated.phases = prev.phases.map((p) =>
-            p.id === phase.id ? phase : p
-          );
-          return updated;
-        });
-      }),
-      window.api.planning.onPlanRevised((p) => {
-        setPlan(p);
-      }),
-      window.api.planning.onPlanCompleted((planId) => {
-        setPlan((prev) => {
-          if (!prev || prev.id !== planId) return prev;
-          return { ...prev, status: 'completed' };
-        });
-      }),
-      window.api.planning.onPlanCancelled((planId) => {
-        setPlan((prev) => {
-          if (!prev || prev.id !== planId) return prev;
-          return { ...prev, status: 'cancelled' };
-        });
-      }),
-    ];
-
-    return () => {
-      unsubscribers.forEach((unsub) => unsub());
-    };
-  }, [sessionId]);
-
-  if (!plan || plan.status === 'cancelled') return null;
+  if (plan.status === 'cancelled') return null;
 
   const togglePhase = (phaseId: string) => {
     setExpandedPhases((prev) => {
@@ -156,7 +114,6 @@ export function PlanProgress({ sessionId }: PlanProgressProps) {
               {plan.version > 1 && plan.revisions.length > 0 && (
                 <>
                   <button
-                    ref={setRevisionButtonRef}
                     onClick={() => setShowRevisionPopover(!showRevisionPopover)}
                     className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded hover:bg-accent/20 border border-accent/30 bg-accent/10 text-accent transition-colors"
                     aria-label="View revision details"

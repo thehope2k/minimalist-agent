@@ -1002,26 +1002,27 @@ async function handleInit(msg: MsgInit): Promise<void> {
 
   // Set up PlanManager event forwarding
   if (state.planManager) {
+    const sessionId = msg.sessionId;
     state.planManager.on('plan-created', (plan) => {
-      send({ type: 'planning:created', plan });
+      send({ type: 'planning:created', sessionId, plan });
     });
     state.planManager.on('plan-updated', (plan) => {
-      send({ type: 'planning:updated', plan });
+      send({ type: 'planning:updated', sessionId, plan });
     });
     state.planManager.on('phase-updated', (planId, phase) => {
-      send({ type: 'planning:phase-updated', planId, phase });
+      send({ type: 'planning:phase-updated', sessionId, planId, phase });
     });
     state.planManager.on('plan-revised', (plan, revision) => {
-      send({ type: 'planning:revised', plan, revision });
+      send({ type: 'planning:revised', sessionId, plan, revision });
     });
     state.planManager.on('plan-completed', (planId) => {
-      send({ type: 'planning:completed', planId });
+      send({ type: 'planning:completed', sessionId, planId });
     });
     state.planManager.on('plan-cancelled', (planId) => {
-      send({ type: 'planning:cancelled', planId });
+      send({ type: 'planning:cancelled', sessionId, planId });
     });
     state.planManager.on('plan-error', (planId, error, phaseId) => {
-      send({ type: 'planning:error', planId, error, phaseId });
+      send({ type: 'planning:error', sessionId, planId, error, phaseId });
     });
   }
 

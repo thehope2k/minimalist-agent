@@ -845,13 +845,13 @@ export interface AppApi {
     denyPhase: (sessionId: string, phaseId: string, reason?: string) => Promise<void>;
     retryPhase: (sessionId: string, phaseId: string) => Promise<void>;
     skipPhase: (sessionId: string, phaseId: string) => Promise<void>;
-    onPlanCreated: (cb: (plan: Plan) => void) => () => void;
-    onPlanUpdated: (cb: (plan: Plan) => void) => () => void;
-    onPhaseUpdated: (cb: (planId: string, phase: Phase) => void) => () => void;
-    onPlanRevised: (cb: (plan: Plan, revision: PlanRevision) => void) => () => void;
-    onPlanCompleted: (cb: (planId: string) => void) => () => void;
-    onPlanCancelled: (cb: (planId: string) => void) => () => void;
-    onPlanError: (cb: (planId: string, error: string, phaseId?: string) => void) => () => void;
+    onPlanCreated: (cb: (sessionId: string, plan: Plan) => void) => () => void;
+    onPlanUpdated: (cb: (sessionId: string, plan: Plan) => void) => () => void;
+    onPhaseUpdated: (cb: (sessionId: string, planId: string, phase: Phase) => void) => () => void;
+    onPlanRevised: (cb: (sessionId: string, plan: Plan, revision: PlanRevision) => void) => () => void;
+    onPlanCompleted: (cb: (sessionId: string, planId: string) => void) => () => void;
+    onPlanCancelled: (cb: (sessionId: string, planId: string) => void) => () => void;
+    onPlanError: (cb: (sessionId: string, planId: string, error: string, phaseId?: string) => void) => () => void;
   };
   connections: {
     list: () => Promise<ConnectionMeta[]>;

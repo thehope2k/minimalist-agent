@@ -396,7 +396,7 @@ export function useChat(
     ReadonlySet<string>
   >(() => new Set());
 
-  // Planning workflow state
+  // Planning workflow state (session-scoped source of truth in refs below)
   const [activePlan, setActivePlan] = useState<Plan | null>(null);
   const [showPhaseApproval, setShowPhaseApproval] = useState(false);
   const [phaseAwaitingApproval, setPhaseAwaitingApproval] = useState<Phase | null>(null);
@@ -414,6 +414,8 @@ export function useChat(
   const turnIdToSession = useRef<Map<string, string>>(new Map());
   const sdkSessionIdBySession = useRef<Map<string, string>>(new Map());
   const titleBySession = useRef<Map<string, string | undefined>>(new Map());
+  const activePlanBySession = useRef<Map<string, Plan>>(new Map());
+  const planAnchorTurnBySession = useRef<Map<string, string>>(new Map());
   const lastSendBySession = useRef<
     Map<string, { args: SendArgs; assistantId: string }>
   >(new Map());
@@ -427,6 +429,60 @@ export function useChat(
    */
   const activeSessionIdRef = useRef<string | null>(sessionId);
   activeSessionIdRef.current = activeSessionId;
+
+  const findLastAssistantTurnId = useCallback((sid: string): string | null => {
+    const bucket = messagesBySession.current.get(sid) ?? [];
+    for (let i = bucket.length - 1; i >= 0; i--) {
+      const msg = bucket[i];
+      if (msg.role === 'assistant' && msg.markerKind !== 'compaction') {
+        return msg.id;
+      }
+    }
+    return null;
+  }, []);
+
+  const getOrResolvePlanAnchorTurnId = useCallback((sid: string): string | null => {
+    const existing = planAnchorTurnBySession.current.get(sid);
+    if (existing) return existing;
+    const fromStream = streamingBySession.current.get(sid)?.turnId;
+    if (fromStream) return fromStream;
+    return findLastAssistantTurnId(sid);
+  }, [findLastAssistantTurnId]);
+
+  const setSessionPlan = useCallback((sid: string, plan: Plan | null, options?: { resetAnchor?: boolean }) => {
+    if (!plan) {
+      activePlanBySession.current.delete(sid);
+      planAnchorTurnBySession.current.delete(sid);
+      if (sid === activeSessionIdRef.current) {
+        setActivePlan(null);
+      }
+      return;
+    }
+
+    activePlanBySession.current.set(sid, plan);
+
+    const shouldResetAnchor = !!options?.resetAnchor;
+    if (shouldResetAnchor) {
+      planAnchorTurnBySession.current.delete(sid);
+    }
+    const anchor = getOrResolvePlanAnchorTurnId(sid);
+    if (anchor) {
+      planAnchorTurnBySession.current.set(sid, anchor);
+    }
+
+    if (sid === activeSessionIdRef.current) {
+      setActivePlan(plan);
+    }
+  }, [getOrResolvePlanAnchorTurnId]);
+
+  const getPlanForMessage = useCallback((sid: string | null | undefined, messageId: string): Plan | null => {
+    if (!sid) return null;
+    const plan = activePlanBySession.current.get(sid);
+    if (!plan) return null;
+    const anchor = planAnchorTurnBySession.current.get(sid);
+    if (!anchor || anchor !== messageId) return null;
+    return plan;
+  }, []);
 
   /** Force a re-render so retry-state pills can refresh on demand. */
   const [, bump] = useState(0);
@@ -548,6 +604,7 @@ export function useChat(
       setMessages([]);
       setIsStreaming(false);
       setStreamingTurnId(null);
+      setActivePlan(null);
       return;
     }
 
@@ -560,6 +617,16 @@ export function useChat(
       const stream = streamingBySession.current.get(sessionId);
       setIsStreaming(!!stream);
       setStreamingTurnId(stream?.turnId ?? null);
+      setActivePlan(activePlanBySession.current.get(sessionId) ?? null);
+      if (
+        activePlanBySession.current.has(sessionId) &&
+        !planAnchorTurnBySession.current.has(sessionId)
+      ) {
+        const anchor = findLastAssistantTurnId(sessionId);
+        if (anchor) {
+          planAnchorTurnBySession.current.set(sessionId, anchor);
+        }
+      }
       return;
     }
 
@@ -571,6 +638,7 @@ export function useChat(
         setMessages([]);
         setIsStreaming(false);
         setStreamingTurnId(null);
+        setSessionPlan(sessionId, null);
         return;
       }
       let msgs = data.messages.map(chatFromStored);
@@ -639,11 +707,22 @@ export function useChat(
       const stream = streamingBySession.current.get(sessionId);
       setIsStreaming(!!stream);
       setStreamingTurnId(stream?.turnId ?? null);
+
+      if (
+        activePlanBySession.current.has(sessionId) &&
+        !planAnchorTurnBySession.current.has(sessionId)
+      ) {
+        const anchor = findLastAssistantTurnId(sessionId);
+        if (anchor) {
+          planAnchorTurnBySession.current.set(sessionId, anchor);
+        }
+      }
+      setActivePlan(activePlanBySession.current.get(sessionId) ?? null);
     });
     return () => {
       cancelled = true;
     };
-  }, [sessionId]);
+  }, [sessionId, findLastAssistantTurnId, setSessionPlan]);
 
   // Subscribe once to chat events; route to the right session by turnId.
   useEffect(() => {
@@ -802,53 +881,57 @@ export function useChat(
 
   // Listen for planning workflow events
   useEffect(() => {
-    if (!window.api?.planning || !activeSessionId) return;
+    if (!window.api?.planning) return;
 
-    const unsubCreated = window.api.planning.onPlanCreated((plan: Plan) => {
-      setActivePlan(plan);
+    const unsubCreated = window.api.planning.onPlanCreated((sid: string, plan: Plan) => {
+      setSessionPlan(sid, plan, { resetAnchor: true });
     });
 
-    const unsubUpdated = window.api.planning.onPlanUpdated((plan: Plan) => {
-      setActivePlan(plan);
+    const unsubUpdated = window.api.planning.onPlanUpdated((sid: string, plan: Plan) => {
+      setSessionPlan(sid, plan);
     });
 
-    const unsubPhaseUpdated = window.api.planning.onPhaseUpdated((planId: string, phase: Phase) => {
-      setActivePlan((current) => {
-        if (!current || current.id !== planId) return current;
-        const updated = { ...current };
-        const index = updated.phases.findIndex((p) => p.id === phase.id);
-        if (index >= 0) {
-          updated.phases = [...updated.phases];
-          updated.phases[index] = phase;
-        }
-        return updated;
-      });
+    const unsubPhaseUpdated = window.api.planning.onPhaseUpdated((sid: string, planId: string, phase: Phase) => {
+      const current = activePlanBySession.current.get(sid);
+      if (!current || current.id !== planId) return;
+      const updated = { ...current, phases: [...current.phases] };
+      const index = updated.phases.findIndex((p) => p.id === phase.id);
+      if (index < 0) return;
+      updated.phases[index] = phase;
+      setSessionPlan(sid, updated);
     });
 
-    const unsubRevised = window.api.planning.onPlanRevised((plan: Plan, revision: PlanRevision) => {
-      setActivePlan(plan);
-      setLatestRevision(revision);
-      setShowPlanRevision(true);
-      // Auto-hide revision notification after 10 seconds
-      setTimeout(() => setShowPlanRevision(false), 10000);
-    });
-
-    const unsubCompleted = window.api.planning.onPlanCompleted((planId: string) => {
-      if (activePlan?.id === planId) {
-        setActivePlan((current) => current ? { ...current, status: 'completed' as const } : null);
+    const unsubRevised = window.api.planning.onPlanRevised((sid: string, plan: Plan, revision: PlanRevision) => {
+      setSessionPlan(sid, plan);
+      if (sid === activeSessionIdRef.current) {
+        setLatestRevision(revision);
+        setShowPlanRevision(true);
+        // Auto-hide revision notification after 10 seconds
+        setTimeout(() => setShowPlanRevision(false), 10000);
       }
     });
 
-    const unsubCancelled = window.api.planning.onPlanCancelled((planId: string) => {
-      if (activePlan?.id === planId) {
-        setActivePlan(null);
+    const unsubCompleted = window.api.planning.onPlanCompleted((sid: string, planId: string) => {
+      const current = activePlanBySession.current.get(sid);
+      if (!current || current.id !== planId) return;
+      setSessionPlan(sid, { ...current, status: 'completed' });
+    });
+
+    const unsubCancelled = window.api.planning.onPlanCancelled((sid: string, planId: string) => {
+      const current = activePlanBySession.current.get(sid);
+      if (current && current.id !== planId) return;
+      setSessionPlan(sid, null);
+      if (sid === activeSessionIdRef.current) {
         setShowPhaseApproval(false);
         setPhaseAwaitingApproval(null);
       }
     });
 
-    const unsubError = window.api.planning.onPlanError((planId: string, error: string, phaseId?: string) => {
-      if (activePlan?.id === planId) {
+    const unsubError = window.api.planning.onPlanError((sid: string, planId: string, error: string, phaseId?: string) => {
+      const current = activePlanBySession.current.get(sid);
+      if (!current || current.id !== planId) return;
+      setSessionPlan(sid, { ...current, status: 'error' });
+      if (sid === activeSessionIdRef.current) {
         setPlanError({
           message: error,
           phaseId,
@@ -867,16 +950,16 @@ export function useChat(
       unsubCancelled();
       unsubError();
     };
-  }, [activeSessionId, activePlan]);
+  }, [setSessionPlan]);
 
   // Load active plan on session change
   useEffect(() => {
     if (!activeSessionId || !window.api?.planning) return;
 
     window.api.planning.getActivePlan(activeSessionId)
-      .then((plan: Plan | null) => setActivePlan(plan))
+      .then((plan: Plan | null) => setSessionPlan(activeSessionId, plan))
       .catch((err) => console.error('Failed to load active plan:', err));
-  }, [activeSessionId]);
+  }, [activeSessionId, setSessionPlan]);
 
   const send = useCallback(
     async ({
@@ -1278,6 +1361,7 @@ export function useChat(
     lastCompaction,
     // Planning workflow state
     activePlan,
+    getPlanForMessage,
     showPhaseApproval,
     phaseAwaitingApproval,
     showPlanRevision,

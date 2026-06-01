@@ -478,90 +478,90 @@ async function handleOutbound(
     // Planning workflow events - forward to renderer via IPC and update cache
     case 'planning:created':
     case 'planning:updated': {
-      const plan = (msg as any).plan;
+      const { plan, sessionId = handle.chatSessionId } = msg as any;
       if (plan) {
         // Update the cache so getActivePlan returns the latest state
-        updatePlanCache(handle.chatSessionId, plan);
-        
+        updatePlanCache(sessionId, plan);
+
         // Forward to renderer
         const win = BrowserWindow.getAllWindows()[0];
         if (win && !win.isDestroyed()) {
-          win.webContents.send(msg.type, plan);
+          win.webContents.send(msg.type, { sessionId, plan });
         }
       }
       return;
     }
-    
+
     case 'planning:phase-updated': {
-      const { planId, phase } = msg as any;
+      const { sessionId = handle.chatSessionId, planId, phase } = msg as any;
       // Update the cached plan's phase
-      const cachedPlan = getCachedPlan(handle.chatSessionId);
+      const cachedPlan = getCachedPlan(sessionId);
       if (cachedPlan && cachedPlan.id === planId) {
         const phaseIndex = cachedPlan.phases.findIndex((p: any) => p.id === phase.id);
         if (phaseIndex >= 0) {
           cachedPlan.phases[phaseIndex] = phase;
-          updatePlanCache(handle.chatSessionId, cachedPlan);
+          updatePlanCache(sessionId, cachedPlan);
         }
       }
-      
+
       // Forward to renderer
       const win = BrowserWindow.getAllWindows()[0];
       if (win && !win.isDestroyed()) {
-        win.webContents.send(msg.type, { planId, phase });
+        win.webContents.send(msg.type, { sessionId, planId, phase });
       }
       return;
     }
-    
+
     case 'planning:revised': {
-      const { plan, revision } = msg as any;
+      const { sessionId = handle.chatSessionId, plan, revision } = msg as any;
       if (plan) {
-        updatePlanCache(handle.chatSessionId, plan);
-        
+        updatePlanCache(sessionId, plan);
+
         const win = BrowserWindow.getAllWindows()[0];
         if (win && !win.isDestroyed()) {
-          win.webContents.send(msg.type, { plan, revision });
+          win.webContents.send(msg.type, { sessionId, plan, revision });
         }
       }
       return;
     }
-    
+
     case 'planning:completed':
     case 'planning:cancelled': {
-      const planId = (msg as any).planId;
-      
+      const { sessionId = handle.chatSessionId, planId } = msg as any;
+
       // Update cache status or remove
       if (msg.type === 'planning:cancelled') {
-        updatePlanCache(handle.chatSessionId, null);
+        updatePlanCache(sessionId, null);
       } else {
-        const cachedPlan = getCachedPlan(handle.chatSessionId);
+        const cachedPlan = getCachedPlan(sessionId);
         if (cachedPlan && cachedPlan.id === planId) {
           cachedPlan.status = 'completed';
-          updatePlanCache(handle.chatSessionId, cachedPlan);
+          updatePlanCache(sessionId, cachedPlan);
         }
       }
-      
+
       // Forward to renderer
       const win = BrowserWindow.getAllWindows()[0];
       if (win && !win.isDestroyed() && planId) {
-        win.webContents.send(msg.type, planId);
+        win.webContents.send(msg.type, { sessionId, planId });
       }
       return;
     }
 
     case 'planning:error': {
-      const { planId, error, phaseId } = msg as any;
-      
+      const { sessionId = handle.chatSessionId, planId, error, phaseId } = msg as any;
+
       // Update cache to error status
-      const cachedPlan = getCachedPlan(handle.chatSessionId);
+      const cachedPlan = getCachedPlan(sessionId);
       if (cachedPlan && cachedPlan.id === planId) {
         cachedPlan.status = 'error';
-        updatePlanCache(handle.chatSessionId, cachedPlan);
+        updatePlanCache(sessionId, cachedPlan);
       }
-      
+
       // Forward to renderer
       const win = BrowserWindow.getAllWindows()[0];
       if (win && !win.isDestroyed()) {
-        win.webContents.send(msg.type, { planId, error, phaseId });
+        win.webContents.send(msg.type, { sessionId, planId, error, phaseId });
       }
       return;
     }

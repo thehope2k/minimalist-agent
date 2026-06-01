@@ -1,4 +1,5 @@
 import type { ChatMessage } from '@/lib/chat';
+import type { Plan } from '@/lib/electron';
 import { Bubble } from './message-list/Bubble';
 import { CompactionDivider } from './message-list/CompactionDivider';
 
@@ -9,6 +10,7 @@ export function MessageList({
   onContinue,
   onBranch,
   sessionId,
+  getPlanForMessage,
 }: {
   messages: ChatMessage[];
   onRetry?: () => void;
@@ -16,21 +18,13 @@ export function MessageList({
   onContinue?: () => void;
   onBranch?: (messageId: string) => void;
   sessionId?: string;
+  getPlanForMessage?: (sessionId: string | null | undefined, messageId: string) => Plan | null;
 }) {
   const retriableId = findLastRetriableId(messages);
-  
-  // Find the last assistant message to attach plan to
-  let lastAssistantIndex = -1;
-  for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i].role === 'assistant') {
-      lastAssistantIndex = i;
-      break;
-    }
-  }
-  
+
   return (
     <div className="mx-auto w-full max-w-240 space-y-6 py-8">
-      {messages.map((m, index) =>
+      {messages.map((m) =>
         m.markerKind === 'compaction' ? (
           <CompactionDivider key={m.id} message={m} />
         ) : (
@@ -45,7 +39,7 @@ export function MessageList({
               : undefined
             }
             sessionId={sessionId}
-            showPlan={index === lastAssistantIndex && m.role === 'assistant'}
+            plan={getPlanForMessage?.(sessionId, m.id) ?? null}
           />
         ),
       )}

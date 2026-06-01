@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '../../ui';
 import { readAttachmentBase64 } from '@/lib/attachments';
 import type { ChatMessage, MessagePart } from '@/lib/chat';
-import type { StoredAttachment } from '@/lib/electron';
+import type { Plan, StoredAttachment } from '@/lib/electron';
 import { AssistantCard } from '../AssistantCard';
 import { ErrorBubble } from '../ErrorBubble';
 import { MentionText } from '../MentionText';
@@ -24,7 +24,7 @@ export function Bubble({
   onContinue,
   onBranch,
   sessionId,
-  showPlan,
+  plan,
 }: {
   message: ChatMessage;
   onRetry?: () => void;
@@ -32,7 +32,7 @@ export function Bubble({
   onContinue?: () => void;
   onBranch?: () => void;
   sessionId?: string;
-  showPlan?: boolean;
+  plan?: Plan | null;
 }) {
   const isUser = m.role === 'user';
   const parts = m.parts;
@@ -78,10 +78,10 @@ export function Bubble({
             ))}
             {!m.isStreaming && <TurnSummaryCard parts={m.parts} />}
             {m.isStreaming && <StreamStatus parts={parts} startedAt={m.createdAt} />}
-            {/* Plan Progress - Show at end of last assistant message (even while streaming) */}
-            {showPlan && sessionId && (
-              <div className="mt-3 pt-3 border-t border-border/30">
-                <PlanProgress sessionId={sessionId} />
+            {/* Plan Progress - pinned to the assistant message that created the plan */}
+            {plan && sessionId && (
+              <div className="mt-3 border-t border-border/30 pt-3">
+                <PlanProgress sessionId={sessionId} plan={plan} />
               </div>
             )}
           </AssistantCard>

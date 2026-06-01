@@ -67,6 +67,7 @@ export function ChatArea({
     activeSessionId,
     lastCompaction,
     activePlan,
+    getPlanForMessage,
     showPhaseApproval,
     phaseAwaitingApproval,
     showPlanRevision,
@@ -494,6 +495,7 @@ export function ChatArea({
                     onContinue={isStreaming ? undefined : handleContinue}
                     onBranch={isStreaming ? undefined : (id) => void handleBranch(id)}
                     sessionId={(activeSessionId ?? sessionId) as string | undefined}
+                    getPlanForMessage={getPlanForMessage}
                   />
                 </div>
               )}
