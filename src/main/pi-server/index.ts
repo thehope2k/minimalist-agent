@@ -1576,6 +1576,20 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
       const pending = state.pendingPermission.get(msg.requestId);
       if (!pending) return;
       state.pendingPermission.delete(msg.requestId);
+      
+      // If user approved a tool in plan mode, auto-switch to auto mode
+      if (msg.action === 'allow' && state.permissionMode === 'plan') {
+        console.log('[pi-server] Approved tool in plan mode - switching to auto mode');
+        state.permissionMode = 'auto';
+        
+        // Notify main process about mode change so UI updates
+        send({
+          type: 'permission_mode_changed',
+          sessionId: state.init?.sessionId ?? '',
+          mode: 'auto',
+        });
+      }
+      
       pending.resolve(msg);
       return;
     }

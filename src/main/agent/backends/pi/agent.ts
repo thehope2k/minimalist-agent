@@ -578,6 +578,34 @@ async function handleOutbound(
       return;
     }
 
+    case 'permission_mode_changed': {
+      const { sessionId = handle.chatSessionId, mode } = msg as any;
+
+      // CRITICAL: Update permission context for all active turns
+      // When user approves a phase in plan mode, we switch to auto,
+      // but the turn's permission context is cached from turn start.
+      // Without this update, tools still get blocked by the plan mode guard.
+      for (const ctx of handle.permissionContext.values()) {
+        if (ctx.sessionId === sessionId) {
+          ctx.mode = mode;
+        }
+      }
+
+      // Update session metadata to persist the mode change
+      try {
+        updateSessionMeta(sessionId, { permissionMode: mode });
+      } catch (e) {
+        console.error('[pi-agent] Failed to persist permission mode:', e);
+      }
+
+      // Forward to renderer to update UI
+      const win = BrowserWindow.getAllWindows()[0];
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('permission-mode-changed', { sessionId, mode });
+      }
+      return;
+    }
+
     case 'session_id_update': {
       const m = msg as MsgSessionIdUpdate;
       try {

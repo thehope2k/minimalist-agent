@@ -874,6 +874,7 @@ export interface AppApi {
     onPlanCancelled: (cb: (sessionId: string, planId: string) => void) => () => void;
     onPlanError: (cb: (sessionId: string, planId: string, error: string, phaseId?: string) => void) => () => void;
     onApprovalRequired: (cb: (sessionId: string, planId: string, phase: Phase) => void) => () => void;
+    onPermissionModeChanged: (cb: (sessionId: string, mode: PermissionMode) => void) => () => void;
   };
   connections: {
     list: () => Promise<ConnectionMeta[]>;

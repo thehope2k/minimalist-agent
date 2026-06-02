@@ -325,6 +325,12 @@ export interface MsgPlanApprovalRequired {
   phase: unknown; // Phase type from planning-types.ts
 }
 
+export interface MsgPermissionModeChanged {
+  type: 'permission_mode_changed';
+  sessionId: string;
+  mode: 'plan' | 'auto';
+}
+
 export interface MsgPlanApprovalResponse {
   type: 'planning:approval-response';
   sessionId: string;
@@ -346,6 +352,7 @@ export type SubprocessOutbound =
   | MsgPlanCancelled
   | MsgPlanError
   | MsgPlanApprovalRequired
+  | MsgPermissionModeChanged
   | MsgMiniCompletionResult
   | MsgLlmQueryResult
   | MsgSessionIdUpdate

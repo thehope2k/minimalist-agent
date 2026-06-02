@@ -547,6 +547,12 @@ const api = {
       ipcRenderer.on('planning:approval-required', handler);
       return () => ipcRenderer.removeListener('planning:approval-required', handler);
     },
+    onPermissionModeChanged: (cb: (sessionId: string, mode: 'plan' | 'auto') => void): (() => void) => {
+      const handler = (_e: unknown, payload: { sessionId: string; mode: 'plan' | 'auto' }) =>
+        cb(payload.sessionId, payload.mode);
+      ipcRenderer.on('permission-mode-changed', handler);
+      return () => ipcRenderer.removeListener('permission-mode-changed', handler);
+    },
   },
   connections: {
     list: (): Promise<ConnectionMeta[]> =>

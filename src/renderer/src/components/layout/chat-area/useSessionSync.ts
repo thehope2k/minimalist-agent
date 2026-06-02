@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
-import { loadFullSession } from '@/lib/sessions';
-import { findProject } from '@/lib/projects';
-import { getNewSessionStateDraft, patchNewSessionStateDraft } from '@/lib/new-session-draft';
-import type { PermissionMode } from '@/lib/electron';
-import type { useAiData } from '@/hooks/useAiData';
+import {useEffect, useRef, useState} from 'react';
+import {loadFullSession} from '@/lib/sessions';
+import {findProject} from '@/lib/projects';
+import {getNewSessionStateDraft, patchNewSessionStateDraft} from '@/lib/new-session-draft';
+import type {PermissionMode} from '@/lib/electron';
+import type {useAiData} from '@/hooks/useAiData';
 
 /**
  * Session metadata sync. Rehydrates CWD, title, permission mode, and model
@@ -117,6 +117,19 @@ export function useSessionSync(
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, newSessionDefaultProjectId]);
+
+  // Listen for permission mode changes from subprocess (e.g., plan → auto after approval)
+  useEffect(() => {
+    if (!sessionId) return;
+
+    return window.api.planning.onPermissionModeChanged((eventSessionId, mode) => {
+      if (eventSessionId === sessionId) {
+        console.log(`[useSessionSync] Permission mode changed: ${permissionMode} → ${mode}`);
+        setPermissionMode(mode);
+        permissionModeRef.current = mode;
+      }
+    });
+  }, [sessionId, permissionMode]);
 
   // For fresh chats, track project/global default changes
   useEffect(() => {
