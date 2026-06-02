@@ -7,3 +7,12 @@ export interface FlatTreeNode {
   depth: number;
   index: number;
 }
+
+/** FileExplorerPanel props */
+export interface FileExplorerPanelProps {
+  cwd: string | undefined;
+  sessionId: string | null;
+  isOpen: boolean;
+  onSelectFile: (absolutePath: string) => void;
+  onClose: () => void;
+}
