@@ -13,6 +13,7 @@ export type SendArgs = {
   cwd?: string;
   maxTurns?: number;
   permissionMode: PermissionMode;
+  autonomyLevel?: number;
   attachments: DraftAttachment[];
 };
 

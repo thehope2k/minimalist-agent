@@ -132,6 +132,7 @@ export function MessageInput({
       cwd,
       maxTurns: data?.settings.maxTurns,
       permissionMode,
+      autonomyLevel,
       attachments,
     });
     setValue('');

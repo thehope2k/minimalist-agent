@@ -28,6 +28,12 @@ interface SendArgs {
   maxTurns?: number;
   /** Permission mode for this turn ('plan' | 'auto'). */
   permissionMode: PermissionMode;
+  /**
+   * Autonomy level (0-100) for this turn. Persisted to session meta so the
+   * in-session slider value survives the fresh-chat null → newId transition
+   * (otherwise it falls back to the project/global default).
+   */
+  autonomyLevel?: number;
   /** Draft attachments — persisted to the session before send. */
   attachments?: DraftAttachment[];
   /**
@@ -976,6 +982,7 @@ export function useChat(
       cwd,
       maxTurns,
       permissionMode,
+      autonomyLevel,
       attachments: drafts,
       agentText,
       intentTag,
@@ -1005,6 +1012,7 @@ export function useChat(
       }
       await updateSessionMeta(sid, {
         permissionMode,
+        ...(autonomyLevel !== undefined ? { autonomyLevel } : {}),
         connectionSlug: connection.slug,
         model,
         ...(cwd ? { workingDirectory: cwd } : {}),
