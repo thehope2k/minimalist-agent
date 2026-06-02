@@ -5,7 +5,7 @@ import {
   ChevronRight,
   Circle,
   FileText,
-  Play,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PhaseItemProps } from './types';
@@ -13,7 +13,7 @@ import type { PhaseItemProps } from './types';
 export function PhaseCard({ phase, expanded, onToggle }: PhaseItemProps) {
   const statusIcon = {
     pending: <Circle className="h-3.5 w-3.5 text-fg-subtle" />,
-    running: <Play className="h-3.5 w-3.5 text-blue-500 animate-pulse" />,
+    running: <Loader2 className="h-3.5 w-3.5 text-blue-500 animate-spin" />,
     complete: <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />,
     blocked: (
       <AlertCircle className="h-3.5 w-3.5 text-yellow-600 dark:text-yellow-400" />
