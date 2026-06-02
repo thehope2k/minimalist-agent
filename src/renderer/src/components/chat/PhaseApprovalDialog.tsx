@@ -47,9 +47,10 @@ export function PhaseApprovalDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" onKeyDown={handleKeyDown}>
+      {/* Backdrop - no onClick to prevent accidental dismissal */}
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={handleDeny}
+        aria-hidden="true"
       />
       
       <div
@@ -139,7 +140,7 @@ export function PhaseApprovalDialog({
 
         {/* Keyboard hints - Fixed at bottom */}
         <div className="shrink-0 border-t border-border px-5 py-2 text-xs text-fg-subtle">
-          <kbd>Enter</kbd> or <kbd>⌘Enter</kbd> to approve • <kbd>Esc</kbd> to deny
+          <kbd>⌘Enter</kbd> to approve • <kbd>Esc</kbd> or click Deny to cancel • Clicking outside disabled
         </div>
       </div>
     </div>

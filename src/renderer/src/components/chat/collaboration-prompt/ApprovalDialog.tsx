@@ -22,6 +22,14 @@ export function ApprovalDialog({ reqId, payload, onRespond }: DialogProps<Approv
     });
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      handleApprove();
+    } else if (e.key === 'Escape') {
+      handleDeny();
+    }
+  };
+
   const riskColor =
     payload.risk_level >= 80 ? 'text-red-400' :
     payload.risk_level >= 50 ? 'text-yellow-400' :
@@ -30,7 +38,7 @@ export function ApprovalDialog({ reqId, payload, onRespond }: DialogProps<Approv
   return (
     <DialogLayout
       title="Approval Required"
-      onBackdropClick={handleDeny}
+      onKeyDown={handleKeyDown}
       footer={
         <>
           <Button onClick={handleDeny} variant="outline">
@@ -89,6 +97,10 @@ export function ApprovalDialog({ reqId, payload, onRespond }: DialogProps<Approv
           placeholder="Any instructions or concerns..."
           rows={2}
         />
+      </div>
+
+      <div className="pt-2 border-t border-border text-xs text-fg-subtle">
+        <kbd>⌘Enter</kbd> to approve • <kbd>Esc</kbd> to deny • Clicking outside disabled
       </div>
     </DialogLayout>
   );

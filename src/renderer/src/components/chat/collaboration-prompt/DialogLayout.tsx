@@ -5,18 +5,19 @@ type Props = {
   children: ReactNode;
   footer: ReactNode;
   onBackdropClick?: () => void;
+  onKeyDown?: (e: React.KeyboardEvent) => void;
   maxHeight?: boolean;
 };
 
 /**
  * Shared dialog layout: overlay + panel + header + scrollable body + footer.
  */
-export function DialogLayout({ title, children, footer, onBackdropClick, maxHeight = false }: Props) {
+export function DialogLayout({ title, children, footer, onBackdropClick, onKeyDown, maxHeight = false }: Props) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center" onKeyDown={onKeyDown}>
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onBackdropClick}
+        {...(onBackdropClick ? { onClick: onBackdropClick } : { 'aria-hidden': 'true' })}
       />
       
       <div className={`relative w-[min(640px,calc(100vw-32px))] ${maxHeight ? 'max-h-[85vh]' : ''} ${maxHeight ? 'flex flex-col' : ''} rounded-xl border border-border bg-panel shadow-2xl`}>
