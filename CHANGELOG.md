@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.2.1] — 2026-06-02
+
+Bug fixes for the file explorer and autonomy slider.
+
+### Fixed
+
+**File Explorer**
+
+- Large directories no longer stall the tree — child folders now load on demand as they're expanded, and searching walks the full project depth so deeply nested files (and dotfolders) show up in results
+
+**Autonomy**
+
+- The in-session autonomy slider value now persists when starting a fresh chat instead of snapping back to the project or global default
+
+---
+
 ## [1.2.0] — 2026-06-02
 
 Expanded model and provider support via pi runtime upgrade; security hardening and UI polish.
