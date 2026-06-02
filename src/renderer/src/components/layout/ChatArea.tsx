@@ -245,6 +245,7 @@ export function ChatArea({
 
   // Keep refs current so the snapshot above always reads the latest values.
   permissionModeRef.current = permissionMode;
+  autonomyLevelRef.current = autonomyLevel;
   cwdRef.current            = cwd;
 
   // For unsaved fresh chats, keep tracking the cascade (project default →
@@ -519,7 +520,14 @@ export function ChatArea({
                   isStreaming={isStreaming}
                   streamingTurnId={streamingTurnId}
                   cwd={cwd}
-                  onChangeCwd={setCwd}
+                  onChangeCwd={(newCwd) => {
+                    setCwd(newCwd);
+                    cwdRef.current = newCwd;
+                    if (!activeSessionId) {
+                      // Update draft immediately for new sessions
+                      patchNewSessionStateDraft({ cwd: newCwd });
+                    }
+                  }}
                   cwdLocked={messages.length > 0}
                   permissionMode={permissionMode}
                   onChangePermissionMode={(mode) => {
@@ -527,6 +535,9 @@ export function ChatArea({
                     permissionModeRef.current = mode;
                     if (activeSessionId) {
                       void setSessionPermissionMode(activeSessionId, mode);
+                    } else {
+                      // Update draft immediately for new sessions so useEffect doesn't reset it
+                      patchNewSessionStateDraft({ permissionMode: mode });
                     }
                   }}
                   autonomyLevel={autonomyLevel}
@@ -535,6 +546,9 @@ export function ChatArea({
                     autonomyLevelRef.current = level;
                     if (activeSessionId) {
                       void setSessionAutonomyLevel(activeSessionId, level);
+                    } else {
+                      // Update draft immediately for new sessions so useEffect doesn't reset it
+                      patchNewSessionStateDraft({ autonomyLevel: level });
                     }
                   }}
                   onSend={(args) =>
