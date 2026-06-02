@@ -5,6 +5,44 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.1.0] — 2026-06-02
+
+Planning workflow enhancements, file explorer panel, and Git UI improvements.
+
+### Added
+
+**Planning**
+
+- Phase-level approval workflow with autonomy controls — users can now configure when phases require approval based on risk level and autonomy settings
+
+**File Explorer**
+
+- Collapsible file tree panel with virtual scrolling for improved navigation and performance with large directories
+
+**Git Integration**
+
+- Per-repo branch labels and collapsible file sections in Git views for better repository organization
+
+### Changed
+
+- File explorer now uses virtual scrolling and persistent state for better performance
+
+### Fixed
+
+**Planning**
+
+- Fixed permission context not updating when switching from plan to auto mode
+- Fixed accidental dismissal of approval dialogs
+
+**Chat**
+
+- Fixed CWD and permission settings not persisting in draft state
+- Fixed active plan anchors sync and terminal plan anchor preservation
+- Fixed plan anchor resolver recursive shadowing issue
+- Fixed steer injection order during live assistant stream
+
+---
+
 ## [1.0.1] — 2026-06-01
 
 Bug fixes and stability improvements.
