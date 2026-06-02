@@ -20,6 +20,7 @@ import { Clock, File as FileIcon, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { list as listRecent, clear as clearRecent } from '@/lib/recent-files';
 import type { RecentFile } from '@/lib/recent-files';
+import { HighlightedText } from './shared/HighlightedText';
 
 export interface RecentFilesModalProps {
   onClose:    () => void;
@@ -242,30 +243,6 @@ function RecentRow({
         </span>
       )}
     </div>
-  );
-}
-
-function HighlightedText({
-  text,
-  query,
-  className,
-}: {
-  text:       string;
-  query:      string;
-  className?: string;
-}) {
-  if (!query.trim()) return <span className={className}>{text}</span>;
-  const lower = text.toLowerCase();
-  const idx   = lower.indexOf(query.toLowerCase());
-  if (idx === -1) return <span className={className}>{text}</span>;
-  return (
-    <span className={className}>
-      {text.slice(0, idx)}
-      <mark className="bg-transparent font-semibold text-accent">
-        {text.slice(idx, idx + query.length)}
-      </mark>
-      {text.slice(idx + query.length)}
-    </span>
   );
 }
 
