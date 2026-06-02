@@ -23,7 +23,7 @@ description: "Analyzes code for bugs, performance, and security issues."
 model: claude-haiku-4.5           # Optional: override session model (use full model ID)
 tools: [Read, Grep, Find]         # Optional: restrict to specific tools
 maxTurns: 10                       # Optional: max turns before stopping
-permissionMode: plan               # Optional: plan (read-only), ask, or auto
+permissionMode: plan               # Optional: plan (read-only) or auto (intelligent execution)
 effort: low                        # Optional: Anthropic reasoning effort
 icon: "🔍"                         # Optional: emoji or URL
 ---
@@ -69,8 +69,7 @@ Your agent instructions go here. This is the agent's "job description" — what 
 - **\`maxTurns\`** — Maximum number of turns before agent stops (default: 10)
 - **\`permissionMode\`** — Controls mutation permissions:
   - \`plan\` — Read-only, no file writes or mutations
-  - \`ask\` — Ask user for permission before each mutation
-  - \`auto\` — Allow mutations without asking
+  - \`auto\` — Intelligent execution with autonomy-based collaboration (controlled by session autonomy level)
 - **\`effort\`** — Anthropic only: reasoning effort level (\`low\`, \`medium\`, \`high\`)
 - **\`icon\`** — Visual identifier (emoji like \`🔍\` or URL)
 
@@ -124,7 +123,7 @@ description: Plans code changes step-by-step before executing.
 model: claude-sonnet-4.6
 tools: [Read, Bash, Edit]
 maxTurns: 20
-permissionMode: ask
+permissionMode: plan
 ---
 
 You are a refactor planner. Your job is to plan code changes carefully before executing them.
@@ -133,7 +132,7 @@ Process:
 1. **Analyze** — Read the current code, understand structure and dependencies
 2. **Plan** — Break the refactor into small, safe steps
 3. **Validate** — For each step, explain why it's safe and what could break
-4. **Execute** — Only proceed after user approves the plan
+4. **Propose** — Present the complete plan for user review
 
 When planning:
 - Prefer small, incremental changes over big rewrites

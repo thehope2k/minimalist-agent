@@ -195,7 +195,7 @@ export function AIPanel() {
         <SettingsCard>
           <SettingsRow
             label="Default permission mode"
-            description="Plan = read-only · Ask = confirm each tool · Auto = run without asking. Applied to brand-new chats; switch per-session above the composer."
+            description="Plan = read-only research · Auto = intelligent execution with autonomy control. Applied to brand-new chats; switch per-session above the composer."
             control={
               <Select
                 variant="compact"
