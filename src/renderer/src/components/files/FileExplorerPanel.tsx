@@ -33,10 +33,11 @@ export function FileExplorerPanel({
   }, [sessionId]);
 
   // Load tree and manage expansion state
-  const { tree, expandedPaths, loading, error, toggleExpand } = useFileTree({
+  const { tree, expandedPaths, loading, searchLoading, error, toggleExpand } = useFileTree({
     cwd,
     sessionId,
     isOpen,
+    filterQuery,
   });
 
   // Filter and flatten tree
@@ -101,7 +102,7 @@ export function FileExplorerPanel({
 
       <div ref={scrollContainerRef} className="min-h-0 flex-1 overflow-y-auto">
         <EmptyStates
-          loading={loading}
+          loading={loading || (searchLoading && flatItems.length === 0)}
           error={error}
           hasItems={flatItems.length > 0}
           filterQuery={filterQuery}
