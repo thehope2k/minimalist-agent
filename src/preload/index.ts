@@ -541,6 +541,12 @@ const api = {
       ipcRenderer.on('planning:error', handler);
       return () => ipcRenderer.removeListener('planning:error', handler);
     },
+    onApprovalRequired: (cb: (sessionId: string, planId: string, phase: Phase) => void): (() => void) => {
+      const handler = (_e: unknown, payload: { sessionId: string; planId: string; phase: Phase }) =>
+        cb(payload.sessionId, payload.planId, payload.phase);
+      ipcRenderer.on('planning:approval-required', handler);
+      return () => ipcRenderer.removeListener('planning:approval-required', handler);
+    },
   },
   connections: {
     list: (): Promise<ConnectionMeta[]> =>

@@ -350,6 +350,7 @@ function ensureSubprocess(
         },
     ...(baseUrl ? { baseUrl, customEndpoint: { api: 'openai-completions' as const } } : {}),
     permissionMode: (req.permissionMode ?? 'auto') as MsgInit['permissionMode'],
+    autonomyLevel: req.autonomyLevel,
     systemPrompt,
     availableAgents: loadAllAgents().map(a => ({
       slug: a.slug,
@@ -562,6 +563,17 @@ async function handleOutbound(
       const win = BrowserWindow.getAllWindows()[0];
       if (win && !win.isDestroyed()) {
         win.webContents.send(msg.type, { sessionId, planId, error, phaseId });
+      }
+      return;
+    }
+
+    case 'planning:approval-required': {
+      const { sessionId = handle.chatSessionId, planId, phase } = msg as any;
+
+      // Forward to renderer to show approval dialog
+      const win = BrowserWindow.getAllWindows()[0];
+      if (win && !win.isDestroyed()) {
+        win.webContents.send(msg.type, { sessionId, planId, phase });
       }
       return;
     }
@@ -913,4 +925,28 @@ export function shutdownAllPiSubprocesses(): void {
     }, 1000);
   }
   handles.clear();
+}
+
+/**
+ * Send approval response for a phase to the subprocess.
+ * Returns true if the subprocess was found and message sent.
+ */
+export function sendPlanApprovalResponse(args: {
+  chatSessionPath: string;
+  phaseId: string;
+  approved: boolean;
+  notes?: string;
+}): boolean {
+  const handle = handles.get(args.chatSessionPath);
+  if (!handle) return false;
+  
+  send(handle, {
+    type: 'planning:approval-response',
+    sessionId: handle.chatSessionId,
+    phaseId: args.phaseId,
+    approved: args.approved,
+    notes: args.notes,
+  });
+  
+  return true;
 }

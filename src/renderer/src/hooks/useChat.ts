@@ -937,6 +937,16 @@ export function useChat(
       }
     });
 
+    const unsubApprovalRequired = window.api.planning.onApprovalRequired((sid: string, planId: string, phase: Phase) => {
+      const current = activePlanBySession.current.get(sid);
+      if (!current || current.id !== planId) return;
+      
+      if (sid === activeSessionIdRef.current) {
+        setPhaseAwaitingApproval(phase);
+        setShowPhaseApproval(true);
+      }
+    });
+
     return () => {
       unsubCreated();
       unsubUpdated();
@@ -945,6 +955,7 @@ export function useChat(
       unsubCompleted();
       unsubCancelled();
       unsubError();
+      unsubApprovalRequired();
     };
   }, [resolvePlanAnchorTurnId, setSessionPlan]);
 

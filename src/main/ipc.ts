@@ -36,7 +36,7 @@ import {
 import {runAgentChat} from './agent/claude';
 import {apply1MContextSuffix} from './agent/models';
 import {steerAnthropicTurn} from './agent/backends/anthropic';
-import {steerPiTurn} from './agent/backends/pi/agent';
+import {steerPiTurn, sendPlanApprovalResponse} from './agent/backends/pi/agent';
 import {generateTitle} from './agent/title';
 import {parseError} from './agent/errors';
 import {resolveAuthForSlug} from './auth/resolve';
@@ -625,31 +625,35 @@ export function registerIpc(): void {
   });
 
   ipcMain.handle('planning:approvePhase', async (_e, sessionId: string, phaseId: string, notes?: string) => {
-    const plan = getActivePlan(sessionId);
-    if (!plan) return;
-
-    // Find and update the phase
-    const phase = plan.phases.find((p: Phase) => p.id === phaseId);
-    if (phase) {
-      // Mark as approved (metadata)
-      phase.findings = phase.findings 
-        ? `${phase.findings}\n[User approved${notes ? `: ${notes}` : ''}]`
-        : `[User approved${notes ? `: ${notes}` : ''}]`;
-      updatePlan(sessionId, plan);
+    // Send approval response to subprocess - let PlanManager handle the logic
+    const sent = sendPlanApprovalResponse({
+      chatSessionPath: sessionPath(sessionId),
+      phaseId,
+      approved: true,
+      notes,
+    });
+    
+    if (!sent) {
+      console.warn(`[IPC] Could not send approval response: subprocess not found for session ${sessionId}`);
     }
+    
+    // Note: Plan cache will be updated when subprocess emits phase-updated event
   });
 
   ipcMain.handle('planning:denyPhase', async (_e, sessionId: string, phaseId: string, reason?: string) => {
-    const plan = getActivePlan(sessionId);
-    if (!plan) return;
-
-    // Find and skip the phase
-    const phase = plan.phases.find((p: Phase) => p.id === phaseId);
-    if (phase && (phase.status === 'pending' || phase.status === 'blocked')) {
-      phase.status = 'skipped';
-      phase.error = reason || 'Denied by user';
-      updatePlan(sessionId, plan);
+    // Send denial response to subprocess - let PlanManager handle the logic
+    const sent = sendPlanApprovalResponse({
+      chatSessionPath: sessionPath(sessionId),
+      phaseId,
+      approved: false,
+      notes: reason,
+    });
+    
+    if (!sent) {
+      console.warn(`[IPC] Could not send denial response: subprocess not found for session ${sessionId}`);
     }
+    
+    // Note: Plan cache will be updated when subprocess emits phase-updated event
   });
 
   ipcMain.handle('planning:retryPhase', async (_e, sessionId: string, phaseId: string) => {

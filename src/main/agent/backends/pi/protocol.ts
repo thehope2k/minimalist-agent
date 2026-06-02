@@ -68,6 +68,8 @@ export interface MsgInit {
   piAuth: PiAuth;
   /** Initial permission mode. */
   permissionMode: PiPermissionMode;
+  /** Session autonomy level (0-100) for intelligent collaboration. */
+  autonomyLevel?: number;
   /** Pre-rendered system prompt (preferences + project context + skills). */
   systemPrompt: string;
   /** Resume an existing Pi session if one is stored. */
@@ -190,6 +192,7 @@ export type SubprocessInbound =
   | MsgMiniCompletion
   | MsgLlmQuery
   | MsgSteer
+  | MsgPlanApprovalResponse
   | MsgShutdown;
 
 /* ============================================================ */
@@ -315,6 +318,21 @@ export interface MsgPlanError {
   phaseId?: string;
 }
 
+export interface MsgPlanApprovalRequired {
+  type: 'planning:approval-required';
+  sessionId: string;
+  planId: string;
+  phase: unknown; // Phase type from planning-types.ts
+}
+
+export interface MsgPlanApprovalResponse {
+  type: 'planning:approval-response';
+  sessionId: string;
+  phaseId: string;
+  approved: boolean;
+  notes?: string;
+}
+
 export type SubprocessOutbound =
   | MsgReady
   | MsgEvent
@@ -327,6 +345,7 @@ export type SubprocessOutbound =
   | MsgPlanCompleted
   | MsgPlanCancelled
   | MsgPlanError
+  | MsgPlanApprovalRequired
   | MsgMiniCompletionResult
   | MsgLlmQueryResult
   | MsgSessionIdUpdate

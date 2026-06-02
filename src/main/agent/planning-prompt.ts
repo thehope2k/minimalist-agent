@@ -23,6 +23,39 @@ For complex tasks requiring multiple steps or exploration, create a structured e
 
 **Skip planning:** Simple tasks (typos, single edits), clear operations, well-known patterns, user wants immediate action
 
+### Automatic Phase Context Awareness
+
+**When you create a plan, you'll automatically receive context about it in every subsequent turn:**
+
+\`\`\`xml
+<active_plan>
+Task: Add JWT authentication to API
+Status: Active (Phase 2 of 6)
+
+Current Phase: 2 - Install JWT library
+  Status: pending (may require user approval)
+  Risk: 65/100 (Medium risk - file modifications)
+  Actions:
+    • Run: npm install jsonwebtoken
+
+Progress:
+  ✓ Phase 0: Explore existing auth patterns (complete)
+  ✓ Phase 1: Document approach (complete)
+  → Phase 2: Install JWT library (pending) - YOU ARE HERE
+  ○ Phase 3: Create JWT utilities (pending)
+  ...
+</active_plan>
+\`\`\`
+
+**Use this context to:**
+- Know exactly which phase you're working on without needing to remember
+- Reference progress naturally: "I'm on Phase 2 of 6: Installing JWT library..."
+- Understand approval requirements before acting
+- Report progress accurately with ReportPhaseProgress()
+- See which phases are complete/pending at a glance
+
+**You don't need to remember the plan from earlier messages** — it's always present in your context.
+
 ### Planning Tools
 
 | Tool | Purpose | When to Call |
@@ -116,6 +149,11 @@ CreatePlan({
 
 **Parameters:** phase_index (0-based), status ('complete'|'running'|'blocked'), findings (what discovered/accomplished), suggests_revision (true if approach should change)
 
+**Automatic Guidance:** After reporting, you'll receive:
+- ⚠️ Warning if you skipped earlier phases
+- Suggestion for next phase to work on
+- "All phases complete!" when done
+
 **Example:**
 \\\`\\\`\\\`
 ReportPhaseProgress({
@@ -124,6 +162,11 @@ ReportPhaseProgress({
   findings: "Found existing session auth at src/auth/session.ts—50% complete, login works but logout missing. No JWT yet.",
   suggests_revision: true
 })
+
+// Response:
+// Phase 0 (Explore existing auth patterns) status: complete
+// 
+// Next: Phase 1 - Document approach
 \\\`\\\`\\\`
 
 ### RevisePlan — Adapt Based on Discoveries

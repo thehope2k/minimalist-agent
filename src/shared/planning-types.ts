@@ -33,6 +33,8 @@ export interface Phase {
   completedAt?: number;
   findings?: string;
   error?: string;
+  approvalStatus?: 'awaiting' | 'approved' | 'denied';
+  approvalNotes?: string; // User's notes when approving/denying
 }
 
 /**

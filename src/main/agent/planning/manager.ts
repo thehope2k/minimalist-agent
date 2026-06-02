@@ -30,6 +30,7 @@ export interface PlanManagerEvents {
   'plan-completed': (planId: string) => void;
   'plan-cancelled': (planId: string) => void;
   'plan-error': (planId: string, error: string, phaseId?: string) => void;
+  'phase-approval-required': (planId: string, phase: Phase) => void;
 }
 
 export declare interface PlanManager {
@@ -177,10 +178,58 @@ export class PlanManager extends EventEmitter {
   }
 
   /**
+   * Check if a phase requires approval and mark it as awaiting if needed.
+   * Returns true if approval is required and event was emitted.
+   */
+  checkAndRequestApproval(
+    sessionId: string,
+    phaseId: string,
+    autonomyLevel: number,
+    permissionMode: string
+  ): boolean {
+    const plan = this.activePlans.get(sessionId);
+    if (!plan) return false;
+
+    const phase = plan.phases.find((p) => p.id === phaseId);
+    if (!phase) return false;
+
+    // Skip if already approved or denied
+    if (phase.approvalStatus === 'approved' || phase.approvalStatus === 'denied') {
+      return false;
+    }
+
+    // Check if approval is required
+    if (this.shouldPhaseRequireApproval(phase, autonomyLevel, permissionMode)) {
+      // Mark as awaiting approval
+      phase.approvalStatus = 'awaiting';
+      plan.lastUpdatedAt = Date.now();
+      this.storage.savePlan(sessionId, plan);
+      
+      // Emit event to trigger approval dialog
+      this.emit('phase-approval-required', plan.id, phase);
+      
+      console.log(`[PlanManager] Phase ${phase.index} (${phase.name}) requires approval - event emitted`);
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Check if a phase can execute based on mode and autonomy.
    */
   /**
-   * Record phase error.
+   * Record phase error and mark plan as failed.
+   * Convenience method that:
+   * 1. Sets plan.status = 'error'
+   * 2. Sets phase.status = 'error' with error message
+   * 3. Emits 'plan-error' event
+   * 
+   * Use when:
+   * - Tool execution fails during a phase
+   * - Phase operation throws an exception
+   * - ReportPhaseProgress encounters an error
+   * - Any unrecoverable phase-specific error occurs
    */
   recordPhaseError(sessionId: string, phaseId: string, error: string): void {
     const plan = this.activePlans.get(sessionId);
@@ -281,6 +330,176 @@ export class PlanManager extends EventEmitter {
     const remainingPhases = plan.phases.filter((p) => p.status === 'pending');
     
     return this.revisionDetector.shouldRevise(phase, findings, remainingPhases).should;
+  }
+
+  /**
+   * Check if a phase requires user approval before execution.
+   */
+  shouldPhaseRequireApproval(
+    phase: Phase,
+    autonomyLevel: number,
+    permissionMode: string
+  ): boolean {
+    // Safe phases (read-only, risk < 20) never need approval
+    if (phase.isSafe || phase.risk < 20) return false;
+    
+    // Auto permission mode bypasses approval
+    if (permissionMode === 'auto') return false;
+    
+    // Approval based on risk and autonomy
+    // Lower autonomy = more approvals
+    // Higher risk = more likely to need approval
+    const threshold = 100 - autonomyLevel; // autonomy 50 → threshold 50
+    return phase.risk >= threshold;
+  }
+
+  /**
+   * Approve a phase for execution.
+   */
+  approvePhase(sessionId: string, phaseId: string, notes?: string): void {
+    const plan = this.activePlans.get(sessionId);
+    if (!plan) {
+      console.warn(`[PlanManager] Cannot approve phase: No active plan for session ${sessionId}`);
+      throw new Error(`No active plan for session ${sessionId}`);
+    }
+
+    const phase = plan.phases.find((p) => p.id === phaseId);
+    if (!phase) {
+      console.warn(`[PlanManager] Cannot approve phase: Phase ${phaseId} not found in plan ${plan.id}`);
+      throw new Error(`Phase ${phaseId} not found in plan ${plan.id}`);
+    }
+    
+    // Check for status conflicts
+    if (phase.status === 'complete' || phase.status === 'skipped') {
+      console.warn(`[PlanManager] Phase ${phaseId} already ${phase.status}, ignoring approval`);
+      return; // Already done, ignore approval
+    }
+
+    phase.approvalStatus = 'approved';
+    if (notes) {
+      phase.approvalNotes = notes;
+    }
+
+    plan.lastUpdatedAt = Date.now();
+    this.storage.savePlan(sessionId, plan);
+    this.emit('phase-updated', plan.id, phase);
+    this.emit('plan-updated', plan);
+    
+    console.log(`[PlanManager] Phase ${phase.index} (${phase.name}) approved for session ${sessionId}`);
+  }
+
+  /**
+   * Deny a phase and mark it as skipped.
+   */
+  denyPhase(sessionId: string, phaseId: string, reason?: string): void {
+    const plan = this.activePlans.get(sessionId);
+    if (!plan) {
+      console.warn(`[PlanManager] Cannot deny phase: No active plan for session ${sessionId}`);
+      throw new Error(`No active plan for session ${sessionId}`);
+    }
+
+    const phase = plan.phases.find((p) => p.id === phaseId);
+    if (!phase) {
+      console.warn(`[PlanManager] Cannot deny phase: Phase ${phaseId} not found in plan ${plan.id}`);
+      throw new Error(`Phase ${phaseId} not found in plan ${plan.id}`);
+    }
+    
+    // Check for status conflicts
+    if (phase.status === 'complete') {
+      console.warn(`[PlanManager] Phase ${phaseId} already complete, cannot deny`);
+      return; // Already complete, don't mark as skipped
+    }
+    
+    if (phase.status === 'skipped') {
+      console.log(`[PlanManager] Phase ${phaseId} already skipped, updating reason`);
+      // Update reason if already skipped
+    }
+
+    phase.approvalStatus = 'denied';
+    phase.status = 'skipped';
+    phase.completedAt = Date.now();
+    if (reason) {
+      phase.approvalNotes = reason;
+      phase.findings = `Skipped by user: ${reason}`;
+    } else {
+      phase.findings = 'Skipped by user';
+    }
+
+    plan.lastUpdatedAt = Date.now();
+    this.storage.savePlan(sessionId, plan);
+    this.emit('phase-updated', plan.id, phase);
+    this.emit('plan-updated', plan);
+    
+    console.log(`[PlanManager] Phase ${phase.index} (${phase.name}) denied and skipped for session ${sessionId}`);
+  }
+
+  /**
+   * Get the next pending phase that's ready to execute.
+   * Returns null if no phase is ready or all phases are complete.
+   */
+  getNextPendingPhase(sessionId: string): Phase | null {
+    const plan = this.activePlans.get(sessionId);
+    if (!plan) return null;
+    
+    // Find first phase that's pending and all previous are complete/skipped
+    return plan.phases.find((p, idx) => {
+      if (p.status !== 'pending') return false;
+      
+      // Check all previous phases
+      for (let i = 0; i < idx; i++) {
+        const prev = plan.phases[i];
+        if (prev.status !== 'complete' && prev.status !== 'skipped') {
+          return false; // Previous phase not done yet
+        }
+      }
+      
+      return true;
+    }) || null;
+  }
+
+  /**
+   * Validate phase progression and provide helpful warnings.
+   * Returns validation result with optional warning and suggestion.
+   */
+  validatePhaseProgression(sessionId: string, phaseIndex: number): {
+    valid: boolean;
+    warning?: string;
+    suggestion?: string;
+    expectedPhase?: number;
+  } {
+    const plan = this.activePlans.get(sessionId);
+    if (!plan) return { valid: true };
+    
+    const phase = plan.phases[phaseIndex];
+    if (!phase) {
+      return {
+        valid: false,
+        warning: `Phase ${phaseIndex} not found in plan`,
+      };
+    }
+    
+    // Check if there are incomplete previous phases
+    const incompletePrevious: number[] = [];
+    for (let i = 0; i < phaseIndex; i++) {
+      const prev = plan.phases[i];
+      if (prev.status === 'pending' || prev.status === 'blocked') {
+        incompletePrevious.push(i);
+      }
+    }
+    
+    if (incompletePrevious.length > 0) {
+      const expectedPhase = incompletePrevious[0];
+      const expectedPhaseName = plan.phases[expectedPhase].name;
+      
+      return {
+        valid: true, // Not an error, just a warning
+        warning: `Working on Phase ${phaseIndex} but Phase ${expectedPhase} (${expectedPhaseName}) is still pending`,
+        suggestion: `Consider completing Phase ${expectedPhase} first, or use ReportPhaseProgress(${expectedPhase}, 'skipped', ...) if intentionally skipping it.`,
+        expectedPhase,
+      };
+    }
+    
+    return { valid: true };
   }
 
   /**

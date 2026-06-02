@@ -121,6 +121,7 @@ interface State {
   lastAppend?: string;
   model?: ReturnType<typeof getModel>;
   permissionMode: PiPermissionMode;
+  autonomyLevel: number;
   currentTurnId?: string;
   unsubscribe?: () => void;
   pendingPermission: Map<
@@ -132,12 +133,14 @@ interface State {
     { resolve: (r: MsgCollaborationResponse) => void }
   >;
   planManager?: PlanManager;
+  currentPhaseId?: string; // Track active phase for error attribution
   turnAbort?: AbortController;
   shuttingDown?: boolean;
 }
 
 const state: State = {
   permissionMode: 'auto',
+  autonomyLevel: 50, // Default, will be overridden by init
   pendingPermission: new Map(),
   pendingCollaboration: new Map(),
   appendArr: [],
@@ -670,6 +673,35 @@ function createPlanningTools(sessionId: string): ToolDefinition<any, any, any>[]
             'complete': 'complete' as const,
             'blocked': 'blocked' as const,
           };
+          
+          // Before setting status to 'running', check if approval is required
+          if (input.status === 'running') {
+            const needsApproval = state.planManager!.checkAndRequestApproval(
+              sessionId,
+              phase.id,
+              state.autonomyLevel,
+              state.permissionMode
+            );
+            
+            if (needsApproval) {
+              // Phase requires approval - inform LLM
+              return {
+                isError: false,
+                content: [
+                  {
+                    type: 'text' as const,
+                    text: `Phase ${input.phase_index} (${phase.name}) requires user approval before execution.\n\nThis is a ${phase.risk >= 60 ? 'high' : 'medium'}-risk operation (risk: ${phase.risk}/100). Waiting for user to approve or deny.\n\nYou can acknowledge this and wait, or work on other tasks in the meantime.`,
+                  },
+                ],
+                details: {
+                  phase_index: input.phase_index,
+                  status: 'awaiting_approval',
+                  requires_approval: true,
+                },
+              };
+            }
+          }
+          
           state.planManager!.updatePhaseStatus(
             sessionId,
             phase.id,
@@ -677,13 +709,41 @@ function createPlanningTools(sessionId: string): ToolDefinition<any, any, any>[]
             input.findings,
           );
           
+          // Track current phase for error attribution
+          if (input.status === 'running') {
+            state.currentPhaseId = phase.id;
+          } else if (input.status === 'complete') {
+            state.currentPhaseId = undefined; // Phase finished
+          }
+          
           // Check if revision needed
           const revisionNeeded = input.suggests_revision &&
             state.planManager!.shouldRevise(sessionId, phase.id, input.findings);
           
+          // Validate phase progression
+          const progression = state.planManager!.validatePhaseProgression(sessionId, input.phase_index);
+          
           let responseText = `Phase ${input.phase_index} (${phase.name}) status: ${input.status}`;
+          
+          if (progression.warning) {
+            responseText += `\n\n⚠️  ${progression.warning}`;
+            if (progression.suggestion) {
+              responseText += `\n${progression.suggestion}`;
+            }
+          }
+          
           if (revisionNeeded) {
             responseText += '\n\nRevision recommended based on findings. Use RevisePlan to update remaining phases.';
+          }
+          
+          // Suggest next phase if current complete
+          if (input.status === 'complete') {
+            const nextPhase = state.planManager!.getNextPendingPhase(sessionId);
+            if (nextPhase) {
+              responseText += `\n\nNext: Phase ${nextPhase.index} - ${nextPhase.name}`;
+            } else {
+              responseText += '\n\nAll phases complete!';
+            }
           }
           
           return {
@@ -701,6 +761,27 @@ function createPlanningTools(sessionId: string): ToolDefinition<any, any, any>[]
             },
           };
         } catch (error: any) {
+          // Record the phase error through PlanManager
+          // Extract phase_index from params since input might not be defined
+          if (state.planManager && params && typeof params === 'object' && 'phase_index' in params) {
+            try {
+              const phaseIndex = (params as any).phase_index;
+              const plan = state.planManager.getActivePlan(sessionId);
+              if (plan && typeof phaseIndex === 'number') {
+                const phase = plan.phases[phaseIndex];
+                if (phase) {
+                  state.planManager.recordPhaseError(
+                    sessionId,
+                    phase.id,
+                    `Failed to report progress: ${error.message}`
+                  );
+                }
+              }
+            } catch (recordError) {
+              console.error('[pi-server] Failed to record phase error:', recordError);
+            }
+          }
+          
           return {
             isError: true,
             content: [
@@ -838,6 +919,7 @@ function buildWrappedTools(
 async function handleInit(msg: MsgInit): Promise<void> {
   state.init = msg;
   state.permissionMode = msg.permissionMode;
+  state.autonomyLevel = msg.autonomyLevel ?? 50; // Default to 50 if not provided
   state.appendArr = msg.systemPrompt ? [msg.systemPrompt] : [];
   state.lastAppend = msg.systemPrompt ?? '';
 
@@ -1023,6 +1105,9 @@ async function handleInit(msg: MsgInit): Promise<void> {
     });
     state.planManager.on('plan-error', (planId, error, phaseId) => {
       send({ type: 'planning:error', sessionId, planId, error, phaseId });
+    });
+    state.planManager.on('phase-approval-required', (planId, phase) => {
+      send({ type: 'planning:approval-required', sessionId, planId, phase });
     });
   }
 
@@ -1500,6 +1585,28 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
       if (!pending) return;
       state.pendingCollaboration.delete(msg.requestId);
       pending.resolve(msg);
+      return;
+    }
+
+    case 'planning:approval-response': {
+      // Handle approval/denial from user
+      const { sessionId, phaseId, approved, notes } = msg;
+      
+      if (!state.planManager) {
+        console.warn('[pi-server] Approval response received but planManager not initialized');
+        return;
+      }
+      
+      try {
+        if (approved) {
+          state.planManager.approvePhase(sessionId, phaseId, notes);
+        } else {
+          state.planManager.denyPhase(sessionId, phaseId, notes);
+        }
+      } catch (error) {
+        console.error('[pi-server] Failed to handle approval response:', error);
+      }
+      
       return;
     }
 
