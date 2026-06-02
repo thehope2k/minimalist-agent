@@ -1,53 +1,26 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { GitBranch, X, FolderTree } from 'lucide-react';
-import { ChatScroll } from '../chat/ChatScroll';
-import { MessageInput } from '../chat/MessageInput';
-import { MessageList } from '../chat/MessageList';
-import { PhaseApprovalDialog } from '../chat/PhaseApprovalDialog';
-import { PlanRevisionNotification } from '../chat/PlanRevisionNotification';
-import { PlanErrorNotification } from '../chat/PlanErrorNotification';
-import { EmptyState } from '../chat/EmptyState';
-import { CollaborationPrompt } from '../chat/CollaborationPrompt';
-import { IconButton } from '../ui';
+import { useEffect, useCallback } from 'react';
 import { useChat } from '@/hooks/useChat';
 import { useAiData } from '@/hooks/useAiData';
-import { branchSession, loadFullSession, setSessionPermissionMode, setSessionAutonomyLevel } from '@/lib/sessions';
-import { findProject } from '@/lib/projects';
-import { getNewSessionStateDraft, patchNewSessionStateDraft } from '@/lib/new-session-draft';
 import { useProjects } from '@/hooks/useProjects';
+import { setSessionPermissionMode, setSessionAutonomyLevel } from '@/lib/sessions';
 import { homedir } from '@/lib/path';
-import type { PermissionMode } from '@/lib/electron';
-import type { SeedSubmit } from '@/App';
+import { ChatHeader } from './chat-area/ChatHeader';
+import { ChatContent } from './chat-area/ChatContent';
+import { ChatModals } from './chat-area/ChatModals';
+import { PlanningDialogs } from './chat-area/PlanningDialogs';
+import { useSessionSync } from './chat-area/useSessionSync';
+import { useSeedSubmit } from './chat-area/useSeedSubmit';
+import { useBranchSession } from './chat-area/useBranchSession';
+import { useKeyboardShortcuts } from './chat-area/useKeyboardShortcuts';
+import type { ChatAreaProps } from './chat-area/types';
 
-import { GitDiffModal } from '@/components/git/GitDiffModal';
-import { SearchModal } from '@/components/search/SearchModal';
-import { RecentFilesModal } from '@/components/search/RecentFilesModal';
+export type { ChatAreaProps as Props };
+export type { SeedSubmit } from './chat-area/types';
 
-type Props = {
-  sessionId: string | null;
-  /** Called when the user sends in an unsaved chat — App tracks the new id. */
-  onSessionCreated: (id: string) => void;
-  /** Called when user clicks the "X / new" header button. */
-  onNewSession: () => void;
-  /** Structured submission auto-sent on next mount (e.g. New Skill). */
-  seedSubmit?: SeedSubmit | null;
-  /** Fires once ChatArea has consumed the seed; lets App clear its state. */
-  onSeedSubmitConsumed?: () => void;
-  newSessionDefaultProjectId?: string | null;
-  /** Reports the set of session ids with active streams (including off-screen). */
-  onStreamingChange?: (ids: ReadonlySet<string>) => void;
-  /** Reports CWD changes so the global terminal panel can seed new tabs. */
-  onCwdChange?: (cwd: string | undefined) => void;
-  /** Global chat visibility gate (e.g. disabled while Settings/Skills/Extensions are shown). */
-  shortcutsEnabled?: boolean;
-  /** Called when user opens a file from SearchModal or RecentFilesModal. */
-  onOpenFile?: (absolutePath: string, lineNumber: number) => void;
-  /** Toggle file explorer panel (for header button). */
-  onToggleFileExplorer?: () => void;
-  /** File explorer panel open state (for active styling). */
-  fileExplorerOpen?: boolean;
-};
-
+/**
+ * Chat area orchestrator. Manages session lifecycle, streaming control,
+ * planning dialogs, modals, and keyboard shortcuts.
+ */
 export function ChatArea({
   sessionId,
   onSessionCreated,
@@ -61,7 +34,7 @@ export function ChatArea({
   onOpenFile,
   onToggleFileExplorer,
   fileExplorerOpen,
-}: Props) {
+}: ChatAreaProps) {
   const {
     messages,
     isStreaming,
@@ -85,202 +58,69 @@ export function ChatArea({
     setShowPlanRevision,
     setPlanError,
   } = useChat(sessionId, newSessionDefaultProjectId);
-  const aiData = useAiData();
-  // Bootstraps the project store; we read it imperatively below via findProject.
-  useProjects();
-  /** Per-session working directory; rehydrated from session metadata on switch. */
-  const [cwd, setCwd] = useState<string | undefined>(undefined);
-  const [title, setTitle] = useState<string>('New session');
-  // Always-current mirrors for permissionMode and cwd - used when snapshotting
-  // the null-slot draft on session switch.
-  const permissionModeRef = useRef<PermissionMode>('auto');
-  const autonomyLevelRef = useRef<number>(50);
-  const cwdRef            = useRef<string | undefined>(undefined);
-  const prevSessionIdRef  = useRef<string | null | undefined>(undefined);
-  const [pendingMessage, setPendingMessage] = useState<string | undefined>(undefined);
-  /**
-   * Project-level default connection slug to seed MessageInput's resolver.
-   * Re-derived on session switch (loaded session's projectId) and on filter
-   * change (fresh-chat case). Empty string = "no project default; use global".
-   */
-  const [projectDefaultConnectionSlug, setProjectDefaultConnectionSlug] =
-    useState<string>('');
-  /**
-   * Connection + model the loaded session last sent with. Empty when the
-   * session has no record yet (e.g. brand-new fresh chat). MessageInput
-   * uses this to seed the pill so each session "remembers" its choice.
-   *
-   * `loadedSessionPickId` is the sessionId these values belong to - set
-   * after the async load resolves. MessageInput only syncs when this
-   * matches the visible sessionId, which avoids a stale value from the
-   * previous session leaking onto the pill during a switch.
-   */
-  const [sessionConnectionSlug, setSessionConnectionSlug] = useState<string>('');
-  const [sessionModel, setSessionModel] = useState<string>('');
-  const [loadedSessionPickId, setLoadedSessionPickId] = useState<string | null>(
-    null,
-  );
-  /**
-   * Per-session permission mode. Falls back to the global default until a
-   * session-level value is set explicitly. Initialized to 'auto' so the
-   * pill always has a sane label even before AI settings have loaded.
-   */
-  const [permissionMode, setPermissionMode] = useState<PermissionMode>('auto');
-  /**
-   * Autonomy level (0-100) for intelligent collaboration in auto mode.
-   * Defaults to 50 (balanced) until AI settings load.
-   */
-  const [autonomyLevel, setAutonomyLevel] = useState<number>(50);
-  /**
-   * `true` once we've adopted the per-session value (or confirmed there
-   * isn't one). Prevents the pill from briefly flashing the global default
-   * before the session loads.
-   */
-  const sessionModeLoadedRef = useRef(false);
 
-  /**
-   * Cheap content-changed signal for ChatScroll. Combines message count
-   * with the last message's text length so streaming tokens nudge the
-   * stick-to-bottom effect.
-   */
+  const aiData = useAiData();
+  useProjects(); // Bootstrap project store
+
+  // Session metadata sync (CWD, title, permission mode, etc.)
+  const {
+    cwd,
+    setCwd,
+    title,
+    permissionMode,
+    setPermissionMode,
+    autonomyLevel,
+    setAutonomyLevel,
+    projectDefaultConnectionSlug,
+    sessionConnectionSlug,
+    sessionModel,
+    loadedSessionPickId,
+    permissionModeRef,
+    autonomyLevelRef,
+  } = useSessionSync(sessionId, newSessionDefaultProjectId, aiData, onCwdChange);
+
+  // Branch session logic
+  const { pendingMessage, setPendingMessage, handleBranch } = useBranchSession(
+    sessionId,
+    messages,
+    onSessionCreated,
+  );
+
+  // Keyboard shortcuts (Git, Search, Recent Files)
+  const activeSession = activeSessionId ?? sessionId;
+  const {
+    gitModalOpen,
+    setGitModalOpen,
+    searchOpen,
+    setSearchOpen,
+    recentOpen,
+    setRecentOpen,
+  } = useKeyboardShortcuts(shortcutsEnabled, activeSession, cwd);
+
+  // Auto-send seeded submissions (e.g. New Skill)
+  useSeedSubmit(
+    seedSubmit,
+    onSeedSubmitConsumed,
+    aiData,
+    isStreaming,
+    messages,
+    cwd,
+    permissionMode,
+    send,
+  );
+
+  // Cheap content-changed signal for ChatScroll
   const last = messages[messages.length - 1];
   const lastTextLen = last
     ? last.parts.reduce(
         (n, p) =>
-          p.kind === 'text' || p.kind === 'thinking'
-            ? n + p.text.length
-            : n + 1,
+          p.kind === 'text' || p.kind === 'thinking' ? n + p.text.length : n + 1,
         0,
       )
     : 0;
   const contentSignal = messages.length * 10_000 + lastTextLen;
 
-  // Rehydrate cwd + title when switching sessions.
-  useEffect(() => {
-    const prevId = prevSessionIdRef.current;
-    prevSessionIdRef.current = sessionId;
-
-    // Leaving the null (new) slot → snapshot mode + cwd so they survive
-    // switching to another session and back.
-    if (prevId === null) {
-      patchNewSessionStateDraft({
-        permissionMode: permissionModeRef.current,
-        autonomyLevel: autonomyLevelRef.current,
-        cwd: cwdRef.current,
-      });
-    }
-
-    if (!sessionId) {
-      setTitle('New session');
-      sessionModeLoadedRef.current = false;
-      const projForFresh = findProject(newSessionDefaultProjectId);
-
-      // Restore from draft when switching back; fall back to project/global
-      // defaults only when there is no saved pick (first visit to null slot).
-      const d = getNewSessionStateDraft();
-      const restoredCwd = d.cwd !== undefined
-        ? d.cwd
-        : (projForFresh?.rootPath ?? undefined);
-      setCwd(restoredCwd);
-      onCwdChange?.(restoredCwd);
-      setPermissionMode(
-        d.permissionMode ??
-          projForFresh?.defaultPermissionMode ??
-          aiData?.settings.defaultPermissionMode ??
-          'auto',
-      );
-      setAutonomyLevel(
-        d.autonomyLevel ??
-          projForFresh?.defaultAutonomyLevel ??
-          aiData?.settings.defaultAutonomyLevel ??
-          50,
-      );
-      setProjectDefaultConnectionSlug(
-        projForFresh?.defaultConnectionSlug ?? '',
-      );
-      // Fresh chat: clear any prior session's pick + ack the "load" so
-      // MessageInput knows there's no remembered pick to apply.
-      setSessionConnectionSlug('');
-      setSessionModel('');
-      setLoadedSessionPickId(null);
-      return;
-    }
-    // Mark stale until the new session's data resolves.
-    setLoadedSessionPickId(null);
-    sessionModeLoadedRef.current = false;
-    setCwd(undefined);
-    onCwdChange?.(undefined);
-    let cancelled = false;
-    loadFullSession(sessionId).then((data) => {
-      if (cancelled || !data) return;
-      setCwd(data.meta.workingDirectory);
-      onCwdChange?.(data.meta.workingDirectory);
-      setTitle(data.meta.title);
-      const project = findProject(data.meta.projectId);
-      setPermissionMode(
-        data.meta.permissionMode ??
-          project?.defaultPermissionMode ??
-          aiData?.settings.defaultPermissionMode ??
-          'auto',
-      );
-      setAutonomyLevel(
-        data.meta.autonomyLevel ??
-          project?.defaultAutonomyLevel ??
-          aiData?.settings.defaultAutonomyLevel ??
-          50,
-      );
-      setProjectDefaultConnectionSlug(project?.defaultConnectionSlug ?? '');
-      setSessionConnectionSlug(data.meta.connectionSlug ?? '');
-      setSessionModel(data.meta.model ?? '');
-      setLoadedSessionPickId(data.meta.id);
-      sessionModeLoadedRef.current = true;
-    });
-    return () => {
-      cancelled = true;
-    };
-    // aiData ref is intentionally read at load time; we don't want a
-    // settings update to clobber a session-level override.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId, newSessionDefaultProjectId]);
-
-  // Keep refs current so the snapshot above always reads the latest values.
-  permissionModeRef.current = permissionMode;
-  autonomyLevelRef.current = autonomyLevel;
-  cwdRef.current            = cwd;
-
-  // For unsaved fresh chats, keep tracking the cascade (project default →
-  // global default) so changes in those defaults reflect on the pill
-  // before the user explicitly picks a mode - but only when the user
-  // hasn't already chosen a value (stored in the null-slot draft).
-  useEffect(() => {
-    if (sessionId) return;
-    if (!aiData) return;
-    const draft = getNewSessionStateDraft();
-    const projForFresh = findProject(newSessionDefaultProjectId);
-    // Only update permission mode if user hasn't already chosen one
-    if (!draft.permissionMode) {
-      setPermissionMode(
-        projForFresh?.defaultPermissionMode ??
-          aiData.settings.defaultPermissionMode ??
-          'auto',
-      );
-    }
-    // Only update autonomy level if user hasn't already chosen one
-    if (draft.autonomyLevel === undefined) {
-      setAutonomyLevel(
-        projForFresh?.defaultAutonomyLevel ??
-          aiData.settings.defaultAutonomyLevel ??
-          50,
-      );
-    }
-  }, [
-    sessionId,
-    aiData?.settings.defaultPermissionMode,
-    newSessionDefaultProjectId,
-    aiData,
-  ]);
-
-  // When useChat creates a new session on first send, propagate up to App.
+  // Notify App when activeSessionId changes
   useEffect(() => {
     if (activeSessionId && activeSessionId !== sessionId) {
       onSessionCreated(activeSessionId);
@@ -288,15 +128,13 @@ export function ChatArea({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSessionId]);
 
-  // Notify App whenever the set of streaming sessions changes. SessionsPanel
-  // uses this to pulse every active row, even ones the user isn't viewing.
+  // Notify App of streaming session changes
   useEffect(() => {
     onStreamingChange?.(streamingSessionIds);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [streamingSessionIds]);
 
-  // Build a "continue" send that resumes from the last max_turns stop.
-  // Uses the session's remembered connection/model so the pill stays in sync.
+  // Continue handler - uses session's remembered connection/model
   const handleContinue = useCallback(() => {
     if (!aiData) return;
     const connection =
@@ -318,9 +156,7 @@ export function ChatArea({
     });
   }, [aiData, sessionConnectionSlug, sessionModel, send, cwd, permissionMode]);
 
-  // Retry handler - passes a fallback so the cold path (session loaded
-  // after an interrupted turn, no in-memory `lastSend`) can reconstruct
-  // the SendArgs from session metadata + the trailing user message.
+  // Retry handler with fallback reconstruction
   const handleRetry = useCallback(() => {
     if (!aiData) return void retry();
     const connection =
@@ -341,324 +177,129 @@ export function ChatArea({
     });
   }, [aiData, sessionConnectionSlug, sessionModel, retry, cwd, permissionMode]);
 
-  // Ref used to pre-fill the input after navigating to a branched session.
-  // Set synchronously before onSessionCreated so the effect below catches it
-  // on the very first render with the new sessionId.
-  const pendingBranchDraftRef = useRef<{ sessionId: string; text: string } | null>(null);
-  useEffect(() => {
-    const draft = pendingBranchDraftRef.current;
-    if (draft && draft.sessionId === sessionId) {
-      setPendingMessage(draft.text);
-      pendingBranchDraftRef.current = null;
+  // Planning dialog handlers
+  const onApprovePhase = async (notes?: string) => {
+    if (sessionId && phaseAwaitingApproval) {
+      await window.api.planning.approvePhase(sessionId, phaseAwaitingApproval.id, notes);
     }
-  }, [sessionId]);
+    setShowPhaseApproval(false);
+    setPhaseAwaitingApproval(null);
+  };
 
-  const handleBranch = useCallback(async (messageId: string) => {
-    if (!sessionId) return;
-    const msg = messages.find((m) => m.id === messageId);
-    if (!msg || msg.role !== 'user') return;
-    const text = msg.parts.map((p) => (p.kind === 'text' ? p.text : '')).join('');
-    const meta = await branchSession(sessionId, messageId);
-    if (!meta) return;
-    // Store the draft BEFORE navigation so the effect above can pick it up.
-    pendingBranchDraftRef.current = { sessionId: meta.id, text };
-    onSessionCreated(meta.id);
-  }, [sessionId, messages, onSessionCreated]);
+  const onDenyPhase = async (reason?: string) => {
+    if (sessionId && phaseAwaitingApproval) {
+      await window.api.planning.denyPhase(sessionId, phaseAwaitingApproval.id, reason);
+    }
+    setShowPhaseApproval(false);
+    setPhaseAwaitingApproval(null);
+  };
 
-  /**
-   * Auto-send a seeded submission (e.g. from "+ New Skill"). We wait
-   * until the AI data has loaded and there's no in-flight stream, then
-   * fire `send()` with the structured payload.
-   */
-  const seedFiredRef = useRef<SeedSubmit | null>(null);
-  useEffect(() => {
-    if (!seedSubmit) return;
-    if (seedFiredRef.current === seedSubmit) return;
-    if (!aiData) return;
-    if (isStreaming) return;
-    if (messages.length > 0) return;
-    const connection =
-      aiData.connections.find((c) => c.slug === aiData.defaultSlug) ??
-      aiData.connections[0];
-    if (!connection) return;
-    const model =
-      connection.models.find((m) => m.id === aiData.settings.defaultModel)?.id ??
-      connection.defaultModel;
-    if (!model) return;
+  const onRetryPhase = async () => {
+    if (activeSessionId && planError?.phaseId) {
+      await window.api.planning.retryPhase(activeSessionId, planError.phaseId);
+    }
+    setPlanError(null);
+  };
 
-    seedFiredRef.current = seedSubmit;
-    onSeedSubmitConsumed?.();
-    void send({
-      text: seedSubmit.displayText,
-      agentText: seedSubmit.agentText,
-      intentTag: seedSubmit.intentTag,
-      connection,
-      model,
-      cwd: cwd ?? (homedir() || undefined),
-      maxTurns: aiData.settings.maxTurns,
-      permissionMode,
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seedSubmit, aiData, isStreaming, messages.length]);
+  const onSkipPhase = async () => {
+    if (activeSessionId && planError?.phaseId) {
+      await window.api.planning.skipPhase(activeSessionId, planError.phaseId);
+    }
+    setPlanError(null);
+  };
 
-  const activeSession = activeSessionId ?? sessionId;
-
-  // Git diff modal state - Cmd/Ctrl+G toggles it.
-  // Scope: chat view only, with an active session and working directory.
-  const [gitModalOpen, setGitModalOpen] = useState(false);
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (!shortcutsEnabled) return;
-      if (!activeSession) return;
-      if (!cwd) return;
-      if ((e.metaKey || e.ctrlKey) && e.key === 'g' && !e.shiftKey && !e.altKey) {
-        e.preventDefault();
-        setGitModalOpen((v) => !v);
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [shortcutsEnabled, activeSession, cwd]);
-
-  // Search Everything - Double Shift opens the unified search palette.
-  // Any other key between the two Shifts resets the sequence.
-  const [searchOpen, setSearchOpen]   = useState(false);
-  const [recentOpen, setRecentOpen]   = useState(false);
-  const lastShiftTs = useRef<number>(0);
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Shift' && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        const now = Date.now();
-        const delta = now - lastShiftTs.current;
-        if (delta > 0 && delta < 300) {
-          e.preventDefault();
-          setSearchOpen((v) => !v);
-          lastShiftTs.current = 0;
-        } else {
-          lastShiftTs.current = now;
-        }
-      } else {
-        // Any non-Shift key resets the sequence.
-        lastShiftTs.current = 0;
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, []);
-
-  // Recent Files - Cmd+E toggles the palette.
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'e' && !e.shiftKey && !e.altKey) {
-        e.preventDefault();
-        setRecentOpen((v) => !v);
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, []);
-
-
+  const onCancelPlan = async () => {
+    if (activeSessionId) {
+      await window.api.planning.cancelPlan(activeSessionId);
+    }
+    setPlanError(null);
+  };
 
   return (
     <main className="flex h-full min-h-0 flex-col overflow-hidden bg-canvas">
-      {/* ── Header ── */}
-      <header className="flex h-10 shrink-0 items-center justify-between border-b border-border px-4">
-        <div className="flex-1" />
-        <div className="flex items-center gap-2 max-w-120">
+      <ChatHeader
+        title={title}
+        onNewSession={onNewSession}
+        onOpenGit={() => setGitModalOpen(true)}
+        onToggleFileExplorer={onToggleFileExplorer}
+        fileExplorerOpen={fileExplorerOpen}
+      />
 
-          <h2 className="truncate text-[15px] font-semibold text-fg">
-            {title}
-          </h2>
-        </div>
-        <div className="flex flex-1 items-center justify-end gap-1">
-          {onToggleFileExplorer && (
-            <IconButton
-              icon={FolderTree}
-              label="File Explorer (Cmd+B)"
-              onClick={onToggleFileExplorer}
-              className={fileExplorerOpen ? 'bg-accent/15 text-accent' : undefined}
-            />
-          )}
-          <IconButton
-            icon={GitBranch}
-            label="Git changes (Cmd+G)"
-            onClick={() => setGitModalOpen(true)}
-          />
-          <IconButton icon={X} label="New" onClick={onNewSession} />
-        </div>
-      </header>
-
-      {/* ── Body: chat area ── */}
       <div className="flex-1 min-h-0">
-          <div className="flex h-full min-h-0 flex-col">
-            <ChatScroll sessionId={activeSessionId ?? sessionId} contentSignal={contentSignal}>
-              {messages.length === 0 ? (
-                <EmptyState />
-              ) : (
-                <div className="pl-4 pr-12">
-                  <MessageList
-                    messages={messages}
-                    onRetry={handleRetry}
-                    isStreaming={isStreaming}
-                    onContinue={isStreaming ? undefined : handleContinue}
-                    onBranch={isStreaming ? undefined : (id) => void handleBranch(id)}
-                    sessionId={(activeSessionId ?? sessionId) as string | undefined}
-                    getPlanForMessage={getPlanForMessage}
-                  />
-                </div>
-              )}
-            </ChatScroll>
-
-            <div className="shrink-0 pb-4 pt-2 relative">
-              <div
-                aria-hidden
-                className="pointer-events-none absolute -top-6 left-0 right-0 h-6 bg-linear-to-b from-transparent to-canvas"
-              />
-              <div className="pl-4 pr-12">
-                <MessageInput
-                  isStreaming={isStreaming}
-                  streamingTurnId={streamingTurnId}
-                  cwd={cwd}
-                  onChangeCwd={(newCwd) => {
-                    setCwd(newCwd);
-                    cwdRef.current = newCwd;
-                    if (!activeSessionId) {
-                      // Update draft immediately for new sessions
-                      patchNewSessionStateDraft({ cwd: newCwd });
-                    }
-                  }}
-                  cwdLocked={messages.length > 0}
-                  permissionMode={permissionMode}
-                  onChangePermissionMode={(mode) => {
-                    setPermissionMode(mode);
-                    permissionModeRef.current = mode;
-                    if (activeSessionId) {
-                      void setSessionPermissionMode(activeSessionId, mode);
-                    } else {
-                      // Update draft immediately for new sessions so useEffect doesn't reset it
-                      patchNewSessionStateDraft({ permissionMode: mode });
-                    }
-                  }}
-                  autonomyLevel={autonomyLevel}
-                  onChangeAutonomyLevel={(level) => {
-                    setAutonomyLevel(level);
-                    autonomyLevelRef.current = level;
-                    if (activeSessionId) {
-                      void setSessionAutonomyLevel(activeSessionId, level);
-                    } else {
-                      // Update draft immediately for new sessions so useEffect doesn't reset it
-                      patchNewSessionStateDraft({ autonomyLevel: level });
-                    }
-                  }}
-                  onSend={(args) =>
-                    send({ ...args, cwd: cwd ?? (homedir() || undefined) })
-                  }
-                  onAbort={abort}
-                  onSteer={steer}
-                  sessionId={activeSessionId ?? sessionId}
-                  title={title}
-                  messages={messages}
-                  lastCompaction={lastCompaction}
-                  projectDefaultConnectionSlug={
-                    projectDefaultConnectionSlug || undefined
-                  }
-                  sessionConnectionSlug={sessionConnectionSlug || undefined}
-                  sessionModel={sessionModel || undefined}
-                  loadedSessionPickId={loadedSessionPickId}
-                  pendingMessage={pendingMessage}
-                  onPendingMessageConsumed={() => setPendingMessage(undefined)}
-                />
-              </div>
-            </div>
-
-            <CollaborationPrompt />
-          </div>
+        <ChatContent
+          sessionId={sessionId}
+          activeSessionId={activeSessionId}
+          messages={messages}
+          isStreaming={isStreaming}
+          streamingTurnId={streamingTurnId}
+          contentSignal={contentSignal}
+          cwd={cwd}
+          setCwd={setCwd}
+          permissionMode={permissionMode}
+          setPermissionMode={(mode) => {
+            setPermissionMode(mode);
+            permissionModeRef.current = mode;
+            if (activeSessionId) {
+              void setSessionPermissionMode(activeSessionId, mode);
+            }
+          }}
+          autonomyLevel={autonomyLevel}
+          setAutonomyLevel={(level) => {
+            setAutonomyLevel(level);
+            autonomyLevelRef.current = level;
+            if (activeSessionId) {
+              void setSessionAutonomyLevel(activeSessionId, level);
+            }
+          }}
+          title={title}
+          lastCompaction={lastCompaction}
+          projectDefaultConnectionSlug={projectDefaultConnectionSlug}
+          sessionConnectionSlug={sessionConnectionSlug}
+          sessionModel={sessionModel}
+          loadedSessionPickId={loadedSessionPickId}
+          pendingMessage={pendingMessage}
+          onPendingMessageConsumed={() => setPendingMessage(undefined)}
+          onSend={(args) => send({ ...args, cwd: cwd ?? (homedir() || undefined) })}
+          onAbort={abort}
+          onSteer={steer}
+          onRetry={handleRetry}
+          onContinue={handleContinue}
+          onBranch={(id) => void handleBranch(id)}
+          getPlanForMessage={getPlanForMessage}
+        />
       </div>
 
-      {gitModalOpen && (
-        <GitDiffModal
-          cwd={cwd ?? null}
-          connectionSlug={sessionConnectionSlug || undefined}
-          model={sessionModel || undefined}
-          sessionId={activeSession ?? undefined}
-          onClose={() => setGitModalOpen(false)}
-        />
-      )}
+      <ChatModals
+        gitModalOpen={gitModalOpen}
+        searchOpen={searchOpen}
+        recentOpen={recentOpen}
+        cwd={cwd}
+        sessionConnectionSlug={sessionConnectionSlug}
+        sessionModel={sessionModel}
+        activeSession={activeSession}
+        onCloseGit={() => setGitModalOpen(false)}
+        onCloseSearch={() => setSearchOpen(false)}
+        onCloseRecent={() => setRecentOpen(false)}
+        onOpenFile={onOpenFile}
+      />
 
-      {searchOpen && (
-        <SearchModal
-          cwd={cwd}
-          onClose={() => setSearchOpen(false)}
-          onOpenFile={(absolutePath, lineNumber) => {
-            setSearchOpen(false);
-            onOpenFile?.(absolutePath, lineNumber);
-          }}
-        />
-      )}
-
-      {recentOpen && (
-        <RecentFilesModal
-          onClose={() => setRecentOpen(false)}
-          onOpenFile={(absolutePath, lineNumber) => {
-            setRecentOpen(false);
-            onOpenFile?.(absolutePath, lineNumber);
-          }}
-        />
-      )}
-
-      {/* Planning workflow UI */}
-      {showPhaseApproval && phaseAwaitingApproval && (
-        <PhaseApprovalDialog
-          phase={phaseAwaitingApproval}
-          onApprove={async (notes) => {
-            if (sessionId) {
-              await window.api.planning.approvePhase(sessionId, phaseAwaitingApproval.id, notes);
-            }
-            setShowPhaseApproval(false);
-            setPhaseAwaitingApproval(null);
-          }}
-          onDeny={async (reason) => {
-            if (sessionId) {
-              await window.api.planning.denyPhase(sessionId, phaseAwaitingApproval.id, reason);
-            }
-            setShowPhaseApproval(false);
-            setPhaseAwaitingApproval(null);
-          }}
-        />
-      )}
-
-      {showPlanRevision && latestRevision && (
-        <PlanRevisionNotification
-          revision={latestRevision}
-          onDismiss={() => setShowPlanRevision(false)}
-        />
-      )}
-
-      {planError && activePlan && (
-        <PlanErrorNotification
-          error={planError}
-          onRetry={async () => {
-            if (activeSessionId && planError.phaseId) {
-              await window.api.planning.retryPhase(activeSessionId, planError.phaseId);
-            }
-            setPlanError(null);
-          }}
-          onSkip={async () => {
-            if (activeSessionId && planError.phaseId) {
-              await window.api.planning.skipPhase(activeSessionId, planError.phaseId);
-            }
-            setPlanError(null);
-          }}
-          onCancel={async () => {
-            if (activeSessionId) {
-              await window.api.planning.cancelPlan(activeSessionId);
-            }
-            setPlanError(null);
-          }}
-          onDismiss={() => setPlanError(null)}
-        />
-      )}
+      <PlanningDialogs
+        sessionId={sessionId}
+        showPhaseApproval={showPhaseApproval}
+        phaseAwaitingApproval={phaseAwaitingApproval}
+        showPlanRevision={showPlanRevision}
+        latestRevision={latestRevision}
+        planError={planError}
+        activePlan={activePlan}
+        activeSessionId={activeSessionId}
+        onApprovePhase={onApprovePhase}
+        onDenyPhase={onDenyPhase}
+        onDismissRevision={() => setShowPlanRevision(false)}
+        onRetryPhase={onRetryPhase}
+        onSkipPhase={onSkipPhase}
+        onCancelPlan={onCancelPlan}
+        onDismissError={() => setPlanError(null)}
+      />
     </main>
   );
 }

@@ -16,70 +16,69 @@
 //   - On commit: for each staged file, reconstruct commit content from
 //     staged hunks via applySelectedHunks(); use git hash-object + update-index.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { ExpandModal } from '@/components/ui';
 import { GitDiffView } from './GitDiffView';
 import { ConflictView } from './ConflictView';
 import { MergeStateBanner } from './MergeStateBanner';
-import { applySelectedHunks } from './git-util';
-import { buildDiffContext } from './git-generate';
-import {
-  buildHunkStates,
-  toggleFileStage,
-  toggleHunkStage,
-  toggleRepoStage,
-} from './staging-state';
-import { buildRestorePlan, hunkKey, type PersistedGitReviewState } from './git-review-state';
+import { buildRestorePlan, hunkKey } from './git-review-state';
 import { GitHeader } from './git-flow/GitHeader';
 import { GitLeftPanel } from './git-flow/GitLeftPanel';
 import { useGitReviewPersistence } from './git-flow/useGitReviewPersistence';
 import { useMergeState } from './conflict-flow/useMergeState';
 import { useConflictResolution } from './conflict-flow/useConflictResolution';
-import type { GitFileEntry, GitFileDiff, GitRepo, LineChange } from './types';
-
-interface GitDiffModalProps {
-  cwd: string | null;
-  onClose: () => void;
-  connectionSlug?: string;
-  model?: string;
-  /** Active session id — required for Copilot/Pi commit message generation. */
-  sessionId?: string;
-}
+import { useGitStatus } from './diff-modal/useGitStatus';
+import { useFileSelection } from './diff-modal/useFileSelection';
+import { useStagingState } from './diff-modal/useStagingState';
+import { useCommitFlow } from './diff-modal/useCommitFlow';
+import type { GitDiffModalProps, DiffCaches, PartialContentRefs } from './diff-modal/types';
+import type { LineChange } from './types';
 
 export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }: GitDiffModalProps) {
-  const [repos, setRepos] = useState<GitRepo[]>([]);
-  const [statusError, setStatusError] = useState<string | null>(null);
-  const [statusLoading, setStatusLoading] = useState(true);
-  const [branchesByRepo, setBranchesByRepo] = useState<Map<string, string | null>>(new Map());
+  const { repos, branchesByRepo, statusError, statusLoading, loadStatus } = useGitStatus(cwd);
 
-  const [selected, setSelected] = useState<GitFileEntry | null>(null);
-  const [diff, setDiff] = useState<GitFileDiff | null>(null);
-  // Cache diff data per file so partial-hunk commits work correctly for
-  // all staged files, not just the currently visible one.
-  const diffCacheRef = useRef<Map<string, GitFileDiff>>(new Map());
-
-  // File-level staging: all files staged by default.
-  const [stagedPaths, setStagedPaths] = useState<Set<string>>(new Set());
-
-  // Hunk-level staging per file. Key = absolutePath, value = Set of staged hunk indices.
-  // Files not in this map → treat all hunks as staged (use full disk file for commit).
-  const [stagedHunks, setStagedHunks] = useState<Map<string, Set<number>>>(new Map());
-
-  // Raw line changes for the currently selected file (from Monaco).
-  const [currentChanges, setCurrentChanges] = useState<LineChange[]>([]);
-  // Per-file line change cache, populated by onDiffComputed.
-  const lineChangesCacheRef = useRef<Map<string, LineChange[]>>(new Map());
-
-  const [committing, setCommitting] = useState(false);
-  const [commitError, setCommitError] = useState<string | null>(null);
   const [splitView, setSplitView] = useState(true);
+  const [currentChanges, setCurrentChanges] = useState<LineChange[]>([]);
+
+  // Caches for diffs and line changes
+  const diffCacheRef = useRef<Map<string, any>>(new Map());
+  const lineChangesCacheRef = useRef<Map<string, LineChange[]>>(new Map());
+  const diffCaches: DiffCaches = {
+    diffs: diffCacheRef.current,
+    lineChanges: lineChangesCacheRef.current,
+  };
+
+  // Partial content refs for persistence/restore
+  const pendingHunkRestoreRef = useRef<Map<string, Set<string>>>(new Map());
+  const restoredPartialContentRef = useRef<Map<string, string>>(new Map());
+  const partialContentRefs: PartialContentRefs = {
+    pendingHunkKeys: pendingHunkRestoreRef.current,
+    restoredPartialContent: restoredPartialContentRef.current,
+  };
+
+  const allFiles = useMemo(() => repos.flatMap((r) => r.files), [repos]);
+  const { selected, setSelected, diff } = useFileSelection(allFiles, diffCaches);
+
+  const {
+    stagedPaths,
+    setStagedPaths,
+    stagedHunks,
+    setStagedHunks,
+    pendingPartialPaths,
+    setPendingPartialPaths,
+    handleToggleFile,
+    handleToggleRepo,
+    handleToggleHunk,
+    hunkStates,
+  } = useStagingState(lineChangesCacheRef, partialContentRefs);
 
   // ── Merge / conflict state ───────────────────────────────────────────────
   const repoRoots = useMemo(() => repos.map((r) => r.root), [repos]);
-  const { mergeStates, inMergeOperation, totalConflicts, refresh: refreshMergeState } =
-    useMergeState({ repoRoots, enabled: !statusLoading && repos.length > 0 });
+  const { mergeStates, totalConflicts, refresh: refreshMergeState } = useMergeState({
+    repoRoots,
+    enabled: !statusLoading && repos.length > 0,
+  });
 
-  // Active merge is the first repo that is in a non-idle operation.
   const activeMergeEntry = useMemo(() => {
     for (const [root, state] of mergeStates) {
       if (state.type !== 'none') return { root, state };
@@ -87,25 +86,23 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
     return null;
   }, [mergeStates]);
 
-  // Stable ref so useConflictResolution.onDone always calls the latest loadStatus.
   const loadStatusRef = useRef<() => void>(() => {});
+  loadStatusRef.current = () => void loadStatus();
 
   const { aborting, continuing, actionError, abort, continueMerge, clearError } =
     useConflictResolution({
-      onDone: () => {
-        loadStatusRef.current();
-      },
+      onDone: () => loadStatusRef.current(),
     });
 
-  const pendingHunkRestoreRef = useRef<Map<string, Set<string>>>(new Map());
-  const restoredPartialContentRef = useRef<Map<string, string>>(new Map());
-  // Paths that have pending hunk restore (diff not yet loaded) — tracked in state
-  // so hunkStates can show indeterminate rather than fully-checked while waiting.
-  const [pendingPartialPaths, setPendingPartialPaths] = useState<Set<string>>(new Set());
+  const handleConflictResolved = useCallback(() => {
+    refreshMergeState();
+    void loadStatus();
+  }, [refreshMergeState, loadStatus]);
 
-  const applyRestoreSnapshot = useCallback((snapshot: PersistedGitReviewState, repoList: GitRepo[]) => {
-    const allFiles = repoList.flatMap((r) => r.files);
-    const plan = buildRestorePlan(snapshot, allFiles);
+  // ── Persistence ───────────────────────────────────────────────────────────
+  const applyRestoreSnapshot = useCallback((snapshot: any, repoList: typeof repos) => {
+    const allFilesList = repoList.flatMap((r) => r.files);
+    const plan = buildRestorePlan(snapshot, allFilesList);
 
     pendingHunkRestoreRef.current = plan.pendingHunkKeys;
     restoredPartialContentRef.current = plan.partialContents;
@@ -114,335 +111,118 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
     setStagedHunks(plan.stagedHunks);
     setSelected((prev) => {
       if (plan.selectedPath) {
-        const found = allFiles.find((f) => f.absolutePath === plan.selectedPath);
+        const found = allFilesList.find((f) => f.absolutePath === plan.selectedPath);
         if (found) return found;
       }
-      return prev ?? allFiles[0] ?? null;
+      return prev ?? allFilesList[0] ?? null;
     });
-  }, []);
+  }, [setStagedPaths, setStagedHunks, setPendingPartialPaths, setSelected]);
 
-  const {
-    onNoCwd,
-    prepareForRepos,
-    clearPersisted,
-  } = useGitReviewPersistence({
+  const partialContentByPath = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const [path, hs] of stagedHunks) {
+      if (hs.size === 0) continue;
+      const fileDiff = diffCacheRef.current.get(path);
+      const fileChanges = lineChangesCacheRef.current.get(path) ?? [];
+      if (!fileDiff || hs.size >= fileChanges.length) continue;
+      const { applySelectedHunks } = require('./git-util');
+      map.set(path, applySelectedHunks(fileDiff.original, fileDiff.modified, fileChanges, hs));
+    }
+    return map;
+  }, [stagedHunks]);
+
+  const { onNoCwd, prepareForRepos, clearPersisted } = useGitReviewPersistence({
     cwd,
     repos,
     statusLoading,
-    committing,
+    committing: false,
     selected,
     stagedPaths,
     stagedHunks,
     lineChangesByPath: lineChangesCacheRef.current,
-    partialContentByPath: useMemo(() => {
-      const map = new Map<string, string>();
-      for (const [path, hs] of stagedHunks) {
-        if (hs.size === 0) continue;
-        const fileDiff = diffCacheRef.current.get(path);
-        const fileChanges = lineChangesCacheRef.current.get(path) ?? [];
-        if (!fileDiff || hs.size >= fileChanges.length) continue;
-        map.set(path, applySelectedHunks(fileDiff.original, fileDiff.modified, fileChanges, hs));
-      }
-      return map;
-    }, [stagedHunks]),
+    partialContentByPath,
     onApplySnapshot: applyRestoreSnapshot,
     pendingHunkKeysRef: pendingHunkRestoreRef,
   });
 
-  const loadStatus = useCallback(async () => {
-    setStatusLoading(true);
-    if (!cwd) {
-      setStatusError('no_cwd');
-      setBranchesByRepo(new Map());
-      onNoCwd();
-      setStatusLoading(false);
-      return;
-    }
-    setStatusError(null);
-    try {
-      const result = await window.api.git.status(cwd);
-      const newRepos = result.repos as GitRepo[];
-      setRepos(newRepos);
-      const branchEntries = await Promise.all(
-        newRepos.map(async (r) => {
-          try {
-            return [r.root, await window.api.git.branchName(r.root)] as const;
-          } catch {
-            return [r.root, null] as const;
-          }
-        }),
-      );
-      setBranchesByRepo(new Map(branchEntries));
-      if (result.error === 'no_git_repos') setStatusError('no_git_repos');
-      else if (result.error) setStatusError(result.error);
+  // ── Commit flow ──────────────────────────────────────────────────────────
+  const { committing, commitError, handleCommit, handleGenerateMessage, handleFetchLastMessage } =
+    useCommitFlow(
+      repos,
+      stagedPaths,
+      stagedHunks,
+      diffCaches,
+      partialContentRefs,
+      cwd,
+      connectionSlug,
+      model,
+      sessionId,
+      loadStatus,
+      clearPersisted,
+    );
 
-      const allFiles = newRepos.flatMap((r) => r.files);
-      setSelected((prev) => {
-        if (!prev) return allFiles[0] ?? null;
-        return allFiles.find((f) => f.absolutePath === prev.absolutePath) ?? (allFiles[0] ?? null);
-      });
-      setStagedPaths(new Set());
-      setStagedHunks(new Map());
-      setCurrentChanges([]);
-      setPendingPartialPaths(new Set());
-      diffCacheRef.current.clear();
-      lineChangesCacheRef.current.clear();
-      pendingHunkRestoreRef.current.clear();
-      restoredPartialContentRef.current.clear();
+  // ── Line changes ──────────────────────────────────────────────────────────
+  const handleDiffComputed = useCallback(
+    (changes: LineChange[]) => {
+      setCurrentChanges(changes);
+      if (!selected) return;
 
-      // Apply persisted state last so it is not overwritten by default init.
-      await prepareForRepos(newRepos);
-    } finally {
-      setStatusLoading(false);
-    }
-  }, [cwd, onNoCwd, prepareForRepos]);
+      const path = selected.absolutePath;
+      lineChangesCacheRef.current.set(path, changes);
 
-  // Called when ConflictView successfully resolves a file (git add done).
-  const handleConflictResolved = useCallback(() => {
-    refreshMergeState();
-    void loadStatus();
-  }, [refreshMergeState, loadStatus]);
+      // Check if this file has a pending hunk restore
+      const pending = pendingHunkRestoreRef.current.get(path);
+      if (pending) {
+        const selectedIndices = new Set<number>();
+        changes.forEach((c, i) => {
+          if (pending.has(hunkKey(c))) selectedIndices.add(i);
+        });
+        pendingHunkRestoreRef.current.delete(path);
+        setPendingPartialPaths((prev) => {
+          const n = new Set(prev);
+          n.delete(path);
+          return n;
+        });
 
-  // Keep the stable ref in sync.
-  loadStatusRef.current = loadStatus;
-
-  useEffect(() => { void loadStatus(); }, [loadStatus]);
-
-  // Load diff when selection changes.
-  useEffect(() => {
-    if (!selected) { setDiff(null); setCurrentChanges([]); return; }
-    let cancelled = false;
-    setCurrentChanges([]); // clear stale hunk panel while loading
-    window.api.git
-      .diff({
-        repoRoot: selected.repoRoot,
-        relativePath: selected.relativePath,
-        absolutePath: selected.absolutePath,
-        status: selected.status,
-      })
-      .then((result) => {
-        if (!cancelled) {
-          const fileDiff = result as GitFileDiff;
-          setDiff(fileDiff);
-          // Cache for use at commit time — ensures partial-hunk content is
-          // correct even if the user commits without re-selecting the file.
-          diffCacheRef.current.set(selected.absolutePath, fileDiff);
+        setStagedPaths((prev) => {
+          const n = new Set(prev);
+          if (selectedIndices.size > 0) n.add(path);
+          else n.delete(path);
+          return n;
+        });
+        setStagedHunks((prev) => {
+          const next = new Map(prev);
+          if (selectedIndices.size === 0) next.set(path, new Set());
+          else if (selectedIndices.size === changes.length) next.delete(path);
+          else next.set(path, selectedIndices);
+          return next;
+        });
+        if (selectedIndices.size === changes.length) {
+          restoredPartialContentRef.current.delete(path);
         }
-      })
-      .catch(() => { if (!cancelled) setDiff(null); });
-    return () => { cancelled = true; };
-  }, [selected]);
+        return;
+      }
 
-  // Monaco fires this after computing the diff for the selected file.
-  const handleDiffComputed = useCallback((changes: LineChange[]) => {
-    setCurrentChanges(changes);
-    if (!selected) return;
-    const path = selected.absolutePath;
-    lineChangesCacheRef.current.set(path, changes);
-
-    const pending = pendingHunkRestoreRef.current.get(path);
-    if (pending) {
-      const selectedIndices = new Set<number>();
-      changes.forEach((c, i) => {
-        if (pending.has(hunkKey(c))) selectedIndices.add(i);
-      });
-      pendingHunkRestoreRef.current.delete(path);
-      setPendingPartialPaths((prev) => { const n = new Set(prev); n.delete(path); return n; });
-
-      setStagedPaths((prev) => {
-        const n = new Set(prev);
-        if (selectedIndices.size > 0) n.add(path);
-        else n.delete(path);
-        return n;
-      });
+      // Initialize hunk staging for this file if not already set
       setStagedHunks((prev) => {
+        if (prev.has(path)) return prev;
         const next = new Map(prev);
-        if (selectedIndices.size === 0) next.set(path, new Set());
-        else if (selectedIndices.size === changes.length) next.delete(path);
-        else next.set(path, selectedIndices);
+        if (stagedPaths.has(path)) next.set(path, new Set(changes.map((_, i) => i)));
+        else next.set(path, new Set());
         return next;
       });
-      if (selectedIndices.size === changes.length) restoredPartialContentRef.current.delete(path);
-      return;
-    }
+    },
+    [selected, stagedPaths, setStagedPaths, setStagedHunks, setPendingPartialPaths],
+  );
 
-    // Initialize hunk staging for this file if not already set.
-    setStagedHunks((prev) => {
-      if (prev.has(path)) return prev;
-      const next = new Map(prev);
-      if (stagedPaths.has(path)) next.set(path, new Set(changes.map((_, i) => i)));
-      else next.set(path, new Set());
-      return next;
-    });
-  }, [selected, stagedPaths]);
-
-  const handleToggleHunk = useCallback((index: number) => {
-    if (!selected) return;
-    const next = toggleHunkStage(
-      { stagedPaths, stagedHunks },
-      selected.absolutePath,
-      index,
-      currentChanges.length,
-    );
-    setStagedPaths(next.stagedPaths);
-    setStagedHunks(next.stagedHunks);
-
-    const path = selected.absolutePath;
-    const hs = next.stagedHunks.get(path);
-    if (!hs || hs.size === 0 || hs.size >= currentChanges.length) {
-      restoredPartialContentRef.current.delete(path);
-    }
-  }, [selected, currentChanges.length, stagedPaths, stagedHunks]);
-
-  const handleToggleStage = useCallback((file: GitFileEntry) => {
-    const next = toggleFileStage({ stagedPaths, stagedHunks }, file);
-    setStagedPaths(next.stagedPaths);
-    setStagedHunks(next.stagedHunks);
-
-    if (!next.stagedPaths.has(file.absolutePath) || !next.stagedHunks.has(file.absolutePath)) {
-      restoredPartialContentRef.current.delete(file.absolutePath);
-    }
-  }, [stagedPaths, stagedHunks]);
-
-  const handleToggleRepoStage = useCallback((repo: GitRepo) => {
-    const next = toggleRepoStage({ stagedPaths, stagedHunks }, repo);
-    setStagedPaths(next.stagedPaths);
-    setStagedHunks(next.stagedHunks);
-
-    for (const f of repo.files) {
-      if (!next.stagedPaths.has(f.absolutePath) || !next.stagedHunks.has(f.absolutePath)) {
-        restoredPartialContentRef.current.delete(f.absolutePath);
-      }
-    }
-  }, [stagedPaths, stagedHunks]);
-
-  // Derive hunk state map for file list indeterminate display.
-  const hunkStates = useMemo(() => {
-    const hunkTotalsByPath = new Map<string, number>();
-    for (const [path, changes] of lineChangesCacheRef.current) {
-      hunkTotalsByPath.set(path, changes.length);
-    }
-    const map = buildHunkStates(stagedPaths, stagedHunks, hunkTotalsByPath);
-    // Files with a pending hunk restore haven't had their diff loaded yet, so
-    // buildHunkStates has no total count and omits them from the map — causing the
-    // file list to fall back to isFullyStaged=true. Inject an indeterminate
-    // placeholder so the checkbox correctly shows ⊟ until Monaco resolves the hunks.
-    for (const path of pendingPartialPaths) {
-      if (!map.has(path)) map.set(path, { staged: 1, total: 2 });
-    }
-    return map;
-  }, [stagedPaths, stagedHunks, pendingPartialPaths]);
-
-
-  const handleCommit = useCallback(async (message: string, amend: boolean) => {
-    setCommitting(true);
-    setCommitError(null);
-    try {
-      const byRepo = new Map<string, GitFileEntry[]>();
-      for (const repo of repos) {
-        const staged = repo.files.filter((f) => stagedPaths.has(f.absolutePath));
-        if (staged.length > 0) byRepo.set(repo.root, staged);
-      }
-      for (const [repoRoot, files] of byRepo) {
-        const result = await window.api.git.commitFiles({
-          repoRoot,
-          message,
-          amend,
-          files: files.map((f) => {
-            const hs = stagedHunks.get(f.absolutePath);
-
-            // No hunk state means "all hunks staged" for this file.
-            if (!hs) {
-              return {
-                relativePath: f.relativePath,
-                absolutePath: f.absolutePath,
-                status: f.status,
-                content: undefined,
-              };
-            }
-
-            const fileDiff = diffCacheRef.current.get(f.absolutePath);
-            const fileChanges = lineChangesCacheRef.current.get(f.absolutePath) ?? [];
-            const allStaged = hs.size >= fileChanges.length;
-
-            const restoredPartial = restoredPartialContentRef.current.get(f.absolutePath);
-            const content = allStaged
-              ? undefined
-              : fileDiff
-                ? applySelectedHunks(fileDiff.original, fileDiff.modified, fileChanges, hs)
-                : restoredPartial;
-
-            return {
-              relativePath: f.relativePath,
-              absolutePath: f.absolutePath,
-              status: f.status,
-              content,
-            };
-          }),
-        });
-        if (!result.ok) throw new Error(result.error ?? 'Commit failed');
-      }
-      setStagedHunks(new Map());
-      setCurrentChanges([]);
-      restoredPartialContentRef.current.clear();
-      clearPersisted();
-      await loadStatus();
-    } catch (e) {
-      setCommitError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setCommitting(false);
-    }
-  }, [repos, stagedPaths, stagedHunks, loadStatus, clearPersisted]);
-
-  const handleGenerateMessage = useCallback(async (amend: boolean, userContext?: string) => {
-    if (!cwd) return null;
-    const allFiles = repos.flatMap((r) => r.files);
-    const staged = allFiles.filter((f) => stagedPaths.has(f.absolutePath));
-    if (staged.length === 0) return null;
-
-    // Resolve connection.
-    let slug = connectionSlug;
-    let mdl = model;
-    if (!slug) {
-      const [defaultSlug, connections] = await Promise.all([
-        window.api.connections.getDefaultSlug(),
-        window.api.connections.list(),
-      ]);
-      const conn = connections.find((c) => c.slug === defaultSlug) ?? connections[0];
-      if (!conn) return null;
-      slug = conn.slug;
-      mdl = mdl ?? conn.defaultModel;
-    }
-
-    const diffContext = await buildDiffContext({ repos, staged, cwd, amend });
-
-    return window.api.git.generateCommitMessage({
-      connectionSlug: slug,
-      model: mdl ?? undefined,
-      diffContext,
-      userContext,
-      sessionId: sessionId ?? undefined,
-      cwd,
-    });
-  }, [repos, stagedPaths, cwd, connectionSlug, model, sessionId]);
-
-  const handleFetchLastMessage = useCallback(async () => {
-    const repoRoot =
-      repos.find((r) => r.files.some((f) => stagedPaths.has(f.absolutePath)))?.root
-      ?? repos[0]?.root
-      ?? cwd;
-    if (!repoRoot) return null;
-    return window.api.git.lastCommitMessage(repoRoot);
-  }, [repos, stagedPaths, cwd]);
-
+  // ── Rendering ──────────────────────────────────────────────────────────────
   const totalFiles = repos.reduce((n, r) => n + r.files.length, 0);
   const selectedHunks = selected
-    ? (stagedPaths.has(selected.absolutePath)
-      ? (stagedHunks.get(selected.absolutePath) ?? null)
-      : new Set<number>())
+    ? stagedPaths.has(selected.absolutePath)
+      ? stagedHunks.get(selected.absolutePath) ?? null
+      : new Set<number>()
     : null;
 
-  // Repo folder names with at least one staged file — shown in commit panel.
   const stagedRepos = repos
     .filter((r) => r.files.some((f) => stagedPaths.has(f.absolutePath)))
     .map((r) => r.root.split('/').filter(Boolean).pop() ?? r.root);
@@ -461,9 +241,7 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
   return (
     <ExpandModal title={fullTitle} onClose={onClose} className="w-[95vw] h-[90vh]">
       <div className="flex min-h-0 flex-1">
-        {/* Left panel */}
         <div className="flex w-80 shrink-0 flex-col border-r border-border/60 bg-panel">
-          {/* Merge state banner — shown when any repo is in a merge operation */}
           {activeMergeEntry && (
             <MergeStateBanner
               type={activeMergeEntry.state.type}
@@ -494,8 +272,8 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
             selected={selected}
             onSelect={setSelected}
             stagedPaths={stagedPaths}
-            onToggleStage={handleToggleStage}
-            onToggleRepoStage={handleToggleRepoStage}
+            onToggleStage={handleToggleFile}
+            onToggleRepoStage={handleToggleRepo}
             hunkStates={hunkStates}
             stagedCount={stagedPaths.size}
             totalCount={totalFiles}
@@ -508,7 +286,6 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
           />
         </div>
 
-        {/* Right panel: conflict view OR Monaco diff + hunk panel */}
         <div className="flex min-w-0 flex-1 flex-col bg-panel">
           {selected?.status === 'U' ? (
             <ConflictView
@@ -523,7 +300,7 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
                 splitView={splitView}
                 changes={currentChanges}
                 stagedHunks={selectedHunks ?? undefined}
-                onToggleHunk={handleToggleHunk}
+                onToggleHunk={(idx) => handleToggleHunk(selected, idx, currentChanges.length)}
                 onDiffComputed={handleDiffComputed}
               />
             </div>
