@@ -5,6 +5,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.2.0] — 2026-06-02
+
+Expanded model and provider support via pi runtime upgrade; security hardening and UI polish.
+
+### Added
+
+**Models & Providers**
+
+- New selectable models on GitHub Copilot including `claude-opus-4.8` (fixes a previously reported model resolution error), `gpt-5.5`, `gpt-5.4-mini`, `gemini-3.5-flash`, `gemini-3.1-pro-preview`, and `grok-code-fast-1`
+- New providers exposed in the model picker: Together AI, Moonshot, Cloudflare AI Gateway, DeepSeek, and Fireworks
+
+### Changed
+
+**Plan progress**
+
+- Replaced the pulsing block with a spinner on the active phase in `PhaseCard` for a clearer in-progress indicator
+
+### Fixed
+
+**Security**
+
+- Blocked dangerous URL schemes (e.g. `file:`, `javascript:`) from agent-generated links in markdown, terminal output, and top-frame navigations — all renderer-initiated external URLs now flow through a shared classifier before reaching the OS protocol handler, closing RCE-class escape routes
+
+---
+
 ## [1.1.0] — 2026-06-02
 
 Planning workflow enhancements, file explorer panel, and Git UI improvements.
