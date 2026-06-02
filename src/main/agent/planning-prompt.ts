@@ -145,7 +145,10 @@ CreatePlan({
 
 ### ReportPhaseProgress — Track Progress
 
-**Call after:** Phase actions completed, key findings, blocking issues, ready for next phase
+**IMPORTANT: Call TWICE per phase for UI status tracking:**
+
+1. **Before starting work:** \`status='running'\` — UI shows phase as active
+2. **After completing work:** \`status='complete'\` — UI shows phase done
 
 **Parameters:** phase_index (0-based), status ('complete'|'running'|'blocked'), findings (what discovered/accomplished), suggests_revision (true if approach should change)
 
@@ -153,21 +156,37 @@ CreatePlan({
 - ⚠️ Warning if you skipped earlier phases
 - Suggestion for next phase to work on
 - "All phases complete!" when done
+- **Approval required** notice if phase needs user approval
 
-**Example:**
+**Correct Workflow:**
 \\\`\\\`\\\`
+// STEP 1: Mark phase as running BEFORE starting work
 ReportPhaseProgress({
-  phase_index: 0,
-  status: 'complete',
-  findings: "Found existing session auth at src/auth/session.ts—50% complete, login works but logout missing. No JWT yet.",
-  suggests_revision: true
-})
+  phase_index: 2,
+  status: 'running',
+  findings: "Starting JWT library installation",
+  suggests_revision: false
+});
 
-// Response:
-// Phase 0 (Explore existing auth patterns) status: complete
-// 
-// Next: Phase 1 - Document approach
+// → Response: "Phase 2 requires approval" OR "Phase 2 started"
+// → UI shows: Phase 2 is now active/in-progress
+
+// STEP 2: Do the actual phase work
+// ... execute actions (Read files, Edit code, Run commands) ...
+
+// STEP 3: Mark phase complete AFTER work done
+ReportPhaseProgress({
+  phase_index: 2,
+  status: 'complete',
+  findings: "Installed jsonwebtoken@9.0.0, added to package.json",
+  suggests_revision: false
+});
+
+// → Response: "Phase 2 complete. Next: Phase 3 - Create JWT utilities"
+// → UI shows: Phase 2 complete, Phase 3 pending
 \\\`\\\`\\\`
+
+**Without \`status='running'\` first, the UI won't show which phase you're working on!**
 
 ### RevisePlan — Adapt Based on Discoveries
 
@@ -250,12 +269,14 @@ Should I: (a) Continue without it (b) Revise plan to work around it (c) Stop her
 User: "Refactor authentication system"
 
 1. CreatePlan(...) → 6 phases
-2. Execute phase 0 (explore) → Find files, understand structure
-3. ReportPhaseProgress(0, 'complete', "auth more complex than expected") → Discovery
-4. RevisePlan(...) → Adjust remaining phases
-5. Execute revised phase 1 → Make changes
-6. ReportPhaseProgress(1, 'complete', ...) → Continue
-7. Complete remaining phases
+2. ReportPhaseProgress(0, 'running', "Starting exploration") → Mark phase 0 as active
+3. Execute phase 0 (explore) → Find files, understand structure
+4. ReportPhaseProgress(0, 'complete', "auth more complex than expected") → Discovery
+5. RevisePlan(...) → Adjust remaining phases
+6. ReportPhaseProgress(1, 'running', "Starting implementation") → Mark phase 1 as active
+7. Execute revised phase 1 → Make changes
+8. ReportPhaseProgress(1, 'complete', ...) → Continue
+9. Complete remaining phases (each with 'running' then 'complete')
 \\\`\\\`\\\`
 
 **Common patterns:** Exploration-first (explore→analyze→implement→test), Investigation (reproduce→identify→fix→verify), Feature addition (requirements→design→implement→integrate→test→docs)
