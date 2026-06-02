@@ -39,6 +39,7 @@
     "@anthropic-ai/claude-agent-sdk": "^0.2.126",
     "@mariozechner/pi-ai": "^0.73.1",
     "@mariozechner/pi-coding-agent": "^0.73.1",
+    "@tanstack/react-virtual": "^3.13.26",
     "@vscode/ripgrep": "^1.18.0",
     "electron-updater": "^6.8.3",
     "gray-matter": "^4.0.3",

@@ -6,7 +6,6 @@ Simple running list of things to do. Add items whenever they come to mind, clean
 
 ## High Priority
 
-- [ ] Consolidate planning workflow docs
 - [ ] Check what big components need refactoring
 - [ ] Audit all system prompt locations and fine-tune
 - [ ] Check how agents use memory persistence, improve performance and robustness

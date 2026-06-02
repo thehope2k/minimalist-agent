@@ -175,8 +175,24 @@ agent harness convention.
   skills/                ← Installed skills (<slug>/SKILL.md)
   sessions/
     <id>/
-      session.json       ← Metadata (title, model, timestamps, sdkSessionId)
+      session.json       ← Metadata (title, model, timestamps, sdkSessionId, fileExplorer state)
       messages.jsonl     ← Message + parts log (append-only)
       attachments/       ← Stored file attachments
       .pi-sessions/      ← Pi subprocess session state (Copilot backend)
 ```
+
+---
+
+## File Explorer
+
+Collapsible file tree panel (Cmd+B) for browsing project structure. Read-only, gitignore-aware.
+
+**IPC:** `files:listDirectory`, `files:buildFileTree` (`src/main/files/list-directory.ts`)
+
+**State:**
+- Panel open/closed + width: `useResizablePanels('explorer-v1')` (localStorage)
+- Expanded paths: `session.json → SessionMetadata.fileExplorer.expandedPaths` (per-session)
+
+**Performance:** Virtual scrolling via `@tanstack/react-virtual` (activates at >200 items)
+
+See [FILE_EXPLORER.md](./FILE_EXPLORER.md) for full documentation.

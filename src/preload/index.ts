@@ -637,6 +637,10 @@ const api = {
       ipcRenderer.invoke('files:search', args),
     grep: (args: { root: string; query: string; useRegex?: boolean; caseSensitive?: boolean; limit?: number }): Promise<unknown[]> =>
       ipcRenderer.invoke('files:grep', args),
+    listDirectory: (args: { path: string; root: string; includeHidden?: boolean }): Promise<unknown[]> =>
+      ipcRenderer.invoke('files:listDirectory', args),
+    buildFileTree: (args: { path: string; root: string; includeHidden?: boolean; maxDepth?: number }): Promise<unknown[]> =>
+      ipcRenderer.invoke('files:buildFileTree', args),
   },
   skills: {
     getDir: (): Promise<string> => ipcRenderer.invoke('skills:getDir'),

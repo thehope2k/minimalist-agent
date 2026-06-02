@@ -1,107 +1,96 @@
-import { app, BrowserWindow, dialog, ipcMain, Notification, shell } from 'electron';
-import { terminalManager } from './terminal/manager';
+import {app, BrowserWindow, dialog, ipcMain, Notification, shell} from 'electron';
+import {terminalManager} from './terminal/manager';
+import {checkForUpdates, downloadUpdate, getUpdateInfo, installUpdateAndRestart,} from './auto-update';
+import {type DraftAttachment, readPathAsDraft, readStoredAsBase64, storeDraft,} from './storage/attachments';
+import type {StoredAttachment} from './storage/sessions';
 import {
-  checkForUpdates,
-  downloadUpdate,
-  getUpdateInfo,
-  installUpdateAndRestart,
-} from './auto-update';
+  appendMessage,
+  branchSession,
+  clearProjectFromSessions,
+  createSession,
+  deleteSession,
+  listSessionFiles,
+  listSessions,
+  loadSession,
+  replaceLastMessage,
+  rewriteMessages,
+  type SessionMeta,
+  sessionPath,
+  setSessionProject,
+  type StoredMessage,
+  truncateMessagesFrom,
+  updateSessionMeta,
+} from './storage/sessions';
+import {clearLoginState, exchangeCode, prepareLoginUrl,} from './oauth/claude-flow';
 import {
-  type DraftAttachment,
-  readPathAsDraft,
-  readStoredAsBase64,
-  storeDraft,
-} from './storage/attachments';
-import type { StoredAttachment } from './storage/sessions';
-import {
-  prepareLoginUrl,
-  exchangeCode,
-  clearLoginState,
-} from './oauth/claude-flow';
-import {
-  startLogin as startCopilotLogin,
   cancelLogin as cancelCopilotLogin,
-  type DeviceCodeUpdate,
   type CopilotTokens,
+  type DeviceCodeUpdate,
+  startLogin as startCopilotLogin,
 } from './oauth/copilot-flow';
 import {
-  startLogin as startChatGptLogin,
   cancelLogin as cancelChatGptLogin,
   type ChatGptTokens,
+  startLogin as startChatGptLogin,
 } from './oauth/chatgpt-flow';
-import { runAgentChat } from './agent/claude';
-import { apply1MContextSuffix } from './agent/models';
-import { steerAnthropicTurn } from './agent/backends/anthropic';
-import { steerPiTurn } from './agent/backends/pi/agent';
-import { generateTitle } from './agent/title';
-import { parseError } from './agent/errors';
-import { resolveAuthForSlug } from './auth/resolve';
-import {
-  type PermissionMode,
-} from './storage/settings';
-import type {
-  EngagementRequest,
-  EngagementResponse,
-} from '../shared/collaboration-types';
-import { getActivePlan, updatePlanCache as updatePlan } from './agent/plan-cache';
-import type { Phase } from '../shared/planning-types';
-import { getKeepAwake, setAgentActive, setKeepAwake } from './power';
-import { getAppIcon } from './app-icon';
-import {
-  type ConnectionMeta,
-  type ModelDef,
-  deleteConnection,
-  getCredential,
-  getDefaultSlug,
-  listConnections,
-  saveConnection,
-  setDefaultSlug,
-} from './storage/connections';
+import {runAgentChat} from './agent/claude';
+import {apply1MContextSuffix} from './agent/models';
+import {steerAnthropicTurn} from './agent/backends/anthropic';
+import {steerPiTurn} from './agent/backends/pi/agent';
+import {generateTitle} from './agent/title';
+import {parseError} from './agent/errors';
+import {resolveAuthForSlug} from './auth/resolve';
 import {
   type AiSettings,
   getSettings,
+  type PermissionMode,
   pushRecentFolder,
   removeRecentFolder,
   saveSettings,
 } from './storage/settings';
+import type {EngagementRequest, EngagementResponse,} from '../shared/collaboration-types';
+import {getActivePlan, updatePlanCache as updatePlan} from './agent/plan-cache';
+import type {Phase} from '../shared/planning-types';
+import {getKeepAwake, setAgentActive, setKeepAwake} from './power';
+import {getAppIcon} from './app-icon';
 import {
-  loadPreferences,
-  savePreferences,
-  type UserPreferences,
-} from './storage/preferences';
-import { type Credential, isEncryptionAvailable } from './storage/credentials';
-import { Paths } from './storage/paths';
+  type ConnectionMeta,
+  deleteConnection,
+  getCredential,
+  getDefaultSlug,
+  listConnections,
+  type ModelDef,
+  saveConnection,
+  setDefaultSlug,
+} from './storage/connections';
+import {loadPreferences, savePreferences, type UserPreferences,} from './storage/preferences';
+import {type Credential, isEncryptionAvailable} from './storage/credentials';
+import {Paths} from './storage/paths';
 import {
-  type LoadedSkill,
-  type SkillFileNode,
   deleteSkill,
   getSkillsDir,
   invalidateSkillsCache,
   loadAllSkills,
+  type LoadedSkill,
   loadSkillBySlug,
   scanSkillDirectory,
+  type SkillFileNode,
 } from './skills/storage';
+import {formatValidationResult, validateSkillContent,} from './skills/parse';
 import {
-  formatValidationResult,
-  validateSkillContent,
-} from './skills/parse';
-import {
-  type LoadedAgent,
   type AgentFileNode,
   deleteAgent,
   getAgentsDir,
   invalidateAgentsCache,
-  loadAllAgents,
   loadAgentBySlug,
+  loadAllAgents,
+  type LoadedAgent,
   scanAgentDirectory,
 } from './agents/storage';
+import {formatValidationResult as formatAgentValidationResult, validateAgentContent,} from './agents/parse';
 import {
-  formatValidationResult as formatAgentValidationResult,
-  validateAgentContent,
-} from './agents/parse';
-import {
-  type ExtensionFileNode,
   deleteExtension,
+  type ExtensionFileNode,
   getExtensionsDir,
   invalidateExtensionsCache,
   loadAllExtensions,
@@ -109,13 +98,13 @@ import {
   scanExtensionDirectory,
   setExtensionEnabled,
 } from './extensions/storage';
-import type { LoadedExtension } from './extensions/types';
+import type {LoadedExtension} from './extensions/types';
 import {
   formatValidationResult as formatExtensionValidationResult,
   validateExtensionConfigContent,
   validateExtensionGuideContent,
 } from './extensions/parse';
-import { getExtensionRegistry } from './extensions/registry';
+import {getExtensionRegistry} from './extensions/registry';
 import {
   deleteSecret as deleteExtensionSecret,
   isSecretsEncryptionAvailable,
@@ -130,34 +119,16 @@ import {
   listMissingSecrets,
   revokeConsent,
 } from './extensions/mcp-config';
-import { searchFiles, type FileSearchEntry } from './files/search';
-import { readFileSync } from 'node:fs';
-import { invalidateContextFileCache } from './agent/system-prompt';
-
+import {type FileSearchEntry, searchFiles} from './files/search';
+import {buildFileTree, listDirectory} from './files/list-directory';
+import {readFileSync} from 'node:fs';
+import {invalidateContextFileCache} from './agent/system-prompt';
 import {
-  appendMessage,
-  branchSession,
-  clearProjectFromSessions,
-  createSession,
-  deleteSession,
-  listSessions,
-  loadSession,
-  replaceLastMessage,
-  rewriteMessages,
-  listSessionFiles,
-  sessionPath,
-  setSessionProject,
-  type StoredMessage,
-  truncateMessagesFrom,
-  updateSessionMeta,
-  type SessionMeta,
-} from './storage/sessions';
-import {
-  type Project,
-  type ProjectInput,
   createProject,
   deleteProject,
   listProjects,
+  type Project,
+  type ProjectInput,
   updateProject,
 } from './storage/projects';
 
@@ -1196,6 +1167,28 @@ export function registerIpc(): void {
     },
   );
 
+  // ---- File tree (file explorer panel) ----------------------------------
+
+  ipcMain.handle(
+    'files:listDirectory',
+    (
+      _e,
+      args: { path: string; root: string; includeHidden?: boolean },
+    ) => {
+      return listDirectory(args);
+    },
+  );
+
+  ipcMain.handle(
+    'files:buildFileTree',
+    (
+      _e,
+      args: { path: string; root: string; includeHidden?: boolean; maxDepth?: number },
+    ) => {
+      return buildFileTree(args);
+    },
+  );
+
   // ---- Filesystem dialogs ------------------------------------------------
 
   ipcMain.handle('fs:pickDirectory', async (event) => {
@@ -1324,7 +1317,7 @@ export function registerIpc(): void {
         const { generateCommitMessage } = await import('./agent/commit-message');
         const auth = await resolveAuthForSlug(args.connectionSlug);
         const conn = listConnections().find((c) => c.slug === args.connectionSlug);
-        const result = await generateCommitMessage({
+        return await generateCommitMessage({
           auth,
           diffContext: args.diffContext,
           userContext: args.userContext,
@@ -1334,7 +1327,6 @@ export function registerIpc(): void {
           piAuthProvider: conn?.piAuthProvider,
           cwd: args.cwd,
         });
-        return result;
       } catch (e) {
         console.error('[git:generateCommitMessage] error:', e);
         return null;

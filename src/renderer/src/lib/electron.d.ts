@@ -466,6 +466,10 @@ export interface SessionMeta {
   projectId?: string | null;
   connectionSlug?: string;
   model?: string;
+  /** File explorer state (expanded folder paths). */
+  fileExplorer?: {
+    expandedPaths: string[];
+  };
 }
 
 export type SessionSummary = SessionMeta;
@@ -513,6 +517,23 @@ export interface FileSearchEntry {
   relativePath: string;
   absolutePath: string;
   mtimeMs: number;
+}
+
+/* ---------- File tree (file explorer panel) ---------- */
+
+export interface FileTreeNode {
+  type: 'file' | 'directory';
+  name: string;
+  /** Path relative to the root directory */
+  relativePath: string;
+  /** Absolute path on disk */
+  absolutePath: string;
+  /** File size in bytes (files only) */
+  size?: number;
+  /** Last modified timestamp (for sorting) */
+  mtimeMs: number;
+  /** Children array for directories, null for files */
+  children: FileTreeNode[] | null;
 }
 
 /* ---------- Content grep (Search Everywhere) ---------- */
@@ -931,6 +952,19 @@ export interface AppApi {
       caseSensitive?: boolean;
       limit?: number;
     }) => Promise<ContentMatchEntry[]>;
+    /** List immediate children of a directory (non-recursive) with gitignore filtering. */
+    listDirectory: (args: {
+      path: string;
+      root: string;
+      includeHidden?: boolean;
+    }) => Promise<FileTreeNode[]>;
+    /** Recursively build a full file tree (for initial load, use with caution on large directories). */
+    buildFileTree: (args: {
+      path: string;
+      root: string;
+      includeHidden?: boolean;
+      maxDepth?: number;
+    }) => Promise<FileTreeNode[]>;
   };
   skills: {
     /** Absolute path of the on-disk skills directory (under userData). */

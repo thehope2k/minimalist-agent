@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { GitBranch, X } from 'lucide-react';
+import { GitBranch, X, FolderTree } from 'lucide-react';
 import { ChatScroll } from '../chat/ChatScroll';
 import { MessageInput } from '../chat/MessageInput';
 import { MessageList } from '../chat/MessageList';
@@ -22,14 +22,12 @@ import type { SeedSubmit } from '@/App';
 import { GitDiffModal } from '@/components/git/GitDiffModal';
 import { SearchModal } from '@/components/search/SearchModal';
 import { RecentFilesModal } from '@/components/search/RecentFilesModal';
-import { FileViewModal } from '@/components/search/FileViewModal';
-import { push as pushRecentFile } from '@/lib/recent-files';
 
 type Props = {
   sessionId: string | null;
   /** Called when the user sends in an unsaved chat — App tracks the new id. */
   onSessionCreated: (id: string) => void;
-  /** Called when user clicks the “X / new” header button. */
+  /** Called when user clicks the "X / new" header button. */
   onNewSession: () => void;
   /** Structured submission auto-sent on next mount (e.g. New Skill). */
   seedSubmit?: SeedSubmit | null;
@@ -42,6 +40,12 @@ type Props = {
   onCwdChange?: (cwd: string | undefined) => void;
   /** Global chat visibility gate (e.g. disabled while Settings/Skills/Extensions are shown). */
   shortcutsEnabled?: boolean;
+  /** Called when user opens a file from SearchModal or RecentFilesModal. */
+  onOpenFile?: (absolutePath: string, lineNumber: number) => void;
+  /** Toggle file explorer panel (for header button). */
+  onToggleFileExplorer?: () => void;
+  /** File explorer panel open state (for active styling). */
+  fileExplorerOpen?: boolean;
 };
 
 export function ChatArea({
@@ -54,6 +58,9 @@ export function ChatArea({
   onStreamingChange,
   onCwdChange,
   shortcutsEnabled = true,
+  onOpenFile,
+  onToggleFileExplorer,
+  fileExplorerOpen,
 }: Props) {
   const {
     messages,
@@ -84,7 +91,7 @@ export function ChatArea({
   /** Per-session working directory; rehydrated from session metadata on switch. */
   const [cwd, setCwd] = useState<string | undefined>(undefined);
   const [title, setTitle] = useState<string>('New session');
-  // Always-current mirrors for permissionMode and cwd — used when snapshotting
+  // Always-current mirrors for permissionMode and cwd - used when snapshotting
   // the null-slot draft on session switch.
   const permissionModeRef = useRef<PermissionMode>('auto');
   const autonomyLevelRef = useRef<number>(50);
@@ -242,7 +249,7 @@ export function ChatArea({
 
   // For unsaved fresh chats, keep tracking the cascade (project default →
   // global default) so changes in those defaults reflect on the pill
-  // before the user explicitly picks a mode — but only when the user
+  // before the user explicitly picks a mode - but only when the user
   // hasn't already chosen a value (stored in the null-slot draft).
   useEffect(() => {
     if (sessionId) return;
@@ -416,7 +423,6 @@ export function ChatArea({
   // Any other key between the two Shifts resets the sequence.
   const [searchOpen, setSearchOpen]   = useState(false);
   const [recentOpen, setRecentOpen]   = useState(false);
-  const [viewFile, setViewFile] = useState<{ absolutePath: string; lineNumber: number } | null>(null);
   const lastShiftTs = useRef<number>(0);
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -439,7 +445,7 @@ export function ChatArea({
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  // Recent Files — Cmd+E toggles the palette.
+  // Recent Files - Cmd+E toggles the palette.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'e' && !e.shiftKey && !e.altKey) {
@@ -449,12 +455,6 @@ export function ChatArea({
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, []);
-
-  // Shared handler: open a file in the viewer and record it in recent history.
-  const handleOpenFile = useCallback((absolutePath: string, lineNumber: number) => {
-    pushRecentFile(absolutePath, lineNumber);
-    setViewFile({ absolutePath, lineNumber });
   }, []);
 
 
@@ -471,6 +471,14 @@ export function ChatArea({
           </h2>
         </div>
         <div className="flex flex-1 items-center justify-end gap-1">
+          {onToggleFileExplorer && (
+            <IconButton
+              icon={FolderTree}
+              label="File Explorer (Cmd+B)"
+              onClick={onToggleFileExplorer}
+              className={fileExplorerOpen ? 'bg-accent/15 text-accent' : undefined}
+            />
+          )}
           <IconButton
             icon={GitBranch}
             label="Git changes (Cmd+G)"
@@ -570,7 +578,7 @@ export function ChatArea({
           onClose={() => setSearchOpen(false)}
           onOpenFile={(absolutePath, lineNumber) => {
             setSearchOpen(false);
-            handleOpenFile(absolutePath, lineNumber);
+            onOpenFile?.(absolutePath, lineNumber);
           }}
         />
       )}
@@ -580,16 +588,8 @@ export function ChatArea({
           onClose={() => setRecentOpen(false)}
           onOpenFile={(absolutePath, lineNumber) => {
             setRecentOpen(false);
-            handleOpenFile(absolutePath, lineNumber);
+            onOpenFile?.(absolutePath, lineNumber);
           }}
-        />
-      )}
-
-      {viewFile && (
-        <FileViewModal
-          absolutePath={viewFile.absolutePath}
-          lineNumber={viewFile.lineNumber}
-          onClose={() => setViewFile(null)}
         />
       )}
 

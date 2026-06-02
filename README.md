@@ -39,6 +39,7 @@ Everything you need to work with Claude — nothing you don't.
 ### Developer Tools
 
 - **Terminal (`Cmd+T`)** — full in-app terminal (`xterm.js` + `node-pty`); real PTY, multiple tabs, in-terminal search, copy-on-select, URL click-to-open, 2 MB scrollback; three bundled fonts
+- **File Explorer (`Cmd+B`)** — collapsible file tree panel; gitignore-aware, virtual scrolling, keyboard navigation, context menu (Copy Path / Reveal in Finder); read-only, right sidebar
 - **Git diff review (`Cmd+G`)** — full-screen Monaco DiffEditor; file list with M/N/D/R status; hunk-level staging; commit panel with amend support; multi-repo workspace
 
 ### Search & Navigation

@@ -16,6 +16,8 @@ import { AgentInfoPage } from '@/components/agents';
 import { ExtensionsPanel } from './components/extensions/ExtensionsPanel';
 import { ExtensionInfoPage } from './components/extensions/ExtensionInfoPage';
 import { TerminalPanel } from './components/terminal/TerminalPanel';
+import { FileExplorerPanel } from './components/files';
+import { FileViewModal } from './components/search/FileViewModal';
 import { TooltipProvider } from './components/ui';
 import { useSkills } from './hooks/useSkills';
 import { useAgents } from './hooks/useAgents';
@@ -26,6 +28,7 @@ import { reload as reloadSkills } from './lib/skills';
 import { reload as reloadAgents } from './lib/agents';
 import { reload as reloadExtensions } from './lib/extensions';
 import { clearNewSessionStateDraft } from './lib/new-session-draft';
+import { push as pushRecentFile } from './lib/recent-files';
 
 /** Payload pushed from non-chat surfaces (e.g. New Skill) into a fresh chat. */
 export interface SeedSubmit {
@@ -97,6 +100,21 @@ export default function App() {
   const { layout: termLayout, onLayoutChange: onTermLayout } =
     useResizablePanels('terminal-v1', [65, 35]);
 
+  // File Explorer panel state
+  const [fileExplorerOpen, setFileExplorerOpen] = useState(false);
+  const fileExplorerPanelRef = useRef<ImperativePanelHandle>(null);
+  const { layout: explorerLayout, onLayoutChange: onExplorerLayoutChange } =
+    useResizablePanels('explorer-v1', [100, 0]); // Default: explorer closed
+
+  // File viewer state (lifted from ChatArea to share between Chat and FileExplorer)
+  const [viewFile, setViewFile] = useState<{ absolutePath: string; lineNumber: number } | null>(null);
+
+  // Shared handler: open a file in the viewer and record it in recent history
+  const handleOpenFile = useCallback((absolutePath: string, lineNumber: number) => {
+    pushRecentFile(absolutePath, lineNumber);
+    setViewFile({ absolutePath, lineNumber });
+  }, []);
+
   const toggleTerminal = useCallback(() => {
     const p = terminalPanelRef.current;
     if (!p) return;
@@ -106,6 +124,18 @@ export default function App() {
     } else {
       p.collapse();
       setTerminalOpen(false);
+    }
+  }, []);
+
+  const toggleFileExplorer = useCallback(() => {
+    const p = fileExplorerPanelRef.current;
+    if (!p) return;
+    if (p.isCollapsed()) {
+      p.expand();
+      setFileExplorerOpen(true);
+    } else {
+      p.collapse();
+      setFileExplorerOpen(false);
     }
   }, []);
 
@@ -140,10 +170,21 @@ export default function App() {
       const mod = e.metaKey || e.ctrlKey;
       if (!mod) return;
 
-      // Cmd+T — toggle terminal
+      // Cmd+T — toggle terminal (sessions/chat view only)
       if (e.key === 't' && !e.shiftKey && !e.altKey) {
+        // Only toggle terminal when viewing sessions (not in settings/skills/agents/extensions)
+        if (view === 'settings' || view === 'skills' || view === 'agents' || view === 'extensions') return;
         e.preventDefault();
         toggleTerminal();
+        return;
+      }
+
+      // Cmd+B — toggle file explorer (sessions/chat view only)
+      if (e.key === 'b' && !e.shiftKey && !e.altKey) {
+        // Only toggle file explorer when viewing sessions (not in settings/skills/agents/extensions)
+        if (view === 'settings' || view === 'skills' || view === 'agents' || view === 'extensions') return;
+        e.preventDefault();
+        toggleFileExplorer();
         return;
       }
 
@@ -204,9 +245,9 @@ export default function App() {
     // capture: true so this fires before xterm can call stopPropagation.
     window.addEventListener('keydown', handler, { capture: true });
     return () => window.removeEventListener('keydown', handler, { capture: true });
-  }, [toggleTerminal]);
+  }, [toggleTerminal, toggleFileExplorer, view]);
 
-  // Collapse terminal on mount (starts closed).
+  // Collapse terminal and file explorer on mount (starts closed).
   // Also keep handleNewSessionRef current after it is defined below.
 
   const inSettings = view === 'settings';
@@ -270,9 +311,10 @@ export default function App() {
     });
   }, []);
 
-  // Ensure the terminal panel starts collapsed on first render.
+  // Ensure the terminal and file explorer panels start collapsed on first render.
   useEffect(() => {
     terminalPanelRef.current?.collapse();
+    fileExplorerPanelRef.current?.collapse();
   }, []);
 
   const intentNewChatRef = useRef(false);
@@ -394,54 +436,86 @@ export default function App() {
 
           <ResizablePanel defaultSize={layout[1]} minSize={30}>
             <ResizablePanelGroup direction="vertical" onLayout={onTermLayout}>
-              {/* Main content area */}
+              {/* Chat + File Explorer (nested horizontal) */}
               <ResizablePanel defaultSize={termLayout[0]} minSize={25}>
-                <div className={PANEL_CARD}>
-                  <div
-                    className="h-full w-full"
-                    style={{
-                      display:
-                        inSettings || inSkills || inAgents || inExtensions ? 'none' : 'block',
-                    }}
+                <ResizablePanelGroup direction="horizontal" onLayout={onExplorerLayoutChange}>
+                  {/* Chat area */}
+                  <ResizablePanel defaultSize={explorerLayout[0]} minSize={50}>
+                    <div className={PANEL_CARD}>
+                      <div
+                        className="h-full w-full"
+                        style={{
+                          display:
+                            inSettings || inSkills || inAgents || inExtensions ? 'none' : 'block',
+                        }}
+                      >
+                        <ChatArea
+                          sessionId={activeSessionId}
+                          onSessionCreated={setActiveSessionId}
+                          onNewSession={handleNewSession}
+                          seedSubmit={seedSubmit}
+                          onSeedSubmitConsumed={() => setSeedSubmit(null)}
+                          newSessionDefaultProjectId={
+                            projectFilter === 'all' || projectFilter === 'inbox'
+                              ? null
+                              : projectFilter
+                          }
+                          onStreamingChange={setStreamingSessionIds}
+                          onCwdChange={setActiveCwd}
+                          shortcutsEnabled={view === 'all'}
+                          onOpenFile={handleOpenFile}
+                          onToggleFileExplorer={toggleFileExplorer}
+                          fileExplorerOpen={fileExplorerOpen}
+                        />
+                      </div>
+                      {inSettings && <SettingsContent category={settingsCategory} />}
+                      {inSkills && (
+                        <SkillInfoPage
+                          skill={activeSkill}
+                          onClose={() => setActiveSkillSlug(null)}
+                          onStartChatWithSubmission={startSessionWithSubmission}
+                        />
+                      )}
+                      {inAgents && (
+                        <AgentInfoPage
+                          agent={activeAgent}
+                          onClose={() => setActiveAgentSlug(null)}
+                          onStartChatWithSubmission={startSessionWithSubmission}
+                        />
+                      )}
+                      {inExtensions && (
+                        <ExtensionInfoPage
+                          extension={activeExtension}
+                          onClose={() => setActiveExtensionSlug(null)}
+                        />
+                      )}
+                    </div>
+                  </ResizablePanel>
+
+                  <ResizableHandle />
+
+                  {/* File Explorer (collapsible) */}
+                  <ResizablePanel
+                    ref={fileExplorerPanelRef}
+                    defaultSize={28}  // Reasonable default when first opened (28% of chat area)
+                    minSize={15}
+                    maxSize={40}
+                    collapsible
+                    collapsedSize={0}
+                    onCollapse={() => setFileExplorerOpen(false)}
+                    onExpand={() => setFileExplorerOpen(true)}
                   >
-                    <ChatArea
-                      sessionId={activeSessionId}
-                      onSessionCreated={setActiveSessionId}
-                      onNewSession={handleNewSession}
-                      seedSubmit={seedSubmit}
-                      onSeedSubmitConsumed={() => setSeedSubmit(null)}
-                      newSessionDefaultProjectId={
-                        projectFilter === 'all' || projectFilter === 'inbox'
-                          ? null
-                          : projectFilter
-                      }
-                      onStreamingChange={setStreamingSessionIds}
-                      onCwdChange={setActiveCwd}
-                      shortcutsEnabled={view === 'all'}
-                    />
-                  </div>
-                  {inSettings && <SettingsContent category={settingsCategory} />}
-                  {inSkills && (
-                    <SkillInfoPage
-                      skill={activeSkill}
-                      onClose={() => setActiveSkillSlug(null)}
-                      onStartChatWithSubmission={startSessionWithSubmission}
-                    />
-                  )}
-                  {inAgents && (
-                    <AgentInfoPage
-                      agent={activeAgent}
-                      onClose={() => setActiveAgentSlug(null)}
-                      onStartChatWithSubmission={startSessionWithSubmission}
-                    />
-                  )}
-                  {inExtensions && (
-                    <ExtensionInfoPage
-                      extension={activeExtension}
-                      onClose={() => setActiveExtensionSlug(null)}
-                    />
-                  )}
-                </div>
+                    <div className={PANEL_CARD}>
+                      <FileExplorerPanel
+                        cwd={activeCwd}
+                        sessionId={activeSessionId}
+                        isOpen={fileExplorerOpen}
+                        onSelectFile={(absolutePath) => handleOpenFile(absolutePath, 1)}
+                        onClose={toggleFileExplorer}
+                      />
+                    </div>
+                  </ResizablePanel>
+                </ResizablePanelGroup>
               </ResizablePanel>
 
               <ResizableHandle />
@@ -469,6 +543,15 @@ export default function App() {
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
+
+      {/* File viewer modal (shared between ChatArea and FileExplorerPanel) */}
+      {viewFile && (
+        <FileViewModal
+          absolutePath={viewFile.absolutePath}
+          lineNumber={viewFile.lineNumber}
+          onClose={() => setViewFile(null)}
+        />
+      )}
     </div>
     </TooltipProvider>
   );

@@ -202,6 +202,19 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     ],
   },
   {
+    title: 'File Explorer',
+    shortcuts: [
+      { macKeys: ['⌘', 'B'],       winKeys: ['Ctrl', 'B'],       label: 'Open / close file explorer panel',     condition: 'Filter input auto-focused on open' },
+      { macKeys: ['↑'],            winKeys: ['↑'],               label: 'Move selection up',                     condition: 'File explorer is open and focused' },
+      { macKeys: ['↓'],            winKeys: ['↓'],               label: 'Move selection down',                   condition: 'File explorer is open and focused' },
+      { macKeys: ['→'],            winKeys: ['→'],               label: 'Expand folder',                         condition: 'Folder selected' },
+      { macKeys: ['←'],            winKeys: ['←'],               label: 'Collapse folder',                       condition: 'Folder selected' },
+      { macKeys: ['↵'],            winKeys: ['Enter'],           label: 'Open file',                             condition: 'File selected' },
+      { macKeys: ['Esc'],          winKeys: ['Esc'],             label: 'Close file explorer',                   condition: 'File explorer is open' },
+      { macKeys: ['⌘', 'F'],       winKeys: ['Ctrl', 'F'],       label: 'Focus filter input',                    condition: 'File explorer is open' },
+    ],
+  },
+  {
     title: 'Search',
     shortcuts: [
       {
