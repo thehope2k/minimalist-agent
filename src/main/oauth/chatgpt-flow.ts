@@ -1,5 +1,5 @@
 // ChatGPT Plus (Codex) OAuth — wraps the PKCE browser-redirect flow
-// exposed by `@mariozechner/pi-ai`.
+// exposed by `@earendil-works/pi-ai`.
 //
 // Unlike Copilot (device-code, no local server), this flow opens the
 // user's browser to auth.openai.com and catches the redirect on a
@@ -9,7 +9,7 @@
 //   accessToken  = OpenAI API key derived from the id_token exchange
 //   refreshToken = standard OAuth refresh token (long-lived)
 
-import type { OAuthCredentials } from '@mariozechner/pi-ai/oauth';
+import type { OAuthCredentials } from '@earendil-works/pi-ai/oauth';
 
 export interface ChatGptTokens {
   accessToken: string;
@@ -42,7 +42,7 @@ export function startLogin(
 
   const abort = new AbortController();
   const promise = (async (): Promise<ChatGptTokens> => {
-    const { loginOpenAICodex } = await import('@mariozechner/pi-ai/oauth');
+    const { loginOpenAICodex } = await import('@earendil-works/pi-ai/oauth');
     const creds: OAuthCredentials = await loginOpenAICodex({
       onAuth: (info: { url: string; instructions?: string }) => {
         onBrowserOpen(info.url);
@@ -80,7 +80,7 @@ export function cancelLogin(): void {
 export async function refreshChatGptTokens(
   refreshToken: string,
 ): Promise<ChatGptTokens> {
-  const { refreshOpenAICodexToken } = await import('@mariozechner/pi-ai/oauth');
+  const { refreshOpenAICodexToken } = await import('@earendil-works/pi-ai/oauth');
   const creds = await refreshOpenAICodexToken(refreshToken);
   return {
     accessToken: creds.access,

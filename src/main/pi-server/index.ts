@@ -1,4 +1,4 @@
-// Pi subprocess server — runs `@mariozechner/pi-coding-agent`'s
+// Pi subprocess server — runs `@earendil-works/pi-coding-agent`'s
 // AgentSession in-process and bridges it to the main process via JSONL
 // over stdin/stdout.
 //
@@ -35,11 +35,11 @@ import {
   type AgentSession,
   type AgentSessionEvent,
   type ToolDefinition,
-} from '@mariozechner/pi-coding-agent';
+} from '@earendil-works/pi-coding-agent';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { getModel, completeSimple, type ThinkingLevel } from '@mariozechner/pi-ai';
-import { getOAuthProvider } from '@mariozechner/pi-ai/oauth';
+import { getModel, completeSimple, type ThinkingLevel } from '@earendil-works/pi-ai';
+import { getOAuthProvider } from '@earendil-works/pi-ai/oauth';
 import { adaptPiEvent } from './event-adapter';
 import { createPiWebFetchTool, createPiWebSearchTool } from './web-tools';
 import { createPiAgentTool } from '../agent/backends/pi/agent-tool';
@@ -1523,7 +1523,6 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
               
               // Recreate session with updated model
               const sessionManager = SessionManager.continueRecent(state.init.cwd, state.init.sessionPath);
-              const agentDir = join(homedir(), '.pi', 'agent');
               const { session } = await createAgentSession({
                 cwd: state.init.cwd,
                 model: state.model,

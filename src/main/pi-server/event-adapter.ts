@@ -6,7 +6,7 @@
 //   - Normalize tool arg field names to match Claude Code's UI conventions
 //     (so Read/Write/Edit/etc. render with the same chip labels)
 
-import type { AgentSessionEvent } from '@mariozechner/pi-coding-agent';
+import type { AgentSessionEvent } from '@earendil-works/pi-coding-agent';
 import type { AgentChatEvent, SubagentProgressUpdate } from '../agent/events';
 import { parseError } from '../agent/errors';
 

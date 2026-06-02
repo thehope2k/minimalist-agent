@@ -10,7 +10,7 @@ import { Type } from 'typebox';
 import {
   defineTool,
   type ToolDefinition,
-} from '@mariozechner/pi-coding-agent';
+} from '@earendil-works/pi-coding-agent';
 
 // Pi-server runs as a Node-mode subprocess (ELECTRON_RUN_AS_NODE=1), so
 // importing `app` from 'electron' fails — the module resolves to the binary

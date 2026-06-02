@@ -404,7 +404,7 @@ export function registerIpc(): void {
   const CHATGPT_PRO_ONLY_IDS = new Set(['gpt-5.3-codex-spark']);
 
   ipcMain.handle('chatgpt:getModels', async (): Promise<ModelDef[]> => {
-    const { getModels } = await import('@mariozechner/pi-ai');
+    const { getModels } = await import('@earendil-works/pi-ai');
     const raw = getModels('openai-codex' as never) as Array<{
       id: string; name: string; contextWindow: number;
     }>;

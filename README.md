@@ -130,7 +130,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development guide.
 - Electron + electron-vite
 - React 18 + TypeScript
 - Tailwind CSS v4
-- `@anthropic-ai/claude-agent-sdk` + `@mariozechner/pi-coding-agent`
+- `@anthropic-ai/claude-agent-sdk` + `@earendil-works/pi-coding-agent`
 - xterm.js + node-pty (terminal)
 - Monaco Editor (git diff / file viewer)
 - `@vscode/ripgrep` (Search Everywhere)

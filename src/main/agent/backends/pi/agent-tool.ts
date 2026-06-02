@@ -16,7 +16,7 @@ import { createInterface, type Interface as ReadlineInterface } from 'node:readl
 import { join } from 'node:path';
 import { mkdirSync } from 'node:fs';
 import { Type } from 'typebox';
-import { defineTool, type AgentToolUpdateCallback, type ToolDefinition } from '@mariozechner/pi-coding-agent';
+import { defineTool, type AgentToolUpdateCallback, type ToolDefinition } from '@earendil-works/pi-coding-agent';
 import type { LoadedAgent } from '../../../agents/types';
 import type { AgentChatEvent, SubagentProgressUpdate } from '../../events';
 import {

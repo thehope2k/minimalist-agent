@@ -5,7 +5,7 @@
 // allowed to use. The token's `proxy-ep` claim picks the right
 // regional endpoint.
 
-import { refreshGitHubCopilotToken } from '@mariozechner/pi-ai/oauth';
+import { refreshGitHubCopilotToken } from '@earendil-works/pi-ai/oauth';
 import type { ModelDef } from '../storage/connections';
 
 const COPILOT_HEADERS = {

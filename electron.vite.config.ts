@@ -21,12 +21,14 @@ export default defineConfig({
       },
       rollupOptions: {
         // Native + heavy modules must stay external. Pi SDK pulls in a lot
-        // (clipboard binaries, jiti, ...); externalising the @mariozechner
-        // packages keeps build fast and avoids bundling issues.
+        // (clipboard binaries, jiti, ...); externalising the @earendil-works
+        // packages (and the still-@mariozechner/clipboard optional dep) keeps
+        // build fast and avoids bundling issues.
         external: [
           'sharp',
           'node-pty',
           'electron',
+          /^@earendil-works\//,
           /^@mariozechner\//,
           /^node:/,
         ],

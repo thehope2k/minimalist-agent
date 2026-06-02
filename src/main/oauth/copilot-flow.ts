@@ -1,5 +1,5 @@
 // GitHub Copilot OAuth — wraps the device-code flow exposed by
-// `@mariozechner/pi-ai`. The Pi SDK does two things in one call:
+// `@earendil-works/pi-ai`. The Pi SDK does two things in one call:
 //   1. Standard GitHub device-code flow → GitHub OAuth token (long-lived).
 //   2. Exchanges the GitHub token → Copilot API token (short-lived, ~1h)
 //      whose `proxy-ep=` field tells us which API endpoint to talk to.
@@ -7,7 +7,7 @@
 //   accessToken  = Copilot API token (used for chat completions)
 //   refreshToken = GitHub OAuth token (used to refresh the Copilot token)
 
-import type { OAuthCredentials } from '@mariozechner/pi-ai/oauth';
+import type { OAuthCredentials } from '@earendil-works/pi-ai/oauth';
 
 export interface CopilotTokens {
   accessToken: string;
@@ -45,13 +45,15 @@ export function startLogin(
 
   const abort = new AbortController();
   const promise = (async (): Promise<CopilotTokens> => {
-    const { loginGitHubCopilot } = await import('@mariozechner/pi-ai/oauth');
+    const { loginGitHubCopilot } = await import('@earendil-works/pi-ai/oauth');
     const creds: OAuthCredentials = await loginGitHubCopilot({
-      onAuth: (url, instructions) => {
-        // Pi formats instructions as "First copy your one-time code: XXXX-YYYY ..."
-        const codeMatch = instructions?.match(/[A-Z0-9]{4}-[A-Z0-9]{4}/);
-        const userCode = codeMatch?.[0] ?? '';
-        onDeviceCode({ userCode, verificationUri: url });
+      // pi-ai >= 0.75.5 hands us the parsed device code directly instead of
+      // formatted instructions text — no more regex scraping.
+      onDeviceCode: (info) => {
+        onDeviceCode({
+          userCode: info.userCode,
+          verificationUri: info.verificationUri,
+        });
       },
       // Pi prompts for a GitHub Enterprise domain — empty = github.com.
       onPrompt: async () => '',
@@ -91,7 +93,7 @@ export async function refreshCopilotTokens(
   githubRefreshToken: string,
 ): Promise<CopilotTokens> {
   const { refreshGitHubCopilotToken } = await import(
-    '@mariozechner/pi-ai/oauth'
+    '@earendil-works/pi-ai/oauth'
   );
   const creds = await refreshGitHubCopilotToken(githubRefreshToken);
   return {

@@ -1,6 +1,6 @@
 // Main-process Pi backend.
 //
-// Owns the per-chat-session subprocess that runs `@mariozechner/pi-coding-agent`.
+// Owns the per-chat-session subprocess that runs `@earendil-works/pi-coding-agent`.
 // Bridges JSONL events to the AgentChatEvent stream and handles OAuth refresh
 // and mini-completion RPCs with main.
 //

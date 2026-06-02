@@ -85,7 +85,7 @@ correlates them by turn id.
 ## Pi backend (GitHub Copilot)
 
 `agent/backends/pi/agent.ts` spawns a Node subprocess running
-`@mariozechner/pi-coding-agent`. Communication is over stdin/stdout as
+`@earendil-works/pi-coding-agent`. Communication is over stdin/stdout as
 newline-delimited JSON (`SubprocessInbound` / `SubprocessOutbound` in
 `protocol.ts`).
 
