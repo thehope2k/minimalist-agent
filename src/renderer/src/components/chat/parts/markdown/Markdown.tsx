@@ -1,5 +1,5 @@
-import { memo, useState, type ReactNode } from 'react';
-import ReactMarkdown, { type Components } from 'react-markdown';
+import { memo, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
+import ReactMarkdown, { defaultUrlTransform, type Components } from 'react-markdown';
 import type { PluggableList } from 'unified';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -106,16 +106,39 @@ const COMPONENTS: Components = {
   h3: ({ children }) => <h3>{children}</h3>,
   h4: ({ children }) => <h4>{children}</h4>,
 
-  a: ({ href, children }) => (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-accent underline-offset-2 hover:underline"
-    >
-      {children}
-    </a>
-  ),
+  a: ({ href, children }) => {
+    // Two-layer defense for agent-generated links:
+    //   1. Route left-click through the gated IPC handler so dangerous
+    //      schemes (file:, javascript:, ...) are blocked with a useful
+    //      error rather than handed to shell.openExternal.
+    //   2. Sanitize the DOM `href` via react-markdown's defaultUrlTransform
+    //      so middle-click / cmd-click / "Copy link address" / drag-to-
+    //      bookmark can't smuggle a dangerous scheme past the click handler.
+    const safeHref = href ? defaultUrlTransform(href) : '';
+    const onClick = (e: ReactMouseEvent<HTMLAnchorElement>) => {
+      // Let modifier-clicks fall through to setWindowOpenHandler (which
+      // also classifies); only intercept the plain left-click case to
+      // surface block reasons as a console warning.
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+      if (!href) return;
+      e.preventDefault();
+      window.api.app.openExternal(href).catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn('[markdown-link] blocked:', msg);
+      });
+    };
+    return (
+      <a
+        href={safeHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={onClick}
+        className="text-accent underline-offset-2 hover:underline"
+      >
+        {children}
+      </a>
+    );
+  },
 
   // Images — click to expand via ExpandModal lightbox.
   img: ({ src, alt }) => <InlineImage src={src} alt={alt} />,

@@ -22,6 +22,7 @@ import {
   updateSessionMeta,
 } from './storage/sessions';
 import {clearLoginState, exchangeCode, prepareLoginUrl,} from './oauth/claude-flow';
+import {classifyExternalUrl, formatBlockedUrlError} from '../shared/url-safety';
 import {
   cancelLogin as cancelCopilotLogin,
   type CopilotTokens,
@@ -192,7 +193,18 @@ export function registerIpc(): void {
   // ---- App ---------------------------------------------------------------
 
   ipcMain.handle('app:getVersion', () => app.getVersion());
-  ipcMain.handle('shell:openExternal', (_e, url: string) => shell.openExternal(url));
+  ipcMain.handle('shell:openExternal', (_e, url: string) => {
+    // Renderer-driven URLs flow here from markdown link clicks, terminal
+    // WebLinksAddon, etc. — all of which carry agent-generated text. Block
+    // dangerous schemes before they reach shell.openExternal so a malicious
+    // `file:` / `javascript:` link can't launch a local executable (Windows
+    // Electron RCE class) or escape sandbox via the URL protocol handler.
+    const classification = classifyExternalUrl(url);
+    if (classification.kind === 'dangerous') {
+      throw new Error(formatBlockedUrlError(classification));
+    }
+    return shell.openExternal(url);
+  });
   ipcMain.handle('app:getKeepAwake', () => getKeepAwake());
   ipcMain.handle('app:setKeepAwake', (_e, enabled: boolean) => {
     setKeepAwake(enabled);

@@ -1,6 +1,6 @@
 import { app, BrowserWindow, shell } from 'electron';
 import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import { dirname, join, sep } from 'node:path';
 import { registerIpc } from './ipc';
 import { cleanupPower } from './power';
 import { terminalManager } from './terminal/manager';
@@ -9,6 +9,7 @@ import { installExtensionsReferenceDoc } from './extensions/install-reference';
 import { installAgentsReferenceDoc } from './agents/install-reference';
 import { getAppIcon } from './app-icon';
 import { checkOnLaunch } from './auto-update';
+import { classifyExternalUrl, formatBlockedUrlError } from '../shared/url-safety';
 
 import { isWorktreeSupported } from './agent/backends/pi/worktree-manager';
 
@@ -39,6 +40,47 @@ if (process.platform === 'darwin') {
 }
 
 
+/**
+ * True for URLs that load the app shell itself — the Vite dev server in dev,
+ * or the bundled `renderer/index.html` (and assets it references) in prod.
+ * Anything else is treated as an external URL and routed through the
+ * classifier, so a stray top-frame navigation can't replace our React app
+ * with attacker-controlled content.
+ */
+function isAppShellUrl(rawUrl: string): boolean {
+  try {
+    const devUrl = process.env.ELECTRON_RENDERER_URL;
+    if (devUrl && rawUrl.startsWith(devUrl)) return true;
+
+    const parsed = new URL(rawUrl);
+    if (parsed.protocol !== 'file:') return false;
+
+    const filePath = fileURLToPath(parsed);
+    const rendererRoot = join(__dirname, '..', 'renderer') + sep;
+    return filePath.startsWith(rendererRoot);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Single chokepoint for any renderer-initiated external URL. Classifies
+ * via the shared blocklist before handing off to shell.openExternal so
+ * dangerous schemes never reach the OS protocol dispatcher — closes the
+ * middle-click / cmd-click / top-frame-navigation escape routes around
+ * the `shell:openExternal` IPC handler in ipc.ts.
+ */
+function openExternalFromRenderer(url: string, context: string): void {
+  const c = classifyExternalUrl(url);
+  if (c.kind === 'dangerous') {
+    console.warn(`[url-safety] blocked ${context}:`, formatBlockedUrlError(c), url);
+    return;
+  }
+  void shell.openExternal(url).catch((err) => {
+    console.warn(`[url-safety] openExternal failed (${context}):`, err);
+  });
+}
+
 function createWindow(icon?: Electron.NativeImage | null) {
   const win = new BrowserWindow({
     width: 1440,
@@ -60,8 +102,19 @@ function createWindow(icon?: Electron.NativeImage | null) {
   win.on('ready-to-show', () => win.show());
 
   win.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
+    openExternalFromRenderer(url, 'window-open');
     return { action: 'deny' };
+  });
+
+  // Top-frame navigation (left-clicked <a href> without target=_blank,
+  // window.location assignments, etc.). Without this, the BrowserWindow
+  // would happily replace the React app shell with whatever the link
+  // points to. Allow only the actual app shell; everything else is
+  // treated as external and goes through the same classifier.
+  win.webContents.on('will-navigate', (event, url) => {
+    if (isAppShellUrl(url)) return;
+    event.preventDefault();
+    openExternalFromRenderer(url, 'will-navigate');
   });
 
   // Block Cmd+R / Ctrl+R (and the hard-reload Cmd+Shift+R) in production.
