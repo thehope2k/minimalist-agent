@@ -1,7 +1,8 @@
 # Minimalist Agent
 
-A focused AI coding agent for software engineers who value simplicity.  
-Everything you need to work with Claude — nothing you don't.
+**A focused AI coding agent for software engineers who value simplicity.**
+
+Chat with Claude, GitHub Copilot, ChatGPT, or local models through a clean desktop interface. Full tool access, intelligent collaboration, built-in terminal, git integration, and powerful search — all without the bloat.
 
 ---
 
@@ -19,9 +20,11 @@ Everything you need to work with Claude — nothing you don't.
 ### Agent Runtime
 
 - **Full toolset** — Read, Write, Edit, Bash, Grep, Glob, WebFetch, WebSearch, Task via the `claude_code` SDK preset
-- **Subagents** — Task tool for Anthropic connections spawns subagents within a turn
-- **Permission modes** — Plan (read-only) · Auto (intelligent execution with autonomy slider)
-- **Intelligent collaboration** — Auto mode includes 0-100% autonomy slider controlling how often the agent asks for decisions, approvals, and feedback
+- **Multi-phase planning** — complex tasks broken into phases with progress tracking, per-phase approval, and plan revision based on discoveries
+- **Phase-level approval workflow** — configure when phases require approval based on risk level and autonomy settings
+- **Subagents** — Task tool for Anthropic connections spawns subagents within a turn; parallel execution with git worktree isolation
+- **Permission modes** — Plan (read-only) · Approve (require approval per phase) · Auto (intelligent execution with autonomy slider)
+- **Intelligent collaboration** — 0-100% autonomy slider controlling how often the agent asks for decisions, approvals, and feedback
 - **Mid-turn steering** — inject a message (with attachments) into a live turn without cancelling it (`Cmd+Enter`)
 - **Continue after max turns** — one-click resume when the agent hits `max_turns`
 - **Thinking / reasoning** — extended thinking with collapsible panels
@@ -39,8 +42,8 @@ Everything you need to work with Claude — nothing you don't.
 ### Developer Tools
 
 - **Terminal (`Cmd+T`)** — full in-app terminal (`xterm.js` + `node-pty`); real PTY, multiple tabs, in-terminal search, copy-on-select, URL click-to-open, 2 MB scrollback; three bundled fonts
-- **File Explorer (`Cmd+B`)** — collapsible file tree panel; gitignore-aware, virtual scrolling, keyboard navigation, context menu (Copy Path / Reveal in Finder); read-only, right sidebar
-- **Git diff review (`Cmd+G`)** — full-screen Monaco DiffEditor; file list with M/N/D/R status; hunk-level staging; commit panel with amend support; multi-repo workspace
+- **File Explorer (`Cmd+B`)** — collapsible file tree panel with virtual scrolling for high performance with large directories; gitignore-aware, keyboard navigation, context menu (Copy Path / Reveal in Finder); persistent state across sessions
+- **Git diff review (`Cmd+G`)** — full-screen Monaco DiffEditor; file list with M/N/D/R status; per-repo branch labels; collapsible file sections; hunk-level staging; commit panel with amend support; multi-repo workspace
 
 ### Search & Navigation
 
@@ -69,10 +72,11 @@ Everything you need to work with Claude — nothing you don't.
 
 ---
 
-## Install
+## Quick Start
 
-Download the latest release for your platform from
-the [Releases page](https://github.com/thehope2k/minimalist-agent/releases).
+### Download
+
+Get the latest release for your platform from the [Releases page](https://github.com/thehope2k/minimalist-agent/releases).
 
 | Platform              | File                            |
 |-----------------------|---------------------------------|
@@ -81,12 +85,22 @@ the [Releases page](https://github.com/thehope2k/minimalist-agent/releases).
 | Windows               | `Minimalist-Agent-x64.exe`      |
 | Linux                 | `Minimalist-Agent-x64.AppImage` |
 
+### Setup
+
+1. **Launch the app** (see macOS Gatekeeper note below if blocked)
+2. **Add a connection** — Settings → Connections
+   - Anthropic: Paste your API key or sign in with Claude Pro/Max
+   - GitHub Copilot: Sign in via device flow
+   - ChatGPT: Sign in via browser OAuth
+   - Local: Point to your Ollama endpoint
+3. **Start chatting** — `Cmd+N` for new session
+
 ### macOS — Gatekeeper
 
 The macOS build is currently unsigned. On first launch macOS will block it.  
-To open it: **right-click the app → Open → Open** (you only need to do this once).
+To open: **right-click the app → Open → Open** (you only need to do this once).
 
-Alternatively, from the terminal:
+Alternatively:
 
 ```bash
 xattr -d com.apple.quarantine /Applications/Minimalist\ Agent.app
@@ -124,17 +138,34 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development guide.
 
 ---
 
-## Docs
+## Why Minimalist Agent?
 
+- **Multi-provider** — switch between Anthropic, GitHub Copilot, ChatGPT, and local models from one interface
+- **Developer-first** — built-in terminal, git diff viewer, file explorer, and powerful search
+- **Intelligent collaboration** — adjustable autonomy from "ask me everything" to "just get it done"
+- **Planning workflow** — break down complex tasks into phases with approval and revision
+- **Privacy-focused** — local storage, encrypted secrets, no telemetry
+- **Extensible** — MCP servers, CLI-bound extensions, and reusable skills
+- **Open source** — MIT licensed, built with modern web tech
+
+---
+
+## Documentation
+
+### User Guides
+- [Changelog](CHANGELOG.md) — what's new in each release
+- [Roadmap](docs/ROADMAP.md) — what's in, what's coming, what's out of scope
+
+### Technical
 - [Architecture](docs/ARCHITECTURE.md) — agent pipeline, event flow, storage layout
 - [Agent Definitions](docs/AGENT-DEFINITIONS.md) — reusable agent configurations and sub-agent system
 - [Collaboration](docs/COLLABORATION.md) — autonomy system and intelligent engagement
-- [Roadmap](docs/ROADMAP.md) — what's in, what's coming, what's out of scope
 - [Terminal](docs/TERMINAL.md) — in-app terminal reference
 - [Worktree Isolation](docs/WORKTREE-ISOLATION.md) — parallel agent isolation via git worktrees
-- [Changelog](CHANGELOG.md)
-- [Contributing](CONTRIBUTING.md)
-- [Security](SECURITY.md)
+
+### Contributing
+- [Contributing](CONTRIBUTING.md) — development setup and guidelines
+- [Security](SECURITY.md) — vulnerability reporting
 
 ---
 
