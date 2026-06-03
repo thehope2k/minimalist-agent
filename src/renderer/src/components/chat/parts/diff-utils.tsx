@@ -178,16 +178,107 @@ export function countDiffLines(
   newValue: string,
 ): { additions: number; deletions: number } {
   if (oldValue === newValue) return { additions: 0, deletions: 0 };
-  if (!oldValue) return { additions: countLines(newValue), deletions: 0 };
-  if (!newValue) return { additions: 0, deletions: countLines(oldValue) };
-  return { additions: countLines(newValue), deletions: countLines(oldValue) };
+
+  const oldLines = toLines(oldValue);
+  const newLines = toLines(newValue);
+
+  if (oldLines.length === 0) return { additions: newLines.length, deletions: 0 };
+  if (newLines.length === 0) return { additions: 0, deletions: oldLines.length };
+
+  return countLineEditsMyers(oldLines, newLines);
 }
 
-function countLines(s: string): number {
-  if (!s) return 0;
+function countLineEditsMyers(
+  oldLines: string[],
+  newLines: string[],
+): { additions: number; deletions: number } {
+  const n = oldLines.length;
+  const m = newLines.length;
+  const max = n + m;
+
+  // Frontier map for Myers O(ND) diff.
+  // k = x - y, value = furthest x reached on that diagonal.
+  let v = new Map<number, number>([[1, 0]]);
+  const trace: Array<Map<number, number>> = [];
+
+  for (let d = 0; d <= max; d++) {
+    const next = new Map<number, number>();
+
+    for (let k = -d; k <= d; k += 2) {
+      const moveDown =
+        k === -d || (k !== d && (v.get(k - 1) ?? -Infinity) < (v.get(k + 1) ?? -Infinity));
+
+      let x = moveDown ? (v.get(k + 1) ?? 0) : (v.get(k - 1) ?? 0) + 1;
+      let y = x - k;
+
+      while (x < n && y < m && oldLines[x] === newLines[y]) {
+        x += 1;
+        y += 1;
+      }
+
+      next.set(k, x);
+
+      if (x >= n && y >= m) {
+        trace.push(next);
+        return backtrackLineEditCounts(trace, oldLines, newLines);
+      }
+    }
+
+    trace.push(next);
+    v = next;
+  }
+
+  // Unreachable in practice; keep a safe fallback.
+  return { additions: newLines.length, deletions: oldLines.length };
+}
+
+function backtrackLineEditCounts(
+  trace: Array<Map<number, number>>,
+  oldLines: string[],
+  newLines: string[],
+): { additions: number; deletions: number } {
+  let x = oldLines.length;
+  let y = newLines.length;
+  let additions = 0;
+  let deletions = 0;
+
+  for (let d = trace.length - 1; d > 0; d--) {
+    const prev = trace[d - 1];
+    const k = x - y;
+
+    const moveDown =
+      k === -d || (k !== d && (prev.get(k - 1) ?? -Infinity) < (prev.get(k + 1) ?? -Infinity));
+
+    const prevK = moveDown ? k + 1 : k - 1;
+    const prevX = prev.get(prevK) ?? 0;
+    const prevY = prevX - prevK;
+
+    // Walk back through unchanged lines (diagonal moves).
+    while (x > prevX && y > prevY) {
+      x -= 1;
+      y -= 1;
+    }
+
+    // Then account for the edit step that moved between diagonals.
+    if (x === prevX) {
+      if (y > 0) {
+        additions += 1;
+        y -= 1;
+      }
+    } else if (x > 0) {
+      deletions += 1;
+      x -= 1;
+    }
+  }
+
+  return { additions, deletions };
+}
+
+function toLines(s: string): string[] {
+  if (!s) return [];
   const trimmed = s.endsWith('\n') ? s.slice(0, -1) : s;
-  if (!trimmed) return 0;
-  return trimmed.split('\n').length;
+  if (!trimmed) return [];
+  return trimmed.split('\n');
 }
 
 export function shortenPath(p: string): string {
