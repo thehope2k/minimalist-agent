@@ -33,12 +33,12 @@ export function HtmlViewer({
   }
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto px-6 py-6">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-6">
       <iframe
         srcDoc={content}
         sandbox="allow-same-origin"
         title="HTML Preview"
-        className="w-full h-[calc(100vh-200px)] rounded border border-border bg-white"
+        className="h-full w-full flex-1 rounded border border-border bg-white"
       />
     </div>
   );

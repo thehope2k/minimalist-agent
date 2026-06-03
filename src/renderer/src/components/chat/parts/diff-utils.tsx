@@ -46,15 +46,15 @@ export function WrittenView({ filePath, content }: { filePath: string; content: 
   const isMarkdown = ext === 'md' || ext === 'mdx';
   const isJson = ext === 'json' || ext === 'jsonc';
   const isHtml = ext === 'html' || ext === 'htm';
-  
+
   const [showSource, setShowSource] = useState(false);
 
   // ── Markdown viewer with Preview/Source toggle ──
   if (isMarkdown) {
     return (
-      <div className="flex flex-col bg-panel">
+      <div className="flex min-h-0 flex-1 flex-col bg-panel">
         {/* Header with toggle */}
-        <div className="flex items-center justify-between border-b border-border/60 px-3 py-1.5">
+        <div className="flex shrink-0 items-center justify-between border-b border-border/60 px-3 py-1.5">
           <span className="text-[10px] uppercase tracking-wide text-fg-subtle">markdown</span>
           <button
             type="button"
@@ -65,13 +65,13 @@ export function WrittenView({ filePath, content }: { filePath: string; content: 
             {showSource ? 'Preview' : 'Source'}
           </button>
         </div>
-        
+
         {/* Content */}
-        <div className="scroll-thin overflow-x-auto">
+        <div className="scroll-thin min-h-0 flex-1 overflow-auto">
           {showSource ? (
-            <div className="p-3">
-              <CodeBlock code={content} language="markdown" />
-            </div>
+            <pre className="m-0 overflow-auto px-4 py-3 font-mono text-[12.5px] leading-relaxed text-fg">
+              <code>{content}</code>
+            </pre>
           ) : (
             <div className="px-6 py-4">
               <Markdown text={content} />
@@ -85,9 +85,9 @@ export function WrittenView({ filePath, content }: { filePath: string; content: 
   // ── HTML viewer with Source/Preview toggle (sandboxed, safe to show preview) ──
   if (isHtml) {
     return (
-      <div className="flex flex-col bg-panel">
+      <div className="flex min-h-0 flex-1 flex-col bg-panel">
         {/* Header with toggle */}
-        <div className="flex items-center justify-between border-b border-border/60 px-3 py-1.5">
+        <div className="flex shrink-0 items-center justify-between border-b border-border/60 px-3 py-1.5">
           <span className="text-[10px] uppercase tracking-wide text-fg-subtle">html</span>
           <button
             type="button"
@@ -98,21 +98,21 @@ export function WrittenView({ filePath, content }: { filePath: string; content: 
             {showSource ? 'Preview' : 'Source'}
           </button>
         </div>
-        
+
         {/* Content */}
-        <div className="scroll-thin overflow-x-auto">
+        <div className="scroll-thin min-h-0 flex-1 overflow-auto">
           {showSource ? (
-            <div className="p-3">
-              <CodeBlock code={content} language="html" />
-            </div>
+            <pre className="m-0 overflow-auto px-4 py-3 font-mono text-[12.5px] leading-relaxed text-fg">
+              <code>{content}</code>
+            </pre>
           ) : (
-            <div className="px-3 py-3">
+            <div className="p-2">
               {/* Sandboxed iframe — blocks scripts, forms, popups, top navigation */}
               <iframe
                 srcDoc={content}
                 sandbox="allow-same-origin"
                 title="HTML Preview"
-                className="w-full min-h-[400px] rounded border border-border bg-white"
+                className="h-[min(65vh,760px)] min-h-[420px] w-full rounded border border-border/40 bg-white"
               />
             </div>
           )}
@@ -124,7 +124,7 @@ export function WrittenView({ filePath, content }: { filePath: string; content: 
   // ── JSON viewer with interactive tree ──
   if (isJson) {
     return (
-      <div className="bg-panel">
+      <div className="scroll-thin min-h-0 flex-1 overflow-auto bg-panel">
         <JsonBlock code={content} />
       </div>
     );
@@ -132,7 +132,7 @@ export function WrittenView({ filePath, content }: { filePath: string; content: 
 
   // ── Default: syntax-highlighted code block ──
   return (
-    <div className="scroll-thin overflow-x-auto bg-panel">
+    <div className="scroll-thin min-h-0 flex-1 overflow-auto bg-panel">
       <CodeBlock code={content} language={langFromPath(filePath)} />
     </div>
   );
@@ -272,20 +272,22 @@ export function DiffExpandModal({
 
   return (
     <ExpandModal title={title} onClose={onClose} className="max-w-6xl">
-      <div className="scroll-thin flex-1 overflow-auto bg-panel">
+      <div className="flex min-h-0 flex-1 flex-col bg-panel">
         {isWrite ? (
           <WrittenView filePath={parsed.filePath} content={parsed.newValue} />
         ) : (
-          <Suspense fallback={<div className="h-16 animate-pulse rounded bg-elevated/40 m-4" />}>
-            <LazyDiffViewer
-              oldValue={parsed.oldValue}
-              newValue={parsed.newValue}
-              splitView={true}
-              compareMethod={DIFF_METHOD_WORDS}
-              useDarkTheme={true}
-              styles={diffViewerStyles}
-            />
-          </Suspense>
+          <div className="scroll-thin min-h-0 flex-1 overflow-auto">
+            <Suspense fallback={<div className="h-16 animate-pulse rounded bg-elevated/40 m-4" />}>
+              <LazyDiffViewer
+                oldValue={parsed.oldValue}
+                newValue={parsed.newValue}
+                splitView={true}
+                compareMethod={DIFF_METHOD_WORDS}
+                useDarkTheme={true}
+                styles={diffViewerStyles}
+              />
+            </Suspense>
+          </div>
         )}
       </div>
     </ExpandModal>
