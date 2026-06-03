@@ -5,6 +5,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.2.2] — 2026-06-03
+
+Bug fixes across the diff viewer and session management.
+
+### Fixed
+
+**Diff viewer**
+
+- Line additions and deletions are now counted accurately using a proper Myers diff instead of naive line totals
+- Corrected diff and modal pane sizing and overflow behavior
+
+**Sessions**
+
+- The "New session" draft (mode, autonomy, working directory, connection) is now preserved when switching between session slots instead of resetting
+
+---
+
 ## [1.2.1] — 2026-06-02
 
 Bug fixes for the file explorer and autonomy slider.
