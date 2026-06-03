@@ -63,6 +63,7 @@ export default function App() {
     seedSubmit,
     setSeedSubmit,
     handleNewSession,
+    handleResumeNewSession,
     startSessionWithSubmission,
     sessions,
   } = useSessionManagement(
@@ -153,6 +154,7 @@ export default function App() {
                   onActiveSessionDeleted={() => setActiveSessionId(null)}
                   projectFilter={projectFilter}
                   onNewSession={handleNewSession}
+                  onResumeNewSession={handleResumeNewSession}
                   streamingSessionIds={streamingSessionIds}
                   startSessionWithSubmission={startSessionWithSubmission}
                 />

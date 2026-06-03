@@ -32,6 +32,17 @@ export function useSessionManagement(
     if (inSettings || inSkills || inAgents || inExtensions) setView('all');
   };
 
+  // Return to the in-progress new-session slot WITHOUT wiping its draft
+  // (mode / autonomy / cwd / picker). Used by the "New session" row that
+  // appears while a draft exists and the user is viewing another session.
+  // Sets the intent flag so the auto-select effect doesn't bounce us back
+  // to the latest session.
+  const handleResumeNewSession = () => {
+    intentNewChatRef.current = true;
+    setActiveSessionId(null);
+    if (inSettings || inSkills || inAgents || inExtensions) setView('all');
+  };
+
   const startSessionWithSubmission = (submit: SeedSubmit) => {
     intentNewChatRef.current = true;
     clearNewSessionStateDraft();
@@ -72,6 +83,7 @@ export function useSessionManagement(
     seedSubmit,
     setSeedSubmit,
     handleNewSession,
+    handleResumeNewSession,
     startSessionWithSubmission,
     sessions,
   };

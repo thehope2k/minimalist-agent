@@ -1,6 +1,6 @@
-import {useEffect, useRef, useState} from 'react';
+import {useCallback, useEffect, useRef, useState} from 'react';
 import {loadFullSession} from '@/lib/sessions';
-import {findProject} from '@/lib/projects';
+import {findProject, findProjectForPath} from '@/lib/projects';
 import {getNewSessionStateDraft, patchNewSessionStateDraft} from '@/lib/new-session-draft';
 import type {PermissionMode} from '@/lib/electron';
 import type {useAiData} from '@/hooks/useAiData';
@@ -118,6 +118,45 @@ export function useSessionSync(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, newSessionDefaultProjectId]);
 
+  // Folder selection on a fresh session should adopt the matching project's
+  // defaults (mode + autonomy + connection). Without this, picking a folder
+  // that belongs to a project leaves the global defaults in place. Existing
+  // sessions keep their persisted values, so this only fires for the null slot.
+  const handleCwdChange = useCallback(
+    (next: string | undefined) => {
+      setCwd(next);
+      onCwdChange?.(next);
+
+      if (sessionId) return; // Only fresh sessions re-derive config from cwd.
+
+      const proj = findProjectForPath(next);
+      const mode =
+        proj?.defaultPermissionMode ??
+        aiData?.settings.defaultPermissionMode ??
+        'auto';
+      const auto =
+        proj?.defaultAutonomyLevel ??
+        aiData?.settings.defaultAutonomyLevel ??
+        50;
+
+      setPermissionMode(mode);
+      permissionModeRef.current = mode;
+      setAutonomyLevel(auto);
+      autonomyLevelRef.current = auto;
+      setProjectDefaultConnectionSlug(proj?.defaultConnectionSlug ?? '');
+
+      // Persist into the draft so the picks survive switching slots and don't
+      // get clobbered by the fresh-session default-tracking effect below.
+      patchNewSessionStateDraft({
+        cwd: next,
+        permissionMode: mode,
+        autonomyLevel: auto,
+      });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sessionId, aiData?.settings.defaultPermissionMode, aiData?.settings.defaultAutonomyLevel],
+  );
+
   // Listen for permission mode changes from subprocess (e.g., plan → auto after approval)
   useEffect(() => {
     if (!sessionId) return;
@@ -156,7 +195,7 @@ export function useSessionSync(
 
   return {
     cwd,
-    setCwd,
+    setCwd: handleCwdChange,
     title,
     permissionMode,
     setPermissionMode,

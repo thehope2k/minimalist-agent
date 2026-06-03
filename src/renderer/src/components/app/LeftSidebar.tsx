@@ -26,6 +26,7 @@ type Props = {
   onActiveSessionDeleted: () => void;
   projectFilter: ProjectFilter;
   onNewSession: () => void;
+  onResumeNewSession: () => void;
   streamingSessionIds: ReadonlySet<string>;
   startSessionWithSubmission: (submit: SeedSubmit) => void;
 };
@@ -52,6 +53,7 @@ export function LeftSidebar({
   onActiveSessionDeleted,
   projectFilter,
   onNewSession,
+  onResumeNewSession,
   streamingSessionIds,
   startSessionWithSubmission,
 }: Props) {
@@ -102,6 +104,7 @@ export function LeftSidebar({
       onSelect={onSessionSelect}
       onActiveDeleted={onActiveSessionDeleted}
       onNewSession={onNewSession}
+      onResumeNewSession={onResumeNewSession}
       streamingSessionIds={streamingSessionIds}
     />
   );

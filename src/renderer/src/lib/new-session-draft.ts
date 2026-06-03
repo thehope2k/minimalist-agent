@@ -4,6 +4,13 @@
 // stores) so switching away and back preserves the user's permission-mode,
 // working-directory, and connection/model picks — identical lifecycle to
 // input-drafts.ts and attachment-drafts.ts.
+//
+// INVARIANT: the on-leave snapshot of this draft is contributed by TWO hooks
+// that both fire on the same `sessionId` change. Keep them in sync when adding
+// a field:
+//   • useSessionSync.ts      → permissionMode, autonomyLevel, cwd
+//   • useDraftPersistence.ts → connectionSlug, modelId
+// It is cleared only by clearNewSessionStateDraft() (the "+ New" action).
 
 import type { PermissionMode } from './electron';
 

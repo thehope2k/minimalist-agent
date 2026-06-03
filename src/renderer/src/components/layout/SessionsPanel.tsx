@@ -18,6 +18,11 @@ type Props = {
   onSelect: (id: string) => void;
   onActiveDeleted?: () => void;
   onNewSession?: () => void;
+  /**
+   * Return to an existing new-session draft without clearing it. Distinct
+   * from `onNewSession`, which starts fresh and wipes the draft state.
+   */
+  onResumeNewSession?: () => void;
   streamingSessionIds?: ReadonlySet<string>;
 };
 
@@ -28,6 +33,7 @@ export function SessionsPanel({
   onSelect,
   onActiveDeleted,
   onNewSession,
+  onResumeNewSession,
   streamingSessionIds,
 }: Props) {
   const sessions = useSessions();
@@ -150,7 +156,10 @@ export function SessionsPanel({
 
       <div className="scroll-thin flex-1 overflow-y-auto px-2 pb-3">
         {view === 'all' && (activeId == null || hasNewSessionDraft) && (
-          <NewSessionRow active={activeId == null} onSelect={onNewSession} />
+          <NewSessionRow
+            active={activeId == null}
+            onSelect={onResumeNewSession ?? onNewSession}
+          />
         )}
 
         {items.length === 0 && !(view === 'all' && activeId == null) ? (
