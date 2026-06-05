@@ -291,6 +291,17 @@ export function getWorkingDirectoryContext(workingDirectory?: string): string {
 }
 
 /**
+ * Per-turn scratch-directory line. Tells the agent WHERE its session scratch
+ * area is (the path is session-specific, so it can't live in the static
+ * prompt). Intentionally just the path — no file listing/manifest, to avoid
+ * per-turn bloat and to keep the agent from acting as a janitor.
+ */
+export function getScratchDirContext(scratchDir?: string): string {
+  if (!scratchDir) return '';
+  return `<scratch_directory>${scratchDir}</scratch_directory>`;
+}
+
+/**
  * Get the current date/time context string.
  */
 export function getDateTimeContext(): string {
@@ -370,6 +381,29 @@ export function resolveProviderDescription(
 /* ===================================================================== *
  *  Static assistant body (appended to the claude_code preset)
  * ===================================================================== */
+
+/**
+ * Where-to-write policy for agent-produced files. Static (cacheable). Keeps
+ * non-deliverable output out of the user's repo without a per-turn manifest or
+ * any "maintain/prune" burden — cleanup is handled by session deletion.
+ */
+export function getArtifactPolicy(): string {
+  return `## Working files & artifacts
+
+Be deliberate about where you write files:
+
+- **Deliverables** — a file the user explicitly asked you to create, or one at a
+  path they named — go in the working directory (or the exact path given).
+- **Everything else you generate** that the user did NOT ask to save as a project
+  file (analysis write-ups, notes, scratch scripts, extracted data, one-off
+  intermediates) must NOT be written into the working directory. Put it under the
+  path in \`<scratch_directory>\` instead.
+- Prefer answering analysis/reports **inline in chat**. If you also save a file,
+  add one short line saying where it went.
+
+This keeps the user's project and git status clean. The scratch directory is
+deleted with the session, so don't treat it as permanent storage.`;
+}
 
 /**
  * Environment marker embedded in the system prompt — useful for SDK JSONL
@@ -572,6 +606,7 @@ export function getSystemPrompt(opts: SystemPromptOptions = {}): string {
   const preferences = formatPreferencesForPrompt();
   const userPreferences = preferences ? `\n\n${preferences}` : '';
   const projectContextFiles = getProjectContextFilesPrompt(opts.workingDirectory);
+  const artifactPolicy = getArtifactPolicy();
   const providerDescription = resolveProviderDescription(opts.authType, opts.piAuthProvider, opts.model);
   const basePrompt = getAssistantPrompt(includeCoAuthoredBy, providerDescription);
 
@@ -626,7 +661,7 @@ Use the Agent tool to delegate focused tasks to specialized sub-agents when it i
     agentsBlock = agentsBlockCache.block;
   }
 
-  return `${basePrompt}${userPreferences}${projectContextFiles}${collaborationBlock ? `\n\n${collaborationBlock}` : ''}${planningBlock ? `\n\n${planningBlock}` : ''}${planContextBlock ? `\n\n${planContextBlock}` : ''}${agentsBlock ? `\n\n${agentsBlock}` : ''}`;
+  return `${basePrompt}${userPreferences}${projectContextFiles}\n\n${artifactPolicy}${collaborationBlock ? `\n\n${collaborationBlock}` : ''}${planningBlock ? `\n\n${planningBlock}` : ''}${planContextBlock ? `\n\n${planContextBlock}` : ''}${agentsBlock ? `\n\n${agentsBlock}` : ''}`;
 }
 
 /**
@@ -666,11 +701,13 @@ export function buildSystemPromptAppend(input: {
  *
  * Kept out of the system prompt so per-turn changes don't bust the cache.
  */
-export function buildPromptPrefix(input: { cwd?: string }): string {
+export function buildPromptPrefix(input: { cwd?: string; scratchDir?: string }): string {
   const blocks: string[] = [];
   blocks.push(getDateTimeContext());
   const wd = getWorkingDirectoryContext(input.cwd);
   if (wd) blocks.push(wd);
+  const scratch = getScratchDirContext(input.scratchDir);
+  if (scratch) blocks.push(scratch);
   const ext = formatExtensionsAwareness();
   if (ext) blocks.push(ext);
   return blocks.join('\n\n');

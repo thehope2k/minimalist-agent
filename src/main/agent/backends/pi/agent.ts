@@ -27,6 +27,7 @@ import {resolveExtensionEnv} from '../../../extensions/env-resolver';
 import {createInterface, type Interface as ReadlineInterface} from 'node:readline';
 import {app, BrowserWindow} from 'electron';
 import {readFileSync} from 'node:fs';
+import {join} from 'node:path';
 import {resolvePiServerPath} from './spawn-utils';
 import type {StoredAttachment} from '../../../storage/sessions';
 import {updateSessionMeta} from '../../../storage/sessions';
@@ -781,7 +782,10 @@ export async function* runPiChat(
     model: req.model,
     autonomyLevel: req.autonomyLevel,
   });
-  const prefix = buildPromptPrefix({ cwd: req.cwd });
+  const prefix = buildPromptPrefix({
+    cwd: req.cwd,
+    scratchDir: join(req.chatSessionPath, 'scratch'),
+  });
 
   // Resolve `@slug` / `@path` mentions exactly as the Anthropic backend does.
   const { skillPaths, extensionGuidePaths, filePaths, folderPaths, cleanMessage, missingSkills, missingFiles } =

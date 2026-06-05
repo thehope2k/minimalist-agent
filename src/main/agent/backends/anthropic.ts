@@ -405,7 +405,12 @@ export async function* runAnthropicChat(
 
   const state = newAdaptState();
 
-  const prefix = buildPromptPrefix({ cwd: req.cwd });
+  const prefix = buildPromptPrefix({
+    cwd: req.cwd,
+    scratchDir: req.chatSessionId
+      ? join(Paths.sessionsDir(), req.chatSessionId, 'scratch')
+      : undefined,
+  });
 
   // Resolve `@slug` mentions: replace with semantic markers and (if any)
   // prepend a "Read SKILL.md / guide.md first" directive. See
