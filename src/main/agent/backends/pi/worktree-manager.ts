@@ -9,7 +9,7 @@
 // - Graceful fallback for non-git repositories
 // - Clean branch management and automatic cleanup
 
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { join, dirname } from 'path';
 import { existsSync, mkdirSync, copyFileSync, readFileSync, statSync, readdirSync, appendFileSync, writeFileSync } from 'fs';
@@ -18,7 +18,9 @@ import { createLogger } from '../../../logger';
 
 const log = createLogger('worktree');
 
-const execAsync = promisify(exec);
+// Run git via execFile (no shell): every ref/path/branch travels as a discrete
+// argv entry, so injection metacharacters in filenames/refs stay inert literals.
+const execFileAsync = promisify(execFile);
 
 /** Configuration for worktree behavior */
 interface WorktreeOptions {
@@ -128,7 +130,7 @@ async function ensureWorktreeInGitignore(gitRoot: string): Promise<void> {
  */
 async function isGitRepository(cwd: string): Promise<boolean> {
   try {
-    await execAsync('git rev-parse --git-dir', { cwd });
+    await execFileAsync('git', ['rev-parse', '--git-dir'], { cwd });
     return true;
   } catch {
     return false;
@@ -140,7 +142,7 @@ async function isGitRepository(cwd: string): Promise<boolean> {
  */
 async function getGitRoot(cwd: string): Promise<string> {
   try {
-    const { stdout } = await execAsync('git rev-parse --show-toplevel', { cwd });
+    const { stdout } = await execFileAsync('git', ['rev-parse', '--show-toplevel'], { cwd });
     return stdout.trim();
   } catch {
     return cwd; // Fallback to cwd if not in git repo
@@ -157,7 +159,7 @@ async function getBaseRef(cwd: string, baseRef: 'fresh' | 'head'): Promise<strin
 
   // Try to get origin/HEAD (fresh checkout)
   try {
-    const { stdout } = await execAsync('git symbolic-ref refs/remotes/origin/HEAD', { cwd });
+    const { stdout } = await execFileAsync('git', ['symbolic-ref', 'refs/remotes/origin/HEAD'], { cwd });
     return stdout.trim().replace('refs/remotes/', '');
   } catch {
     // Fallback to local HEAD if no remote configured
@@ -199,7 +201,7 @@ function readWorktreeInclude(baseCwd: string): string[] {
  */
 async function isGitIgnored(filepath: string, cwd: string): Promise<boolean> {
   try {
-    await execAsync(`git check-ignore "${filepath}"`, { cwd });
+    await execFileAsync('git', ['check-ignore', '--', filepath], { cwd });
     return true; // Exit code 0 = file is ignored
   } catch {
     return false; // Exit code 1 = file is NOT ignored
@@ -353,8 +355,9 @@ export async function createAgentWorktree(
     log.debug(`Creating worktree at ${worktreePath} from ${baseRef}`);
 
     // Create git worktree
-    await execAsync(
-      `git worktree add "${worktreePath}" -b "${branchName}" "${baseRef}"`,
+    await execFileAsync(
+      'git',
+      ['worktree', 'add', worktreePath, '-b', branchName, baseRef],
       { cwd: gitRoot },
     );
 
@@ -409,16 +412,18 @@ export async function removeAgentWorktree(execId: string): Promise<void> {
 
   try {
     // Check if worktree has uncommitted changes
-    const { stdout: statusOutput } = await execAsync(
-      'git status --porcelain',
+    const { stdout: statusOutput } = await execFileAsync(
+      'git',
+      ['status', '--porcelain'],
       { cwd: worktreePath },
     );
 
     const hasUncommittedChanges = statusOutput.trim().length > 0;
 
     // Check if worktree has unpushed commits
-    const { stdout: logOutput } = await execAsync(
-      `git log origin/${branch}..HEAD --oneline`,
+    const { stdout: logOutput } = await execFileAsync(
+      'git',
+      ['log', `origin/${branch}..HEAD`, '--oneline'],
       { cwd: worktreePath },
     ).catch(() => ({ stdout: '' })); // Catch error if branch doesn't exist on remote
 
@@ -434,14 +439,16 @@ export async function removeAgentWorktree(execId: string): Promise<void> {
     // Clean worktree - remove it
     log.debug(`Removing clean worktree ${execId}`);
 
-    await execAsync(
-      `git worktree remove "${worktreePath}" --force`,
+    await execFileAsync(
+      'git',
+      ['worktree', 'remove', worktreePath, '--force'],
       { cwd: baseCwd },
     );
 
     // Delete the branch
-    await execAsync(
-      `git branch -D "${branch}"`,
+    await execFileAsync(
+      'git',
+      ['branch', '-D', branch],
       { cwd: baseCwd },
     );
 
@@ -501,8 +508,9 @@ export async function cleanupOrphanedWorktrees(baseCwd: string, maxAgeDays = 7):
         }
 
         // Check if clean
-        const { stdout: statusOutput } = await execAsync(
-          'git status --porcelain',
+        const { stdout: statusOutput } = await execFileAsync(
+          'git',
+          ['status', '--porcelain'],
           { cwd: worktreePath },
         );
 
@@ -514,14 +522,16 @@ export async function cleanupOrphanedWorktrees(baseCwd: string, maxAgeDays = 7):
         // Old and clean - remove it
         log.debug(`Removing orphaned worktree ${execId}`);
 
-        await execAsync(
-          `git worktree remove "${worktreePath}" --force`,
+        await execFileAsync(
+          'git',
+          ['worktree', 'remove', worktreePath, '--force'],
           { cwd: gitRoot },
         );
 
         const branchName = `agent/${execId}`;
-        await execAsync(
-          `git branch -D "${branchName}"`,
+        await execFileAsync(
+          'git',
+          ['branch', '-D', branchName],
           { cwd: gitRoot },
         ).catch(() => {}); // Branch might not exist
 
@@ -539,7 +549,7 @@ export async function cleanupOrphanedWorktrees(baseCwd: string, maxAgeDays = 7):
  */
 export async function isWorktreeSupported(): Promise<boolean> {
   try {
-    await execAsync('git --version');
+    await execFileAsync('git', ['--version']);
     return true;
   } catch {
     return false;
