@@ -308,6 +308,10 @@ export interface ModelDef {
   supportsVision?: boolean;
   supportsToolCalls?: boolean;
   supportsStreaming?: boolean;
+  /** Model supports extended thinking / reasoning effort controls. */
+  supportsReasoning?: boolean;
+  /** Max output tokens (used for custom OpenAI-compatible endpoints). */
+  maxOutputTokens?: number;
   category?: 'powerful' | 'versatile' | 'lightweight';
   recommendedFor?: string[];
 }
@@ -318,12 +322,14 @@ export type { PiAuthProvider } from '../../../shared/pi-types';
 export interface ConnectionMeta {
   slug: string;
   name: string;
-  providerType: 'anthropic' | 'pi' | 'local';
+  providerType: 'anthropic' | 'pi' | 'local' | 'openai-compatible';
   authType: 'api_key' | 'oauth';
   /** Required when providerType === 'pi'. */
   piAuthProvider?: PiAuthProvider;
-  /** Base URL for local model server (providerType === 'local'). */
+  /** Base URL for local model server / custom OpenAI-compatible endpoint. */
   baseUrl?: string;
+  /** Preset id for 'openai-compatible' connections (e.g. 'stepfun'); 'custom' for hand-entered. */
+  presetId?: string;
   defaultModel: string;
   models: ModelDef[];
   createdAt: number;

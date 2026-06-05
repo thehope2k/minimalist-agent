@@ -1,4 +1,4 @@
-import { ArrowLeft, Github, Monitor, Sparkles } from 'lucide-react';
+import { ArrowLeft, Github, Monitor, Plug, Sparkles } from 'lucide-react';
 import { IconButton } from '@/components/ui';
 import type { ConnectionMeta } from '@/lib/electron';
 
@@ -64,6 +64,9 @@ export function BrandMark({ conn }: { conn: Pick<ConnectionMeta, 'providerType' 
   if (conn.providerType === 'pi' && conn.piAuthProvider === 'openai-codex') return <OpenAIMark />;
   if (conn.providerType === 'local') {
     return <Monitor className="h-4 w-4 text-fg-muted" strokeWidth={1.75} />;
+  }
+  if (conn.providerType === 'openai-compatible') {
+    return <Plug className="h-4 w-4 text-fg-muted" strokeWidth={1.75} />;
   }
   return <span className="grid h-4 w-4 place-items-center text-fg-subtle">·</span>;
 }

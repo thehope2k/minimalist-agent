@@ -734,6 +734,32 @@ export function registerIpc(): void {
         // a successful auth resolve is sufficient validation there.
         const meta = listConnections().find((c) => c.slug === slug);
         if (!meta) throw new Error(`Connection "${slug}" not found.`);
+        // OpenAI-compatible providers: do a real round-trip from main (no CORS)
+        // by listing models. Validates the base URL + Bearer key cheaply.
+        if (meta.providerType === 'openai-compatible' && auth.type === 'local_api') {
+          const base = auth.baseUrl.replace(/\/+$/, '');
+          const ctrl = new AbortController();
+          const timeout = setTimeout(() => ctrl.abort(), 15_000);
+          try {
+            const res = await fetch(`${base}/models`, {
+              headers: auth.apiKey ? { Authorization: `Bearer ${auth.apiKey}` } : {},
+              signal: ctrl.signal,
+            });
+            if (res.ok) return { ok: true };
+            if (res.status === 401 || res.status === 403) {
+              return { ok: false, error: parseError(new Error('Invalid or unauthorized API key.')) };
+            }
+            // Some providers don't expose /models or gate it differently. A
+            // non-auth failure isn't proof the key is bad — accept and let the
+            // first real turn surface any error inline.
+            return { ok: true };
+          } catch (e) {
+            // Network/abort: don't block saving on a flaky probe.
+            return { ok: false, error: parseError(e) };
+          } finally {
+            clearTimeout(timeout);
+          }
+        }
         if (auth.type !== 'anthropic_api_key' && auth.type !== 'anthropic_oauth') {
           // Auth resolved → token is valid; don't burn an API call we can't make.
           return { ok: true };

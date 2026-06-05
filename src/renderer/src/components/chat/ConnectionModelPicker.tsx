@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
-import { Check, ChevronDown, ChevronLeft, ChevronRight, Monitor } from 'lucide-react';
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Monitor, Plug } from 'lucide-react';
 import {
   AnthropicMark,
   BrandMark as ConnectionBrandMark,
@@ -10,12 +10,13 @@ import {
 import type { ConnectionMeta } from '@/lib/electron';
 import { cn } from '@/lib/utils';
 
-type ProviderCategory = 'anthropic' | 'copilot' | 'chatgpt' | 'local' | 'other';
+type ProviderCategory = 'anthropic' | 'copilot' | 'chatgpt' | 'local' | 'openai-compatible' | 'other';
 
 function categorize(conn: ConnectionMeta): ProviderCategory {
   if (conn.providerType === 'pi' && conn.piAuthProvider === 'github-copilot') return 'copilot';
   if (conn.providerType === 'pi' && conn.piAuthProvider === 'openai-codex') return 'chatgpt';
   if (conn.providerType === 'local') return 'local';
+  if (conn.providerType === 'openai-compatible') return 'openai-compatible';
   if (conn.providerType === 'anthropic') return 'anthropic';
   return 'other';
 }
@@ -26,6 +27,7 @@ function categoryHeader(c: ProviderCategory): string {
     case 'copilot':   return 'GitHub Copilot';
     case 'chatgpt':   return 'ChatGPT Plus';
     case 'local':     return 'Local';
+    case 'openai-compatible': return 'OpenAI-compatible';
     default:          return 'Other';
   }
 }
@@ -36,8 +38,10 @@ function BrandMark({ category, conn }: { category: ProviderCategory; conn?: Conn
   if (category === 'copilot')   return <GithubMark />;
   if (category === 'chatgpt')   return <OpenAIMark />;
   if (category === 'local')     return <Monitor className="h-4 w-4 text-fg-muted" strokeWidth={1.75} />;
+  if (category === 'openai-compatible') return <Plug className="h-4 w-4 text-fg-muted" strokeWidth={1.75} />;
   return <span className="grid h-4 w-4 place-items-center text-fg-subtle">·</span>;
 }
+
 
 interface Props {
   connections: ConnectionMeta[];

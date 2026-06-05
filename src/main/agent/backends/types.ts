@@ -21,8 +21,13 @@ export interface CopilotOAuthAuth {
 
 export interface LocalApiAuth {
   type: 'local_api';
-  /** Base URL of the local model server, e.g. http://localhost:11434 */
+  /** Base URL of the model server, e.g. http://localhost:11434 or https://api.stepfun.ai/v1 */
   baseUrl: string;
+  /**
+   * Bearer key for remote OpenAI-compatible providers (StepFun, DeepSeek, …).
+   * Undefined for local Ollama/LM Studio, which need no auth.
+   */
+  apiKey?: string;
 }
 
 export type ResolvedAuth =

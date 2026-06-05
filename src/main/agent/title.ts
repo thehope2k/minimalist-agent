@@ -12,6 +12,7 @@ import {getDefaultOptions, locateClaudeCli} from './options';
 import type {AnthropicAuth, ResolvedAuth} from './claude';
 import {runPiMiniCompletion} from './backends/pi/agent';
 import {sessionPath} from '../storage/sessions';
+import {listConnections} from '../storage/connections';
 
 const ANTHROPIC_HAIKU = 'claude-haiku-4-5-20251001';
 const PI_DEFAULT_MINI = 'claude-haiku-4.5';
@@ -88,12 +89,48 @@ export function validateTitle(raw: string): string | null {
 
 /**
  * Run a one-turn no-tools LLM call to generate a title. Provider-aware:
- *   anthropic → Claude SDK
- *   copilot   → Pi mini_completion RPC
+ *   anthropic              → Claude SDK
+ *   copilot                → Pi mini_completion RPC
+ *   local / openai-compat  → Pi mini_completion RPC (custom endpoint)
  */
 export async function generateTitle(args: GenerateTitleArgs): Promise<string | null> {
   const sample = pickSample(args.messages);
   if (!sample.trim()) return null;
+
+  // Custom endpoints (local Ollama / OpenAI-compatible) register a single
+  // model — the session model. The title must reuse that exact id, so we
+  // fall back to the connection's default model when none is supplied.
+  if (args.auth.type === 'local_api') {
+    if (!args.connectionSlug || !args.chatSessionId) return null;
+    const model =
+      args.model ??
+      listConnections().find((c) => c.slug === args.connectionSlug)?.defaultModel;
+    if (!model) return null;
+    try {
+      const result = await runPiMiniCompletion({
+        connectionSlug: args.connectionSlug,
+        auth: args.auth,
+        chatSessionId: args.chatSessionId,
+        chatSessionPath: sessionPath(args.chatSessionId),
+        cwd: args.cwd,
+        model,
+        systemPrompt: SYSTEM_PROMPT,
+        userPrompt: sample,
+        maxTokens: TITLE_MAX_TOKENS,
+      });
+      if (result.error) {
+        console.warn(`[title][custom] mini_completion error: ${result.error}`);
+        return null;
+      }
+      if (!result.text) return null;
+      return validateTitle(result.text);
+    } catch (e) {
+      console.warn(
+        `[title][custom] threw: ${e instanceof Error ? e.message : String(e)}`,
+      );
+      return null;
+    }
+  }
 
   if (args.auth.type === 'copilot_oauth') {
     if (!args.connectionSlug || !args.chatSessionId) return null;

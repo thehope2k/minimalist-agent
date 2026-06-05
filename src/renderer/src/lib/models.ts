@@ -9,6 +9,10 @@ export interface ModelDef {
   supportsVision?: boolean;
   supportsToolCalls?: boolean;
   supportsStreaming?: boolean;
+  /** Model supports extended thinking / reasoning effort controls. */
+  supportsReasoning?: boolean;
+  /** Max output tokens (used for custom OpenAI-compatible endpoints). */
+  maxOutputTokens?: number;
   category?: 'powerful' | 'versatile' | 'lightweight';
   recommendedFor?: string[];
 }

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ANTHROPIC_MODELS } from '@/lib/models';
 import { generateSlug, saveConnection } from '@/lib/connections';
 import type { ConnectionMeta, Credential } from '@/lib/electron';
-import { Button, Field, Input, Select } from '@/components/ui';
+import { Button, Field, Input, PasswordInput, Select } from '@/components/ui';
 import { Actions, ErrorBox, FormShell } from './shared';
 import type { FlowProps } from './types';
 
@@ -62,12 +62,10 @@ export function ApiKeyForm({ onBack, onClose, onSaved, editingMeta }: FlowProps)
         label="API key"
         hint="Get one at console.anthropic.com. Stored encrypted via the OS keychain."
       >
-        <Input
+        <PasswordInput
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
-          type="password"
           autoComplete="off"
-          mono
           placeholder="sk-ant-…"
         />
       </Field>

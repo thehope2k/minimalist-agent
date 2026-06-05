@@ -7,6 +7,7 @@ import { getDefaultOptions, locateClaudeCli } from './options';
 import type { AnthropicAuth, ResolvedAuth } from './claude';
 import { runPiMiniCompletion } from './backends/pi/agent';
 import { sessionPath } from '../storage/sessions';
+import { listConnections } from '../storage/connections';
 
 const ANTHROPIC_HAIKU  = 'claude-haiku-4-5-20251001';
 const PI_DEFAULT_MINI  = 'claude-haiku-4.5';
@@ -103,6 +104,32 @@ ${args.diffContext}`;
     userPrompt = `Generate a commit message for these staged changes:
 
 ${args.diffContext}`;
+  }
+
+  // Custom endpoints (local / OpenAI-compatible) reuse the session model.
+  if (args.auth.type === 'local_api') {
+    if (!args.connectionSlug || !args.chatSessionId) return null;
+    const model =
+      args.model ??
+      listConnections().find((c) => c.slug === args.connectionSlug)?.defaultModel;
+    if (!model) return null;
+    try {
+      const result = await runPiMiniCompletion({
+        connectionSlug: args.connectionSlug,
+        auth: args.auth,
+        chatSessionId: args.chatSessionId,
+        chatSessionPath: sessionPath(args.chatSessionId),
+        cwd: args.cwd,
+        model,
+        systemPrompt: SYSTEM_PROMPT,
+        userPrompt,
+        maxTokens: COMMIT_MAX_TOKENS,
+      });
+      if (result.error || !result.text) return null;
+      return validateCommitMessage(result.text);
+    } catch {
+      return null;
+    }
   }
 
   if (args.auth.type === 'copilot_oauth') {

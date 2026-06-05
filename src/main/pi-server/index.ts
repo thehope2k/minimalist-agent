@@ -876,7 +876,7 @@ function buildWrappedTools(
     sessionModel: string; // Parent session's model for agent resolution
     getAuth: () => Promise<{ access: string; refresh?: string; expires?: number }>;
     baseUrl?: string;
-    customEndpoint?: { api: 'openai-completions' | 'anthropic-messages'; supportsImages?: boolean };
+    customEndpoint?: { api: 'openai-completions' | 'anthropic-messages'; supportsImages?: boolean; contextWindow?: number; maxTokens?: number; reasoning?: boolean; thinkingFormat?: 'qwen' };
     permissionMode: 'plan' | 'auto';
   },
 ): ToolDefinition<any, any, any>[] {
@@ -957,24 +957,24 @@ async function handleInit(msg: MsgInit): Promise<void> {
       : rawBase;
     // Localhost endpoints (Ollama, LM Studio) don’t need auth.
     const apiKey = isLocalhostUrl(rawBase) ? 'not-needed' : (msg.piAuth?.credential.type === 'api_key' ? msg.piAuth.credential.key : '');
+    const ce = msg.customEndpoint!;
     modelRegistry.registerProvider('custom-endpoint', {
       baseUrl: apiBase,
       apiKey,
-      api: msg.customEndpoint!.api,
+      api: ce.api,
       authHeader: true,
       models: [{
         id: modelId,
         name: modelId,
-        // Mark reasoning=true + thinkingFormat='qwen' so the Pi SDK explicitly
-        // sends enable_thinking:false when no reasoningEffort is set.
-        // Without this, Ollama defaults to thinking-on for Qwen3 models
-        // causing ~30s delay before the first token.
-        reasoning: true,
-        compat: { thinkingFormat: 'qwen' },
-        input: ['text'],
+        reasoning: ce.reasoning ?? true,
+        // 'qwen' forces enable_thinking:false so local Ollama Qwen3 models
+        // don't stall ~30s before the first token. Remote OpenAI-compatible
+        // providers (StepFun, DeepSeek, …) omit this and reason natively.
+        ...(ce.thinkingFormat ? { compat: { thinkingFormat: ce.thinkingFormat } } : {}),
+        input: ce.supportsImages ? ['text', 'image'] : ['text'],
         cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-        contextWindow: 131_072,
-        maxTokens: 8_192,
+        contextWindow: ce.contextWindow ?? 131_072,
+        maxTokens: ce.maxTokens ?? 8_192,
       }],
     } as never);
     const resolved = (modelRegistry as unknown as { find: (p: string, id: string) => ReturnType<typeof getModel> | undefined })

@@ -74,10 +74,25 @@ export interface MsgInit {
   systemPrompt: string;
   /** Resume an existing Pi session if one is stored. */
   resumePiSessionId?: string;
-  /** Base URL for custom/local endpoints (e.g. http://localhost:11434). */
+  /** Base URL for custom/local endpoints (e.g. http://localhost:11434 or https://api.stepfun.ai/v1). */
   baseUrl?: string;
   /** Custom endpoint protocol — required when baseUrl is set. */
-  customEndpoint?: { api: 'openai-completions' | 'anthropic-messages'; supportsImages?: boolean };
+  customEndpoint?: {
+    api: 'openai-completions' | 'anthropic-messages';
+    supportsImages?: boolean;
+    /** Model context window (tokens) for accurate compaction; defaults if omitted. */
+    contextWindow?: number;
+    /** Max output tokens; defaults if omitted. */
+    maxTokens?: number;
+    /** Whether the model supports extended thinking / reasoning effort. */
+    reasoning?: boolean;
+    /**
+     * Thinking payload quirk. 'qwen' forces enable_thinking:false for local
+     * Ollama Qwen3 models (avoids a ~30s stall). Omit for providers that
+     * handle reasoning natively (StepFun, DeepSeek, …).
+     */
+    thinkingFormat?: 'qwen';
+  };
   /** Available agents (serialized from main process) — used by Agent tool. */
   availableAgents?: Array<{
     slug: string;

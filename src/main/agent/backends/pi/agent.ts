@@ -40,6 +40,7 @@ import type {CollaborationAsk} from '../../claude';
 import type {EngagementRequest} from '../../../../shared/collaboration-types';
 import {getActivePlan as getCachedPlan, updatePlanCache} from '../../plan-cache';
 import {resolveAuthForSlug} from '../../../auth/resolve';
+import {listConnections} from '../../../storage/connections';
 import {loadAllAgents} from '../../../agents/storage';
 import type {
   MsgAuthRequired,
@@ -319,7 +320,26 @@ function ensureSubprocess(
   handles.set(key, handle);
 
   const isLocal = req.auth.type === 'local_api';
-  const baseUrl = isLocal ? (req.auth as import('../types').LocalApiAuth).baseUrl : undefined;
+  const localAuth = isLocal ? (req.auth as LocalApiAuth) : undefined;
+  const baseUrl = localAuth?.baseUrl;
+
+  // For custom endpoints, derive protocol + capabilities from the connection
+  // meta and the model the turn actually uses. Local Ollama needs the qwen
+  // enable_thinking hack; remote OpenAI-compatible providers don't.
+  let customEndpoint: MsgInit['customEndpoint'];
+  if (isLocal) {
+    const meta = listConnections().find((c) => c.slug === req.connectionSlug);
+    const modelDef = meta?.models.find((m) => m.id === req.model);
+    const isOpenAICompat = meta?.providerType === 'openai-compatible';
+    customEndpoint = {
+      api: 'openai-completions' as const,
+      supportsImages: modelDef?.supportsVision ?? false,
+      contextWindow: modelDef?.contextWindow,
+      maxTokens: modelDef?.maxOutputTokens,
+      reasoning: modelDef?.supportsReasoning ?? false,
+      ...(isOpenAICompat ? {} : { thinkingFormat: 'qwen' as const }),
+    };
+  }
 
   // Send init.
   const init: MsgInit = {
@@ -333,7 +353,7 @@ function ensureSubprocess(
     authType: 'oauth',
     piAuthProvider: req.piAuthProvider ?? 'github-copilot',
     piAuth: isLocal
-      ? { provider: 'openai', credential: { type: 'api_key', key: 'local' } }
+      ? { provider: 'openai', credential: { type: 'api_key', key: localAuth?.apiKey ?? 'local' } }
       : {
           provider: req.piAuthProvider!,
           credential: req.piAuthProvider === 'github-copilot'
@@ -348,7 +368,7 @@ function ensureSubprocess(
                 key: (req.auth as CopilotOAuthAuth).accessToken,
               },
         },
-    ...(baseUrl ? { baseUrl, customEndpoint: { api: 'openai-completions' as const } } : {}),
+    ...(baseUrl ? { baseUrl, customEndpoint } : {}),
     permissionMode: (req.permissionMode ?? 'auto') as MsgInit['permissionMode'],
     autonomyLevel: req.autonomyLevel,
     systemPrompt,

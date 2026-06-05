@@ -1,4 +1,4 @@
-import { Key, Monitor, Sparkles } from 'lucide-react';
+import { Key, Monitor, Plug, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui';
 import { AnthropicMark, GithubMark, OpenAIMark } from './shared';
@@ -69,6 +69,12 @@ export function ChooseScreen({ onPick }: { onPick: (k: ConnectionKind) => void }
           title="GitHub Copilot"
           desc="Sign in with GitHub. Chat runtime ships next milestone."
           onClick={() => onPick('github-copilot')}
+        />
+        <Choice
+          icon={<Plug className="h-4 w-4" strokeWidth={1.75} />}
+          title="OpenAI-compatible API"
+          desc="StepFun, DeepSeek, Groq, OpenRouter, xAI… pick a provider and paste a key."
+          onClick={() => onPick('openai-compatible')}
         />
         <Choice
           icon={<Key className="h-4 w-4" strokeWidth={1.75} />}

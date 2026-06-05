@@ -9,6 +9,7 @@ export { IconButton } from './IconButton';
 export { Tooltip, TooltipProvider } from './Tooltip';
 export { ZoomPan } from './ZoomPan';
 export { Input, Textarea, FIELD_CHROME } from './Input';
+export { PasswordInput } from './PasswordInput';
 export { Menu, type MenuItem } from './Menu';
 export { Select } from './Select';
 export { Field } from './Field';

@@ -4,6 +4,7 @@ export type ConnectionKind =
   | 'claude-max'
   | 'chatgpt-plus'
   | 'github-copilot'
+  | 'openai-compatible'
   | 'other'
   | 'local';
 

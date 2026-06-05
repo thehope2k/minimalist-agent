@@ -3,6 +3,7 @@
 // Branches on the connection's `providerType`:
 //   anthropic → returns AnthropicApiKeyAuth | AnthropicOAuthAuth
 //   pi        → returns CopilotOAuthAuth (today the only Pi sub-provider)
+//   local / openai-compatible → returns LocalApiAuth (baseUrl + optional key)
 //
 // OAuth tokens are refreshed if within their 5-minute expiry buffer.
 // A per-slug mutex coalesces concurrent refreshes so concurrent sends on
@@ -55,10 +56,16 @@ export async function resolveAuthForSlug(slug: string): Promise<ResolvedAuth> {
     );
   }
 
-  if (conn.providerType === 'local') {
+  if (conn.providerType === 'local' || conn.providerType === 'openai-compatible') {
     return {
       type: 'local_api',
       baseUrl: conn.baseUrl?.replace(/\/+$/, '') ?? 'http://localhost:11434',
+      // Remote OpenAI-compatible providers authenticate with a Bearer key;
+      // local Ollama/LM Studio need none.
+      apiKey:
+        conn.providerType === 'openai-compatible' && cred.type === 'api_key'
+          ? cred.apiKey
+          : undefined,
     };
   }
 
