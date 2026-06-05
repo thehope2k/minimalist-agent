@@ -76,6 +76,11 @@ function normalizeLang(raw?: string): string {
 interface CodeBlockProps {
   code: string;
   language?: string;
+  /**
+   * Embedded mode removes the outer frame/chrome so parent containers
+   * (e.g. expand modals) don't render as a double box.
+   */
+  embedded?: boolean;
 }
 
 /**
@@ -84,7 +89,7 @@ interface CodeBlockProps {
  * That makes streaming feel zero-latency: each delta repaints the
  * fallback, and the highlight kicks in once the block stabilizes.
  */
-export function CodeBlock({ code, language }: CodeBlockProps) {
+export function CodeBlock({ code, language, embedded = false }: CodeBlockProps) {
   const lang = normalizeLang(language);
   const [html, setHtml] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
@@ -119,6 +124,23 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
       cancelled = true;
     };
   }, [code, lang]);
+
+  if (embedded) {
+    return (
+      <div className="scroll-thin min-h-0 flex-1 overflow-auto bg-[#0d1117]">
+        {html ? (
+          <div
+            className="shiki-host px-4 py-3 text-[12.5px] leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
+        ) : (
+          <pre className="m-0 px-4 py-3 font-mono text-[12.5px] leading-relaxed text-fg">
+            <code>{code}</code>
+          </pre>
+        )}
+      </div>
+    );
+  }
 
   return (
     <>

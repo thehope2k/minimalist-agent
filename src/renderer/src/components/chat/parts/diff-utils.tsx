@@ -41,7 +41,15 @@ export function langFromPath(filePath: string): string {
  * Used for Write tool results — no old content to diff, just show the
  * written file with special rendering for markdown/JSON/images.
  */
-export function WrittenView({ filePath, content }: { filePath: string; content: string }) {
+export function WrittenView({
+  filePath,
+  content,
+  embedded = false,
+}: {
+  filePath: string;
+  content: string;
+  embedded?: boolean;
+}) {
   const ext = filePath.split('.').pop()?.toLowerCase() ?? '';
   const isMarkdown = ext === 'md' || ext === 'mdx';
   const isJson = ext === 'json' || ext === 'jsonc';
@@ -131,7 +139,7 @@ export function WrittenView({ filePath, content }: { filePath: string; content: 
   if (isJson) {
     return (
       <div className="scroll-thin min-h-0 flex-1 overflow-auto bg-panel">
-        <JsonBlock code={content} />
+        <JsonBlock code={content} embedded={embedded} />
       </div>
     );
   }
@@ -139,7 +147,7 @@ export function WrittenView({ filePath, content }: { filePath: string; content: 
   // ── Default: syntax-highlighted code block ──
   return (
     <div className="scroll-thin min-h-0 flex-1 overflow-auto bg-panel">
-      <CodeBlock code={content} language={langFromPath(filePath)} />
+      <CodeBlock code={content} language={langFromPath(filePath)} embedded={embedded} />
     </div>
   );
 }
@@ -372,7 +380,7 @@ export function DiffExpandModal({
     <ExpandModal title={title} onClose={onClose} className="max-w-6xl">
       <div className="flex min-h-0 flex-1 flex-col bg-panel">
         {isWrite ? (
-          <WrittenView filePath={parsed.filePath} content={parsed.newValue} />
+          <WrittenView filePath={parsed.filePath} content={parsed.newValue} embedded={true} />
         ) : (
           <div className="scroll-thin min-h-0 flex-1 overflow-auto">
             <Suspense fallback={<div className="h-16 animate-pulse rounded bg-elevated/40 m-4" />}>

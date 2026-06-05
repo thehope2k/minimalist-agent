@@ -59,7 +59,7 @@ function deepParseJson(value: unknown): unknown {
   return value;
 }
 
-export function JsonBlock({ code }: { code: string }) {
+export function JsonBlock({ code, embedded = false }: { code: string; embedded?: boolean }) {
   const [copied, setCopied] = useState(false);
 
   const parsed = useMemo(() => {
@@ -82,7 +82,22 @@ export function JsonBlock({ code }: { code: string }) {
 
   // Invalid or still-streaming JSON → fall back to Shiki CodeBlock
   if (parsed === null) {
-    return <CodeBlock code={code} language="json" />;
+    return <CodeBlock code={code} language="json" embedded={embedded} />;
+  }
+
+  if (embedded) {
+    return (
+      <div className="scroll-thin min-h-0 flex-1 overflow-auto px-4 py-3">
+        <JsonView
+          value={parsed}
+          style={JSON_THEME}
+          collapsed={2}
+          enableClipboard={false}
+          displayDataTypes={false}
+          shortenTextAfterLength={120}
+        />
+      </div>
+    );
   }
 
   return (
