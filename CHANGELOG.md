@@ -5,6 +5,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.3.0] — 2026-06-05
+
+Session export with shareable links, copy-to-clipboard actions throughout the UI, and a chat rendering fix.
+
+### Added
+
+**Session export**
+
+- Export a session to HTML straight from the chat header — save it locally via a native dialog, or publish it as an ephemeral share link with a configurable expiry that you can revoke at any time
+
+**Copy to clipboard**
+
+- Copy buttons now appear on tool input/result blocks, diff views, error frames, and snippet previews for grabbing text in one click
+- Rendered images in the file viewer and lightbox can be copied straight to the clipboard, re-encoded to PNG so they paste anywhere
+
+### Fixed
+
+**Chat**
+
+- Embedded code blocks now render correctly when nested without their own outer chrome
+
+---
+
 ## [1.2.2] — 2026-06-03
 
 Bug fixes across the diff viewer and session management.
