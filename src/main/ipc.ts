@@ -1,5 +1,6 @@
 import {app, BrowserWindow, dialog, ipcMain, Notification, shell} from 'electron';
 import {terminalManager} from './terminal/manager';
+import {allowedShells} from './terminal/harden';
 import {checkForUpdates, downloadUpdate, getUpdateInfo, installUpdateAndRestart,} from './auto-update';
 import {type DraftAttachment, readPathAsDraft, readStoredAsBase64, storeDraft,} from './storage/attachments';
 import type {StoredAttachment} from './storage/sessions';
@@ -126,6 +127,7 @@ import {
 } from './extensions/mcp-config';
 import {type FileSearchEntry, searchFiles} from './files/search';
 import {buildFileTree, listDirectory} from './files/list-directory';
+import {isWithinAllowedRoots, resolveWithinAllowedRoots} from './files/path-guard';
 import {readFileSync} from 'node:fs';
 import {writeFile} from 'node:fs/promises';
 import {publishExport, revokeExport, type PublishResult} from './export-transport/brewpage';
@@ -1265,8 +1267,10 @@ export function registerIpc(): void {
     (
       _e,
       args: { root: string; query: string; limit?: number },
-    ): FileSearchEntry[] =>
-      searchFiles({ root: args.root, query: args.query, limit: args.limit }),
+    ): FileSearchEntry[] => {
+      if (!isWithinAllowedRoots(args.root)) return [];
+      return searchFiles({ root: args.root, query: args.query, limit: args.limit });
+    },
   );
 
   ipcMain.handle(
@@ -1275,6 +1279,7 @@ export function registerIpc(): void {
       _e,
       args: { root: string; query: string; useRegex?: boolean; caseSensitive?: boolean; limit?: number },
     ) => {
+      if (!isWithinAllowedRoots(args.root)) return [];
       const { grepFiles } = await import('./files/grep');
       return grepFiles(args);
     },
@@ -1288,6 +1293,7 @@ export function registerIpc(): void {
       _e,
       args: { path: string; root: string; includeHidden?: boolean },
     ) => {
+      if (!isWithinAllowedRoots(args.path)) return [];
       return listDirectory(args);
     },
   );
@@ -1298,6 +1304,7 @@ export function registerIpc(): void {
       _e,
       args: { path: string; root: string; includeHidden?: boolean; maxDepth?: number },
     ) => {
+      if (!isWithinAllowedRoots(args.path)) return [];
       return buildFileTree(args);
     },
   );
@@ -1333,11 +1340,13 @@ export function registerIpc(): void {
   ipcMain.handle('fs:readFile', (_e, absolutePath: string): string | null => {
     // Guard: skip files larger than 2 MB to keep the renderer responsive.
     const MAX_BYTES = 2 * 1024 * 1024;
-    const { existsSync, statSync, readFileSync } = require('node:fs') as typeof import('node:fs');
-    if (!absolutePath || !existsSync(absolutePath)) return null;
+    const { statSync, readFileSync } = require('node:fs') as typeof import('node:fs');
+    // Confine to known roots + resolve symlinks before any read.
+    const safePath = resolveWithinAllowedRoots(absolutePath);
+    if (!safePath) return null;
     try {
-      if (statSync(absolutePath).size > MAX_BYTES) return null;
-      return readFileSync(absolutePath, 'utf-8');
+      if (statSync(safePath).size > MAX_BYTES) return null;
+      return readFileSync(safePath, 'utf-8');
     } catch {
       return null;
     }
@@ -1347,11 +1356,13 @@ export function registerIpc(): void {
     // Used for binary files (images). 20 MB cap — larger assets are rarely
     // useful to preview and would bloat the IPC payload.
     const MAX_BYTES = 20 * 1024 * 1024;
-    const { existsSync, statSync, readFileSync } = require('node:fs') as typeof import('node:fs');
-    if (!absolutePath || !existsSync(absolutePath)) return null;
+    const { statSync, readFileSync } = require('node:fs') as typeof import('node:fs');
+    // Confine to known roots + resolve symlinks before any read.
+    const safePath = resolveWithinAllowedRoots(absolutePath);
+    if (!safePath) return null;
     try {
-      if (statSync(absolutePath).size > MAX_BYTES) return null;
-      return readFileSync(absolutePath).toString('base64');
+      if (statSync(safePath).size > MAX_BYTES) return null;
+      return readFileSync(safePath).toString('base64');
     } catch {
       return null;
     }
@@ -1535,22 +1546,5 @@ export function registerIpc(): void {
     terminalManager.kill(tabId),
   );
 
-  ipcMain.handle('terminal:listShells', async (): Promise<string[]> => {
-    if (process.platform === 'win32') {
-      // On Windows, surface the common shell executables.
-      return ['powershell.exe', 'pwsh.exe', 'cmd.exe'];
-    }
-    try {
-      const { readFile } = await import('node:fs/promises');
-      const raw = await readFile('/etc/shells', 'utf-8');
-      const shells = raw
-        .split('\n')
-        .map((l) => l.trim())
-        .filter((l) => l.startsWith('/') && !l.startsWith('#'));
-      return [...new Set(shells)]; // deduplicate
-    } catch {
-      // Fall back to the most common shells if /etc/shells is unreadable.
-      return ['/bin/zsh', '/bin/bash', '/bin/sh'];
-    }
-  });
+  ipcMain.handle('terminal:listShells', (): string[] => allowedShells());
 }

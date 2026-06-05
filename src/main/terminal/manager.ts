@@ -3,6 +3,7 @@ import { BrowserWindow } from 'electron';
 import { randomUUID } from 'node:crypto';
 import { basename } from 'node:path';
 import type { TerminalTabInfo } from './types';
+import { isAllowedShell, resolveSafeCwd, scrubTerminalEnv } from './harden';
 
 // 2 MB rolling scrollback per tab. Large enough for rich test output,
 // small enough to stay inconsequential in memory even with many tabs.
@@ -30,20 +31,26 @@ class TerminalManager {
 
   create(cwd: string, shell?: string): TerminalTabInfo {
     const tabId         = randomUUID();
+    // A renderer-supplied shell must be a recognized login shell; the default
+    // (resolveShell) is our own trusted value and needs no check.
+    if (shell !== undefined && !isAllowedShell(shell)) {
+      throw new Error(`Refusing to launch terminal with disallowed shell: ${shell}`);
+    }
     const resolvedShell = shell ?? this.resolveShell();
+    const safeCwd       = resolveSafeCwd(cwd);
 
     const ptyProcess = pty.spawn(resolvedShell, [], {
       name: 'xterm-256color',
-      cwd,
-      env:  { ...process.env } as Record<string, string>,
+      cwd:  safeCwd,
+      env:  scrubTerminalEnv(process.env),
       cols: 80,
       rows: 24,
     });
 
     const entry: TabEntry = {
       pty:    ptyProcess,
-      title:  basename(cwd) || cwd,
-      cwd,
+      title:  basename(safeCwd) || safeCwd,
+      cwd:    safeCwd,
       shell:  resolvedShell,
       buffer: '',
       alive:  true,
@@ -84,7 +91,7 @@ class TerminalManager {
     return {
       tabId,
       title: entry.title,
-      cwd,
+      cwd:   safeCwd,
       shell: resolvedShell,
       pid:   ptyProcess.pid,
       alive: true,
