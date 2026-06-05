@@ -9,22 +9,31 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import remarkRehype from 'remark-rehype';
 import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
 import rehypeKatex from 'rehype-katex';
 import { toHtml } from 'hast-util-to-html';
 import { highlightCode } from './render-code';
 import { renderMermaid } from './render-mermaid';
+import { MARKDOWN_SANITIZE_SCHEMA } from '../markdown-sanitize-schema';
 
 const MATH_OPTIONS = { singleDollarTextMath: false } as const;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type HNode = any;
 
+// The export is uploaded to a *public* share URL and saved as a local file, so
+// untrusted model HTML must be sanitized. rehype-raw parses the raw HTML into
+// real nodes, rehype-sanitize strips dangerous markup (script/iframe/on*/...),
+// and rehype-katex runs *after* so its trusted output survives. `toHtml` keeps
+// `allowDangerousHtml` only because replaceCodeBlocks() later injects our own
+// (already-safe) Shiki HTML and sanitized mermaid SVG as `raw` nodes.
 const processor = unified()
   .use(remarkParse)
   .use(remarkGfm)
   .use(remarkMath, MATH_OPTIONS)
   .use(remarkRehype, { allowDangerousHtml: true })
   .use(rehypeRaw)
+  .use(rehypeSanitize, MARKDOWN_SANITIZE_SCHEMA)
   .use(rehypeKatex);
 
 export async function renderMarkdown(md: string): Promise<string> {

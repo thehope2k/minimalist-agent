@@ -54,8 +54,43 @@ export async function renderMermaid(code: string): Promise<string | null> {
   try {
     const mermaid = await getMermaid();
     const { svg } = await mermaid.render(nextRenderId(), preprocessMermaid(code));
-    return svg;
+    return sanitizeSvg(svg);
   } catch {
     return null;
   }
+}
+
+/**
+ * Harden a mermaid-produced SVG before it is injected (as raw HTML) into the
+ * shared/exported document. Mermaid's `antiscript` level already strips
+ * `<script>` and javascript: links, but the export bypasses the markdown
+ * sanitizer for this SVG, so we defensively re-strip: drop `<script>` nodes,
+ * remove every `on*` event-handler attribute, and neutralize `javascript:`
+ * URLs in href / xlink:href. Returns null if the SVG can't be parsed cleanly,
+ * so the caller falls back to a code block rather than emitting unknown markup.
+ */
+function sanitizeSvg(svg: string): string | null {
+  if (typeof DOMParser === 'undefined') return null;
+  const doc = new DOMParser().parseFromString(svg, 'image/svg+xml');
+  if (doc.getElementsByTagName('parsererror').length > 0) return null;
+  const root = doc.documentElement;
+  if (!root || root.nodeName.toLowerCase() !== 'svg') return null;
+
+  const scrub = (el: Element): void => {
+    if (el.tagName.toLowerCase() === 'script') {
+      el.remove();
+      return;
+    }
+    for (const attr of Array.from(el.attributes)) {
+      const name = attr.name.toLowerCase();
+      const value = attr.value.replace(/\s+/g, '').toLowerCase();
+      const isUrlAttr = name === 'href' || name === 'xlink:href' || name === 'src';
+      if (name.startsWith('on')) el.removeAttribute(attr.name);
+      else if (isUrlAttr && value.startsWith('javascript:')) el.removeAttribute(attr.name);
+    }
+    for (const child of Array.from(el.children)) scrub(child);
+  };
+  scrub(root);
+
+  return new XMLSerializer().serializeToString(root);
 }

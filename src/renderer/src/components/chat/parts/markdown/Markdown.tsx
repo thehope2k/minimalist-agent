@@ -6,7 +6,7 @@ import remarkMath from 'remark-math';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import rehypeKatex from 'rehype-katex';
-import { MARKDOWN_SANITIZE_SCHEMA } from './sanitize-schema';
+import { MARKDOWN_SANITIZE_SCHEMA } from '@/lib/markdown-sanitize-schema';
 // KaTeX CSS — required for math symbols and layout to render correctly.
 import 'katex/dist/katex.min.css';
 import { CodeBlock } from './CodeBlock';
@@ -55,7 +55,7 @@ const MATH_OPTIONS = { singleDollarTextMath: false } as const;
 const REMARK_PLUGINS: PluggableList = [remarkGfm, [remarkMath, MATH_OPTIONS]];
 // Order matters: rehype-raw must parse raw HTML into real nodes *before*
 // sanitize inspects the tree, and KaTeX must run *after* sanitize so its rich
-// (but trusted) output isn't stripped. See sanitize-schema.ts for the schema.
+// (but trusted) output isn't stripped. See markdown-sanitize-schema.ts for the schema.
 const REHYPE_PLUGINS: PluggableList = [
   rehypeRaw,
   [rehypeSanitize, MARKDOWN_SANITIZE_SCHEMA],

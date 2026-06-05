@@ -194,6 +194,7 @@ export async function buildHtmlDocument(model: ExportModel): Promise<string> {
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: https:; style-src 'unsafe-inline'; font-src data: https:; base-uri 'none'; form-action 'none'" />
 <meta name="generator" content="Minimalist Agent" />
 <title>${esc(model.meta.title)}</title>
 <style>${katexCss}</style>
