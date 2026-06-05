@@ -6,6 +6,22 @@ Chat with Claude, GitHub Copilot, ChatGPT, or local models through a clean deskt
 
 ---
 
+## Philosophy
+
+Minimalist Agent is built **for its author, first**. It's tailored directly to the needs I
+actually have — not a feature checklist chasing every use case.
+
+The guiding rule is simple: **more features means more maintenance, and that's not fun.**
+So the project moves forward with only the functionality that's genuinely needed, and
+**everything that ships is owned** — understood end to end, maintained deliberately, and
+built in-house rather than left floating around as a half-wired dependency or a feature
+nobody fully grasps.
+
+That's the whole point of the name. Minimalism here isn't a constraint to apologize for —
+it's the design. If something doesn't earn its keep, it doesn't make the cut.
+
+---
+
 ## Features
 
 ### AI Connections
