@@ -12,6 +12,18 @@ note only if it'll save someone time later.
 
 - [ ] Audit all system prompt locations and fine-tune
 - [ ] Check how agents use memory persistence, improve performance and robustness
+  - Scope = harden the existing single-session memory tier only. Cross-session /
+    semantic / shared memory are intentionally OUT (minimalist, single-user).
+  - Worth addressing:
+    1. **Retrieval cost** — `loadSession` reads the whole `messages.jsonl` into
+       memory every open (`storage/sessions.ts`); grows with session length.
+    2. **Compaction robustness** — lossy + untested, and SDK vs Pi compact
+       differently (`agent/events.ts`, `pi-server/event-adapter.ts`).
+    3. **Forgetting/housekeeping** — sessions and sub-agent dirs
+       (`.agents/<execId>`) grow unbounded, never pruned (`agent-tool.ts`).
+    4. **Resume robustness** — `sdkSessionId`/`piSessionId` share one field;
+       missing resume id silently starts fresh (`backends/anthropic.ts`
+       `findClaudeSession` warn); mid-session SDK↔Pi toggle drops context.
 
 ---
 
