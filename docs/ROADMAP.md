@@ -15,6 +15,8 @@ What's shipped, what's coming, and what's intentionally out of scope.
 | **GitHub Copilot** | Device-flow OAuth at `github.com/login/device`; live model discovery from Copilot `/models` endpoint (tier-filtered — includes Claude Sonnet/Haiku, GPT-5, GPT-5.1, and more); mid-session token refresh; Copilot quota display; runs on Pi runtime |
 | **ChatGPT Plus / Codex** | Browser OAuth via `auth.openai.com` (auto-redirect back, no code to copy); live model discovery via Pi SDK `openai-codex` catalog; runs on Pi runtime with full permission modes and tool streaming |
 | **Local model (Ollama)** | Connects to `http://localhost:11434` (configurable for remote hosts); live model discovery via Ollama `/api/tags` with probe/retry UI; model list shows name + size; no auth required |
+| **OpenAI-compatible providers** | Curated presets for StepFun, DeepSeek, Moonshot, Together AI, Groq, OpenRouter, xAI plus a custom endpoint escape hatch; live model discovery via `/v1/models`; encrypted API key storage |
+| **Session export & sharing** | Export sessions to HTML (summary or full); save to disk via native dialog or publish ephemeral share links with configurable TTL; revoke links; automatic redaction of paths and secrets on share |
 | **Extended context (1M)** | Opt-in 1M-token window for supported models (Anthropic Tier 4+) |
 | **Encrypted credentials** | API keys and OAuth tokens stored via Electron `safeStorage` (OS keychain) |
 
@@ -41,7 +43,7 @@ What's shipped, what's coming, and what's intentionally out of scope.
 
 | Capability | Detail |
 |---|---|
-| **Sessions** | Full persistence (`messages.jsonl` + `session.json`); resume across restarts; SDK session ID preserved for resumable turns |
+| **Sessions** | Full persistence (`messages.jsonl` + `session.json`); resume across restarts; SDK session ID preserved for resumable turns; HTML export (summary/full) with local save or ephemeral share links (TTL, revoke, redaction) |
 | **Projects** | Group sessions by folder with name + color; per-project defaults for connection, model, permission mode; sidebar filter and color dots |
 | **User Preferences** | Name, timezone, location, language, free-text notes — injected into every system prompt |
 | **Project context** | Auto-discovers `CLAUDE.md` / `AGENTS.md` / `copilot-instructions.md` recursively; injected into every turn; configurable names |
@@ -125,7 +127,7 @@ Explicit non-goals — they belong to a different product surface or a different
 
 | What | Why |
 |---|---|
-| **Additional LLM providers** (Gemini, Bedrock) | No current plans; Copilot and ChatGPT Plus connections already cover the major OpenAI models; Ollama covers local inference |
+| **Additional LLM providers** (Gemini, Bedrock) | No current plans; Copilot and ChatGPT Plus connections cover OpenAI models; curated OpenAI-compatible presets cover StepFun, DeepSeek, Moonshot, Together AI, Groq, OpenRouter, xAI, and custom endpoints; Ollama covers local inference |
 | **IDE integration / inline completions** | Chat-first is the product; the market is moving toward agent-driven workflows |
 | **Codebase semantic indexing** | Claude Code and Codex don't do this either; file tools + large context window is the right approach for this product class |
 | **Self-hosted server / web UI** | Desktop-only by design |

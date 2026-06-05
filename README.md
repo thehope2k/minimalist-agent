@@ -14,6 +14,7 @@ Chat with Claude, GitHub Copilot, ChatGPT, or local models through a clean deskt
 - **Claude Pro / Max OAuth** — browser PKCE flow, token auto-refresh
 - **GitHub Copilot** — device-flow OAuth; live model discovery (Claude, GPT-5, GPT-5.1, and more); Copilot quota display
 - **ChatGPT Plus / Codex** — browser OAuth; live model discovery via Pi SDK; full permission modes and tool streaming
+- **OpenAI-compatible providers** — StepFun, DeepSeek, Moonshot, Together AI, Groq, OpenRouter, xAI, or any custom endpoint; curated presets with live model discovery from `/v1/models`; encrypted API key storage
 - **Local model (Ollama)** — connect to any Ollama endpoint; live model discovery; no auth required
 - **Extended context** — opt-in 1M token window for supported models (Anthropic Tier 4+)
 
@@ -33,6 +34,7 @@ Chat with Claude, GitHub Copilot, ChatGPT, or local models through a clean deskt
 ### Sessions & Projects
 
 - **Persistent sessions** — full message history (`messages.jsonl` + `session.json`); resume across restarts
+- **Session export & sharing** — export to HTML (summary or full); save locally or publish ephemeral share links with configurable TTL; revoke anytime; paths and secrets are redacted on share
 - **Projects** — group sessions by folder with name + color; per-project connection, model, permission mode, and Co-Authored-By defaults
 - **Conversation branching** — fork a new session from any user message in history
 - **Bulk session actions** — select multiple sessions to delete or archive at once
@@ -89,10 +91,11 @@ Get the latest release for your platform from the [Releases page](https://github
 
 1. **Launch the app** (see macOS Gatekeeper note below if blocked)
 2. **Add a connection** — Settings → Connections
-   - Anthropic: Paste your API key or sign in with Claude Pro/Max
-   - GitHub Copilot: Sign in via device flow
-   - ChatGPT: Sign in via browser OAuth
-   - Local: Point to your Ollama endpoint
+   - **Anthropic** — Paste your API key or sign in with Claude Pro/Max
+   - **GitHub Copilot** — Sign in via device flow
+   - **ChatGPT** — Sign in via browser OAuth
+   - **OpenAI-compatible** — Choose a preset (StepFun, DeepSeek, Moonshot, Together AI, Groq, OpenRouter, xAI) or enter a custom endpoint; paste your API key
+   - **Local** — Point to your Ollama endpoint
 3. **Start chatting** — `Cmd+N` for new session
 
 ### macOS — Gatekeeper
@@ -130,7 +133,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development guide.
 - Electron + electron-vite
 - React 18 + TypeScript
 - Tailwind CSS v4
-- `@anthropic-ai/claude-agent-sdk` + `@earendil-works/pi-coding-agent`
+- `@anthropic-ai/claude-agent-sdk` + `@earendil-works/pi-coding-agent` (Anthropic, GitHub Copilot, ChatGPT Plus, OpenAI-compatible providers)
 - xterm.js + node-pty (terminal)
 - Monaco Editor (git diff / file viewer)
 - `@vscode/ripgrep` (Search Everywhere)
@@ -158,6 +161,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development guide.
 
 ### Technical
 - [Architecture](docs/ARCHITECTURE.md) — agent pipeline, event flow, storage layout
+- [OpenAI-Compatible Providers](docs/OPENAI-COMPATIBLE.md) — presets, custom endpoints, model discovery
+- [Session Export & Sharing](docs/SESSION-EXPORT.md) — HTML export, share links, redaction
 - [Agent Definitions](docs/AGENT-DEFINITIONS.md) — reusable agent configurations and sub-agent system
 - [Collaboration](docs/COLLABORATION.md) — autonomy system and intelligent engagement
 - [Terminal](docs/TERMINAL.md) — in-app terminal reference

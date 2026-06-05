@@ -18,7 +18,8 @@ Main process
     ├─ agent/claude.ts          ← dispatcher (Anthropic vs Pi backend)
     ├─ agent/backends/
     │   ├─ anthropic.ts         ← @anthropic-ai/claude-agent-sdk
-    │   └─ pi/agent.ts          ← Pi subprocess (GitHub Copilot)
+    │   └─ pi/agent.ts          ← Pi subprocess (GitHub Copilot / ChatGPT Plus)
+    ├─ openai-compatible/      ← remote model discovery + auth for OpenAI-compatible endpoints
     ├─ agent/events.ts          ← SDKMessage → AgentChatEvent adapter
     ├─ agent/options.ts         ← subprocess env, cli.js resolution
     └─ agent/system-prompt.ts   ← system prompt assembly
@@ -82,7 +83,7 @@ correlates them by turn id.
 
 ---
 
-## Pi backend (GitHub Copilot)
+## Pi backend (GitHub Copilot / ChatGPT Plus / OpenAI-compatible)
 
 `agent/backends/pi/agent.ts` spawns a Node subprocess running
 `@earendil-works/pi-coding-agent`. Communication is over stdin/stdout as
@@ -94,12 +95,18 @@ Lifecycle:
 1. `init` message — session id, working directory, model, auth, permission mode ('plan' or 'auto'), system prompt
 2. `prompt` messages — user turns
 3. Subprocess emits `event` messages (pre-adapted to `AgentChatEvent`)
-4. `auth_required` from subprocess → main refreshes the Copilot token and
+4. `auth_required` from subprocess → main refreshes the Copilot or ChatGPT token and
    pushes a `token_update` back in
 5. `set_model` / `set_thinking_level` / `set_permission_mode` — live updates
    without restarting the subprocess
 6. Sessions persist under `<sessionPath>/.pi-sessions/` and are resumed via
    `resumePiSessionId`
+
+For **OpenAI-compatible providers** (StepFun, DeepSeek, Moonshot, Together AI,
+Groq, OpenRouter, xAI, custom), model discovery hits the provider's `/v1/models`
+endpoint from the main process (no CORS), and authentication uses a Bearer API key
+resolved via `auth/resolve.ts` into `LocalApiAuth` (baseUrl + optional key).
+See [OPENAI-COMPATIBLE.md](OPENAI-COMPATIBLE.md) for the full reference.
 
 ---
 
