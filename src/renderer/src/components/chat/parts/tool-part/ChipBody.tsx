@@ -39,13 +39,14 @@ export function ChipBody({
   status,
   subagent,
 }: ToolPartProps) {
-  const erroredOrFailed = status === 'error' || result?.isError;
-  const [open, setOpen] = useState(erroredOrFailed);
+  const [open, setOpen] = useState(false);
   const inputText = formatInput(input, partialInputJson);
   const summary = summarizeToolCall(name, input);
   const resultSummary = summarizeToolResult(name, result);
+  const toolName = canonicalToolName(name);
+  const isAgentTool = toolName === 'Agent';
+  const erroredOrFailed = status === 'error' || result?.isError;
   const ToolIcon = iconForTool(name);
-  const isAgentTool = canonicalToolName(name) === 'Agent';
 
   return (
     <div
@@ -89,7 +90,7 @@ export function ChipBody({
             erroredOrFailed ? 'text-red-300' : 'text-fg',
           )}
         >
-          {canonicalToolName(name)}
+          {toolName}
         </span>
         {summary && (
           <>
