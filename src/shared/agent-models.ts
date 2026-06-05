@@ -40,6 +40,7 @@ export const KNOWN_MODEL_IDS = [
   'claude-opus-4.5',
   'claude-opus-4.6',
   'claude-opus-4.7',
+  'claude-opus-4.8',
   'claude-sonnet-4.5',
   'claude-sonnet-4.6',
   
@@ -56,43 +57,6 @@ export const KNOWN_MODEL_IDS = [
 
 /** Special keyword that means "inherit from parent session" */
 export const SESSION_DEFAULT_MODEL = 'session-default' as const;
-
-/**
- * Model catalog organized by provider (for documentation/reference only).
- * Agents don't validate against specific providers - they work with any connection.
- */
-export const MODEL_PROVIDERS = {
-  openai: [
-    'gpt-4.1',
-    'gpt-5-mini',
-    'gpt-5.2',
-    'gpt-5.2-codex',
-    'gpt-5.3-codex',
-    'gpt-5.4',
-    'gpt-5.4-mini',
-    'gpt-5.4-nano',
-    'gpt-5.5',
-  ],
-  anthropic: [
-    'claude-haiku-4.5',
-    'claude-opus-4.5',
-    'claude-opus-4.6',
-    'claude-opus-4.7',
-    'claude-sonnet-4.5',
-    'claude-sonnet-4.6',
-  ],
-  google: [
-    'gemini-2.5-pro',
-    'gemini-3-flash',
-    'gemini-3.1-pro',
-    'gemini-3.5-flash',
-  ],
-  'fine-tuned': [
-    'raptor-mini',
-    'goldeneye',
-  ],
-} as const;
-
 /**
  * Check if a model ID is valid (known across all providers).
  * 

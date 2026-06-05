@@ -23,6 +23,7 @@ import {
   resolveAgentModel,
   isValidModelId,
   getModelValidationError,
+  SESSION_DEFAULT_MODEL,
 } from '../../../../shared/agent-models';
 import type {
   MsgInit,
@@ -396,9 +397,14 @@ async function initializeAgent(
 
   // Resolve model - handle session-default properly
   const model = resolveAgentModel(agent.metadata.model, ctx.sessionModel);
-  
-  // Validate the resolved model
-  if (!isValidModelId(model)) {
+
+  // Only validate explicit model overrides. When the agent inherits the
+  // session model (session-default / omitted), that model is already in use
+  // by the running session, so it's valid by definition even if our static
+  // catalog hasn't caught up with the latest releases.
+  const usesSessionModel =
+    !agent.metadata.model || agent.metadata.model === SESSION_DEFAULT_MODEL;
+  if (!usesSessionModel && !isValidModelId(model)) {
     throw new Error(
       `Agent "${agent.metadata.name}" has invalid model configuration: ${getModelValidationError(model)}. ` +
       `Check the agent's AGENT.md frontmatter.`

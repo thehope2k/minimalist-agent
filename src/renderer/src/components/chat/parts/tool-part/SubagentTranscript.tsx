@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils';
 import { Markdown } from '../markdown/Markdown';
 import { ThinkingPart } from '../ThinkingPart';
+import { ToolPart } from '../ToolPart';
 import { subagentPhaseLabel } from './tool-helpers';
 import type { SubagentTranscript } from '@/lib/chat';
 
@@ -32,9 +33,6 @@ export function SubagentSummaryLine({ subagent }: Props) {
 }
 
 export function SubagentTranscriptView({ subagent }: Props) {
-  // Avoid circular dependency - import ToolPart at runtime
-  const ToolPart = require('../ToolPart').ToolPart;
-
   return (
     <div className="space-y-2 border-l border-border/60 pl-2">
       {subagent.parts.length === 0 ? (
