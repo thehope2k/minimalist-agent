@@ -177,6 +177,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development guide.
 
 ### Technical
 - [Architecture](docs/ARCHITECTURE.md) — agent pipeline, event flow, storage layout
+- [System Prompt](docs/SYSTEM-PROMPT.md) — every prompt block, token budget, and the rules for changing it
 - [OpenAI-Compatible Providers](docs/OPENAI-COMPATIBLE.md) — presets, custom endpoints, model discovery
 - [Session Export & Sharing](docs/SESSION-EXPORT.md) — HTML export, share links, redaction
 - [Agent Definitions](docs/AGENT-DEFINITIONS.md) — reusable agent configurations and sub-agent system

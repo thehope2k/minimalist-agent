@@ -130,6 +130,19 @@ run `node scripts/rebuild-native.mjs` before `npm run dev` to ensure
   drop the `treeshake: false` setting in `electron.vite.config.ts` for the
   preload build, or the side-effect call gets eliminated.
 
+## System prompt
+
+The model's system prompt is assembled from many functions in
+`src/main/agent/system-prompt.ts` (static, cached) plus `buildPromptPrefix`
+(per-turn). **Before adding or changing anything the model is told, read
+[`docs/SYSTEM-PROMPT.md`](docs/SYSTEM-PROMPT.md)** — it inventories every block
+and carries the add/change checklist.
+
+Rule of thumb: prompt additions are cheap in tokens but expensive in attention.
+Prefer the cheapest home (`tool description` → `AGENTS.md`/`CLAUDE.md` → a skill
+→ per-turn prefix → static prompt as last resort), **replace instead of append**,
+and update the inventory in that doc.
+
 ## Logging
 
 Don't call `console.*` directly — use the scoped, leveled logger. A

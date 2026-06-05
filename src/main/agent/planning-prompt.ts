@@ -253,8 +253,8 @@ RevisePlan({
 - If **denied**: Phase is marked 'skipped' with reason "Denied by user"
   - **Continue with next phase** — Denial is per-phase, not session-wide
   - If phase was critical, ask user: "Phase X was denied. Should I skip and continue, or revise the plan?"
-  - Don't invent "read-only mode" or "plan mode" — these don't exist
-  - Approval/denial is independent of permission mode (Auto/Approve/Deny)
+  - Approval/denial of a phase is independent of the session permission mode
+    ('plan' = read-only research, no mutations; 'auto' = full execution)
 
 **Example:**
 \`\`\`

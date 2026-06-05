@@ -1,13 +1,7 @@
-// System prompt assembly. Ported as closely as possible from a comprehensive
-// agent harness (helpers, prompt structure, and prose for the sections that
-// apply are kept verbatim). Sections referencing capabilities this app does
-// not expose — permission modes, spreadsheet / html-preview /
-// pdf-preview / image-preview rendering, browser tools, session-management
-// tools, document CLIs, call_llm, transform_data, render_template,
-// developer feedback — are omitted to keep the prompt honest about what
-// the model can actually do. Skills, extensions (MCP/CLI/guide-only),
-// mermaid, json, and datatable rendering ARE supported and have their
-// own sections below.
+// System prompt assembly. The emitted prompt = getSystemPrompt() (static) +
+// buildPromptPrefix() (per-turn). For the full inventory of every block, what
+// the app actually exposes, and the rules for changing any of it, see
+// docs/SYSTEM-PROMPT.md — keep that doc in sync with this file.
 
 import type {Dirent} from 'node:fs';
 import {readdirSync, statSync} from 'node:fs';
@@ -513,7 +507,7 @@ Use for algorithms, complexity, ML concepts, formulas.
 
 ## Rich Code Blocks
 
-Beyond standard syntax-highlighted code, two fenced-block languages render as interactive widgets:
+Beyond standard syntax-highlighted code, certain fenced-block languages render as interactive widgets:
 
 ### JSON — interactive tree viewer
 \`\`\`json blocks render as a **collapsible tree**. Use for API responses, config objects, structured data, or JSON >5 lines.
