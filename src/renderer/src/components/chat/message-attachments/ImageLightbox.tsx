@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { CopyImageButton } from '@/components/ui';
 
 interface ImageLightboxProps {
   src: string;
@@ -41,6 +42,14 @@ export function ImageLightbox({ src, name, onClose, onReveal }: ImageLightboxPro
       >
         {name}
       </button>
+      {src && (
+        <div onClick={(e) => e.stopPropagation()}>
+          <CopyImageButton
+            src={src}
+            className="opacity-100 text-white/70 hover:bg-white/10 hover:text-white"
+          />
+        </div>
+      )}
       {src ? (
         <img
           src={src}

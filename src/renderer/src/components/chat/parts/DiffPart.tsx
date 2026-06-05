@@ -20,6 +20,7 @@ import {
   Maximize2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CopyButton } from '@/components/ui';
 import {
   parseDiffInput,
   countDiffLines,
@@ -138,6 +139,7 @@ export function DiffPart({ name, input, result, status }: DiffPartProps) {
             </span>
           </button>
           <span className="flex shrink-0 items-center gap-1.5 text-fg-muted">
+            <CopyButton text={parsed.newValue} className="opacity-100" />
             <button
               type="button"
               onClick={() => setModalOpen(true)}
@@ -177,8 +179,9 @@ export function DiffPart({ name, input, result, status }: DiffPartProps) {
             )}
             {result?.isError && (
               <div className="border-t border-border/60 px-3 py-2">
-                <div className="mb-1 text-[10px] uppercase tracking-wide text-fg-subtle">
-                  Error
+                <div className="mb-1 flex items-center justify-between text-[10px] uppercase tracking-wide text-fg-subtle">
+                  <span>Error</span>
+                  <CopyButton text={result.content} className="opacity-100" />
                 </div>
                 <pre className="scroll-thin overflow-x-auto whitespace-pre-wrap wrap-break-word rounded bg-panel px-2 py-1.5 font-mono text-[11px] leading-relaxed text-red-300">
                   {result.content}

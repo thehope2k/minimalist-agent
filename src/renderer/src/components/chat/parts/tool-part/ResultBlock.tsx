@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Maximize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Markdown } from '../markdown/Markdown';
-import { ExpandModal } from '@/components/ui';
+import { CopyButton, ExpandModal } from '@/components/ui';
 import { normalizeResult } from './tool-helpers';
 import { RESULT_PREVIEW_LIMIT, MARKDOWN_RESULT_TOOLS } from './types';
 
@@ -25,15 +25,18 @@ export function ResultBlock({ toolName, text, isError }: Props) {
       <div>
         <div className="mb-1 flex items-center justify-between text-xs uppercase tracking-wide text-fg-subtle">
           <span>{isError ? 'Error' : 'Result'}</span>
-          <button
-            type="button"
-            onClick={() => setExpanded(true)}
-            title="Open in modal"
-            className="flex items-center gap-1 rounded px-1 py-0.5 text-[10px] text-fg-subtle hover:bg-elevated hover:text-fg"
-          >
-            <Maximize2 className="h-3 w-3" strokeWidth={1.75} />
-            Expand
-          </button>
+          <div className="flex items-center gap-0.5">
+            <CopyButton text={display} className="opacity-100" />
+            <button
+              type="button"
+              onClick={() => setExpanded(true)}
+              title="Open in modal"
+              className="flex items-center gap-1 rounded px-1 py-0.5 text-[10px] text-fg-subtle hover:bg-elevated hover:text-fg"
+            >
+              <Maximize2 className="h-3 w-3" strokeWidth={1.75} />
+              Expand
+            </button>
+          </div>
         </div>
         {renderAsMarkdown ? (
           <div className="rounded bg-panel px-2 py-1.5 text-sm leading-relaxed text-fg">
@@ -63,7 +66,14 @@ export function ResultBlock({ toolName, text, isError }: Props) {
 
       {expanded && (
         <ExpandModal
-          title={isError ? 'Error' : 'Result'}
+          title={
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-medium uppercase tracking-wide text-fg-subtle">
+                {isError ? 'Error' : 'Result'}
+              </span>
+              <CopyButton text={display} className="opacity-100" />
+            </div>
+          }
           onClose={() => setExpanded(false)}
         >
           <div className="scroll-thin flex-1 overflow-auto p-4">

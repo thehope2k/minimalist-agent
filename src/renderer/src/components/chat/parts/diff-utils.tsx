@@ -4,7 +4,7 @@
 import { lazy, Suspense, useState } from 'react';
 import type { DiffMethod } from 'react-diff-viewer-continued';
 import { FilePenLine, FileText, Code } from 'lucide-react';
-import { ExpandModal } from '@/components/ui';
+import { CopyButton, ExpandModal } from '@/components/ui';
 import { CodeBlock } from './markdown/CodeBlock';
 import { Markdown } from './markdown/Markdown';
 import { JsonBlock } from './markdown/JsonBlock';
@@ -56,14 +56,17 @@ export function WrittenView({ filePath, content }: { filePath: string; content: 
         {/* Header with toggle */}
         <div className="flex shrink-0 items-center justify-between border-b border-border/60 px-3 py-1.5">
           <span className="text-[10px] uppercase tracking-wide text-fg-subtle">markdown</span>
-          <button
-            type="button"
-            onClick={() => setShowSource((v) => !v)}
-            className="flex items-center gap-1 text-[10px] text-fg-muted transition-colors hover:text-fg"
-          >
-            <Code className="h-3 w-3" strokeWidth={1.75} />
-            {showSource ? 'Preview' : 'Source'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowSource((v) => !v)}
+              className="flex items-center gap-1 text-[10px] text-fg-muted transition-colors hover:text-fg"
+            >
+              <Code className="h-3 w-3" strokeWidth={1.75} />
+              {showSource ? 'Preview' : 'Source'}
+            </button>
+            <CopyButton text={content} className="opacity-100" />
+          </div>
         </div>
 
         {/* Content */}
@@ -89,14 +92,17 @@ export function WrittenView({ filePath, content }: { filePath: string; content: 
         {/* Header with toggle */}
         <div className="flex shrink-0 items-center justify-between border-b border-border/60 px-3 py-1.5">
           <span className="text-[10px] uppercase tracking-wide text-fg-subtle">html</span>
-          <button
-            type="button"
-            onClick={() => setShowSource((v) => !v)}
-            className="flex items-center gap-1 text-[10px] text-fg-muted transition-colors hover:text-fg"
-          >
-            <Code className="h-3 w-3" strokeWidth={1.75} />
-            {showSource ? 'Preview' : 'Source'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowSource((v) => !v)}
+              className="flex items-center gap-1 text-[10px] text-fg-muted transition-colors hover:text-fg"
+            >
+              <Code className="h-3 w-3" strokeWidth={1.75} />
+              {showSource ? 'Preview' : 'Source'}
+            </button>
+            <CopyButton text={content} className="opacity-100" />
+          </div>
         </div>
 
         {/* Content */}
@@ -358,6 +364,7 @@ export function DiffExpandModal({
       <span className="min-w-0 flex-1 truncate font-mono text-xs text-fg-muted">
         {shortenPath(parsed.filePath)}
       </span>
+      <CopyButton text={parsed.newValue} className="shrink-0 opacity-100" />
     </>
   );
 

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { FileText, Code } from 'lucide-react';
-import { ExpandModal } from '@/components/ui';
+import { CopyButton, CopyImageButton, ExpandModal } from '@/components/ui';
 import { useFileContent } from './file-view-modal/useFileContent';
 import { CodeViewer, Spinner, ErrorMsg } from './file-view-modal/CodeViewer';
 import { JsonViewer } from './file-view-modal/JsonViewer';
@@ -32,6 +32,21 @@ export function FileViewModal({
   );
 
   const filename = basename(absolutePath);
+  const isImage =
+    viewerType === 'image-raster' || viewerType === 'image-svg';
+  const imageSrc = useMemo(() => {
+    if (viewerType === 'image-raster') {
+      return base64 ? `data:${getMimeType(absolutePath)};base64,${base64}` : '';
+    }
+    if (viewerType === 'image-svg') {
+      return content
+        ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(content)}`
+        : '';
+    }
+    return '';
+  }, [viewerType, base64, content, absolutePath]);
+  const canCopyText = !loading && !error && !isImage && content != null;
+  const canCopyImage = !loading && !error && isImage && !!imageSrc;
 
   // Header
   const title = (
@@ -49,6 +64,13 @@ export function FileViewModal({
           </span>
         )}
       </div>
+
+      {canCopyText && (
+        <CopyButton text={content ?? ''} className="shrink-0 opacity-100" />
+      )}
+      {canCopyImage && (
+        <CopyImageButton src={imageSrc} className="shrink-0 opacity-100" />
+      )}
 
       {/* Source toggle for markdown and HTML */}
       {(viewerType === 'markdown' || viewerType === 'html') &&
@@ -80,14 +102,8 @@ export function FileViewModal({
       return <HtmlViewer content={content ?? ''} showSource={showSource} />;
     }
 
-    if (viewerType === 'image-raster') {
-      const src = `data:${getMimeType(absolutePath)};base64,${base64}`;
-      return <ImageViewer src={src} filename={filename} />;
-    }
-
-    if (viewerType === 'image-svg') {
-      const src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(content ?? '')}`;
-      return <ImageViewer src={src} filename={filename} />;
+    if (viewerType === 'image-raster' || viewerType === 'image-svg') {
+      return <ImageViewer src={imageSrc} filename={filename} />;
     }
 
     if (viewerType === 'json') {

@@ -7,11 +7,14 @@
  * Falls back to JSON pretty-print for non-object inputs.
  */
 
+import { CopyButton } from '@/components/ui';
+
 function CodeFrame({ label, text }: { label: string; text: string }) {
   return (
     <div>
-      <div className="mb-1 text-xs uppercase tracking-wide text-fg-subtle">
-        {label}
+      <div className="mb-1 flex items-center justify-between text-xs uppercase tracking-wide text-fg-subtle">
+        <span>{label}</span>
+        <CopyButton text={text} className="opacity-100" />
       </div>
       <pre className="scroll-thin overflow-x-auto whitespace-pre-wrap break-words rounded bg-panel px-2 py-1.5 font-mono text-xs leading-relaxed text-fg">
         {text}
@@ -28,7 +31,10 @@ function InputField({ field, value }: { field: string; value: unknown }) {
   if (isMultilineString) {
     return (
       <div>
-        <dt className="font-mono text-[11px] text-fg-subtle">{field}</dt>
+        <dt className="flex items-center justify-between font-mono text-[11px] text-fg-subtle">
+          <span>{field}</span>
+          <CopyButton text={value as string} className="opacity-100" />
+        </dt>
         <dd className="mt-0.5">
           <pre className="scroll-thin overflow-x-auto whitespace-pre-wrap break-words rounded bg-app/40 px-2 py-1.5 font-mono text-xs leading-relaxed text-fg">
             {value as string}
@@ -46,7 +52,10 @@ function InputField({ field, value }: { field: string; value: unknown }) {
     }
     return (
       <div>
-        <dt className="font-mono text-[11px] text-fg-subtle">{field}</dt>
+        <dt className="flex items-center justify-between font-mono text-[11px] text-fg-subtle">
+          <span>{field}</span>
+          <CopyButton text={nested} className="opacity-100" />
+        </dt>
         <dd className="mt-0.5">
           <pre className="scroll-thin overflow-x-auto whitespace-pre-wrap break-words rounded bg-app/40 px-2 py-1.5 font-mono text-xs leading-relaxed text-fg">
             {nested}
@@ -90,10 +99,17 @@ export function InputView({ input }: Props) {
     return <CodeFrame label="Input" text={text} />;
   }
   const entries = Object.entries(input as Record<string, unknown>);
+  let fullJson: string;
+  try {
+    fullJson = JSON.stringify(input, null, 2);
+  } catch {
+    fullJson = String(input);
+  }
   return (
     <div>
-      <div className="mb-1 text-xs uppercase tracking-wide text-fg-subtle">
-        Input
+      <div className="mb-1 flex items-center justify-between text-xs uppercase tracking-wide text-fg-subtle">
+        <span>Input</span>
+        <CopyButton text={fullJson} className="opacity-100" />
       </div>
       <dl className="space-y-1.5 rounded bg-panel px-2 py-1.5">
         {entries.map(([key, value]) => (

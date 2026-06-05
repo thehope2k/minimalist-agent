@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CopyButton } from '@/components/ui';
 import {
   canonicalToolName,
   iconForTool,
@@ -19,8 +20,9 @@ import type { ToolPartProps } from './types';
 function CodeFrame({ label, text }: { label: string; text: string }) {
   return (
     <div>
-      <div className="mb-1 text-xs uppercase tracking-wide text-fg-subtle">
-        {label}
+      <div className="mb-1 flex items-center justify-between text-xs uppercase tracking-wide text-fg-subtle">
+        <span>{label}</span>
+        <CopyButton text={text} className="opacity-100" />
       </div>
       <pre className="scroll-thin overflow-x-auto whitespace-pre-wrap break-words rounded bg-panel px-2 py-1.5 font-mono text-xs leading-relaxed text-fg">
         {text}
