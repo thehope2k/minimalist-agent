@@ -1383,8 +1383,15 @@ export function registerIpc(): void {
       _e,
       args: { repoRoot: string; relativePath: string; absolutePath: string; status: string },
     ) => {
+      // Same C5 read-back class as fs:readFile: `git:diff` returns on-disk file
+      // content to the renderer (status ?/A/M), so confine it to known roots.
+      // The repo must be a known root, and the disk-read path is canonicalized
+      // within roots (null for deleted files, where only HEAD content is used).
+      const empty = { original: '', modified: '', language: 'plaintext' };
+      if (!isWithinAllowedRoots(args.repoRoot)) return empty;
+      const safeAbsolutePath = resolveWithinAllowedRoots(args.absolutePath) ?? '';
       const { getFileDiff } = await import('./git/diff');
-      return getFileDiff(args.repoRoot, args.relativePath, args.absolutePath, args.status);
+      return getFileDiff(args.repoRoot, args.relativePath, safeAbsolutePath, args.status);
     },
   );
 
