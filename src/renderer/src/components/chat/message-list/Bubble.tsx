@@ -16,6 +16,9 @@ import { ThinkingPart } from '../parts/ThinkingPart';
 import { ToolPart } from '../parts/ToolPart';
 import { TurnSummaryCard } from '../parts/TurnSummaryCard';
 import { compactNumber, emptyTurnLabel, labelForIntent, partKey } from './utils';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('bubble');
 
 export function Bubble({
   message: m,
@@ -179,7 +182,7 @@ function UserMessageActions({ text, attachments, onBranch }: {
       setCopyState('copied');
       window.setTimeout(() => setCopyState('idle'), 1500);
     } catch (e) {
-      console.error('Copy failed:', e);
+      log.error('Copy failed:', e);
       setCopyState('error');
       window.setTimeout(() => setCopyState('idle'), 1500);
     }

@@ -34,6 +34,9 @@ import {
   type ConnectionMeta,
 } from '../storage/connections';
 import type { ResolvedAuth } from '../agent/backends/types';
+import { createLogger } from '../logger';
+
+const log = createLogger('auth');
 
 /** Per-slug refresh mutex. */
 const refreshInFlight = new Map<string, Promise<OAuthCred>>();
@@ -148,11 +151,13 @@ async function performAnthropicRefresh(
         msg,
       )
     ) {
+      log.warn(`Claude OAuth refresh rejected for ${slug} — clearing credential (forced re-auth):`, msg);
       try { deleteCredential(slug); } catch { /* best effort */ }
       throw new Error(
         `Claude OAuth session expired and could not be refreshed (${msg}). Sign in again from Settings → AI.`,
       );
     }
+    log.error(`Claude OAuth token refresh failed for ${slug}:`, msg);
     throw new Error(`Token refresh failed: ${msg}`);
   }
 }
@@ -199,11 +204,13 @@ async function performCopilotRefresh(
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (/unauthorized|invalid|forbidden|401|403/i.test(msg)) {
+      log.warn(`Copilot OAuth refresh rejected for ${slug} — clearing credential (forced re-auth):`, msg);
       try { deleteCredential(slug); } catch { /* best effort */ }
       throw new Error(
         `GitHub Copilot session was rejected (${msg}). Sign in again from Settings → AI.`,
       );
     }
+    log.error(`Copilot token refresh failed for ${slug}:`, msg);
     throw new Error(`Copilot token refresh failed: ${msg}`);
   }
 }
@@ -250,11 +257,13 @@ async function performChatGptRefresh(
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (/unauthorized|invalid|forbidden|401|403/i.test(msg)) {
+      log.warn(`ChatGPT OAuth refresh rejected for ${slug} — clearing credential (forced re-auth):`, msg);
       try { deleteCredential(slug); } catch { /* best effort */ }
       throw new Error(
         `ChatGPT Plus session was rejected (${msg}). Sign in again from Settings → AI.`,
       );
     }
+    log.error(`ChatGPT Plus token refresh failed for ${slug}:`, msg);
     throw new Error(`ChatGPT Plus token refresh failed: ${msg}`);
   }
 }

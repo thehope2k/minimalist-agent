@@ -18,6 +18,9 @@ import { RevisionDetector } from './revision-detector';
 import { PlanStorage } from './storage';
 
 import { throttle } from './perf-utils';
+import { createLogger } from '../../../shared/sub-logger';
+
+const log = createLogger('PlanManager');
 
 /**
  * Events emitted by PlanManager.
@@ -76,7 +79,7 @@ export class PlanManager extends EventEmitter {
 
       // Validate risk score is reasonable
       if (p.estimated_risk < 0 || p.estimated_risk > 100) {
-        console.warn(
+        log.warn(
           `Phase "${p.name}" has invalid risk score ${p.estimated_risk}. Clamping to 0-100.`
         );
         p.estimated_risk = Math.max(0, Math.min(100, p.estimated_risk));
@@ -84,7 +87,7 @@ export class PlanManager extends EventEmitter {
 
       // Validate is_safe matches risk (safe should be < 20)
       if (p.is_safe && p.estimated_risk >= 20) {
-        console.warn(
+        log.warn(
           `Phase "${p.name}" marked as safe but has risk ${p.estimated_risk} >= 20. ` +
           `Treating as non-safe.`
         );
@@ -208,7 +211,7 @@ export class PlanManager extends EventEmitter {
       // Emit event to trigger approval dialog
       this.emit('phase-approval-required', plan.id, phase);
       
-      console.log(`[PlanManager] Phase ${phase.index} (${phase.name}) requires approval - event emitted`);
+      log.debug(`Phase ${phase.index} (${phase.name}) requires approval - event emitted`);
       return true;
     }
 
@@ -264,7 +267,7 @@ export class PlanManager extends EventEmitter {
 
       // Validate risk score is reasonable
       if (p.estimated_risk < 0 || p.estimated_risk > 100) {
-        console.warn(
+        log.warn(
           `Revised phase "${p.name}" has invalid risk score ${p.estimated_risk}. Clamping to 0-100.`
         );
         p.estimated_risk = Math.max(0, Math.min(100, p.estimated_risk));
@@ -272,7 +275,7 @@ export class PlanManager extends EventEmitter {
 
       // Validate is_safe matches risk
       if (p.is_safe && p.estimated_risk >= 20) {
-        console.warn(
+        log.warn(
           `Revised phase "${p.name}" marked as safe but has risk ${p.estimated_risk} >= 20. ` +
           `Treating as non-safe.`
         );
@@ -359,19 +362,19 @@ export class PlanManager extends EventEmitter {
   approvePhase(sessionId: string, phaseId: string, notes?: string): void {
     const plan = this.activePlans.get(sessionId);
     if (!plan) {
-      console.warn(`[PlanManager] Cannot approve phase: No active plan for session ${sessionId}`);
+      log.warn(`Cannot approve phase: No active plan for session ${sessionId}`);
       throw new Error(`No active plan for session ${sessionId}`);
     }
 
     const phase = plan.phases.find((p) => p.id === phaseId);
     if (!phase) {
-      console.warn(`[PlanManager] Cannot approve phase: Phase ${phaseId} not found in plan ${plan.id}`);
+      log.warn(`Cannot approve phase: Phase ${phaseId} not found in plan ${plan.id}`);
       throw new Error(`Phase ${phaseId} not found in plan ${plan.id}`);
     }
     
     // Check for status conflicts
     if (phase.status === 'complete' || phase.status === 'skipped') {
-      console.warn(`[PlanManager] Phase ${phaseId} already ${phase.status}, ignoring approval`);
+      log.warn(`Phase ${phaseId} already ${phase.status}, ignoring approval`);
       return; // Already done, ignore approval
     }
 
@@ -385,7 +388,7 @@ export class PlanManager extends EventEmitter {
     this.emit('phase-updated', plan.id, phase);
     this.emit('plan-updated', plan);
     
-    console.log(`[PlanManager] Phase ${phase.index} (${phase.name}) approved for session ${sessionId}`);
+    log.debug(`Phase ${phase.index} (${phase.name}) approved for session ${sessionId}`);
   }
 
   /**
@@ -394,24 +397,24 @@ export class PlanManager extends EventEmitter {
   denyPhase(sessionId: string, phaseId: string, reason?: string): void {
     const plan = this.activePlans.get(sessionId);
     if (!plan) {
-      console.warn(`[PlanManager] Cannot deny phase: No active plan for session ${sessionId}`);
+      log.warn(`Cannot deny phase: No active plan for session ${sessionId}`);
       throw new Error(`No active plan for session ${sessionId}`);
     }
 
     const phase = plan.phases.find((p) => p.id === phaseId);
     if (!phase) {
-      console.warn(`[PlanManager] Cannot deny phase: Phase ${phaseId} not found in plan ${plan.id}`);
+      log.warn(`Cannot deny phase: Phase ${phaseId} not found in plan ${plan.id}`);
       throw new Error(`Phase ${phaseId} not found in plan ${plan.id}`);
     }
     
     // Check for status conflicts
     if (phase.status === 'complete') {
-      console.warn(`[PlanManager] Phase ${phaseId} already complete, cannot deny`);
+      log.warn(`Phase ${phaseId} already complete, cannot deny`);
       return; // Already complete, don't mark as skipped
     }
     
     if (phase.status === 'skipped') {
-      console.log(`[PlanManager] Phase ${phaseId} already skipped, updating reason`);
+      log.debug(`Phase ${phaseId} already skipped, updating reason`);
       // Update reason if already skipped
     }
 
@@ -430,7 +433,7 @@ export class PlanManager extends EventEmitter {
     this.emit('phase-updated', plan.id, phase);
     this.emit('plan-updated', plan);
     
-    console.log(`[PlanManager] Phase ${phase.index} (${phase.name}) denied and skipped for session ${sessionId}`);
+    log.debug(`Phase ${phase.index} (${phase.name}) denied and skipped for session ${sessionId}`);
   }
 
   /**

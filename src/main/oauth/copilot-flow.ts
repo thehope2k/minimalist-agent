@@ -8,6 +8,9 @@
 //   refreshToken = GitHub OAuth token (used to refresh the Copilot token)
 
 import type { OAuthCredentials } from '@earendil-works/pi-ai/oauth';
+import { createLogger } from '../logger';
+
+const log = createLogger('copilot-oauth');
 
 export interface CopilotTokens {
   accessToken: string;
@@ -59,7 +62,7 @@ export function startLogin(
       onPrompt: async () => '',
       onProgress: (msg) => {
         // Useful for debugging without bloating UI surface area.
-        console.log('[copilot-oauth]', msg);
+        log.debug('', msg);
       },
       signal: abort.signal,
     });

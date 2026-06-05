@@ -40,6 +40,9 @@ import {
 } from '../../agents/storage';
 import type { AnthropicApiKeyAuth, AnthropicOAuthAuth } from './types';
 import type { CollaborationAsk } from '../claude';
+import { createLogger } from '../../logger';
+
+const log = createLogger('anthropic');
 
 export type AnthropicAuth = AnthropicApiKeyAuth | AnthropicOAuthAuth;
 
@@ -351,7 +354,7 @@ export async function* runAnthropicChat(
   // Warn when a stored resume ID has no matching session file — the SDK
   // silently falls back to a new session, so this surfaces the context loss.
   if (req.resumeSessionId && !findClaudeSession(req.resumeSessionId)) {
-    console.warn(`[anthropic] resume session ${req.resumeSessionId} not found — starting fresh`);
+    log.warn(`resume session ${req.resumeSessionId} not found — starting fresh`);
   }
 
   const options: Options = {
@@ -396,7 +399,7 @@ export async function* runAnthropicChat(
     settingSources: ['user', 'project', 'local'],
 
     stderr: (data: string) => {
-      console.error('[SDK stderr]', data);
+      log.error('', data);
     },
   };
 

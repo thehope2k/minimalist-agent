@@ -130,6 +130,48 @@ run `node scripts/rebuild-native.mjs` before `npm run dev` to ensure
   drop the `treeshake: false` setting in `electron.vite.config.ts` for the
   preload build, or the side-effect call gets eliminated.
 
+## Logging
+
+Don't call `console.*` directly — use the scoped, leveled logger. A
+`npm run check:logs` guard fails the build on raw `console.*` (the renderer
+logger is the one sanctioned exception).
+
+```ts
+const log = createLogger('worktree');
+log.debug('progress…');   // dev console only; never in prod
+log.info('milestone');    // file + dev console
+log.warn('recoverable');  // file + console (prod too)
+log.error('failure', err);
+```
+
+Pick the right module by **process context**:
+
+- **Main process** → `src/main/logger.ts` (`electron-log`-backed, rotating file
+  under `userData/logs/main.log`). Debug/info are silenced in packaged builds;
+  override with `MA_LOG_LEVEL=debug|info|warn|error`.
+- **pi-server subprocess** (anything bundled into `out/main/pi-server.js` —
+  `pi-server/index.ts`, `agent/backends/pi/agent-tool.ts`, `agent/planning/*`)
+  → `src/shared/sub-logger.ts`. It is **electron-free** and writes to **stderr**
+  (stdout is the JSONL protocol). The parent (`agent/backends/pi/agent.ts`)
+  pipes that stderr into the main log file, so subprocess lines still persist.
+- **Renderer** → `src/renderer/src/lib/logger.ts`. `debug`/`info` are dev-console
+  only; `warn`/`error` also forward to the main log file via `window.api.logs`.
+
+Keep the `[scope]` name matching the existing convention. **Never log secrets**
+(tokens/keys/passwords) — the codebase is clean of this; keep it that way.
+
+**When you write new code, log deliberately** — not everywhere:
+
+- Log at **failure points that are otherwise silent** (caught errors, forced
+  sign-outs, dropped data) so support has a trail. Don't swallow an error
+  without at least a `warn`/`error`.
+- **Match level to severity:** `error` = broke, `warn` = recovered/degraded,
+  `info` = milestone, `debug` = progress/diagnostics. Progress chatter is
+  `debug` (it must not ship to prod).
+- Add correlating context with `log.child({ sessionId, execId })` instead of
+  hand-interpolating ids into every message.
+- Don't log success on hot paths or restate what the code already says.
+
 ## Persistence
 
 - Renderer-side storage goes in `src/renderer/src/lib/connections.ts` style:

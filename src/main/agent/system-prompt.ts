@@ -23,6 +23,9 @@ import { loadAllAgents } from '../agents/storage';
 import { getSettings, DEFAULT_CONTEXT_FILE_NAMES } from '../storage/settings';
 import { getActivePlan } from './plan-cache';
 import type { Plan } from '../../shared/planning-types';
+import { createLogger } from '../logger';
+
+const log = createLogger('system-prompt');
 
 /* ===================================================================== *
  * Project context-file discovery (AGENTS.md / CLAUDE.md)
@@ -157,7 +160,7 @@ Progress:
 ${progressList}
 </active_plan>`;
   } catch (error) {
-    console.error('[formatActivePlanContext] Error formatting plan context:', error);
+    log.error('Error formatting plan context:', error);
     return `<active_plan>\nTask: ${plan.task}\nStatus: ${plan.status}\n[Error displaying full context]\n</active_plan>`;
   }
 }

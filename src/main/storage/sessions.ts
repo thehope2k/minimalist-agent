@@ -22,6 +22,9 @@ import { type FileSchema, load, save } from './json-store';
 import { invalidateContextFileCache } from '../agent/system-prompt';
 import type { PermissionMode } from './settings';
 import { findProjectForPath } from './projects';
+import { createLogger } from '../logger';
+
+const log = createLogger('sessions');
 
 export type ChatRole = 'user' | 'assistant';
 
@@ -222,8 +225,8 @@ export function listSessions(): SessionSummary[] {
     try {
       const meta = load(metaSchema(id));
       out.push({ ...meta, id });
-    } catch {
-      // skip corrupt/unreadable sessions
+    } catch (err) {
+      log.warn(`Skipping corrupt/unreadable session ${id}:`, err instanceof Error ? err.message : String(err));
     }
   }
   return out.sort((a, b) => b.lastMessageAt - a.lastMessageAt);

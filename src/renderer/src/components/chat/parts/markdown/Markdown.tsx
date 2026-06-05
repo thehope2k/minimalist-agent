@@ -13,6 +13,9 @@ import { JsonBlock } from './JsonBlock';
 import { MathBlock } from './MathBlock';
 import { DataTableBlock } from './DataTableBlock';
 import { ExpandModal, ZoomPan } from '@/components/ui';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('markdown-link');
 
 /**
  * Assistant-prose renderer.
@@ -124,7 +127,7 @@ const COMPONENTS: Components = {
       e.preventDefault();
       window.api.app.openExternal(href).catch((err: unknown) => {
         const msg = err instanceof Error ? err.message : String(err);
-        console.warn('[markdown-link] blocked:', msg);
+        log.warn('blocked:', msg);
       });
     };
     return (

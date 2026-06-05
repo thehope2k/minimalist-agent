@@ -42,6 +42,10 @@ import {getActivePlan as getCachedPlan, updatePlanCache} from '../../plan-cache'
 import {resolveAuthForSlug} from '../../../auth/resolve';
 import {listConnections} from '../../../storage/connections';
 import {loadAllAgents} from '../../../agents/storage';
+import {createLogger} from '../../../logger';
+import {writeJsonLine} from '../../../../shared/jsonl-stdin';
+
+const log = createLogger('pi');
 import type {
   MsgAuthRequired,
   MsgCollaborationRequest,
@@ -178,24 +182,7 @@ const handles = new Map<string, SubprocessHandle>();
 /* ============================================================ */
 
 function send(handle: SubprocessHandle, msg: SubprocessInbound): void {
-  const stdin = handle.child.stdin;
-  if (!stdin) return;
-  if (stdin.destroyed || stdin.writableEnded || !stdin.writable) return;
-  const payload = JSON.stringify(msg) + '\n';
-  try {
-    stdin.write(payload, (err?: Error | null) => {
-      if (!err) return;
-      const code = (err as Error & { code?: string }).code;
-      // The subprocess can exit between our liveness check and write().
-      // Ignore EPIPE/ERR_STREAM_DESTROYED during shutdown races.
-      if (code === 'EPIPE' || code === 'ERR_STREAM_DESTROYED') return;
-      console.warn('[pi] failed to write to subprocess stdin:', err.message);
-    });
-  } catch (e) {
-    const code = (e as Error & { code?: string }).code;
-    if (code === 'EPIPE' || code === 'ERR_STREAM_DESTROYED') return;
-    throw e;
-  }
+  writeJsonLine(handle.child.stdin, msg, log);
 }
 
 function ensureSubprocess(
@@ -224,6 +211,9 @@ function ensureSubprocess(
       ...resolveExtensionEnv(),
       ELECTRON_RUN_AS_NODE: '1',
       MINIMALIST_AGENT_VERSION: app.getVersion(),
+      // Verbosity for the subprocess sub-logger (writes to stderr; the parent
+      // pipes it into the on-disk log below). debug in dev, warn in prod.
+      MA_LOG_LEVEL: process.env.MA_LOG_LEVEL ?? (app.isPackaged ? 'warn' : 'debug'),
       // Verbose Pi event logging — pipe-through to console.error so we can
       // see what the runtime actually emits. Set PI_DEBUG=0 to silence.
       PI_DEBUG: process.env.PI_DEBUG ?? '1',
@@ -235,7 +225,7 @@ function ensureSubprocess(
   child.stderr?.on('data', (chunk: string) => {
     stderrBuffer.push(chunk);
     if (stderrBuffer.length > 50) stderrBuffer.shift();
-    console.error('[pi-server stderr]', chunk.trim());
+    log.error(chunk.trim());
   });
 
   const queues = new Map<string, EventQueue>();
@@ -283,7 +273,7 @@ function ensureSubprocess(
     try {
       msg = JSON.parse(line) as SubprocessOutbound;
     } catch {
-      console.error('[pi-server] bad JSONL:', line.slice(0, 200));
+      log.error('bad JSONL:', line.slice(0, 200));
       return;
     }
     void handleOutbound(msg, handle, resolveReady, rejectReady);
@@ -311,8 +301,8 @@ function ensureSubprocess(
     pendingLlm.clear();
     handles.delete(key);
     if (code !== 0 && code !== null) {
-      console.error(
-        `[pi-server] exited with code ${code}\n${stderrBuffer.join('')}`,
+      log.error(
+        `exited with code ${code}\n${stderrBuffer.join('')}`,
       );
     }
   });
@@ -449,7 +439,7 @@ async function handleOutbound(
       
       // Forward to askCollaboration callback if available
       if (!handle.askCollaboration) {
-        console.warn('[Pi agent] Collaboration request received but no askCollaboration callback');
+        log.warn('Collaboration request received but no askCollaboration callback');
         // Return a default "no" response
         send(handle, {
           type: 'collaboration_response',
@@ -482,7 +472,7 @@ async function handleOutbound(
           });
         })
         .catch((err: any) => {
-          console.error('[Pi agent] Collaboration request failed:', err);
+          log.error('Collaboration request failed:', err);
           send(handle, {
             type: 'collaboration_response',
             requestId: req.requestId,
@@ -615,7 +605,7 @@ async function handleOutbound(
       try {
         updateSessionMeta(sessionId, { permissionMode: mode });
       } catch (e) {
-        console.error('[pi-agent] Failed to persist permission mode:', e);
+        log.error('Failed to persist permission mode:', e);
       }
 
       // Forward to renderer to update UI
@@ -634,7 +624,7 @@ async function handleOutbound(
           sdkSessionId: m.piSessionId,
         });
       } catch (e) {
-        console.error('[pi-server] failed to persist piSessionId:', e);
+        log.error('failed to persist piSessionId:', e);
       }
       return;
     }
@@ -685,7 +675,7 @@ async function handleOutbound(
           send(handle, upd);
         }
       } catch (e) {
-        console.error('[pi-server] token refresh failed:', e);
+        log.error('token refresh failed:', e);
       } finally {
         handle.refreshing = false;
       }

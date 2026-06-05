@@ -10,6 +10,9 @@
 //   refreshToken = standard OAuth refresh token (long-lived)
 
 import type { OAuthCredentials } from '@earendil-works/pi-ai/oauth';
+import { createLogger } from '../logger';
+
+const log = createLogger('chatgpt-oauth');
 
 export interface ChatGptTokens {
   accessToken: string;
@@ -49,7 +52,7 @@ export function startLogin(
       },
       onPrompt: async () => '',
       onProgress: (msg: string) => {
-        console.log('[chatgpt-oauth]', msg);
+        log.debug('', msg);
       },
     });
     return {

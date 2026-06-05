@@ -398,6 +398,12 @@ const api = {
     notify: (title: string, body?: string): Promise<boolean> =>
       ipcRenderer.invoke('app:notify', { title, body }),
   },
+  logs: {
+    write: (record: { level: string; scope: string; parts: string[] }): void =>
+      ipcRenderer.send('log:write', record),
+    reveal: (): Promise<void> => ipcRenderer.invoke('logs:reveal'),
+    read: (): Promise<string> => ipcRenderer.invoke('logs:read'),
+  },
   claudeOAuth: {
     start: (): Promise<{ ok: true; url: string }> =>
       ipcRenderer.invoke('claude-oauth:start'),

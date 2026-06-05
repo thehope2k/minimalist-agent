@@ -17,6 +17,9 @@ import type {
 } from '@/lib/electron';
 import { storeAttachment } from '@/lib/attachments';
 import { getAppSettings } from '@/lib/app-settings';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('useChat');
 
 interface SendArgs {
   text: string;
@@ -741,7 +744,7 @@ export function useChat(
         const eventKey = `${sid}:${evt.id}:${evt.preTokens}`;
         if (seenCompactionEvents.current.has(eventKey)) {
           // Already created a marker for this compaction event.
-          console.debug('[useChat] Duplicate compaction event ignored:', eventKey);
+          log.debug('Duplicate compaction event ignored:', eventKey);
           return;
         }
         seenCompactionEvents.current.add(eventKey);
@@ -775,8 +778,8 @@ export function useChat(
               ]
             : [...prevMsgs, marker];
 
-        console.debug(
-          '[useChat] Compaction marker created:',
+        log.debug(
+          'Compaction marker created:',
           {
             eventKey,
             trigger: evt.trigger,
@@ -971,7 +974,7 @@ export function useChat(
 
     window.api.planning.getActivePlan(activeSessionId)
       .then((plan: Plan | null) => setSessionPlan(activeSessionId, plan))
-      .catch((err) => console.error('Failed to load active plan:', err));
+      .catch((err) => log.error('Failed to load active plan:', err));
   }, [activeSessionId, setSessionPlan]);
 
   const send = useCallback(

@@ -23,6 +23,10 @@ import {
 } from './storage/sessions';
 import {clearLoginState, exchangeCode, prepareLoginUrl,} from './oauth/claude-flow';
 import {classifyExternalUrl, formatBlockedUrlError} from '../shared/url-safety';
+import {recordRendererLog, revealLogFile, readRecentLogs, createLogger} from './logger';
+import type {RendererLogRecord} from '../shared/log';
+
+const log = createLogger('ipc');
 import {
   cancelLogin as cancelCopilotLogin,
   type CopilotTokens,
@@ -215,6 +219,16 @@ export function registerIpc(): void {
   ipcMain.handle('app:setAgentActive', (_e, active: boolean) => {
     setAgentActive(active);
   });
+
+  // ---- Logs --------------------------------------------------------------
+
+  // Renderer forwards its warn/error lines here so they land in the same
+  // on-disk log file as the main process (bug-report continuity).
+  ipcMain.on('log:write', (_e, record: RendererLogRecord) => {
+    recordRendererLog(record);
+  });
+  ipcMain.handle('logs:reveal', () => revealLogFile());
+  ipcMain.handle('logs:read', () => readRecentLogs());
   // Fire a native OS notification. Renderer gates this on its own
   // `notificationsEnabled` preference + window-focus check.
   ipcMain.handle(
@@ -324,7 +338,7 @@ export function registerIpc(): void {
         const { fetchClaudeUsage } = await import('./claude/usage');
         const result = await fetchClaudeUsage(auth.accessToken);
         if ('error' in result) {
-          console.error('[claude:fetchUsage]', result.error);
+          log.error('fetchUsage:', result.error);
         }
         return result;
       } catch (e) {
@@ -388,7 +402,7 @@ export function registerIpc(): void {
         const { fetchCopilotQuota } = await import('./copilot/quota');
         const result = await fetchCopilotQuota(cred.refreshToken);
         if ('error' in result) {
-          console.error('[copilot:fetchQuota]', result.error);
+          log.error('fetchQuota:', result.error);
         }
         return result;
       } catch (e) {
@@ -648,7 +662,7 @@ export function registerIpc(): void {
     });
     
     if (!sent) {
-      console.warn(`[IPC] Could not send approval response: subprocess not found for session ${sessionId}`);
+      log.warn(`Could not send approval response: subprocess not found for session ${sessionId}`);
     }
     
     // Note: Plan cache will be updated when subprocess emits phase-updated event
@@ -664,7 +678,7 @@ export function registerIpc(): void {
     });
     
     if (!sent) {
-      console.warn(`[IPC] Could not send denial response: subprocess not found for session ${sessionId}`);
+      log.warn(`Could not send denial response: subprocess not found for session ${sessionId}`);
     }
     
     // Note: Plan cache will be updated when subprocess emits phase-updated event
@@ -1427,7 +1441,7 @@ export function registerIpc(): void {
           cwd: args.cwd,
         });
       } catch (e) {
-        console.error('[git:generateCommitMessage] error:', e);
+        log.error('generateCommitMessage:', e);
         return null;
       }
     },

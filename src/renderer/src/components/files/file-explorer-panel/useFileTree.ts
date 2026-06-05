@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type { FileTreeNode } from '../types';
 import { loadFullSession, updateSessionMeta } from '@/lib/sessions';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('useFileTree');
 
 interface UseFileTreeParams {
   cwd: string | undefined;
@@ -110,7 +113,7 @@ export function useFileTree({ cwd, sessionId, isOpen, filterQuery }: UseFileTree
         setLoading(false);
       })
       .catch((err) => {
-        console.error('Failed to load file tree:', err);
+        log.error('Failed to load file tree:', err);
         setError('Failed to load directory');
         setLoading(false);
       });
@@ -143,7 +146,7 @@ export function useFileTree({ cwd, sessionId, isOpen, filterQuery }: UseFileTree
         })
         .catch((err) => {
           loadingDirs.current.delete(node.absolutePath);
-          console.error('Failed to load directory children:', err);
+          log.error('Failed to load directory children:', err);
         });
     }
 
@@ -171,7 +174,7 @@ export function useFileTree({ cwd, sessionId, isOpen, filterQuery }: UseFileTree
         setSearchLoading(false);
       })
       .catch((err) => {
-        console.error('Failed to load full file tree for search:', err);
+        log.error('Failed to load full file tree for search:', err);
         setSearchLoading(false);
       });
   }, [cwd, isOpen, hasQuery, fullTree, searchLoading]);
@@ -206,7 +209,7 @@ export function useFileTree({ cwd, sessionId, isOpen, filterQuery }: UseFileTree
         setExpandedPaths(new Set(paths));
       })
       .catch((err) => {
-        console.error('Failed to load session metadata:', err);
+        log.error('Failed to load session metadata:', err);
         setExpandedPaths(new Set());
       });
   }, [sessionId]);
@@ -220,7 +223,7 @@ export function useFileTree({ cwd, sessionId, isOpen, filterQuery }: UseFileTree
       updateSessionMeta(sessionId, {
         fileExplorer: { expandedPaths: paths },
       }).catch((err) => {
-        console.error('Failed to save file explorer state:', err);
+        log.error('Failed to save file explorer state:', err);
       });
     }, 500); // 500ms debounce
 

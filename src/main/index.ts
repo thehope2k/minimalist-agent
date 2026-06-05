@@ -3,6 +3,8 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join, sep } from 'node:path';
 import { registerIpc } from './ipc';
 import { cleanupPower } from './power';
+import { initLogging, createLogger } from './logger';
+import { Paths } from './storage/paths';
 import { terminalManager } from './terminal/manager';
 import { installSkillsReferenceDoc } from './skills/install-reference';
 import { installExtensionsReferenceDoc } from './extensions/install-reference';
@@ -14,6 +16,9 @@ import { classifyExternalUrl, formatBlockedUrlError } from '../shared/url-safety
 import { isWorktreeSupported } from './agent/backends/pi/worktree-manager';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+const log = createLogger('app');
+const urlLog = createLogger('url-safety');
 
 app.setName('Minimalist Agent');
 
@@ -73,11 +78,11 @@ function isAppShellUrl(rawUrl: string): boolean {
 function openExternalFromRenderer(url: string, context: string): void {
   const c = classifyExternalUrl(url);
   if (c.kind === 'dangerous') {
-    console.warn(`[url-safety] blocked ${context}:`, formatBlockedUrlError(c), url);
+    urlLog.warn(`blocked ${context}:`, formatBlockedUrlError(c), url);
     return;
   }
   void shell.openExternal(url).catch((err) => {
-    console.warn(`[url-safety] openExternal failed (${context}):`, err);
+    urlLog.warn(`openExternal failed (${context}):`, err);
   });
 }
 
@@ -138,6 +143,7 @@ function createWindow(icon?: Electron.NativeImage | null) {
 }
 
 app.whenReady().then(async () => {
+  initLogging(Paths.logsDir());
   installSkillsReferenceDoc();
   installExtensionsReferenceDoc();
   installAgentsReferenceDoc();
@@ -145,9 +151,9 @@ app.whenReady().then(async () => {
   // Check git/worktree support for parallel agent isolation
   const worktreeSupported = await isWorktreeSupported();
   if (worktreeSupported) {
-    console.log('[app] Git worktree support available - parallel agents will use isolated workspaces');
+    log.info('Git worktree support available - parallel agents will use isolated workspaces');
   } else {
-    console.warn('[app] Git not found - parallel agents will share workspace (install git for better isolation)');
+    log.warn('Git not found - parallel agents will share workspace (install git for better isolation)');
   }
   
   registerIpc();

@@ -19,6 +19,10 @@ import { Type } from 'typebox';
 import { defineTool, type AgentToolUpdateCallback, type ToolDefinition } from '@earendil-works/pi-coding-agent';
 import type { LoadedAgent } from '../../../agents/types';
 import type { AgentChatEvent, SubagentProgressUpdate } from '../../events';
+import { createLogger } from '../../../../shared/sub-logger';
+import { writeJsonLine } from '../../../../shared/jsonl-stdin';
+
+const log = createLogger('pi-agent-tool');
 import {
   resolveAgentModel,
   isValidModelId,
@@ -143,7 +147,7 @@ function killOldestHandle(): void {
   }
   
   if (oldest) {
-    console.warn(`[pi-agent-tool] Killing oldest agent ${oldest.execId} to free resources`);
+    log.warn(`Killing oldest agent ${oldest.execId} to free resources`);
     killHandle(oldest);
   }
 }
@@ -167,7 +171,7 @@ function killHandle(handle: SpawnedAgentHandle): void {
   // Clean up worktree (async, non-blocking)
   if (handle.worktree?.created) {
     void removeAgentWorktree(handle.execId).catch(err => {
-      console.warn(`[agent-tool] Failed to cleanup worktree for ${handle.execId}:`, err);
+      log.warn(`Failed to cleanup worktree for ${handle.execId}:`, err);
     });
   }
 }
@@ -179,7 +183,7 @@ setInterval(() => {
   
   for (const handle of activeHandles.values()) {
     if (now - handle.startedAt > maxRuntime && !handle.finished) {
-      console.warn(`[pi-agent-tool] Killing stale agent ${handle.execId} (exceeded ${MAX_AGENT_RUNTIME_MINUTES}min runtime)`);
+      log.warn(`Killing stale agent ${handle.execId} (exceeded ${MAX_AGENT_RUNTIME_MINUTES}min runtime)`);
       handle.error = `Exceeded maximum runtime of ${MAX_AGENT_RUNTIME_MINUTES} minutes`;
       killHandle(handle);
     }
@@ -195,7 +199,7 @@ export function shutdownAllAgentSubprocesses(): void {
   
   // Clean up all worktrees
   void cleanupAllWorktrees().catch(err => {
-    console.warn('[agent-tool] Failed to cleanup worktrees on shutdown:', err);
+    log.warn('Failed to cleanup worktrees on shutdown:', err);
   });
 }
 
@@ -278,7 +282,7 @@ function spawnAgentSubprocess(
       try {
         msg = JSON.parse(line);
       } catch {
-        console.error(`[pi-agent-tool:${execId}] bad JSONL:`, line.slice(0, 100));
+        log.error(`${execId} bad JSONL:`, line.slice(0, 100));
         return;
       }
 
@@ -367,22 +371,7 @@ function spawnAgentSubprocess(
 }
 
 function send(handle: SpawnedAgentHandle, msg: SubprocessInbound): void {
-  const stdin = handle.child.stdin;
-  if (!stdin) return;
-  if (stdin.destroyed || stdin.writableEnded || !stdin.writable) return;
-  const payload = JSON.stringify(msg) + '\n';
-  try {
-    stdin.write(payload, (err?: Error | null) => {
-      if (!err) return;
-      const code = (err as Error & { code?: string }).code;
-      if (code === 'EPIPE' || code === 'ERR_STREAM_DESTROYED') return;
-      console.warn('[pi-agent-tool] failed to write to subprocess stdin:', err.message);
-    });
-  } catch (e) {
-    const code = (e as Error & { code?: string }).code;
-    if (code === 'EPIPE' || code === 'ERR_STREAM_DESTROYED') return;
-    throw e;
-  }
+  writeJsonLine(handle.child.stdin, msg, log.child({ execId: handle.execId }));
 }
 
 async function initializeAgent(
@@ -416,7 +405,7 @@ async function initializeAgent(
   try {
     mkdirSync(agentSessionPath, { recursive: true });
   } catch (err) {
-    console.warn(`[pi-agent-tool:${handle.execId}] Failed to create storage dir:`, err);
+    log.warn(`${handle.execId} Failed to create storage dir:`, err);
   }
 
   // Create isolated git worktree for this agent (if in git repo)
@@ -426,7 +415,7 @@ async function initializeAgent(
   const agentCwd = worktree.path; // Use worktree path (or fallback to original CWD)
 
   if (worktree.created) {
-    console.log(`[pi-agent-tool:${handle.execId}] Running in isolated worktree: ${agentCwd}`);
+    log.debug(`${handle.execId} Running in isolated worktree: ${agentCwd}`);
   }
 
   const init: MsgInit = {
@@ -595,15 +584,15 @@ export function createPiAgentTool(ctx: AgentToolContext): ToolDefinition<typeof 
         // Lazy cleanup of orphaned worktrees (once per app run)
         if (!orphanedCleanupDone) {
           orphanedCleanupDone = true;
-          console.log('[pi-agent-tool] Checking for orphaned worktrees...');
+          log.debug('Checking for orphaned worktrees...');
           void cleanupOrphanedWorktrees(ctx.cwd, 7).catch(err => {
-            console.warn('[pi-agent-tool] Orphaned worktree cleanup failed:', err);
+            log.warn('Orphaned worktree cleanup failed:', err);
           });
         }
 
         // Check resource limits
         if (getActiveAgentCount() >= MAX_CONCURRENT_AGENTS) {
-          console.warn(`[pi-agent-tool] At maximum capacity (${MAX_CONCURRENT_AGENTS} agents). Waiting for a slot...`);
+          log.warn(`At maximum capacity (${MAX_CONCURRENT_AGENTS} agents). Waiting for a slot...`);
         }
 
         // Validate agent exists
@@ -635,7 +624,7 @@ export function createPiAgentTool(ctx: AgentToolContext): ToolDefinition<typeof 
           at: Date.now(),
         });
 
-        console.log(`[pi-agent-tool] Spawning agent "${agent.metadata.name}"...`);
+        log.debug(`Spawning agent "${agent.metadata.name}"...`);
 
         // Spawn and initialize subprocess
         handle = await spawnAgentSubprocess(agent, task, ctx, signal, (event, execId) => {
@@ -661,7 +650,7 @@ export function createPiAgentTool(ctx: AgentToolContext): ToolDefinition<typeof 
           at: Date.now(),
         });
 
-        console.log(`[pi-agent-tool] Agent initialized (${handle.execId}). Starting task...`);
+        log.debug(`Agent initialized (${handle.execId}). Starting task...`);
 
         await initializeAgent(handle, agent, ctx);
 
@@ -685,7 +674,7 @@ export function createPiAgentTool(ctx: AgentToolContext): ToolDefinition<typeof 
           // Agent finished normally, clean up worktree
           const execId = handle.execId; // Capture for closure
           await removeAgentWorktree(execId).catch(err => {
-            console.warn(`[agent-tool] Failed to cleanup worktree for ${execId}:`, err);
+            log.warn(`Failed to cleanup worktree for ${execId}:`, err);
           });
         }
 

@@ -793,6 +793,14 @@ export interface AppApi {
     setAgentActive: (active: boolean) => Promise<void>;
     notify: (title: string, body?: string) => Promise<boolean>;
   };
+  logs: {
+    /** Forward a renderer log line to the on-disk main log (fire-and-forget). */
+    write: (record: { level: string; scope: string; parts: string[] }) => void;
+    /** Reveal the active log file in the OS file manager. */
+    reveal: () => Promise<void>;
+    /** Read the tail of the log file (current + previous rotation) as text. */
+    read: () => Promise<string>;
+  };
   claudeOAuth: {
     start: () => Promise<{ ok: true; url: string }>;
     cancel: () => Promise<void>;

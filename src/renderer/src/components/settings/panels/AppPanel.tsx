@@ -42,6 +42,17 @@ export function AppPanel() {
     setChecking(false);
   };
 
+  const [copied, setCopied] = useState(false);
+  const handleRevealLogs = () => {
+    void window.api.logs.reveal();
+  };
+  const handleCopyLogs = async () => {
+    const text = await window.api.logs.read();
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
   return (
     <div className="mx-auto max-w-190 px-8 py-10">
       <SettingsSection title="Notifications">
@@ -87,6 +98,25 @@ export function AppPanel() {
               >
                 {checking ? 'Checking…' : 'Check Now'}
               </Button>
+            }
+          />
+        </SettingsCard>
+      </SettingsSection>
+
+      <SettingsSection title="Logs">
+        <SettingsCard>
+          <SettingsRow
+            label="Application Logs"
+            description="Reveal or copy the on-disk log file to attach to a bug report."
+            control={
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={handleCopyLogs}>
+                  {copied ? 'Copied' : 'Copy'}
+                </Button>
+                <Button variant="outline" onClick={handleRevealLogs}>
+                  Reveal
+                </Button>
+              </div>
             }
           />
         </SettingsCard>

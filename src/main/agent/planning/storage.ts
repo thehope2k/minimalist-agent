@@ -7,6 +7,9 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { Plan, PlanSchema } from '../../../shared/planning-types';
+import { createLogger } from '../../../shared/sub-logger';
+
+const log = createLogger('PlanStorage');
 
 /**
  * Handles plan persistence.
@@ -41,7 +44,7 @@ export class PlanStorage {
       const json = JSON.stringify(plan, null, 2);
       writeFileSync(planPath, json, 'utf-8');
     } catch (error) {
-      console.error(`Failed to save plan for session ${sessionId}:`, error);
+      log.error(`Failed to save plan for session ${sessionId}:`, error);
       throw error;
     }
   }
@@ -65,7 +68,7 @@ export class PlanStorage {
       
       return plan;
     } catch (error) {
-      console.error(`Failed to load plan for session ${sessionId}:`, error);
+      log.error(`Failed to load plan for session ${sessionId}:`, error);
       return null;
     }
   }

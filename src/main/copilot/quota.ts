@@ -26,6 +26,10 @@
 // This approach works for ALL plan types including org/enterprise-managed
 // seats because we use our own Copilot API token, not the GitHub billing API.
 
+import { createLogger } from '../logger';
+
+const log = createLogger('quota');
+
 const FETCH_TIMEOUT_MS = 10_000;
 const COPILOT_API_VERSION = '2025-05-01';
 
@@ -248,10 +252,10 @@ export async function fetchCopilotQuota(
   }
 
   // DEBUG: Log the entire API response
-  console.log('[quota] ═══════════════════════════════════════════════');
-  console.log('[quota] Raw API Response from GitHub:');
-  console.log(JSON.stringify(info, null, 2));
-  console.log('[quota] ═══════════════════════════════════════════════');
+  log.debug('═══════════════════════════════════════════════');
+  log.debug('Raw API Response from GitHub:');
+  log.debug(JSON.stringify(info, null, 2));
+  log.debug('═══════════════════════════════════════════════');
 
   const planType = info.copilot_plan ?? null;
   const sku = info.access_type_sku ?? '';
@@ -259,20 +263,20 @@ export async function fetchCopilotQuota(
   const isTokenBilling = info.token_based_billing ?? false;
   const isEnterprise = sku.includes('enterprise') || planType === 'enterprise';
 
-  console.log('[quota] Parsed fields:');
-  console.log(`[quota]   - plan: ${planType}`);
-  console.log(`[quota]   - sku: ${sku}`);
-  console.log(`[quota]   - reset: ${resetDate}`);
-  console.log(`[quota]   - token_based_billing: ${isTokenBilling}`);
-  console.log(`[quota]   - is_enterprise: ${isEnterprise}`);
-  console.log(`[quota]   - has ai_credits: ${!!info.ai_credits}`);
-  console.log(`[quota]   - has quota_snapshots: ${!!info.quota_snapshots}`);
-  console.log(`[quota]   - has limited_user_quotas: ${!!info.limited_user_quotas}`);
+  log.debug('Parsed fields:');
+  log.debug(`  - plan: ${planType}`);
+  log.debug(`  - sku: ${sku}`);
+  log.debug(`  - reset: ${resetDate}`);
+  log.debug(`  - token_based_billing: ${isTokenBilling}`);
+  log.debug(`  - is_enterprise: ${isEnterprise}`);
+  log.debug(`  - has ai_credits: ${!!info.ai_credits}`);
+  log.debug(`  - has quota_snapshots: ${!!info.quota_snapshots}`);
+  log.debug(`  - has limited_user_quotas: ${!!info.limited_user_quotas}`);
 
   // NEW: AI Credits billing (June 1, 2026+)
   // This is the new primary billing method — check first.
   if (info.ai_credits) {
-    console.log('[quota] ✓ Using AI Credits format (usage-based billing)');
+    log.debug('✓ Using AI Credits format (usage-based billing)');
     return fromAICredits(info.ai_credits, resetDate, planType);
   }
 
@@ -290,7 +294,7 @@ export async function fetchCopilotQuota(
     
     // Check if truly unlimited (entitlement=0 and unlimited=true)
     if (premiumSnap?.unlimited && premiumSnap.entitlement === 0) {
-      console.log('[quota] ✓ Enterprise account with pooled AI Credits (no per-user limit)');
+      log.debug('✓ Enterprise account with pooled AI Credits (no per-user limit)');
       return {
         percentRemaining: 100,
         entitlement: null,
@@ -312,7 +316,7 @@ export async function fetchCopilotQuota(
   if (premiumSnap) {
     // Only log as deprecated if NOT enterprise with token billing
     if (!isEnterprise || !isTokenBilling) {
-      console.warn('[quota] ⚠️  Using deprecated premium_interactions format (annual plan?)');
+      log.warn('⚠️  Using deprecated premium_interactions format (annual plan?)');
     }
     return fromSnapshot(premiumSnap, resetDate, planType, false);
   }
@@ -320,12 +324,12 @@ export async function fetchCopilotQuota(
   // No premium_interactions — might be an older response or unlimited plan.
   // Try chat as a graceful fallback.
   if (snapshots?.chat) {
-    console.warn('[quota] ⚠️  Falling back to chat snapshot');
+    log.warn('⚠️  Falling back to chat snapshot');
     return fromSnapshot(snapshots.chat, resetDate, planType, true);
   }
 
   // Fully unlimited plan with no quotas in the response
-  console.log('[quota] ℹ️  No quota data in response — treating as unlimited');
+  log.debug('ℹ️  No quota data in response — treating as unlimited');
   return {
     percentRemaining: 100,
     entitlement: null,

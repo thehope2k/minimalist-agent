@@ -7,6 +7,9 @@
 
 import { refreshGitHubCopilotToken } from '@earendil-works/pi-ai/oauth';
 import type { ModelDef } from '../storage/connections';
+import { createLogger } from '../logger';
+
+const log = createLogger('copilot-models');
 
 const COPILOT_HEADERS = {
   // VS Code Copilot Chat client identification — required by GitHub's proxy.
@@ -199,7 +202,7 @@ export async function fetchCopilotModels(
     | RawCopilotModel[];
   
   // DEBUG: Log the raw API response
-  console.log('[fetchCopilotModels] Raw API Response:', JSON.stringify(body, null, 2));
+  log.debug('Raw API Response:', JSON.stringify(body, null, 2));
   
   const list: RawCopilotModel[] = Array.isArray(body)
     ? body
@@ -228,12 +231,12 @@ export async function fetchCopilotModels(
   const pickerDisabled = dropped.filter((d) => d.reason === 'not-user-facing').length;
   const previewModels = dropped.filter((d) => d.reason === 'preview').length;
   const otherDropped = dropped.filter((d) => !['not-user-facing', 'preview'].includes(d.reason));
-  console.warn(
-    `[fetchCopilotModels] received=${list.length} kept=${out.length} dropped=${dropped.length}` +
+  log.warn(
+    `received=${list.length} kept=${out.length} dropped=${dropped.length}` +
       ` | picker_disabled=${pickerDisabled} preview=${previewModels} other=${otherDropped.length}`,
   );
   if (dropped.length) {
-    console.log('[fetchCopilotModels] Dropped models:', dropped);
+    log.debug('Dropped models:', dropped);
   }
   // NEW: Sort by category (powerful → versatile → lightweight) then by name.
   // Build a category map from raw data to apply consistent ordering.
@@ -252,7 +255,7 @@ export async function fetchCopilotModels(
   });
   
   // DEBUG: Log the final curated list
-  console.log('[fetchCopilotModels] Final curated list (sorted):', JSON.stringify(out, null, 2));
+  log.debug('Final curated list (sorted):', JSON.stringify(out, null, 2));
   
   return out;
 }

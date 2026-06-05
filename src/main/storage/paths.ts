@@ -11,6 +11,7 @@
 //   │     └── 2026-04-30T11-25-00/
 //   │           ├── connections.json
 //   │           └── settings.json
+//   ├── logs/                      ← rotating app logs (main.log + main.old.log)
 //   └── sessions/                  ← (future) per-session message logs
 //         └── {session-id}/
 //               ├── session.json
@@ -44,6 +45,11 @@ export const Paths = {
   },
   sessionsDir: () => {
     const dir = join(root(), 'sessions');
+    mkdirSync(dir, { recursive: true });
+    return dir;
+  },
+  logsDir: () => {
+    const dir = join(root(), 'logs');
     mkdirSync(dir, { recursive: true });
     return dir;
   },

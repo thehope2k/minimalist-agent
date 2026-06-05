@@ -4,6 +4,9 @@ import {findProject, findProjectForPath} from '@/lib/projects';
 import {getNewSessionStateDraft, patchNewSessionStateDraft} from '@/lib/new-session-draft';
 import type {PermissionMode} from '@/lib/electron';
 import type {useAiData} from '@/hooks/useAiData';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('useSessionSync');
 
 /**
  * Session metadata sync. Rehydrates CWD, title, permission mode, and model
@@ -163,7 +166,7 @@ export function useSessionSync(
 
     return window.api.planning.onPermissionModeChanged((eventSessionId, mode) => {
       if (eventSessionId === sessionId) {
-        console.log(`[useSessionSync] Permission mode changed: ${permissionMode} → ${mode}`);
+        log.debug(`Permission mode changed: ${permissionMode} → ${mode}`);
         setPermissionMode(mode);
         permissionModeRef.current = mode;
       }

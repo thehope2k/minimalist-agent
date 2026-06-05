@@ -74,6 +74,9 @@ import {
   validateReportPhaseProgressInput,
   validateRevisePlanInput,
 } from '../../shared/planning-types';
+import { createLogger } from '../../shared/sub-logger';
+
+const log = createLogger('pi-server');
 
 // Derive the path to this pi-server bundle for spawning agent subprocesses
 const PI_SERVER_PATH = fileURLToPath(import.meta.url);
@@ -778,7 +781,7 @@ function createPlanningTools(sessionId: string): ToolDefinition<any, any, any>[]
                 }
               }
             } catch (recordError) {
-              console.error('[pi-server] Failed to record phase error:', recordError);
+              log.error('Failed to record phase error:', recordError);
             }
           }
           
@@ -1232,7 +1235,7 @@ async function handlePrompt(msg: MsgPrompt): Promise<void> {
         // currentTurnId. The error is a duplicate from the promise
         // resolution tail — log it but don't fatal, the turn is already
         // handled on main's side.
-        console.error('[pi-server] session.prompt() threw after terminal event:', message);
+        log.error('session.prompt() threw after terminal event:', message);
       }
     }
   };
@@ -1447,8 +1450,8 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
           
           // Validate model resolved successfully
           if (!newModel) {
-            console.error(
-              `[pi-server] Failed to resolve model "${msg.model}" for provider "${state.init.piAuthProvider}". ` +
+            log.error(
+              `Failed to resolve model "${msg.model}" for provider "${state.init.piAuthProvider}". ` +
               `Model change ignored.`
             );
             return;
@@ -1468,7 +1471,7 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
             await state.session.setModel(newModel as never);
           }
         } catch (e) {
-          console.error('[pi-server] set_model failed:', e);
+          log.error('set_model failed:', e);
         }
       }
       return;
@@ -1513,8 +1516,8 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
               const oldBaseUrl = state.model.baseUrl;
               state.model = adjusted as typeof state.model;
               
-              console.log(`[pi-server] Token refresh changed baseUrl: ${oldBaseUrl} → ${state.model.baseUrl}`);
-              console.log(`[pi-server] Recreating session to apply new regional endpoint...`);
+              log.debug(`Token refresh changed baseUrl: ${oldBaseUrl} → ${state.model.baseUrl}`);
+              log.debug(`Recreating session to apply new regional endpoint...`);
               
               // Destroy old session
               if (state.session) {
@@ -1557,7 +1560,7 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
               state.session = session;
               state.unsubscribe = session.subscribe(forwardEvent);
               
-              console.log(`[pi-server] Session recreated with new baseUrl`);
+              log.debug(`Session recreated with new baseUrl`);
             } else if (adjusted) {
               state.model = adjusted as typeof state.model;
             }
@@ -1578,7 +1581,7 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
       
       // If user approved a tool in plan mode, auto-switch to auto mode
       if (msg.action === 'allow' && state.permissionMode === 'plan') {
-        console.log('[pi-server] Approved tool in plan mode - switching to auto mode');
+        log.debug('Approved tool in plan mode - switching to auto mode');
         state.permissionMode = 'auto';
         
         // Notify main process about mode change so UI updates
@@ -1606,7 +1609,7 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
       const { sessionId, phaseId, approved, notes } = msg;
       
       if (!state.planManager) {
-        console.warn('[pi-server] Approval response received but planManager not initialized');
+        log.warn('Approval response received but planManager not initialized');
         return;
       }
       
@@ -1617,7 +1620,7 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
           state.planManager.denyPhase(sessionId, phaseId, notes);
         }
       } catch (error) {
-        console.error('[pi-server] Failed to handle approval response:', error);
+        log.error('Failed to handle approval response:', error);
       }
       
       return;
@@ -1634,7 +1637,7 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
           images: msg.images,
         } as never);
       } catch (e) {
-        console.error('[pi-server] steer failed:', e);
+        log.error('steer failed:', e);
       }
       return;
     }

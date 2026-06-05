@@ -13,6 +13,9 @@ import type {AnthropicAuth, ResolvedAuth} from './claude';
 import {runPiMiniCompletion} from './backends/pi/agent';
 import {sessionPath} from '../storage/sessions';
 import {listConnections} from '../storage/connections';
+import {createLogger} from '../logger';
+
+const log = createLogger('title');
 
 const ANTHROPIC_HAIKU = 'claude-haiku-4-5-20251001';
 const PI_DEFAULT_MINI = 'claude-haiku-4.5';
@@ -119,14 +122,14 @@ export async function generateTitle(args: GenerateTitleArgs): Promise<string | n
         maxTokens: TITLE_MAX_TOKENS,
       });
       if (result.error) {
-        console.warn(`[title][custom] mini_completion error: ${result.error}`);
+        log.warn(`[custom] mini_completion error: ${result.error}`);
         return null;
       }
       if (!result.text) return null;
       return validateTitle(result.text);
     } catch (e) {
-      console.warn(
-        `[title][custom] threw: ${e instanceof Error ? e.message : String(e)}`,
+      log.warn(
+        `[custom] threw: ${e instanceof Error ? e.message : String(e)}`,
       );
       return null;
     }
@@ -148,14 +151,14 @@ export async function generateTitle(args: GenerateTitleArgs): Promise<string | n
         maxTokens: TITLE_MAX_TOKENS,
       });
       if (result.error) {
-        console.warn(`[title][pi] mini_completion error: ${result.error}`);
+        log.warn(`[pi] mini_completion error: ${result.error}`);
         return null;
       }
       if (!result.text) return null;
       return validateTitle(result.text);
     } catch (e) {
-      console.warn(
-        `[title][pi] threw: ${e instanceof Error ? e.message : String(e)}`,
+      log.warn(
+        `[pi] threw: ${e instanceof Error ? e.message : String(e)}`,
       );
       return null;
     }

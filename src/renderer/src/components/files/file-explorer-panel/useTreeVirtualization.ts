@@ -1,6 +1,9 @@
 import { useEffect } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import type { FileTreeNode } from '../types';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('file-explorer');
 
 interface UseTreeVirtualizationParams {
   flatItems: Array<{ node: FileTreeNode; depth: number }>;
@@ -32,8 +35,8 @@ export function useTreeVirtualization({
   // Log virtual scrolling activation (helpful for debugging performance)
   useEffect(() => {
     if (useVirtual) {
-      console.log(
-        `[FileExplorer] Virtual scrolling activated for ${flatItems.length} items`,
+      log.debug(
+        `Virtual scrolling activated for ${flatItems.length} items`,
       );
     }
   }, [useVirtual, flatItems.length]);
