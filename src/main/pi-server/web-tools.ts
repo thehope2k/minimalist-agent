@@ -11,6 +11,7 @@ import {
   defineTool,
   type ToolDefinition,
 } from '@earendil-works/pi-coding-agent';
+import { safeHttpGet, SsrfError, type SafeResponse } from './ssrf-guard';
 
 // Pi-server runs as a Node-mode subprocess (ELECTRON_RUN_AS_NODE=1), so
 // importing `app` from 'electron' fails — the module resolves to the binary
@@ -28,6 +29,7 @@ const FETCH_HEADERS = {
   Accept:
     'text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.9,text/plain;q=0.8,*/*;q=0.5',
   'Accept-Language': 'en-US,en;q=0.9',
+  'Accept-Encoding': 'gzip, deflate, br',
 } as const;
 
 /* ---- HTML → readable text ----------------------------------------- */
@@ -64,20 +66,13 @@ function clamp(text: string, max: number): { text: string; truncated: boolean } 
   return { text: text.slice(0, max) + `\n\n[... truncated; ${text.length - max} more chars]`, truncated: true };
 }
 
-async function fetchWithTimeout(url: string, signal?: AbortSignal): Promise<Response> {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
-  if (signal) signal.addEventListener('abort', () => ctrl.abort(), { once: true });
-  try {
-    return await fetch(url, {
-      method: 'GET',
-      headers: FETCH_HEADERS,
-      signal: ctrl.signal,
-      redirect: 'follow',
-    });
-  } finally {
-    clearTimeout(timer);
-  }
+async function fetchSafe(url: string, signal?: AbortSignal): Promise<SafeResponse> {
+  return safeHttpGet(url, {
+    headers: { ...FETCH_HEADERS },
+    signal,
+    timeoutMs: FETCH_TIMEOUT_MS,
+    maxBytes: MAX_BYTES,
+  });
 }
 
 /* ---- web_fetch ---------------------------------------------------- */
@@ -105,8 +100,8 @@ export function createPiWebFetchTool(): ToolDefinition<typeof webFetchSchema, un
         } as never;
       }
       try {
-        const res = await fetchWithTimeout(url, signal);
-        if (!res.ok) {
+        const res = await fetchSafe(url, signal);
+        if (res.status < 200 || res.status >= 300) {
           return {
             isError: true,
             content: [
@@ -117,10 +112,10 @@ export function createPiWebFetchTool(): ToolDefinition<typeof webFetchSchema, un
             ],
           } as never;
         }
-        const ct = (res.headers.get('content-type') ?? '').toLowerCase();
-        const buf = Buffer.from(await res.arrayBuffer());
-        const truncatedBytes = buf.length > MAX_BYTES;
-        const slice = truncatedBytes ? buf.subarray(0, MAX_BYTES) : buf;
+        const ct = res.contentType;
+        const buf = res.body;
+        const truncatedBytes = res.truncatedBytes;
+        const slice = buf;
 
         let body: string;
         if (ct.includes('text/html') || ct.includes('application/xhtml')) {
@@ -145,16 +140,17 @@ export function createPiWebFetchTool(): ToolDefinition<typeof webFetchSchema, un
         }
 
         const { text, truncated } = clamp(body, MAX_RESULT_CHARS);
-        const header = `URL: ${res.url}\nStatus: ${res.status}\nContent-Type: ${ct || 'unknown'}\n${truncatedBytes ? `Note: response body exceeded ${MAX_BYTES} bytes; truncated.\n` : ''}${truncated ? '' : ''}\n---\n`;
+        const header = `URL: ${res.finalUrl}\nStatus: ${res.status}\nContent-Type: ${ct || 'unknown'}\n${truncatedBytes ? `Note: response body exceeded ${MAX_BYTES} bytes; truncated.\n` : ''}${truncated ? '' : ''}\n---\n`;
         return {
           isError: false,
           content: [{ type: 'text', text: header + text }],
         } as never;
       } catch (e) {
         const m = e instanceof Error ? e.message : String(e);
+        const label = e instanceof SsrfError ? 'web_fetch blocked' : 'web_fetch failed';
         return {
           isError: true,
-          content: [{ type: 'text', text: `web_fetch failed for ${url}: ${m}` }],
+          content: [{ type: 'text', text: `${label} for ${url}: ${m}` }],
         } as never;
       }
     },
@@ -215,8 +211,8 @@ export function createPiWebSearchTool(): ToolDefinition<typeof webSearchSchema, 
       }
       const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
       try {
-        const res = await fetchWithTimeout(url, signal);
-        if (!res.ok) {
+        const res = await fetchSafe(url, signal);
+        if (res.status < 200 || res.status >= 300) {
           return {
             isError: true,
             content: [
@@ -227,7 +223,7 @@ export function createPiWebSearchTool(): ToolDefinition<typeof webSearchSchema, 
             ],
           } as never;
         }
-        const html = await res.text();
+        const html = res.body.toString('utf-8');
         const hits = parseDuckDuckGoHtml(html, count);
         if (hits.length === 0) {
           return {
@@ -252,9 +248,10 @@ export function createPiWebSearchTool(): ToolDefinition<typeof webSearchSchema, 
         } as never;
       } catch (e) {
         const m = e instanceof Error ? e.message : String(e);
+        const label = e instanceof SsrfError ? 'web_search blocked' : 'web_search failed';
         return {
           isError: true,
-          content: [{ type: 'text', text: `web_search failed: ${m}` }],
+          content: [{ type: 'text', text: `${label}: ${m}` }],
         } as never;
       }
     },
