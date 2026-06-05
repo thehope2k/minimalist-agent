@@ -5,6 +5,34 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.4.0] — 2026-06-05
+
+OpenAI-compatible provider support plus broad security hardening across the renderer, IPC, and agent tools.
+
+### Added
+
+**OpenAI-compatible providers**
+
+- Connect to any OpenAI-compatible endpoint as a custom provider, with models discovered automatically from its `/v1/models` route
+
+### Changed
+
+**Security hardening**
+
+- Renderer is hardened against XSS→IPC remote-code-execution chains, and filesystem and terminal access is now confined to known project roots
+- `git:diff` file reads are restricted to allowed roots, and git commands run via `execFile` to prevent shell injection
+- Agent `web_fetch` and `web_search` now block SSRF attempts
+- At-rest secret files are written with owner-only permissions
+- Untrusted model HTML is sanitized in session exports
+
+### Fixed
+
+**Models**
+
+- Inheriting a session's model no longer triggers a spurious validation error
+
+---
+
 ## [1.3.0] — 2026-06-05
 
 Session export with shareable links, copy-to-clipboard actions throughout the UI, and a chat rendering fix.
