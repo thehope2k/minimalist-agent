@@ -18,6 +18,43 @@ note only if it'll save someone time later.
 ## Features / Improvements
 
 - [ ] Implement hooks/lifecycle automation
+- [ ] **Configurable agent backend (Claude Agent SDK vs Pi) for Anthropic models** —
+      let users route an Anthropic connection through the Pi backend instead of
+      the Claude Agent SDK.
+  - **Investigated (Jun 2026): FEASIBLE.** pi-ai ships a first-class `anthropic`
+    provider that handles BOTH api-key and OAuth/Claude-Max auth, including the
+    required `oauth-2025-04-20` / `claude-code-20250219` beta headers +
+    `claude-cli` user-agent (`pi-ai/dist/providers/anthropic.js`, OAuth provider
+    `id:"anthropic"`). The historical OAuth-header blocker is already solved.
+  - **Why it's worth doing:** planning workflow + intelligent collaboration are
+    implemented ONLY in the Pi subprocess (`collaboration-handlers.ts`,
+    `planning/manager.ts` are imported solely by `pi-server/index.ts`). The
+    Claude Agent SDK backend accepts `askCollaboration` but never wires it.
+    So today Anthropic/Claude-Max users are entirely excluded from the app's
+    signature features. Pi routing is the cheapest path to include them.
+  - **Capability gap (NOT symmetric — don't ship as a silent swap):**
+    - SDK-only: native Claude Code tool preset, `settingSources`
+      (user/project/local CLAUDE.md), SDK session `resume`, native PDF blocks,
+      1M-context suffix (`models.ts`).
+    - Pi-only: planning + collaboration.
+  - **Required changes (~2–4 days, mostly plumbing + UI):**
+    1. add `'anthropic'` to `PiAuthProvider` / `PiAuth.provider` unions
+       (`pi-types.ts`, `backends/pi/protocol.ts`)
+    2. accept Anthropic auth in `PiChatRequest.auth`; map to `piAuth`
+       (oauth `sk-ant-oat…` → `{type:'api_key'}`, pi-ai auto-detects)
+    3. pass `'anthropic'` to `getModel(...)` in `pi-server/index.ts` (already generic)
+    4. per-connection backend override in `runAgentChat` (`claude.ts`) — today it
+       branches purely on `auth.type`
+    5. `backend?: 'sdk' | 'pi'` on `ConnectionMeta` + connection-flow toggle
+    6. add an `anthropic_oauth` branch to the Pi `auth_required` refresh handler
+       (currently Copilot/Codex-shaped)
+  - **Risks:** doubles the test surface on already high-risk untested files
+    (`agent.ts`, `pi-server/index.ts`); SDK↔Pi session transcripts are stored
+    differently, so a mid-conversation toggle silently drops context; PDF
+    attachments degrade on Pi (no document block).
+  - **Recommended shape:** per-connection, FEATURE-LED toggle ("Enable planning &
+    guided collaboration"), default = current SDK behavior, warn on mid-session
+    change. Spike the dispatcher+protocol path end-to-end before building UI.
 
 ---
 
