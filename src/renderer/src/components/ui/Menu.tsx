@@ -13,10 +13,15 @@ export interface MenuItem {
   onSelect: () => void;
 }
 
+/** A non-interactive section label rendered above a group of items. */
+export interface MenuHeader {
+  header: string;
+}
+
 type Props = {
   /** The element that opens the menu (typically an IconButton). */
   trigger: ReactNode;
-  items: Array<MenuItem | 'separator'>;
+  items: Array<MenuItem | MenuHeader | 'separator'>;
   /** Pixel width of the menu. */
   menuWidth?: number;
   /** When provided, the menu becomes fully controlled by the parent. */
@@ -24,9 +29,11 @@ type Props = {
   /** Notify parents when the menu opens/closes — used to keep hover-revealed
    *  triggers visible while the menu is open. Required when `open` is provided. */
   onOpenChange?: (open: boolean) => void;
+  /** Optional non-interactive footer rendered below the items (e.g. a note). */
+  footer?: ReactNode;
 };
 
-export function Menu({ trigger, items, menuWidth = 192, open: openProp, onOpenChange }: Props) {
+export function Menu({ trigger, items, menuWidth = 192, open: openProp, onOpenChange, footer }: Props) {
   const [openInternal, setOpenInternal] = useState(false);
   // If the parent passes `open`, use controlled mode; otherwise self-manage.
   const controlled = openProp !== undefined;
@@ -50,6 +57,13 @@ export function Menu({ trigger, items, menuWidth = 192, open: openProp, onOpenCh
           {items.map((item, i) =>
             item === 'separator' ? (
               <div key={`sep-${i}`} className="my-1 h-px bg-border" />
+            ) : 'header' in item ? (
+              <div
+                key={`hdr-${i}`}
+                className="px-2.5 pb-1 pt-1.5 text-[10px] font-medium uppercase tracking-wider text-fg-subtle"
+              >
+                {item.header}
+              </div>
             ) : (
               <button
                 key={item.label}
@@ -72,6 +86,14 @@ export function Menu({ trigger, items, menuWidth = 192, open: openProp, onOpenCh
                 <span className="flex-1 truncate">{item.label}</span>
               </button>
             ),
+          )}
+          {footer && (
+            <>
+              <div className="my-1 h-px bg-border" />
+              <div className="px-2.5 py-1 text-[11px] leading-snug text-fg-subtle">
+                {footer}
+              </div>
+            </>
           )}
         </Popover.Content>
       </Popover.Portal>

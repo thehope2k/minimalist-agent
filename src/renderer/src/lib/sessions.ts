@@ -203,3 +203,32 @@ export async function truncateSessionMessages(
 ): Promise<void> {
   await window.api.sessions.truncateFrom(id, firstDroppedId);
 }
+
+/**
+ * Save an already-generated HTML export to disk via a native Save dialog.
+ * Returns the chosen path, or null if the user canceled.
+ */
+export async function saveSessionExport(
+  html: string,
+  suggestedName: string,
+): Promise<string | null> {
+  return window.api.sessions.saveExport(html, suggestedName);
+}
+
+/** Publish an HTML export to the ephemeral host; returns link + ownerToken. */
+export async function shareSessionExport(
+  html: string,
+  filename: string,
+  ttlDays?: number,
+): Promise<import('./electron').SharedExportResult> {
+  return window.api.sessions.shareExport(html, filename, ttlDays);
+}
+
+/** Revoke a previously shared export link. */
+export async function revokeSessionExport(
+  namespace: string,
+  id: string,
+  ownerToken: string,
+): Promise<void> {
+  return window.api.sessions.revokeExport(namespace, id, ownerToken);
+}

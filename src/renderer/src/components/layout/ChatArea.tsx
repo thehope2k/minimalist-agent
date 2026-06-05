@@ -219,6 +219,7 @@ export function ChatArea({
     <main className="flex h-full min-h-0 flex-col overflow-hidden bg-canvas">
       <ChatHeader
         title={title}
+        sessionId={activeSession}
         onNewSession={onNewSession}
         onOpenGit={() => setGitModalOpen(true)}
         onToggleFileExplorer={onToggleFileExplorer}

@@ -123,6 +123,8 @@ import {
 import {type FileSearchEntry, searchFiles} from './files/search';
 import {buildFileTree, listDirectory} from './files/list-directory';
 import {readFileSync} from 'node:fs';
+import {writeFile} from 'node:fs/promises';
+import {publishExport, revokeExport, type PublishResult} from './export-transport/brewpage';
 import {invalidateContextFileCache} from './agent/system-prompt';
 import {
   createProject,
@@ -857,6 +859,51 @@ export function registerIpc(): void {
   ipcMain.handle('sessions:revealFile', (_e, absPath: string) => {
     shell.showItemInFolder(absPath);
   });
+
+  ipcMain.handle(
+    'sessions:saveExport',
+    async (
+      event,
+      args: { html: string; suggestedName: string },
+    ): Promise<string | null> => {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      const safe = (args.suggestedName || 'session').replace(/[^a-z0-9._-]+/gi, '-');
+      const opts = {
+        defaultPath: `${safe}.html`,
+        filters: [{ name: 'HTML', extensions: ['html'] }],
+      };
+      const res = win
+        ? await dialog.showSaveDialog(win, opts)
+        : await dialog.showSaveDialog(opts);
+      if (res.canceled || !res.filePath) return null;
+      await writeFile(res.filePath, args.html, 'utf-8');
+      return res.filePath;
+    },
+  );
+
+  // Publish an HTML export to the ephemeral host (BrewPage). Returns the share
+  // link + ownerToken (for later revoke). Privacy: published to an unlisted
+  // namespace, auto-expires at TTL; redaction already happened in the renderer.
+  ipcMain.handle(
+    'sessions:shareExport',
+    async (
+      _e,
+      args: { html: string; filename: string; ttlDays?: number },
+    ): Promise<PublishResult> =>
+      publishExport({
+        html: args.html,
+        filename: args.filename,
+        ttlDays: args.ttlDays,
+      }),
+  );
+
+  ipcMain.handle(
+    'sessions:revokeExport',
+    async (
+      _e,
+      args: { namespace: string; id: string; ownerToken: string },
+    ): Promise<void> => revokeExport(args),
+  );
 
   // ---- Filesystem dialogs ------------------------------------------------
 

@@ -1,8 +1,10 @@
 import { GitBranch, X, FolderTree } from 'lucide-react';
 import { IconButton } from '@/components/ui';
+import { ExportMenu } from '@/components/chat/session-export/ExportMenu';
 
 type Props = {
   title: string;
+  sessionId: string | null;
   onNewSession: () => void;
   onOpenGit: () => void;
   onToggleFileExplorer?: () => void;
@@ -11,6 +13,7 @@ type Props = {
 
 export function ChatHeader({
   title,
+  sessionId,
   onNewSession,
   onOpenGit,
   onToggleFileExplorer,
@@ -32,6 +35,7 @@ export function ChatHeader({
           />
         )}
         <IconButton icon={GitBranch} label="Git changes (Cmd+G)" onClick={onOpenGit} />
+        <ExportMenu sessionId={sessionId} />
         <IconButton icon={X} label="New" onClick={onNewSession} />
       </div>
     </header>

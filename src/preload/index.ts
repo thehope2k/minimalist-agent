@@ -325,6 +325,15 @@ interface SessionMeta {
   model?: string;
 }
 
+interface SharedExportResult {
+  url: string;
+  namespace: string;
+  id: string;
+  ownerToken: string;
+  expiresAt: string;
+  ttlDays: number;
+}
+
 interface Project {
   id: string;
   name: string;
@@ -619,6 +628,23 @@ const api = {
       ipcRenderer.invoke('sessions:listFiles', id),
     revealFile: (absPath: string): Promise<void> =>
       ipcRenderer.invoke('sessions:revealFile', absPath),
+    saveExport: (
+      html: string,
+      suggestedName: string,
+    ): Promise<string | null> =>
+      ipcRenderer.invoke('sessions:saveExport', { html, suggestedName }),
+    shareExport: (
+      html: string,
+      filename: string,
+      ttlDays?: number,
+    ): Promise<SharedExportResult> =>
+      ipcRenderer.invoke('sessions:shareExport', { html, filename, ttlDays }),
+    revokeExport: (
+      namespace: string,
+      id: string,
+      ownerToken: string,
+    ): Promise<void> =>
+      ipcRenderer.invoke('sessions:revokeExport', { namespace, id, ownerToken }),
   },
   projects: {
     list: (): Promise<Project[]> => ipcRenderer.invoke('projects:list'),

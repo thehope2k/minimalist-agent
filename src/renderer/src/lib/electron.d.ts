@@ -474,6 +474,18 @@ export interface SessionMeta {
 
 export type SessionSummary = SessionMeta;
 
+export interface SharedExportResult {
+  /** Public short URL (anyone with the link can read it). */
+  url: string;
+  namespace: string;
+  id: string;
+  /** Secret token needed to revoke the link before it expires. */
+  ownerToken: string;
+  /** ISO timestamp when the host auto-deletes the page. */
+  expiresAt: string;
+  ttlDays: number;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -919,6 +931,17 @@ export interface AppApi {
     revealInFolder: (id: string) => Promise<void>;
     listFiles: (id: string) => Promise<SessionFileNode[]>;
     revealFile: (absPath: string) => Promise<void>;
+    saveExport: (html: string, suggestedName: string) => Promise<string | null>;
+    shareExport: (
+      html: string,
+      filename: string,
+      ttlDays?: number,
+    ) => Promise<SharedExportResult>;
+    revokeExport: (
+      namespace: string,
+      id: string,
+      ownerToken: string,
+    ) => Promise<void>;
   };
   projects: {
     list: () => Promise<Project[]>;
