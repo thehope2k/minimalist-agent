@@ -4,7 +4,9 @@ import type { PluggableList } from 'unified';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
 import rehypeKatex from 'rehype-katex';
+import { MARKDOWN_SANITIZE_SCHEMA } from './sanitize-schema';
 // KaTeX CSS — required for math symbols and layout to render correctly.
 import 'katex/dist/katex.min.css';
 import { CodeBlock } from './CodeBlock';
@@ -25,8 +27,11 @@ const log = createLogger('markdown-link');
  *   + remark-gfm       (tables / task lists / strike)
  *   + remark-math      ($$...$$ block math, disabled single-$ to keep
  *                       currency strings like $100 as plain text)
- *   + rehype-raw       (allow inline HTML from the model)
- *   + rehype-katex     (render math nodes to HTML via KaTeX)
+ *   + rehype-raw       (parse inline HTML from the model into the tree)
+ *   + rehype-sanitize  (strip script/iframe/object/form/on /etc. — the
+ *                       model is untrusted and renderer XSS = IPC RCE)
+ *   + rehype-katex     (render math nodes to HTML via KaTeX — trusted
+ *                       output, runs *after* sanitize)
  *
  * Custom fenced-code handlers (matched on the language tag):
  *   mermaid        → animated SVG via MermaidBlock (+ expand button)
@@ -48,7 +53,14 @@ const log = createLogger('markdown-link');
 const MATH_OPTIONS = { singleDollarTextMath: false } as const;
 
 const REMARK_PLUGINS: PluggableList = [remarkGfm, [remarkMath, MATH_OPTIONS]];
-const REHYPE_PLUGINS: PluggableList = [rehypeRaw, rehypeKatex];
+// Order matters: rehype-raw must parse raw HTML into real nodes *before*
+// sanitize inspects the tree, and KaTeX must run *after* sanitize so its rich
+// (but trusted) output isn't stripped. See sanitize-schema.ts for the schema.
+const REHYPE_PLUGINS: PluggableList = [
+  rehypeRaw,
+  [rehypeSanitize, MARKDOWN_SANITIZE_SCHEMA],
+  rehypeKatex,
+];
 
 // ── Helper ──────────────────────────────────────────────────────────────────
 function extractText(children: ReactNode): string {

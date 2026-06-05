@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell } from 'electron';
+import { app, BrowserWindow, session, shell } from 'electron';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, sep } from 'node:path';
 import { registerIpc } from './ipc';
@@ -86,6 +86,84 @@ function openExternalFromRenderer(url: string, context: string): void {
   });
 }
 
+/**
+ * Build the Content-Security-Policy delivered with every renderer response.
+ *
+ * Production is strict: `script-src 'self'` is the second half of the
+ * XSS→IPC-RCE defense (the markdown sanitizer is the first) — even if some
+ * markup slips past the sanitizer, the browser refuses to run injected,
+ * inline, or remote scripts, and `connect-src`/`frame-src`/`object-src` cut
+ * off the usual exfiltration and embedding vectors.
+ *
+ * Development relaxes `script-src`/`style-src` (Vite HMR injects inline code
+ * and uses `eval`) and opens `connect-src` to the dev server + its HMR
+ * websocket. Dev only ever loads our own `ELECTRON_RENDERER_URL`.
+ *
+ * `connect-src` keeps `localhost`/`127.0.0.1` in production because the
+ * "Local Model" connection flow probes a local Ollama server directly from
+ * the renderer (see LocalModelFlow.tsx); everything else reaches the network
+ * through the main process over IPC.
+ */
+function buildCsp(): string {
+  const devUrl = process.env.ELECTRON_RENDERER_URL;
+  const isDev = !!devUrl;
+
+  const localHosts = 'http://localhost:* http://127.0.0.1:* https://localhost:* https://127.0.0.1:*';
+
+  if (isDev) {
+    const devOrigin = (() => {
+      try {
+        return new URL(devUrl).origin;
+      } catch {
+        return '';
+      }
+    })();
+    const ws = 'ws://localhost:* ws://127.0.0.1:*';
+    return [
+      `default-src 'self' ${devOrigin}`,
+      `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${devOrigin}`,
+      `style-src 'self' 'unsafe-inline'`,
+      `img-src 'self' data: blob: https:`,
+      `font-src 'self' data:`,
+      `connect-src 'self' ${devOrigin} ${ws} ${localHosts}`,
+      `frame-src 'none'`,
+      `object-src 'none'`,
+      `base-uri 'none'`,
+      `form-action 'none'`,
+    ].join('; ');
+  }
+
+  return [
+    `default-src 'self'`,
+    `script-src 'self'`,
+    `style-src 'self' 'unsafe-inline'`,
+    `img-src 'self' data: blob: https:`,
+    `font-src 'self' data:`,
+    `connect-src 'self' ${localHosts}`,
+    `frame-src 'none'`,
+    `object-src 'none'`,
+    `base-uri 'none'`,
+    `form-action 'none'`,
+  ].join('; ');
+}
+
+/**
+ * Attach the CSP to every response. Combined with the markdown sanitizer this
+ * collapses the renderer-XSS → `window.api` RCE chain: untrusted model/web/
+ * file content can no longer load or execute scripts in the app origin.
+ */
+function installCsp(): void {
+  const csp = buildCsp();
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [csp],
+      },
+    });
+  });
+}
+
 function createWindow(icon?: Electron.NativeImage | null) {
   const win = new BrowserWindow({
     width: 1440,
@@ -157,6 +235,7 @@ app.whenReady().then(async () => {
   }
   
   registerIpc();
+  installCsp();
   const icon = await getAppIcon();
   if (process.platform === 'darwin' && app.dock && icon) {
     app.dock.setIcon(icon);
