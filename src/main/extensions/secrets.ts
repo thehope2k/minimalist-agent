@@ -10,6 +10,7 @@ import {
   renameSync,
   unlinkSync,
   writeFileSync,
+  chmodSync,
 } from 'node:fs';
 import { Paths } from '../storage/paths';
 
@@ -64,8 +65,11 @@ function write(file: SecretsFile): void {
     ? safeStorage.encryptString(json)
     : Buffer.from(json, 'utf-8');
   const tmp = `${path}.tmp`;
-  writeFileSync(tmp, buf);
+  // Owner-only at rest; chmod after rename because the create `mode` is masked
+  // by umask (matters for the plaintext fallback). Mirrors storage/credentials.ts.
+  writeFileSync(tmp, buf, { mode: 0o600 });
   renameSync(tmp, path);
+  chmodSync(path, 0o600);
   cache = file;
 }
 

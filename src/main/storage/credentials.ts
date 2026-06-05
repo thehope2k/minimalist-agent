@@ -6,7 +6,7 @@
 // CI / unsupported environments.
 
 import { safeStorage } from 'electron';
-import { existsSync, readFileSync, writeFileSync, renameSync, unlinkSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, renameSync, unlinkSync, chmodSync } from 'node:fs';
 import { Paths } from './paths';
 
 export interface ApiKeyCred { type: 'api_key'; apiKey: string; }
@@ -72,8 +72,12 @@ function write(file: CredentialFile): void {
     ? safeStorage.encryptString(json)
     : Buffer.from(json, 'utf-8');
   const tmp = `${path}.tmp`;
-  writeFileSync(tmp, buf);
+  // Secrets at rest: lock to owner-only. `mode` on create is still masked by
+  // umask, so chmod after rename to be deterministic on any host (matters most
+  // for the plaintext fallback below, but harmless for the encrypted blob too).
+  writeFileSync(tmp, buf, { mode: 0o600 });
   renameSync(tmp, path);
+  chmodSync(path, 0o600);
   cache = file;
 }
 

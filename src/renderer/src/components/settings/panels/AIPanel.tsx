@@ -81,7 +81,7 @@ export function AIPanel() {
     return <div className="px-8 py-10 text-sm text-fg-subtle">Loading…</div>;
   }
 
-  const { connections, defaultSlug, settings } = data;
+  const { connections, defaultSlug, settings, encryptionAvailable } = data;
   const defaultConn = connections.find((c) => c.slug === defaultSlug) ?? connections[0];
   const availableModels = defaultConn?.models ?? [];
   const currentModelId = settings.defaultModel ?? defaultConn?.defaultModel;
@@ -149,6 +149,14 @@ export function AIPanel() {
       </SettingsSection>
 
       <SettingsSection title="Connections" subtitle="Manage your AI provider connections.">
+        {!encryptionAvailable && connections.length > 0 && (
+          <div className="mb-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-200">
+            OS keychain encryption is unavailable on this machine — API keys and
+            OAuth tokens are stored as <b>plaintext</b> on disk (owner-readable
+            only). Avoid storing long-lived secrets here; prefer a host with a
+            working keychain.
+          </div>
+        )}
         <div className="space-y-2">
           {connections.length === 0 ? (
             <SettingsCard>
