@@ -903,6 +903,9 @@ export interface AppApi {
     getCredential: (slug: string) => Promise<Credential | null>;
     isEncryptionAvailable: () => Promise<boolean>;
     test: (slug: string) => Promise<{ ok: true } | { ok: false; error: AgentError }>;
+    listRemoteModels: (
+      args: { baseUrl: string; apiKey?: string },
+    ) => Promise<{ ids: string[] } | { error: string }>;
   };
   settings: {
     get: () => Promise<AiSettings>;

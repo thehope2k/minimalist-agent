@@ -12,22 +12,27 @@ import { Button, Field, Input, PasswordInput, Select, Textarea } from '@/compone
 import { Actions, ErrorBox, FormShell } from './shared';
 import type { FlowProps } from './types';
 
+/** Build a ModelDef for an id we have no rich metadata for (custom / discovered). */
+function minimalModel(id: string, source = 'Discovered'): ModelDef {
+  return {
+    id,
+    name: id,
+    shortName: id.split('/').pop() ?? id,
+    description: `${source} · OpenAI-compatible`,
+    contextWindow: 128_000,
+    supportsToolCalls: true,
+    supportsStreaming: true,
+    maxOutputTokens: 8_192,
+  };
+}
+
 /** Parse a newline/comma-separated list of model ids into ModelDefs. */
 function parseCustomModels(raw: string): ModelDef[] {
   return raw
     .split(/[\n,]+/)
     .map((s) => s.trim())
     .filter(Boolean)
-    .map((id) => ({
-      id,
-      name: id,
-      shortName: id.split('/').pop() ?? id,
-      description: 'Custom · OpenAI-compatible',
-      contextWindow: 128_000,
-      supportsToolCalls: true,
-      supportsStreaming: true,
-      maxOutputTokens: 8_192,
-    }));
+    .map((id) => minimalModel(id, 'Custom'));
 }
 
 export function OpenAICompatibleFlow({ onBack, onClose, onSaved, editingMeta }: FlowProps) {
@@ -48,12 +53,20 @@ export function OpenAICompatibleFlow({ onBack, onClose, onSaved, editingMeta }: 
       : '',
   );
 
+  // Live ids discovered from the provider's /v1/models endpoint, merged onto
+  // preset metadata (preset models keep rich fields; extras get safe defaults).
+  const [fetchedIds, setFetchedIds] = useState<string[]>([]);
+  const [fetching, setFetching] = useState(false);
+  const [fetchNote, setFetchNote] = useState<string | null>(null);
+
   // Models offered for the "default model" picker.
   const models: ModelDef[] = useMemo(() => {
     if (editing) return editingMeta!.models;
-    if (isCustom) return parseCustomModels(customModels);
-    return preset?.models ?? [];
-  }, [editing, editingMeta, isCustom, customModels, preset]);
+    const base = isCustom ? parseCustomModels(customModels) : (preset?.models ?? []);
+    if (fetchedIds.length === 0) return base;
+    const known = new Set(base.map((m) => m.id));
+    return [...base, ...fetchedIds.filter((id) => !known.has(id)).map((id) => minimalModel(id))];
+  }, [editing, editingMeta, isCustom, customModels, preset, fetchedIds]);
 
   const [model, setModel] = useState(editingMeta?.defaultModel ?? '');
   const effectiveModel = model || models[0]?.id || '';
@@ -67,6 +80,8 @@ export function OpenAICompatibleFlow({ onBack, onClose, onSaved, editingMeta }: 
     setPresetId(id);
     setTested(false);
     setError(null);
+    setFetchedIds([]);
+    setFetchNote(null);
     const p = getPreset(id);
     if (p && id !== CUSTOM_PRESET_ID) {
       setName(p.name);
@@ -75,6 +90,35 @@ export function OpenAICompatibleFlow({ onBack, onClose, onSaved, editingMeta }: 
     } else {
       setBaseUrl('');
       setModel('');
+    }
+  };
+
+  const fetchModels = async () => {
+    setFetchNote(null);
+    const url = baseUrl.trim().replace(/\/+$/, '');
+    if (!/^https?:\/\//.test(url)) {
+      setFetchNote('Enter a valid base URL first.');
+      return;
+    }
+    setFetching(true);
+    try {
+      const res = await window.api.connections.listRemoteModels({
+        baseUrl: url,
+        apiKey: apiKey.trim() || undefined,
+      });
+      if ('error' in res) {
+        setFetchNote(res.error);
+        return;
+      }
+      setFetchedIds(res.ids);
+      const known = new Set((isCustom ? [] : preset?.models ?? []).map((m) => m.id));
+      const added = res.ids.filter((id) => !known.has(id)).length;
+      setFetchNote(
+        `Found ${res.ids.length} model${res.ids.length === 1 ? '' : 's'}` +
+          (added ? ` (+${added} new)` : ''),
+      );
+    } finally {
+      setFetching(false);
     }
   };
 
@@ -192,6 +236,20 @@ export function OpenAICompatibleFlow({ onBack, onClose, onSaved, editingMeta }: 
         >
           Get an API key <ExternalLink className="h-3 w-3" />
         </a>
+      )}
+
+      {!editing && (
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={fetchModels}
+            loading={fetching}
+            disabled={!baseUrl.trim()}
+          >
+            Fetch models from API
+          </Button>
+          {fetchNote && <span className="text-xs text-fg-subtle">{fetchNote}</span>}
+        </div>
       )}
 
       {models.length > 0 && (

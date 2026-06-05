@@ -789,6 +789,16 @@ export function registerIpc(): void {
     },
   );
 
+  // List models a remote OpenAI-compatible provider advertises via /v1/models.
+  // Used by the add-connection flow to merge live ids onto preset metadata.
+  ipcMain.handle(
+    'connections:listRemoteModels',
+    async (_e, args: { baseUrl: string; apiKey?: string }) => {
+      const { fetchOpenAICompatibleModelIds } = await import('./openai-compatible/models');
+      return fetchOpenAICompatibleModelIds(args.baseUrl, args.apiKey);
+    },
+  );
+
   ipcMain.handle('settings:get', () => getSettings());
   ipcMain.handle('settings:save', (_e, settings: AiSettings) => {
     saveSettings(settings);

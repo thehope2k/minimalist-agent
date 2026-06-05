@@ -580,6 +580,10 @@ const api = {
       ipcRenderer.invoke('connections:isEncryptionAvailable'),
     test: (slug: string): Promise<{ ok: true } | { ok: false; error: AgentError }> =>
       ipcRenderer.invoke('connections:test', slug),
+    listRemoteModels: (
+      args: { baseUrl: string; apiKey?: string },
+    ): Promise<{ ids: string[] } | { error: string }> =>
+      ipcRenderer.invoke('connections:listRemoteModels', args),
   },
   settings: {
     get: (): Promise<AiSettings> => ipcRenderer.invoke('settings:get'),
