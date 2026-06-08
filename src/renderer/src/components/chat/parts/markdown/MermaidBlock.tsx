@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, Maximize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { resolveMermaidSource } from '@/lib/mermaid-normalize';
 import { CopyButton, ExpandModal, ZoomPan } from '@/components/ui';
 
 /**
@@ -43,45 +44,6 @@ function nextRenderId(): string {
   return `mermaid-r${renderCounter}-${Date.now().toString(36)}`;
 }
 
-/**
- * Normalise common model-generated Mermaid quirks before handing to the parser.
- *
- * 1. Literal `\n` inside node labels → `<br/>` + quote-wrap so the Mermaid
- *    parser accepts the HTML angle brackets.
- * 2. `@` or `/` inside an unquoted bracket label (common with npm scoped
- *    package names like `[@scope/pkg]`) → quote-wrap, because `@` is not a
- *    valid bare character in Mermaid label syntax and causes a parse error.
- *
- * Special case: cylinder / database shapes use `[("...")]` or `[(...))]`.
- * We must preserve the `(…)` delimiters or Mermaid will lose the shape
- * and potentially produce an unmatched-quote parse error.
- */
-function preprocessMermaid(code: string): string {
-  // Match bracket node labels: [content] or ["content"] — no nested brackets.
-  return code.replace(/\[([^\[\]]*)\]/g, (match, inner) => {
-    const alreadyQuoted = /^"[\s\S]*"$/.test(inner.trim());
-    const hasNewline = inner.includes('\\n');
-    // `@` is illegal in bare labels; `/` alongside `@` appears in scoped pkg names.
-    // `{` `}` are special chars for decision nodes and break template syntax like {{variable}}.
-    const hasSpecialChar = inner.includes('@') || inner.includes('{') || inner.includes('}');
-
-    if (!hasNewline && !hasSpecialChar) return match;
-
-    // Cylinder / database shape [(...)] or [("...")] — preserve the (…) wrapper.
-    if (inner.trimStart().startsWith('(')) {
-      const stripped = inner
-        .replace(/^\(([\s\S]*)\)$/, '$1')  // remove outer parens
-        .replace(/^"([\s\S]*)"$/, '$1');   // remove optional surrounding quotes
-      return `[("${stripped.replace(/\\n/g, '<br/>')}")]`;
-    }
-
-    // Strip existing surrounding quotes (if any), replace \n, re-quote.
-    const unquoted = alreadyQuoted ? inner.trim().slice(1, -1) : inner;
-    const processed = unquoted.replace(/\\n/g, '<br/>');
-    return `["${processed}"]`;
-  });
-}
-
 export function MermaidBlock({ code }: { code: string }) {
   const [svg, setSvg] = useState<string | null>(null);
   const [errored, setErrored] = useState(false);
@@ -109,9 +71,13 @@ export function MermaidBlock({ code }: { code: string }) {
       try {
         const mermaid = await getMermaid();
         if (cancelled || !mounted.current) return;
+        // Validate-then-repair: valid diagrams render as-is; only broken ones
+        // get normalised. See lib/mermaid-normalize.ts.
+        const source = await resolveMermaidSource(mermaid, code);
+        if (cancelled || !mounted.current) return;
         // mermaid.render appends a temp node to the DOM under the hood —
         // its render ids must be unique per call.
-        const { svg: rendered } = await mermaid.render(nextRenderId(), preprocessMermaid(code));
+        const { svg: rendered } = await mermaid.render(nextRenderId(), source);
         if (!cancelled && mounted.current) {
           setSvg(rendered);
           setErrored(false);
