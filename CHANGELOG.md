@@ -5,6 +5,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.5.0] — 2026-06-09
+
+Agent session scratch directory for cleaner project output, plus Mermaid rendering fixes.
+
+### Added
+
+**Session scratch directory**
+
+- Agents now have a dedicated per-session scratch directory for notes, throwaway scripts, and intermediate files, keeping your project and git status clean while deliverables still land in your project
+
+### Fixed
+
+**Mermaid diagrams**
+
+- Valid diagrams are no longer rewritten unnecessarily, eliminating false-positive repairs on correct source
+- Nested same-character braces (e.g. a `{{var}}` placeholder inside a `{decision}` node) no longer truncate node labels
+
+---
+
 ## [1.4.0] — 2026-06-05
 
 OpenAI-compatible provider support plus broad security hardening across the renderer, IPC, and agent tools.
