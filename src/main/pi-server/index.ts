@@ -835,20 +835,45 @@ function createPlanningTools(sessionId: string): ToolDefinition<any, any, any>[]
         try {
           const input = validateRevisePlanInput(params);
           const plan = state.planManager!.revisePlan(sessionId, input);
-          
+
+          const changedPhases = plan.revisions[plan.revisions.length - 1].changedPhases;
+          const preservedCount = plan.phases.length - changedPhases.length;
+          const firstNewIndex = changedPhases[0];
+          const lastNewIndex = changedPhases[changedPhases.length - 1];
+          const nextPhase = state.planManager!.getNextPendingPhase(sessionId);
+
+          // The <active_plan> awareness block is rebuilt only at the start of
+          // each turn, so mid-turn the model can't see the re-indexed phases.
+          // Spell out the absolute indices here so it keeps using the tracker
+          // instead of assuming the revised list is 0-based (which would point
+          // ReportPhaseProgress at an already-completed phase).
+          let responseText = `Plan revised successfully (v${plan.version}). ${input.changes_summary}`;
+          responseText += `\n\nPhase indices are absolute and continuous across the whole plan:`;
+          if (preservedCount > 0) {
+            responseText += `\n• Phases 0–${preservedCount - 1} are preserved (already complete/skipped) — do not re-run them.`;
+          }
+          responseText += `\n• Revised phases are now indexed ${firstNewIndex}${lastNewIndex !== firstNewIndex ? `–${lastNewIndex}` : ''} (the first item in your revised_phases list is Phase ${firstNewIndex}, not Phase 0).`;
+          if (nextPhase) {
+            responseText += `\n\nNext: Phase ${nextPhase.index} - ${nextPhase.name}. Call ReportPhaseProgress(${nextPhase.index}, 'running', ...) using this absolute index.`;
+          } else {
+            responseText += `\n\nAll phases complete!`;
+          }
+
           return {
             isError: false,
             content: [
               {
                 type: 'text' as const,
-                text: `Plan revised successfully (v${plan.version}). ${input.changes_summary}`,
+                text: responseText,
               },
             ],
             details: {
               plan_id: plan.id,
               old_version: plan.version - 1,
               new_version: plan.version,
-              changed_phases: plan.revisions[plan.revisions.length - 1].changedPhases,
+              changed_phases: changedPhases,
+              preserved_phase_count: preservedCount,
+              next_phase_index: nextPhase?.index,
             },
           };
         } catch (error: any) {

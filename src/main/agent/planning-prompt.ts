@@ -194,6 +194,8 @@ ReportPhaseProgress({
 
 **Keep completed phases unchanged** — only revise pending phases.
 
+**Phase indices stay absolute after a revision.** Your \`revised_phases\` list replaces the *pending* phases, but it is appended **after** the preserved completed ones. If Phases 0–1 were already done, the first item in your revised list becomes **Phase 2**, not Phase 0. The RevisePlan response tells you the exact index range and the next absolute index — use that index in the next \`ReportPhaseProgress\` call. Do **not** assume the revised list is 0-based.
+
 **Example:**
 \\\`\\\`\\\`
 <thinking>
