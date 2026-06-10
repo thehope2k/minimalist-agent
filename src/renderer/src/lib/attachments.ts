@@ -79,6 +79,27 @@ export async function readAttachmentPath(path: string): Promise<DraftAttachment 
   return (await window.api.attachments.readPath(path)) as DraftAttachment | null;
 }
 
+/**
+ * Reconstruct a DraftAttachment from a persisted StoredAttachment by reading
+ * its on-disk bytes back through the IPC bridge. Used when branching so the
+ * divergence message's attachments carry over into the new session's composer
+ * instead of being dropped. Returns null if the stored file can't be read.
+ *
+ * `readAttachmentPath` classifies by file extension and can't recover the
+ * original display name or snippet metadata, so we restore those from the
+ * stored record.
+ */
+export async function storedToDraft(att: StoredAttachment): Promise<DraftAttachment | null> {
+  const draft = await readAttachmentPath(att.storedPath);
+  if (!draft) return null;
+  draft.type = att.type;
+  draft.name = att.name;
+  draft.mimeType = att.mimeType;
+  if (att.language !== undefined) draft.language = att.language;
+  if (att.lineCount !== undefined) draft.lineCount = att.lineCount;
+  return draft;
+}
+
 export async function storeAttachment(
   sessionId: string,
   draft: DraftAttachment,
