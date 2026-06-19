@@ -5,6 +5,8 @@
 // Mirrors GitHub Copilot Chat's `github.copilot.chat.otel.*`:
 //   enabled / captureContent / exporterType / outfile (+ otlpEndpoint for OTLP).
 
+import { homedir } from 'node:os';
+import { isAbsolute, join } from 'node:path';
 import { Paths } from './paths';
 import { type FileSchema, load, save } from './json-store';
 
@@ -66,9 +68,25 @@ export function saveTelemetrySettings(settings: TelemetrySettings): void {
   save(SCHEMA, settings);
 }
 
+/**
+ * Expand a leading `~`/`~/` to the user's home directory. Node's fs APIs do not
+ * do this, so a user who types `~/.telemetry/...` in the Output file field would
+ * otherwise get a literal `~` directory created in the cwd.
+ */
+function expandHome(p: string): string {
+  if (p === '~') return homedir();
+  if (p.startsWith('~/') || p.startsWith('~\\')) return join(homedir(), p.slice(2));
+  return p;
+}
+
 /** Resolve the effective file path used by the `file` exporter. */
 export function resolveTracesFile(settings: TelemetrySettings = getTelemetrySettings()): string {
-  return settings.outfile?.trim() || Paths.tracesFile();
+  const raw = settings.outfile?.trim();
+  if (!raw) return Paths.tracesFile();
+  const expanded = expandHome(raw);
+  // A bare relative path would land in the subprocess cwd (the open project);
+  // anchor it under home so it's predictable regardless of where MA launched.
+  return isAbsolute(expanded) ? expanded : join(homedir(), expanded);
 }
 
 /**
