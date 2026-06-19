@@ -5,6 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.7.0] — 2026-06-19
+
+Live model-catalog refresh so your provider model lists stay current.
+
+### Added
+
+**Model catalog refresh**
+
+- Each connection's model list is now treated as a cache that refreshes itself as providers add and retire models, rather than a fixed snapshot taken once. Refreshes run on startup, on use, and on demand via a new manual "Refresh models" action in AI settings, and open model pickers and settings update live when the catalog changes
+
+---
+
 ## [1.6.1] — 2026-06-19
 
 Bug fixes.
