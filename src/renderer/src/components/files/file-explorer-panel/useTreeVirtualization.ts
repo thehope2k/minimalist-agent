@@ -8,7 +8,7 @@ const log = createLogger('file-explorer');
 interface UseTreeVirtualizationParams {
   flatItems: Array<{ node: FileTreeNode; depth: number }>;
   selectedPath: string | null;
-  scrollContainerRef: React.RefObject<HTMLDivElement>;
+  scrollContainerRef: React.RefObject<HTMLDivElement | null>;
 }
 
 const VIRTUALIZE_THRESHOLD = 200;

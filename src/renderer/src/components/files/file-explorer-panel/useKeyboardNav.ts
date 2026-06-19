@@ -6,8 +6,8 @@ interface UseKeyboardNavParams {
   flatItems: Array<{ node: FileTreeNode; depth: number }>;
   selectedPath: string | null;
   expandedPaths: Set<string>;
-  containerRef: React.RefObject<HTMLDivElement>;
-  filterInputRef: React.RefObject<HTMLInputElement>;
+  containerRef: React.RefObject<HTMLDivElement | null>;
+  filterInputRef: React.RefObject<HTMLInputElement | null>;
   setSelectedPath: (path: string) => void;
   toggleExpand: (path: string) => void;
   onSelectFile: (path: string) => void;

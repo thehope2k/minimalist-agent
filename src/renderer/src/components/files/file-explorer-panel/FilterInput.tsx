@@ -3,7 +3,7 @@ import { Search, X } from 'lucide-react';
 interface FilterInputProps {
   value: string;
   onChange: (value: string) => void;
-  inputRef: React.RefObject<HTMLInputElement>;
+  inputRef: React.RefObject<HTMLInputElement | null>;
 }
 
 export function FilterInput({ value, onChange, inputRef }: FilterInputProps) {

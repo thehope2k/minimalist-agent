@@ -101,10 +101,6 @@ What's shipped, what's coming, and what's intentionally out of scope.
 
 ### 🔴 High priority
 
-| What | Notes |
-|---|---|
-| **Hooks / lifecycle automation** | Per-session hooks that fire shell commands on lifecycle events: `on_turn_done`, `on_file_write`, `on_tool_use`. Closes the agent feedback loop — runs tests, typechecks, linting, or `gh pr create` without the user having to ask. MVP: simple command config per session or project |
-
 ---
 
 ### 🟡 Medium priority
@@ -118,7 +114,6 @@ What's shipped, what's coming, and what's intentionally out of scope.
 | What | Notes |
 |---|---|
 | **Built-in browser / visual preview** | Render the user's app, capture screenshots, run E2E checks — all within MA. High value for front-end work; high engineering cost |
-| **SDD: Task → session queue** | Parse `tasks.md` checkboxes and offer "Spawn sessions for all tasks" — each unchecked task becomes a child session pre-loaded with `spec.md` + `plan.md` context, checks its box on completion |
 
 ---
 

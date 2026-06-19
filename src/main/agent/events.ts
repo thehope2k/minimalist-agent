@@ -13,6 +13,7 @@
 import type {
   SDKMessage,
   SDKPartialAssistantMessage,
+  SDKRateLimitInfo,
   SDKResultError,
 } from '@anthropic-ai/claude-agent-sdk';
 import { type AgentError, summarizeSdkResultError } from './errors';
@@ -266,6 +267,13 @@ export interface AdaptState {
   fallbackText: string;
   /** True once any text_delta has been emitted. */
   streamedText: boolean;
+  /**
+   * Hard rate-limit signal (`status: 'rejected'`) from a structured
+   * `rate_limit_event`. The error path reads this to attach a precise reset
+   * time and a credits-required classification rather than parsing thrown
+   * error text. Absent unless the API rejects a request for rate limits.
+   */
+  rateLimitRejection?: { resetsAt?: number; creditsRequired: boolean };
 }
 
 export function newAdaptState(): AdaptState {
@@ -496,6 +504,22 @@ export function adaptSdkMessage(
           postTokens: sys.compact_metadata.post_tokens,
           durationMs: sys.compact_metadata.duration_ms,
         });
+      }
+      return { events, terminal: false };
+    }
+
+    case 'rate_limit_event': {
+      // A rate_limit_event reports subscription rate-limit state on every
+      // change (including warnings). Only hard rejections are retained, and
+      // no renderer event is emitted here: the turn failure surfaces
+      // separately as a thrown / result error, which this signal enriches.
+      // Emitting an event here would double-report the same failure.
+      const info = (msg as { rate_limit_info?: SDKRateLimitInfo }).rate_limit_info;
+      if (info && (info.status === 'rejected' || info.overageStatus === 'rejected')) {
+        state.rateLimitRejection = {
+          resetsAt: info.resetsAt ?? info.overageResetsAt,
+          creditsRequired: info.errorCode === 'credits_required',
+        };
       }
       return { events, terminal: false };
     }

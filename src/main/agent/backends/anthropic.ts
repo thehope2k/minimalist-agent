@@ -4,7 +4,6 @@
 
 import {
   query,
-  type CanUseTool,
   type Options,
   type SDKMessage,
   type SDKUserMessage,
@@ -483,9 +482,30 @@ export async function* runAnthropicChat(
     }
     yield { type: 'turn_done' };
   } catch (e) {
+    const error = parseError(e);
+    // A structured rate_limit_event carries an exact reset time and a
+    // credits-required flag that thrown-error text usually lacks; use it to
+    // refine the parsed error.
+    const rl = state.rateLimitRejection;
+    if (rl) {
+      if (rl.creditsRequired && error.code === 'rate_limited') {
+        error.code = 'billing_error';
+        error.title = 'Out of credits';
+        error.message =
+          'Your Claude plan ran out of credits for this request. Add credits or wait for your limit to reset.';
+        error.canRetry = false;
+      }
+      if (error.code === 'rate_limited' && error.retryAfterMs == null && rl.resetsAt != null) {
+        // resetsAt is an absolute timestamp (seconds or milliseconds);
+        // normalise to ms, then derive the retry delay.
+        const resetMs = rl.resetsAt < 1e12 ? rl.resetsAt * 1000 : rl.resetsAt;
+        const delta = resetMs - Date.now();
+        if (delta > 0 && delta < 24 * 60 * 60 * 1000) error.retryAfterMs = delta;
+      }
+    }
     yield {
       type: 'error',
-      error: parseError(e),
+      error,
     };
   } finally {
     if (steerable) {

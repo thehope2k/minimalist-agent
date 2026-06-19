@@ -145,9 +145,7 @@ and update the inventory in that doc.
 
 ## Logging
 
-Don't call `console.*` directly — use the scoped, leveled logger. A
-`npm run check:logs` guard fails the build on raw `console.*` (the renderer
-logger is the one sanctioned exception).
+Don't call `console.*` directly — use the scoped, leveled logger.
 
 ```ts
 const log = createLogger('worktree');

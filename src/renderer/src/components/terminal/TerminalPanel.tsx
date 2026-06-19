@@ -22,10 +22,10 @@ export function TerminalPanel({ isOpen, initialCwd, onClose }: TerminalPanelProp
   initialCwdRef.current = initialCwd;
 
   // Per-tab refs for imperative access (clear, search).
-  const tabRefs = useRef<Map<string, React.RefObject<TerminalInstanceHandle>>>(new Map());
+  const tabRefs = useRef<Map<string, React.RefObject<TerminalInstanceHandle | null>>>(new Map());
   const getTabRef = (tabId: string) => {
     if (!tabRefs.current.has(tabId)) {
-      tabRefs.current.set(tabId, { current: null } as React.RefObject<TerminalInstanceHandle>);
+      tabRefs.current.set(tabId, { current: null } as React.RefObject<TerminalInstanceHandle | null>);
     }
     return tabRefs.current.get(tabId)!;
   };
