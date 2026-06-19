@@ -454,6 +454,12 @@ function createCollaborationExecutor(
         details: {},
       };
     }
+
+    // The user approved a risky operation while in plan mode → promote to auto
+    // so the operation they just authorized can actually run.
+    if (engagementType === 'approval') {
+      promoteToAutoAfterApproval();
+    }
     
     return {
       isError: false,
@@ -466,6 +472,27 @@ function createCollaborationExecutor(
       details: {},
     };
   };
+}
+
+/**
+ * When the user grants an approval (a risky-operation approval, a tool-use
+ * approval, or a plan phase approval) while the session is still in plan mode,
+ * promote the session to auto mode. Plan mode blocks every write tool, so
+ * without this the agent stays stuck — it asked, the user said yes, yet the
+ * very next write is still denied by the plan-mode guard.
+ *
+ * No-op when already in auto mode. Notifies the main process so the UI and the
+ * cached per-turn permission contexts update too.
+ */
+function promoteToAutoAfterApproval(): void {
+  if (state.permissionMode !== 'plan') return;
+  log.debug('User granted approval in plan mode - switching to auto mode');
+  state.permissionMode = 'auto';
+  send({
+    type: 'permission_mode_changed',
+    sessionId: state.init?.sessionId ?? '',
+    mode: 'auto',
+  });
 }
 
 /**
@@ -1887,17 +1914,10 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
       if (!pending) return;
       state.pendingPermission.delete(msg.requestId);
       
-      // If user approved a tool in plan mode, auto-switch to auto mode
-      if (msg.action === 'allow' && state.permissionMode === 'plan') {
-        log.debug('Approved tool in plan mode - switching to auto mode');
-        state.permissionMode = 'auto';
-        
-        // Notify main process about mode change so UI updates
-        send({
-          type: 'permission_mode_changed',
-          sessionId: state.init?.sessionId ?? '',
-          mode: 'auto',
-        });
+      // If the user approved a write tool while in plan mode, promote the
+      // session to auto so the approved tool isn't immediately re-blocked.
+      if (msg.action === 'allow') {
+        promoteToAutoAfterApproval();
       }
       
       pending.resolve(msg);
@@ -1924,6 +1944,10 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
       try {
         if (approved) {
           state.planManager.approvePhase(sessionId, phaseId, notes);
+          // Approving a non-safe phase while still in plan mode must promote
+          // the session to auto — otherwise the phase's write tools stay
+          // blocked by the plan-mode guard right after the user approved them.
+          promoteToAutoAfterApproval();
         } else {
           state.planManager.denyPhase(sessionId, phaseId, notes);
         }

@@ -250,13 +250,17 @@ RevisePlan({
 ### Phase Approval & Denial
 
 **User approval for unsafe phases:**
-- Non-safe phases (risk ≥ 60 or based on autonomy level) may require user approval
-- If **approved**: Proceed with the phase normally
+- Phase approval only applies in **plan** mode. In **auto** mode, phases never
+  prompt for approval (auto = full execution). A non-safe phase prompts when its
+  risk meets the autonomy threshold (risk ≥ 100 − autonomy).
+- If **approved**: The session is promoted to **auto** for the rest of the
+  session (so the writes you were just authorized to make aren't re-blocked),
+  and you proceed with the phase normally. Because the session is now in auto,
+  later phases will no longer prompt for approval.
 - If **denied**: Phase is marked 'skipped' with reason "Denied by user"
-  - **Continue with next phase** — Denial is per-phase, not session-wide
+  - **Continue with next phase** — Denial is per-phase; it does not change the
+    permission mode.
   - If phase was critical, ask user: "Phase X was denied. Should I skip and continue, or revise the plan?"
-  - Approval/denial of a phase is independent of the session permission mode
-    ('plan' = read-only research, no mutations; 'auto' = full execution)
 
 **Example:**
 \`\`\`
