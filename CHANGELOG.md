@@ -5,6 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.6.1] — 2026-06-19
+
+Bug fixes.
+
+### Fixed
+
+**Plan mode**
+
+- Approving a risky operation, tool use, or non-safe phase while in plan mode no longer leaves the agent stuck — saying yes now promotes the session to auto so the next write actually goes through
+
+---
+
 ## [1.6.0] — 2026-06-19
 
 Opt-in OpenTelemetry tracing, branched-session quality of life, and a planning fix.
