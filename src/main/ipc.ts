@@ -75,6 +75,11 @@ import {
   saveConnection,
   setDefaultSlug,
 } from './storage/connections';
+import {
+  maybeRevalidate,
+  onConnectionModelsChanged,
+  refreshConnectionModels,
+} from './storage/model-refresh';
 import {loadPreferences, savePreferences, type UserPreferences,} from './storage/preferences';
 import {type Credential, isEncryptionAvailable} from './storage/credentials';
 import {Paths} from './storage/paths';
@@ -512,6 +517,10 @@ export function registerIpc(): void {
         chatSessionId: req.sessionId,
       });
 
+      // On-use revalidation: TTL-gated, fire-and-forget. Keeps an actively
+      // used connection's model catalog fresh without waiting for a restart.
+      maybeRevalidate(req.connectionSlug);
+
       // Ensure session state is ready before the first turn.
       // This is a no-op on subsequent turns (init is idempotent when state already exists).
       let autonomyLevel = 50; // Default: balanced
@@ -722,6 +731,14 @@ export function registerIpc(): void {
 
   // ---- Connections + AI settings -----------------------------------------
 
+  // Broadcast model-cache changes (background/manual refresh) to every window
+  // so open settings/pickers update without a manual reload.
+  onConnectionModelsChanged(() => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) win.webContents.send('connections:changed');
+    }
+  });
+
   ipcMain.handle('connections:list', () => listConnections());
   ipcMain.handle('connections:getDefaultSlug', () => getDefaultSlug());
   ipcMain.handle('connections:setDefaultSlug', (_e, slug: string | null) =>
@@ -810,6 +827,12 @@ export function registerIpc(): void {
         return { ok: false, error: parseError(e) };
       }
     },
+  );
+
+  // Force-refresh a connection's model catalog (manual "Refresh models").
+  // Background/TTL revalidation runs without this handler.
+  ipcMain.handle('connections:refreshModels', (_e, slug: string) =>
+    refreshConnectionModels(slug),
   );
 
   // List models a remote OpenAI-compatible provider advertises via /v1/models.

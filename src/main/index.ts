@@ -235,6 +235,11 @@ app.whenReady().then(async () => {
   }
   
   registerIpc();
+  // Background stale-while-revalidate of model catalogs. Non-blocking so it
+  // never delays window creation; updates broadcast to the renderer when done.
+  void import('./storage/model-refresh').then((m) =>
+    m.revalidateStaleConnections(),
+  );
   installCsp();
   const icon = await getAppIcon();
   if (process.platform === 'darwin' && app.dock && icon) {

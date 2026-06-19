@@ -3,6 +3,7 @@ import { Plus } from 'lucide-react';
 import {
   DEFAULT_MAX_TURNS,
   deleteConnection,
+  refreshConnectionModels,
   setDefaultConnection,
   setDefaultModel,
   setDefaultPermissionMode,
@@ -25,6 +26,12 @@ import { ConnectionRow } from '../ai-panel/ConnectionRow';
 import { ContextFileNamesRow } from '../ai-panel/ContextFileNamesRow';
 
 const THINKING_LEVELS: ThinkingLevel[] = ['off', 'low', 'medium', 'high', 'xhigh', 'max'];
+
+/** Mirrors main's model-refresh.isRefreshable: only providers with a live catalog. */
+function isRefreshable(conn: ConnectionMeta): boolean {
+  if (conn.providerType === 'pi' && conn.piAuthProvider === 'github-copilot') return true;
+  return conn.providerType === 'openai-compatible' || conn.providerType === 'local';
+}
 
 const THINKING_LABELS: Record<ThinkingLevel, string> = {
   off: 'No Thinking',
@@ -74,6 +81,25 @@ export function AIPanel() {
       }
     } catch (e) {
       window.alert(e instanceof Error ? e.message : 'Test failed.');
+    }
+  };
+
+  const refreshModels = async (conn: ConnectionMeta) => {
+    try {
+      const res = await refreshConnectionModels(conn.slug);
+      if (res.ok) {
+        window.alert(
+          res.changed
+            ? `✓ "${conn.name}" model list updated.`
+            : `"${conn.name}" is already up to date.`,
+        );
+      } else if (res.reason === 'unsupported') {
+        window.alert(`"${conn.name}" uses a fixed model list — nothing to refresh.`);
+      } else {
+        window.alert(`Could not refresh "${conn.name}".\n\n${res.error ?? 'Unknown error.'}`);
+      }
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'Refresh failed.');
     }
   };
 
@@ -184,6 +210,9 @@ export function AIPanel() {
                 }}
                 onTest={() => void testConnection(c)}
                 onReauth={() => setReauthSlug(c.slug)}
+                onRefreshModels={
+                  isRefreshable(c) ? () => void refreshModels(c) : undefined
+                }
               />
             ))
           )}

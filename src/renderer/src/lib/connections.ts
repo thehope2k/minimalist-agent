@@ -64,6 +64,9 @@ export function bootstrap(): Promise<Snapshot> {
   if (!bootPromise) {
     bootPromise = load().then((s) => {
       cache = s;
+      // Background/manual model-cache refreshes in main push this event;
+      // reload so open pickers and settings reflect the new list live.
+      window.api.connections.onChanged(() => void reload());
       return s;
     });
   }
@@ -101,6 +104,25 @@ export async function saveConnection(
 export async function deleteConnection(slug: string): Promise<void> {
   await window.api.connections.delete(slug);
   await reload();
+}
+
+/**
+ * Force-refresh a connection's model catalog. On success the main process
+ * broadcasts `connections:changed`, which reloads the cache; we also reload
+ * defensively so callers can `await` a settled state.
+ */
+export async function refreshConnectionModels(
+  slug: string,
+): Promise<
+  | { ok: true; changed: boolean }
+  | { ok: false; reason: 'unsupported' | 'error'; error?: string }
+> {
+  const res = await window.api.connections.refreshModels(slug);
+  if (res.ok) {
+    await reload();
+    return { ok: true, changed: res.changed };
+  }
+  return res;
 }
 
 export async function setDefaultConnection(slug: string | undefined): Promise<void> {

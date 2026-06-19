@@ -1,4 +1,4 @@
-import { Activity, KeyRound, LogIn, MoreHorizontal, Star, Trash2 } from 'lucide-react';
+import { Activity, KeyRound, LogIn, MoreHorizontal, RefreshCw, Star, Trash2 } from 'lucide-react';
 import { BrandMark } from '../connection-flow/shared';
 import { CopilotQuotaBar } from '../CopilotQuotaBar';
 import { ClaudeUsageBar } from '../ClaudeUsageBar';
@@ -13,6 +13,7 @@ export function ConnectionRow({
   onDelete,
   onTest,
   onReauth,
+  onRefreshModels,
 }: {
   conn: ConnectionMeta;
   isDefault?: boolean;
@@ -20,6 +21,7 @@ export function ConnectionRow({
   onDelete: () => void;
   onTest: () => void;
   onReauth: () => void;
+  onRefreshModels?: () => void;
 }) {
   const reauthLabel = conn.authType === 'oauth' ? 'Reconnect' : 'Update API key';
   const reauthIcon = conn.authType === 'oauth' ? LogIn : KeyRound;
@@ -27,6 +29,9 @@ export function ConnectionRow({
   const items: Array<MenuItem | 'separator'> = [
     ...(isDefault ? [] : [{ label: 'Make default', icon: Star, onSelect: onMakeDefault }]),
     { label: 'Test connection', icon: Activity, onSelect: onTest },
+    ...(onRefreshModels
+      ? [{ label: 'Refresh models', icon: RefreshCw, onSelect: onRefreshModels }]
+      : []),
     { label: reauthLabel, icon: reauthIcon, onSelect: onReauth },
     'separator',
     { label: 'Delete', icon: Trash2, variant: 'destructive', onSelect: onDelete },

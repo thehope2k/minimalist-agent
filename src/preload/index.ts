@@ -235,6 +235,7 @@ interface ConnectionMeta {
   baseUrl?: string;
   defaultModel: string;
   models: ModelDef[];
+  modelsFetchedAt?: number;
   createdAt: number;
 }
 
@@ -601,6 +602,18 @@ const api = {
       args: { baseUrl: string; apiKey?: string },
     ): Promise<{ ids: string[] } | { error: string }> =>
       ipcRenderer.invoke('connections:listRemoteModels', args),
+    refreshModels: (
+      slug: string,
+    ): Promise<
+      | { ok: true; changed: boolean; models: ModelDef[]; fetchedAt: number }
+      | { ok: false; reason: 'unsupported' | 'error'; error?: string }
+    > => ipcRenderer.invoke('connections:refreshModels', slug),
+    /** Fires when a model cache is updated in the background or manually. */
+    onChanged: (cb: () => void): (() => void) => {
+      const handler = (): void => cb();
+      ipcRenderer.on('connections:changed', handler);
+      return () => ipcRenderer.removeListener('connections:changed', handler);
+    },
   },
   settings: {
     get: (): Promise<AiSettings> => ipcRenderer.invoke('settings:get'),

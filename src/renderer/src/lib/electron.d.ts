@@ -332,6 +332,8 @@ export interface ConnectionMeta {
   presetId?: string;
   defaultModel: string;
   models: ModelDef[];
+  /** Epoch ms of the last successful live model fetch (stale-while-revalidate cache). */
+  modelsFetchedAt?: number;
   createdAt: number;
 }
 
@@ -935,6 +937,15 @@ export interface AppApi {
     listRemoteModels: (
       args: { baseUrl: string; apiKey?: string },
     ) => Promise<{ ids: string[] } | { error: string }>;
+    /** Force-refresh a connection's model catalog. */
+    refreshModels: (
+      slug: string,
+    ) => Promise<
+      | { ok: true; changed: boolean; models: ModelDef[]; fetchedAt: number }
+      | { ok: false; reason: 'unsupported' | 'error'; error?: string }
+    >;
+    /** Subscribe to background/manual model-cache updates. */
+    onChanged: (cb: () => void) => () => void;
   };
   settings: {
     get: () => Promise<AiSettings>;
