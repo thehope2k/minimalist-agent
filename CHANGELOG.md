@@ -5,6 +5,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.6.0] — 2026-06-19
+
+Opt-in OpenTelemetry tracing, branched-session quality of life, and a planning fix.
+
+### Added
+
+**OpenTelemetry tracing**
+
+- Optionally emit OTel spans for agent turns, model requests, and tool calls — off by default, enabled from Settings → Telemetry. Spans follow the GenAI semantic conventions for compatibility with GenAI-aware backends, prompt/response content is gated behind a capture-content toggle (default off), secrets are never recorded, and per-user attribution rides on the OTel resource. Paths use `~` expansion and anchor relative output files under your home directory for predictable locations
+
+**Branched sessions**
+
+- Attachments from a message now travel with its text into a branched session's composer instead of being dropped
+
+### Fixed
+
+**Planning**
+
+- Phase progress reporting after a plan revision no longer targets already-completed phases — revised phase lists now use absolute, continuous indices
+
+---
+
 ## [1.5.0] — 2026-06-09
 
 Agent session scratch directory for cleaner project output, plus Mermaid rendering fixes.
