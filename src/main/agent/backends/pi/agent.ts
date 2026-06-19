@@ -42,6 +42,7 @@ import type {EngagementRequest} from '../../../../shared/collaboration-types';
 import {getActivePlan as getCachedPlan, updatePlanCache} from '../../plan-cache';
 import {resolveAuthForSlug} from '../../../auth/resolve';
 import {listConnections} from '../../../storage/connections';
+import {telemetryEnv} from '../../../storage/telemetry';
 import {loadAllAgents} from '../../../agents/storage';
 import {createLogger} from '../../../logger';
 import {writeJsonLine} from '../../../../shared/jsonl-stdin';
@@ -218,6 +219,10 @@ function ensureSubprocess(
       // Verbose Pi event logging — pipe-through to console.error so we can
       // see what the runtime actually emits. Set PI_DEBUG=0 to silence.
       PI_DEBUG: process.env.PI_DEBUG ?? '1',
+      // OpenTelemetry tracing config (MA_OTEL_*). Empty when disabled; the
+      // subprocess (src/shared/otel.ts) reads these at startup. Inherited by
+      // sub-agent subprocesses too, so their traces land in the same sink.
+      ...telemetryEnv(),
     },
   });
 

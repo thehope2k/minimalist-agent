@@ -163,7 +163,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development guide.
 - **Developer-first** — built-in terminal, git diff viewer, file explorer, and powerful search
 - **Intelligent collaboration** — adjustable autonomy from "ask me everything" to "just get it done"
 - **Planning workflow** — break down complex tasks into phases with approval and revision
-- **Privacy-focused** — local storage, encrypted secrets, no telemetry
+- **Privacy-focused** — local storage, encrypted secrets, no telemetry by default (optional local OpenTelemetry tracing is opt-in)
 - **Extensible** — MCP servers, CLI-bound extensions, and reusable skills
 - **Open source** — MIT licensed, built with modern web tech
 
@@ -184,6 +184,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development guide.
 - [Collaboration](docs/COLLABORATION.md) — autonomy system and intelligent engagement
 - [Terminal](docs/TERMINAL.md) — in-app terminal reference
 - [Worktree Isolation](docs/WORKTREE-ISOLATION.md) — parallel agent isolation via git worktrees
+- [OpenTelemetry Tracing](docs/OTEL.md) — opt-in spans for agent turns, model requests, and tool calls
 
 ### Contributing
 - [Contributing](CONTRIBUTING.md) — development setup and guidelines

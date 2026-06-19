@@ -257,6 +257,17 @@ interface AiSettings {
   defaultPermissionMode?: PermissionMode;
 }
 
+interface TelemetrySettings {
+  enabled: boolean;
+  captureContent: boolean;
+  exporter: 'file' | 'otlp' | 'console';
+  outfile: string;
+  otlpEndpoint: string;
+  userName: string;
+  teamId: string;
+  resourceAttributes: string;
+}
+
 interface UserLocation {
   city?: string;
   region?: string;
@@ -599,6 +610,13 @@ const api = {
       ipcRenderer.invoke('settings:pushRecentFolder', folder),
     removeRecentFolder: (folder: string): Promise<AiSettings> =>
       ipcRenderer.invoke('settings:removeRecentFolder', folder),
+  },
+  telemetry: {
+    get: (): Promise<TelemetrySettings> => ipcRenderer.invoke('telemetry:get'),
+    save: (settings: TelemetrySettings): Promise<void> =>
+      ipcRenderer.invoke('telemetry:save', settings),
+    tracesPath: (): Promise<string> => ipcRenderer.invoke('telemetry:tracesPath'),
+    reveal: (): Promise<void> => ipcRenderer.invoke('telemetry:reveal'),
   },
   preferences: {
     get: (): Promise<UserPreferences> => ipcRenderer.invoke('preferences:get'),

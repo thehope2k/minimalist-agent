@@ -5,6 +5,7 @@ import {
   Folders,
   SquareTerminal,
   User,
+  Activity,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -14,6 +15,7 @@ export const SETTINGS_CATEGORIES = [
   { id: 'projects',    label: 'Projects',    hint: 'Group sessions by project',     icon: Folders },
   { id: 'preferences', label: 'Preferences', hint: 'Name, timezone, language, notes',  icon: User },
   { id: 'terminal',    label: 'Terminal',    hint: 'Shell, font, scrollback',           icon: SquareTerminal },
+  { id: 'telemetry',   label: 'Telemetry',   hint: 'OpenTelemetry tracing',             icon: Activity },
   { id: 'shortcuts',    label: 'Shortcuts',   hint: 'Keyboard shortcut reference',       icon: Keyboard },
 ] as const;
 

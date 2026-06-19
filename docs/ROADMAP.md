@@ -72,6 +72,7 @@ What's shipped, what's coming, and what's intentionally out of scope.
 | **SDD workspace panel** | Native Spec-Driven Development panel: entity cards, phase badges, artifact viewer, constitution viewer, interactive task checkboxes, file-system watchers, lazy rule injection, active feature pinning, phase action buttons |
 | **SDD project wizard** | In-app `specify init` launch when no `.specify/` directory is found |
 | **Tool diff UI** | Inline unified diff + split-view modal for Edit/Write tool calls |
+| **OpenTelemetry tracing** | Opt-in spans (off by default) for agent turns, model requests, and tool calls, following the GenAI semantic conventions (`invoke_agent`/`chat`/`execute_tool`). Cache-aware token accounting, time-to-first-token, file (JSONL)/OTLP/console exporters, and `OTEL_RESOURCE_ATTRIBUTES` (`user.name`/`team.id`) for per-user token telemetry. Metadata-only unless content capture is enabled; secrets never recorded. Settings → Telemetry. See [OTEL.md](OTEL.md) |
 
 ---
 

@@ -173,6 +173,24 @@ Pick the right module by **process context**:
 Keep the `[scope]` name matching the existing convention. **Never log secrets**
 (tokens/keys/passwords) — the codebase is clean of this; keep it that way.
 
+### Tracing (OpenTelemetry)
+
+Separate from logging, the pi-server subprocess can emit **OTel spans** (agent
+turns, model requests, tool calls) for observability — off by default, enabled
+via Settings → Telemetry. The tracer lives in [`src/shared/otel.ts`](src/shared/otel.ts)
+(electron-free, like `sub-logger.ts`) and is configured purely through
+`MA_OTEL_*` env. Spans/attributes follow the **GenAI semantic conventions**
+(`invoke_agent` / `chat` / `execute_tool`, `gen_ai.*`), so the output matches
+GitHub Copilot Chat and any GenAI-aware backend. Same discipline as logging:
+**never record secrets**, and prompt/response/tool-argument content is gated
+behind `captureContent` (default off).
+
+Per-user attribution (for shared token-usage dashboards) rides on the OTel
+**Resource**: the standard `OTEL_RESOURCE_ATTRIBUTES` env var is honored, and
+the Telemetry settings compose `user.name`/`team.id` into
+`MA_OTEL_RESOURCE_ATTRIBUTES`. See [`docs/OTEL.md`](docs/OTEL.md) before changing
+span shape, resource attributes, or settings.
+
 **When you write new code, log deliberately** — not everywhere:
 
 - Log at **failure points that are otherwise silent** (caught errors, forced

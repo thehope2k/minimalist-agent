@@ -54,6 +54,12 @@ import {
   removeRecentFolder,
   saveSettings,
 } from './storage/settings';
+import {
+  getTelemetrySettings,
+  saveTelemetrySettings,
+  resolveTracesFile,
+  type TelemetrySettings,
+} from './storage/telemetry';
 import type {EngagementRequest, EngagementResponse,} from '../shared/collaboration-types';
 import {getActivePlan, updatePlanCache as updatePlan} from './agent/plan-cache';
 import type {Phase} from '../shared/planning-types';
@@ -128,7 +134,8 @@ import {
 import {type FileSearchEntry, searchFiles} from './files/search';
 import {buildFileTree, listDirectory} from './files/list-directory';
 import {isWithinAllowedRoots, resolveWithinAllowedRoots} from './files/path-guard';
-import {readFileSync} from 'node:fs';
+import {readFileSync, existsSync} from 'node:fs';
+import {dirname} from 'node:path';
 import {writeFile} from 'node:fs/promises';
 import {publishExport, revokeExport, type PublishResult} from './export-transport/brewpage';
 import {invalidateContextFileCache} from './agent/system-prompt';
@@ -834,6 +841,20 @@ export function registerIpc(): void {
   ipcMain.handle('settings:removeRecentFolder', (_e, folder: string) =>
     removeRecentFolder(folder),
   );
+
+  // ---- Telemetry (OpenTelemetry tracing) --------------------------------
+  ipcMain.handle('telemetry:get', () => getTelemetrySettings());
+  ipcMain.handle('telemetry:save', (_e, settings: TelemetrySettings) => {
+    saveTelemetrySettings(settings);
+    // Takes effect for subprocesses spawned after this point; the user is told
+    // in the UI that a new chat picks up the change.
+  });
+  ipcMain.handle('telemetry:tracesPath', () => resolveTracesFile());
+  ipcMain.handle('telemetry:reveal', () => {
+    const p = resolveTracesFile();
+    if (existsSync(p)) shell.showItemInFolder(p);
+    else shell.showItemInFolder(dirname(p));
+  });
 
   // ---- Sessions ----------------------------------------------------------
 

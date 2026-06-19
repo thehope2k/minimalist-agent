@@ -75,6 +75,21 @@ import {
   validateRevisePlanInput,
 } from '../../shared/planning-types';
 import { createLogger } from '../../shared/sub-logger';
+import {
+  initOtel,
+  shutdownOtel,
+  startSpan,
+  withSpan,
+  captureContent,
+  isOtelEnabled,
+  recordException,
+  safeAttr,
+  setAttrs,
+  SpanKind,
+  SpanStatusCode,
+  type Span,
+} from '../../shared/otel';
+import { context as otelContext, type Context } from '@opentelemetry/api';
 
 const log = createLogger('pi-server');
 
@@ -139,6 +154,19 @@ interface State {
   currentPhaseId?: string; // Track active phase for error attribution
   turnAbort?: AbortController;
   shuttingDown?: boolean;
+  /** OTel span + context for the in-flight turn; child spans nest under it. */
+  turnSpan?: Span;
+  turnContext?: Context;
+  /** OTel span for the in-flight provider/model request (one per assistant
+   *  message; a tool loop produces several per turn). */
+  modelSpan?: Span;
+  /** Wall-clock start of the current model span, for time-to-first-token. */
+  modelSpanStartMs?: number;
+  modelFirstTokenSeen?: boolean;
+  /** Per-turn model-call count, surfaced on the invoke_agent span. */
+  modelRequestCount?: number;
+  /** Accumulated assistant text for opt-in content capture on the turn span. */
+  turnAssistantText?: string;
 }
 
 const state: State = {
@@ -249,6 +277,62 @@ function wrapWithPermissionGate(
       const finalParams = decision.action === 'modify' ? decision.input : params;
       return originalExecute(toolCallId, finalParams, signal, onUpdate, ctx);
     },
+  };
+}
+
+/**
+ * Wrap a tool definition so each execution is a GenAI `execute_tool` span
+ * (span name `execute_tool <name>`) nested under the active turn span. Applied
+ * to every tool (builtin, web, agent, collaboration, planning) so the trace is
+ * uniform. When tracing is disabled `withSpan` uses the API's no-op tracer, so
+ * this is effectively free.
+ */
+function instrumentTool(
+  base: ToolDefinition<any, any, any>,
+): ToolDefinition<any, any, any> {
+  const originalExecute = base.execute.bind(base);
+  // Agent delegation + collaboration/planning tools are MA-internal; the file/
+  // web/bash tools are the model-callable "function" tools.
+  const toolType = base.name === 'Agent' ? 'extension' : 'function';
+  return {
+    ...base,
+    execute: (toolCallId, params, signal, onUpdate, ctx) =>
+      withSpan(
+        `execute_tool ${base.name}`,
+        async (span) => {
+          setAttrs(span, {
+            'gen_ai.operation.name': 'execute_tool',
+            'gen_ai.tool.name': base.name,
+            'gen_ai.tool.type': toolType,
+            'gen_ai.tool.call.id': String(toolCallId),
+            'gen_ai.tool.description': (base as { description?: string }).description,
+            'gen_ai.conversation.id': state.init?.sessionId,
+          });
+          if (captureContent()) {
+            span.setAttribute('gen_ai.tool.call.arguments', safeAttr(params));
+          }
+          try {
+            const res = await originalExecute(toolCallId, params, signal, onUpdate, ctx);
+            if (res && (res as { isError?: boolean }).isError) {
+              span.setAttribute('error.type', 'tool_error');
+              span.setStatus({ code: SpanStatusCode.ERROR, message: 'tool returned isError' });
+            }
+            if (captureContent() && res && (res as { content?: unknown }).content) {
+              span.setAttribute(
+                'gen_ai.tool.call.result',
+                safeAttr((res as { content?: unknown }).content),
+              );
+            }
+            return res;
+          } catch (err) {
+            span.setAttribute('error.type', err instanceof Error ? err.name : 'Error');
+            throw err;
+          }
+        },
+        // Parent explicitly to the turn context so nesting holds even if the
+        // SDK's tool callback runs outside the turn's async context.
+        { parentContext: state.turnContext },
+      ),
   };
 }
 
@@ -937,7 +1021,7 @@ function buildWrappedTools(
   // Add planning tools (not wrapped with permission gate - they manage the workflow)
   tools.push(...createPlanningTools(agentContext?.sessionId || ''));
 
-  return tools;
+  return tools.map(instrumentTool);
 }
 
 /* ============================================================ */
@@ -945,6 +1029,8 @@ function buildWrappedTools(
 /* ============================================================ */
 
 async function handleInit(msg: MsgInit): Promise<void> {
+  // Bring up tracing (no-op unless MA_OTEL_ENABLED) before any turn runs.
+  await initOtel();
   state.init = msg;
   state.permissionMode = msg.permissionMode;
   state.autonomyLevel = msg.autonomyLevel ?? 50; // Default to 50 if not provided
@@ -1147,13 +1233,152 @@ async function handleInit(msg: MsgInit): Promise<void> {
 }
 
 /* ============================================================ */
-/*  Event forwarding                                              */
+/*  Event forwarding                                             */
 /* ============================================================ */
+
+interface PiUsage {
+  input?: number;
+  output?: number;
+  cacheRead?: number;
+  cacheWrite?: number;
+  totalTokens?: number;
+}
+
+/** pi-ai normalizes every provider's usage to this shape (types.d.ts:Usage). */
+function readUsage(usage: unknown): PiUsage {
+  if (!usage || typeof usage !== 'object') return {};
+  const u = usage as Record<string, unknown>;
+  const num = (v: unknown): number | undefined => (typeof v === 'number' ? v : undefined);
+  return {
+    input: num(u.input),
+    output: num(u.output),
+    cacheRead: num(u.cacheRead),
+    cacheWrite: num(u.cacheWrite),
+    totalTokens: num(u.totalTokens),
+  };
+}
+
+/** Map pi-ai StopReason → a GenAI finish_reasons value. */
+function finishReason(stop?: string): string | undefined {
+  if (!stop) return undefined;
+  switch (stop) {
+    case 'stop': return 'stop';
+    case 'length': return 'length';
+    case 'toolUse': return 'tool_calls';
+    case 'error': return 'error';
+    case 'aborted': return 'aborted';
+    default: return stop;
+  }
+}
+
+/** Hostname of the active model endpoint, for `server.address`. */
+function serverAddress(): string | undefined {
+  const base = (state.model as { baseUrl?: string } | undefined)?.baseUrl;
+  if (!base) return undefined;
+  try { return new URL(base).hostname; } catch { return undefined; }
+}
+
+interface AssistantMsg {
+  usage?: unknown;
+  model?: string;
+  responseModel?: string;
+  responseId?: string;
+  provider?: string;
+  stopReason?: string;
+  errorMessage?: string;
+  content?: unknown;
+}
+
+function finishModelSpan(m?: AssistantMsg): void {
+  const span = state.modelSpan;
+  if (!span) return;
+  state.modelSpan = undefined;
+
+  const usage = readUsage(m?.usage);
+  const reason = finishReason(m?.stopReason);
+  // gen_ai.usage.input_tokens is the TOTAL prompt size (OpenAI-style: cached
+  // tokens are a subset of the prompt, not separate from it). pi-ai reports the
+  // uncached delta in `input`, so the true prompt = input + cacheRead +
+  // cacheWrite. Cost/usage dashboards sum input_tokens, so reporting only the
+  // uncached delta (often ~2 with prompt caching) would wildly undercount. The
+  // cache split stays available in the dedicated cache_* attributes.
+  const totalInput =
+    usage.input === undefined &&
+    usage.cacheRead === undefined &&
+    usage.cacheWrite === undefined
+      ? undefined
+      : (usage.input ?? 0) + (usage.cacheRead ?? 0) + (usage.cacheWrite ?? 0);
+  setAttrs(span, {
+    'gen_ai.response.model': m?.responseModel ?? m?.model,
+    'gen_ai.response.id': m?.responseId,
+    'gen_ai.response.finish_reasons': reason ? [reason] : undefined,
+    'gen_ai.usage.input_tokens': totalInput,
+    'gen_ai.usage.output_tokens': usage.output,
+    'gen_ai.usage.cache_read_input_tokens': usage.cacheRead,
+    'gen_ai.usage.cache_creation_input_tokens': usage.cacheWrite,
+    'server.address': serverAddress(),
+  });
+  if (captureContent() && m?.content) {
+    span.setAttribute('gen_ai.output.messages', safeAttr(m.content));
+  }
+  // Track the latest assistant text so the turn span can carry the final
+  // response when content capture is on (the last non-empty wins).
+  if (m?.content) {
+    const text = pickTextFromMessage(m);
+    if (text) state.turnAssistantText = text;
+  }
+  if (m?.stopReason === 'error' || m?.stopReason === 'aborted') {
+    span.setAttribute('error.type', m?.stopReason === 'aborted' ? 'aborted' : 'model_error');
+    span.setStatus({ code: SpanStatusCode.ERROR, message: m?.errorMessage ?? 'model error' });
+  } else {
+    span.setStatus({ code: SpanStatusCode.OK });
+  }
+  span.end();
+}
 
 function forwardEvent(piEvent: AgentSessionEvent): void {
   if (!state.currentTurnId) return;
 
   const t = (piEvent as { type?: string }).type;
+
+  // GenAI `chat` span: one per assistant message (a tool loop yields several
+  // per turn). Start on the assistant message_start, close on its message_end.
+  if (isOtelEnabled() && state.turnContext) {
+    if (t === 'message_start') {
+      const m = (piEvent as { message?: { role?: string; model?: string } }).message;
+      if (m && (m.role === 'assistant' || m.model) && !state.modelSpan) {
+        const model = m.model ?? state.model?.id ?? state.init?.model ?? '';
+        const { span } = startSpan(`chat ${model}`, {
+          kind: SpanKind.CLIENT,
+          parentContext: state.turnContext,
+        });
+        setAttrs(span, {
+          'gen_ai.operation.name': 'chat',
+          'gen_ai.provider.name': (m as { provider?: string }).provider ?? state.init?.piAuthProvider,
+          'gen_ai.system': state.init?.piAuthProvider, // deprecated alias, kept for older backends
+          'gen_ai.request.model': model,
+          'gen_ai.conversation.id': state.init?.sessionId,
+          'gen_ai.request.max_tokens': (state.model as { maxTokens?: number } | undefined)?.maxTokens,
+          'server.address': serverAddress(),
+        });
+        state.modelSpan = span;
+        state.modelSpanStartMs = Date.now();
+        state.modelFirstTokenSeen = false;
+        state.modelRequestCount = (state.modelRequestCount ?? 0) + 1;
+      }
+    } else if (t === 'message_update' && state.modelSpan && !state.modelFirstTokenSeen) {
+      const sub = (piEvent as { assistantMessageEvent?: { type?: string } }).assistantMessageEvent;
+      if (sub?.type === 'text_delta' || sub?.type === 'thinking_delta') {
+        state.modelFirstTokenSeen = true;
+        const ttft = Date.now() - (state.modelSpanStartMs ?? Date.now());
+        state.modelSpan.setAttribute('gen_ai.server.time_to_first_token', ttft / 1000);
+        state.modelSpan.addEvent('gen_ai.first_token', { 'time_to_first_token_ms': ttft });
+      }
+    } else if (t === 'message_end' && state.modelSpan) {
+      const m = (piEvent as { message?: AssistantMsg }).message;
+      finishModelSpan(m);
+    }
+  }
 
   if (t === 'session_info_changed') {
     const id = state.session?.sessionId;
@@ -1195,6 +1420,11 @@ function forwardEvent(piEvent: AgentSessionEvent): void {
     const out: MsgEvent = { type: 'event', turnId, event: ev };
     send(out);
     if (ev.type === 'turn_done' || ev.type === 'error') {
+      // Close any dangling model span before the turn span is ended.
+      if (state.modelSpan) {
+        try { state.modelSpan.end(); } catch { /* */ }
+        state.modelSpan = undefined;
+      }
       state.currentTurnId = undefined;
       state.turnAbort = undefined;
     }
@@ -1223,6 +1453,34 @@ async function handlePrompt(msg: MsgPrompt): Promise<void> {
 
   state.currentTurnId = msg.turnId;
   state.turnAbort = new AbortController();
+
+  // Open the GenAI `invoke_agent` span. Child spans (chat, execute_tool) nest
+  // under its context; it stays open until session.prompt() settles below.
+  state.modelRequestCount = 0;
+  const { span: turnSpan, context: turnCtx } = startSpan('invoke_agent minimalist-agent', {
+    attributes: {
+      'gen_ai.operation.name': 'invoke_agent',
+      'gen_ai.agent.name': 'minimalist-agent',
+      'gen_ai.provider.name': state.init?.piAuthProvider ?? '',
+      'gen_ai.conversation.id': state.init?.sessionId ?? '',
+      'gen_ai.request.model': state.model?.id ?? state.init?.model ?? '',
+      'session.id': state.init?.sessionId ?? '',
+      'turn.id': msg.turnId,
+      'permission.mode': state.permissionMode,
+      'autonomy.level': state.autonomyLevel,
+      'pi.provider': state.init?.piAuthProvider ?? '',
+    },
+  });
+  state.turnSpan = turnSpan;
+  state.turnContext = turnCtx;
+  if (captureContent()) {
+    setAttrs(turnSpan, {
+      'gen_ai.input.messages': safeAttr([{ role: 'user', content: msg.message }]),
+      'gen_ai.system_instructions': msg.systemPromptAppend
+        ? safeAttr(msg.systemPromptAppend)
+        : undefined,
+    });
+  }
 
   const run = async (): Promise<void> => {
     try {
@@ -1265,11 +1523,36 @@ async function handlePrompt(msg: MsgPrompt): Promise<void> {
     }
   };
 
-  activePromptPromise = run();
+  activePromptPromise = otelContext.with(turnCtx, () => run());
   try {
     await activePromptPromise;
+    turnSpan.setStatus({ code: SpanStatusCode.OK });
+  } catch (err) {
+    recordException(turnSpan, err);
+    turnSpan.setAttribute('error.type', err instanceof Error ? err.name : 'Error');
+    throw err;
   } finally {
     activePromptPromise = null;
+    if (state.modelSpan) {
+      try { state.modelSpan.end(); } catch { /* */ }
+      state.modelSpan = undefined;
+    }
+    // Note: token usage is deliberately NOT rolled up onto the invoke_agent
+    // span. Usage lives on the per-call `chat` spans only, so a cost ledger
+    // that sums every token-bearing record counts each model call exactly once
+    // (a turn-level duplicate would double-count). The turn keeps the request
+    // count for quick "how many model calls this turn" reads.
+    turnSpan.setAttribute('minimalist_agent.llm_request_count', state.modelRequestCount ?? 0);
+    if (captureContent() && state.turnAssistantText) {
+      turnSpan.setAttribute(
+        'gen_ai.output.messages',
+        safeAttr([{ role: 'assistant', content: state.turnAssistantText }]),
+      );
+    }
+    try { turnSpan.end(); } catch { /* */ }
+    state.turnSpan = undefined;
+    state.turnContext = undefined;
+    state.turnAssistantText = undefined;
   }
 }
 
@@ -1679,6 +1962,7 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
       state.shuttingDown = true;
       try { state.unsubscribe?.(); } catch { /* */ }
       try { state.session?.dispose(); } catch { /* */ }
+      await shutdownOtel();
       process.exit(0);
   }
 }

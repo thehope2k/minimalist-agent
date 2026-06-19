@@ -53,6 +53,9 @@ export const Paths = {
     mkdirSync(dir, { recursive: true });
     return dir;
   },
+  /** Default destination for the OTel JSONL file exporter. */
+  tracesFile: () => join(root(), 'logs', 'traces.jsonl'),
+  telemetry: () => join(root(), 'telemetry.json'),
   skillsDir: () => {
     const dir = join(root(), 'skills');
     mkdirSync(dir, { recursive: true });

@@ -364,6 +364,27 @@ export interface AiSettings {
   contextFileNames?: string[];
 }
 
+export type OtelExporterType = 'file' | 'otlp' | 'console';
+
+export interface TelemetrySettings {
+  /** Master switch for OpenTelemetry tracing. Off by default. */
+  enabled: boolean;
+  /** Attach prompt/response/tool-argument text to spans. Off by default. */
+  captureContent: boolean;
+  /** Where finished spans go. */
+  exporter: OtelExporterType;
+  /** Override path for the `file` exporter. Empty → default traces.jsonl. */
+  outfile: string;
+  /** OTLP/HTTP endpoint, used only when exporter === 'otlp'. */
+  otlpEndpoint: string;
+  /** Display name for shared dashboards, e.g. `alice` (→ `user.name`). */
+  userName: string;
+  /** Team/cohort id (→ `team.id`). */
+  teamId: string;
+  /** Advanced: extra `OTEL_RESOURCE_ATTRIBUTES`-style `k=v,k=v` attributes. */
+  resourceAttributes: string;
+}
+
 export interface UserLocation {
   city?: string;
   region?: string;
@@ -920,6 +941,12 @@ export interface AppApi {
     save: (settings: AiSettings) => Promise<void>;
     pushRecentFolder: (folder: string) => Promise<AiSettings>;
     removeRecentFolder: (folder: string) => Promise<AiSettings>;
+  };
+  telemetry: {
+    get: () => Promise<TelemetrySettings>;
+    save: (settings: TelemetrySettings) => Promise<void>;
+    tracesPath: () => Promise<string>;
+    reveal: () => Promise<void>;
   };
   preferences: {
     get: () => Promise<UserPreferences>;

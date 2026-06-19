@@ -30,6 +30,10 @@ export default defineConfig({
           'electron',
           /^@earendil-works\//,
           /^@mariozechner\//,
+          // OpenTelemetry packages are runtime deps (see AGENTS.md). Keep them
+          // external so they resolve from node_modules instead of bundling the
+          // SDK's CJS internals into the ESM pi-server bundle.
+          /^@opentelemetry\//,
           /^node:/,
         ],
         output: {
