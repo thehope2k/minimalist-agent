@@ -41,7 +41,8 @@ git push --tags
 
 echo
 echo "✓ Pushed ${NEW_VERSION}."
-echo "  GitHub Actions is now building macOS/Windows/Linux artifacts."
+echo "  GitHub Actions is now building macOS/Windows/Linux artifacts and will"
+echo "  auto-fill the draft release's title + notes from CHANGELOG.md."
 echo "  Watch: https://github.com/thehope2k/minimalist-agent/actions"
-echo "  When the workflow finishes, publish the draft release at:"
+echo "  When the workflow finishes, review and publish the draft release at:"
 echo "  https://github.com/thehope2k/minimalist-agent/releases"

@@ -40,3 +40,34 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run release
+
+  # After all matrix builds finish, fill in the draft release's title and notes
+  # from CHANGELOG.md so they don't have to be copy/pasted by hand. The release
+  # itself is created (as a draft) by electron-builder in the matrix above.
+  finalize:
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Derive title + notes from CHANGELOG
+        id: changelog
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          node scripts/changelog-notes.mjs "$VERSION" --field=notes > release-notes.md
+          {
+            echo "title<<__TITLE__"
+            node scripts/changelog-notes.mjs "$VERSION" --field=title
+            echo
+            echo "__TITLE__"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set release title + notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release edit "$GITHUB_REF_NAME" \
+            --title "${{ steps.changelog.outputs.title }}" \
+            --notes-file release-notes.md
