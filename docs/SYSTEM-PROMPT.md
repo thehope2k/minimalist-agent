@@ -76,7 +76,7 @@ are not measured at runtime. "Gating" = when the block is present.
 | Collaboration guidance | `getCollaborationGuidance(autonomy)` (`collaboration-prompt.ts`) | always | ~1,350 |
 | Planning guidance | `getPlanningGuidance()` (`planning-prompt.ts`) | always | ~2,450 |
 | Active plan context | `formatActivePlanContext()` via `getActivePlan()` | only when a plan is active | ~100–400 |
-| Agents awareness | `loadAllAgents()` block (cached, 5-min TTL) | when AGENT.md agents exist | ~250–1,000 |
+| Agents awareness (terse: slug + tools + description, one prose line) | `loadAllAgents()` block (cached, 5-min TTL) | when AGENT.md agents exist | ~120–400 |
 
 **Static subtotal: ~6–7K tokens** when collaboration + planning + agents are all
 present (the common case). Collaboration + planning alone are **~60%** of it.
@@ -88,10 +88,19 @@ present (the common case). Collaboration + planning alone are **~60%** of it.
 | Date/time | `getDateTimeContext()` | always | ~50 |
 | Working directory | `getWorkingDirectoryContext()` | when cwd set | ~60 |
 | **Scratch directory** | `getScratchDirContext()` | when session path known | ~30 |
-| Extensions awareness | `formatExtensionsAwareness()` (`extensions/directive.ts`) | when extensions enabled | ~100–1,500 |
+| Extensions awareness (terse: flat slug list + one path-convention line) | `formatExtensionsAwareness()` (`extensions/directive.ts`) | when extensions installed | ~50–150 |
 
-The extensions block is the only per-turn item that grows with state (one entry
-per enabled extension). Everything else is fixed-size.
+The extensions block grows with state (one *slug* per enabled extension) but is
+now near-flat — it lists slugs only, not per-item descriptions or guide paths.
+The capability *content* is pulled in on demand: the model reads `<extensionsDir>/<slug>/guide.md`
+when it decides to use an extension, and an `@slug` mention auto-injects that
+guide path via the mention directive (`skills/directive.ts`). This mirrors the
+Skills lazy model and keeps per-turn attention focused on the task, not on every
+installed tool.
+
+Agents use the same philosophy in the static block, but keep a one-line
+description per agent because they self-route (the model picks an agent via the
+`Agent` tool — there is no `@mention` trigger to pull in detail on demand).
 
 ---
 

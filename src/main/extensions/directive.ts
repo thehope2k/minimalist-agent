@@ -1,21 +1,22 @@
 import { getExtensionRegistry } from './registry';
-import {
-  displayDescription,
-  displayName,
-  isEnabled,
-  type LoadedExtension,
-} from './types';
+import { getExtensionsDir } from './storage';
+import { isEnabled } from './types';
+import { join } from 'node:path';
 
 /**
- * Build the `<extensions>` block that gets appended to the per-turn prompt
- * prefix. Always-on awareness — distinct from Skills' per-mention directive.
+ * Build the `<extensions>` block appended to the per-turn prompt prefix.
  *
- * Format mirrors Craft's source state block: enumerate active extensions
- * with their guide path, mention disabled ones tersely, and tell the model
- * it MUST read each extension's guide.md before invoking its capabilities.
+ * Deliberately TERSE — a flat list of enabled slugs, not per-item
+ * descriptions + guide paths. Rationale (see docs/SYSTEM-PROMPT.md): this
+ * block is per-turn and uncached on most backends, and full descriptions for
+ * every enabled extension diluted attention with capabilities irrelevant to
+ * the current task. The slug is the discovery hook; the *content* (what it
+ * does, how to drive it) lives in each guide.md and is pulled in on demand —
+ * either when the user `@mentions` the slug (the mention directive injects the
+ * guide path automatically) or when the model decides to use it and reads the
+ * guide via the path convention below.
  *
- * Returns '' when there are no extensions installed at all (so we don't
- * pollute prompts on a fresh install).
+ * Returns '' when no extensions are installed (clean prompt on fresh install).
  */
 export function formatExtensionsAwareness(): string {
   const all = getExtensionRegistry().list();
@@ -24,28 +25,24 @@ export function formatExtensionsAwareness(): string {
   const enabled = all.filter((e) => isEnabled(e.config));
   const disabled = all.filter((e) => !isEnabled(e.config));
 
-  const enabledLines = enabled.map(formatEnabledLine).join('\n');
-  const disabledLine =
-    disabled.length > 0
-      ? `\nDisabled (won't be used unless re-enabled): ${disabled
-          .map((e) => e.slug)
-          .join(', ')}`
-      : '';
+  if (enabled.length === 0 && disabled.length === 0) return '';
 
-  const header = enabled.length > 0
-    ? 'Installed extensions are listed below. Each adds a capability (a CLI you should use, an MCP server, or a usage guide). Before invoking an extension\'s tools or running its commands for the first time in this session, you MUST read its guide.md using the Read tool — the guide explains how to use it correctly.'
-    : 'No enabled extensions in this workspace.';
+  // Path convention so the model can read a guide for unprompted use without
+  // us spending a per-item path line on every turn.
+  const guideConvention = join(getExtensionsDir(), '<slug>', 'guide.md');
 
-  const enabledBlock = enabled.length > 0
-    ? `\n\nEnabled:\n${enabledLines}`
-    : '';
+  const lines: string[] = [];
+  lines.push(
+    `Installed extension capabilities (CLIs / MCP servers / usage guides), referenced by slug. Before using one for the first time this session, read its guide: ${guideConvention}. Mentioning \`@slug\` auto-surfaces its guide.`,
+  );
+  if (enabled.length > 0) {
+    lines.push(`Enabled: ${enabled.map((e) => e.slug).join(', ')}`);
+  }
+  if (disabled.length > 0) {
+    lines.push(
+      `Disabled (unavailable unless re-enabled): ${disabled.map((e) => e.slug).join(', ')}`,
+    );
+  }
 
-  return `<extensions>\n${header}${enabledBlock}${disabledLine}\n</extensions>`;
-}
-
-function formatEnabledLine(ext: LoadedExtension): string {
-  const name = displayName(ext);
-  const desc = displayDescription(ext);
-  const variantTag = `[${ext.variant}]`;
-  return `- ${ext.slug} (${name}) ${variantTag}: ${desc}\n  Guide: ${ext.guidePath}`;
+  return `<extensions>\n${lines.join('\n')}\n</extensions>`;
 }

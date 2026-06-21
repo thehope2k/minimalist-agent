@@ -467,7 +467,7 @@ Extensions add capabilities beyond built-in tools. Each is a directory under \`<
 
 **Three types:** MCP-backed (exposes tools), CLI-bound (wraps CLI), guide-only (docs).
 
-**Awareness block:** Each turn, runtime prepends \`<extensions>\` block listing extensions with \`guide.md\` paths. Read the guide before using an extension for the first time in a session.
+**Awareness block:** Each turn, runtime prepends an \`<extensions>\` block listing installed extensions **by slug**. Before using one the first time in a session, read its guide at \`<extensionsDir>/<slug>/guide.md\`. Mentioning \`@slug\` auto-surfaces that guide path for you.
 
 **Disabled extensions:** Appear in awareness but cannot be invoked. Suggest re-enabling if asked.
 
@@ -630,22 +630,11 @@ export function getSystemPrompt(opts: SystemPromptOptions = {}): string {
     if (agents.length > 0) {
       const agentsList = agents.map((a) => {
         const toolsStr = a.metadata.tools?.join('/') || 'all';
-        const modelStr = a.metadata.model || 'session-default';
-        return `- ${a.slug} (name: ${a.metadata.name}, model: ${modelStr}, tools: ${toolsStr}): ${a.metadata.description}`;
+        return `- ${a.slug} (tools: ${toolsStr}): ${a.metadata.description}`;
       }).join('\n');
       agentsBlock = `<agents>
-Enabled:
+Delegate focused work to these sub-agents via the Agent tool when a task strongly matches one; give clear scope, target files, and the expected output. Otherwise do it directly.
 ${agentsList}
-
-Use your judgment to balance direct work vs delegation for best performance and quality.
-
-Delegation guidance:
-- Prefer delegation when a listed agent is a strong match for the task (for example: focused code review, deep research, or specialized analysis).
-- A small amount of upfront context gathering is fine before delegating when it helps produce a better task brief.
-- After a sub-agent returns, avoid unnecessary duplicate work; focus on verification, synthesis, and clear final recommendations.
-- When delegating, provide clear scope, target files, constraints, and expected output format.
-
-Use the Agent tool to delegate focused tasks to specialized sub-agents when it improves outcomes.
 </agents>`;
       agentsBlockCache = { block: agentsBlock, ts: now };
     } else {
