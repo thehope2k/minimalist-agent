@@ -5,6 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.8.0] — 2026-06-21
+
+Quality of life improvements — search your sessions at a glance.
+
+### Added
+
+**Sessions search**
+
+- The sessions panel now has a search mode that filters your sessions by title and working directory, with a dedicated search header, escape-to-close, and a context-aware empty state when nothing matches
+
+---
+
 ## [1.7.0] — 2026-06-19
 
 Live model-catalog refresh so your provider model lists stay current.
