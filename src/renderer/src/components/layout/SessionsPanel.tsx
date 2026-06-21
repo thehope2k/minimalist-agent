@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Archive, ArchiveRestore, CheckSquare, Plus, Trash2, X } from 'lucide-react';
+import { Archive, ArchiveRestore, CheckSquare, Plus, Search, Trash2, X } from 'lucide-react';
 import { useSessions } from '@/hooks/useSessions';
 import { useProjects } from '@/hooks/useProjects';
 import { deleteSession, updateSessionMeta } from '@/lib/sessions';
-import { Button, IconButton } from '../ui';
+import { Button, IconButton, Input } from '../ui';
 import { cn } from '@/lib/utils';
 import { useHasNewSessionDraft } from '@/hooks/useHasNewSessionDraft';
 import type { ProjectFilter, View } from './TopBar';
@@ -41,6 +41,9 @@ export function SessionsPanel({
   const hasNewSessionDraft = useHasNewSessionDraft();
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [searchMode, setSearchMode] = useState(false);
+  const [query, setQuery] = useState('');
+  const trimmedQuery = query.trim().toLowerCase();
 
   const heading =
     view === 'archived' ? 'Archived'
@@ -68,10 +71,19 @@ export function SessionsPanel({
       if (projectFilter === 'all') return true;
       if (projectFilter === 'inbox') return !s.projectId;
       return s.projectId === projectFilter;
+    })
+    .filter((s) => {
+      if (!trimmedQuery) return true;
+      return (
+        s.title.toLowerCase().includes(trimmedQuery) ||
+        (s.workingDirectory?.toLowerCase().includes(trimmedQuery) ?? false)
+      );
     });
 
   /* ---- bulk selection helpers ---- */
   const exitSelectMode = () => { setSelectMode(false); setSelectedIds(new Set()); };
+  const openSearch = () => setSearchMode(true);
+  const closeSearch = () => { setSearchMode(false); setQuery(''); };
   const toggleSelect = (id: string) => setSelectedIds((prev) => {
     const next = new Set(prev);
     next.has(id) ? next.delete(id) : next.add(id);
@@ -104,10 +116,11 @@ export function SessionsPanel({
   return (
     <section className="relative flex h-full w-full flex-col bg-panel">
       {/* Normal header */}
-      {!selectMode && (
+      {!selectMode && !searchMode && (
         <header className="flex h-10 shrink-0 items-center justify-between border-b border-border px-3">
           <h2 className="text-[15px] font-semibold text-fg">{heading}</h2>
           <div className="flex items-center gap-1">
+            <IconButton icon={Search} label="Search sessions" size="sm" onClick={openSearch} />
             {items.length > 0 && (
               <IconButton icon={CheckSquare} label="Select sessions" size="sm" onClick={() => setSelectMode(true)} />
             )}
@@ -121,6 +134,22 @@ export function SessionsPanel({
               </Button>
             )}
           </div>
+        </header>
+      )}
+
+      {/* Search-mode header */}
+      {searchMode && !selectMode && (
+        <header className="flex h-10 shrink-0 items-center gap-1 border-b border-border px-2">
+          <Search className="ml-1 h-4 w-4 shrink-0 text-fg-subtle" strokeWidth={1.75} />
+          <Input
+            autoFocus
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); closeSearch(); } }}
+            placeholder="Search by name…"
+            className="h-7 border-0 bg-transparent px-1 focus:border-0"
+          />
+          <IconButton icon={X} label="Close search" size="sm" onClick={closeSearch} />
         </header>
       )}
 
@@ -155,16 +184,18 @@ export function SessionsPanel({
       )}
 
       <div className="scroll-thin flex-1 overflow-y-auto px-2 pb-3">
-        {view === 'all' && (activeId == null || hasNewSessionDraft) && (
+        {view === 'all' && !trimmedQuery && (activeId == null || hasNewSessionDraft) && (
           <NewSessionRow
             active={activeId == null}
             onSelect={onResumeNewSession ?? onNewSession}
           />
         )}
 
-        {items.length === 0 && !(view === 'all' && activeId == null) ? (
+        {items.length === 0 && !(view === 'all' && !trimmedQuery && activeId == null) ? (
           <div className="px-3 py-6 text-center text-xs text-fg-subtle">
-            {view === 'archived' ? 'Nothing archived' : 'No sessions yet'}
+            {trimmedQuery ? `No sessions match “${query.trim()}”`
+            : view === 'archived' ? 'Nothing archived'
+            : 'No sessions yet'}
           </div>
         ) : items.length > 0 ? (
           <>
