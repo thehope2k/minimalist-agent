@@ -14,15 +14,28 @@ export function GuidanceDialog({ reqId, payload, onRespond }: DialogProps<Guidan
     });
   };
 
+  const handleDefer = () => {
+    onRespond({
+      reqId,
+      decision: 'defer',
+      custom_response: guidance.trim() || undefined,
+    });
+  };
+
   return (
     <DialogLayout
       title="Guidance Needed"
-      onBackdropClick={handleSubmit}
+      onBackdropClick={handleDefer}
       maxHeight
       footer={
-        <Button onClick={handleSubmit} variant="primary">
-          Submit Guidance
-        </Button>
+        <>
+          <Button onClick={handleDefer} variant="outline">
+            Discuss first
+          </Button>
+          <Button onClick={handleSubmit} variant="primary">
+            Submit Guidance
+          </Button>
+        </>
       }
     >
       <div>

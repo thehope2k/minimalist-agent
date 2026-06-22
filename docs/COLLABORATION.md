@@ -9,15 +9,19 @@ dialogs with clear options.
 ## What It Is
 
 A system for controlling **how often** the agent engages you during work:
+
 - **Plan Mode** — Read-only exploration, zero execution risk
 - **Auto Mode** — Full execution with adjustable autonomy (0-100% slider)
 
 Higher autonomy = fewer questions, more independence.  
 Lower autonomy = frequent collaboration, more control.
 
-**Current implementation:** Auto mode always executes. Agent uses collaboration tools based on autonomy level.
+**Current implementation:** Auto mode always executes. Agent uses collaboration tools based on autonomy level. The
+autonomy level *is* the engagement threshold — the agent acts on its own below it and engages at or above it (see
+`src/shared/autonomy.ts`).
 
 **Original vision (not yet implemented):** In Auto mode, agent intelligently decides:
+
 - Whether to show planning phases before executing
 - Whether to propose a plan first vs. execute directly
 - When execution needs upfront planning vs. immediate action
@@ -27,6 +31,7 @@ See "Missing: Intelligent Plan/Execute Decision" below for details.
 ## The Five Collaboration Types
 
 **1. RequestDecision** — Choose between technical alternatives
+
 ```
 Agent: "Which authentication approach?"
 Options:
@@ -42,6 +47,7 @@ User clicks or types custom answer.
 ```
 
 **2. RequestApproval** — Allow/deny risky operations
+
 ```
 Agent: "Can I edit package.json?"
 Risk: 75/100 (config file, dependency change)
@@ -51,6 +57,7 @@ User: [Approve] or [Deny]
 ```
 
 **3. RequestPreference** — Subjective/style choices
+
 ```
 Agent: "Directory structure preference?"
 Options:
@@ -61,6 +68,7 @@ User picks one.
 ```
 
 **4. RequestFeedback** — Validate completed work
+
 ```
 Agent: "Created authentication middleware"
 Details: JWT validation, refresh tokens, rate limiting
@@ -69,6 +77,7 @@ User: "Looks good" or "Change the timeout to 24h"
 ```
 
 **5. RequestGuidance** — Clarify vague requests
+
 ```
 Agent: "By 'authentication' do you mean:"
   • Login/logout only?
@@ -107,12 +116,14 @@ User explains intent.
 **Example: "Add authentication"**
 
 At 20% autonomy:
+
 - Agent asks which approach (JWT vs Sessions)
 - Asks directory structure preference
 - Requests approval for package.json edit
 - Asks for feedback after implementation
 
 At 80% autonomy:
+
 - Agent chooses JWT (best practice)
 - Follows src/auth/ convention automatically
 - Edits package.json without asking (risk 60 < 80)
@@ -121,6 +132,7 @@ At 80% autonomy:
 ## Benefits Over Prose Questions
 
 **Traditional agent:**
+
 ```
 Agent: "I can use JWT or session cookies. Which one?"
 User: "JWT"
@@ -131,6 +143,7 @@ User: "yes"
 ```
 
 **With collaboration tools:**
+
 ```
 Agent shows decision dialog:
 ┌─────────────────────────────────────────┐
@@ -145,6 +158,7 @@ Agent shows decision dialog:
 ```
 
 **Advantages:**
+
 - Clear options with pros/cons
 - Clickable vs. typing
 - Machine-readable responses (no ambiguity)
@@ -157,13 +171,20 @@ Agent shows decision dialog:
 
 **1. Intelligent plan/execute decision**
 
-Auto mode doesn't yet decide when to show planning phases vs. execute directly. The agent jumps straight to execution regardless of task complexity. Marked as Medium Priority in ROADMAP.md.
+Auto mode doesn't yet decide when to show planning phases vs. execute directly. The agent jumps straight to execution
+regardless of task complexity. Marked as Medium Priority in ROADMAP.md.
 
 **Workaround:** Manually switch to Plan mode for complex tasks.
 
-**2. No backend safety limits**
+**2. Backend safety floor (`ALWAYS_CONFIRM`)**
 
-The system trusts the agent's risk assessment completely. Dangerous operations (rm -rf, .env deletion, sudo commands) could slip through if the agent misjudges risk. Currently relies on system prompt guidance only.
+The autonomy budget is enforced in code (`src/shared/autonomy.ts`), not just prose:
+a `RequestApproval` below the autonomy threshold is auto-approved without
+interrupting, and operations at/above risk 85 (`ALWAYS_CONFIRM`) always prompt
+regardless of autonomy — so even 100% autonomy can't silently run irreversible
+operations. The agent's own risk *score* is still trusted, so gross
+mis-scoring of a destructive op as low-risk could still slip through; categorical
+(rm -rf / .env / sudo) hard-blocks are future work.
 
 **3. No decision memory**
 
@@ -174,6 +195,7 @@ The agent doesn't remember recent approvals — may ask the same approval multip
 ## Implementation Notes
 
 **Architecture:**
+
 ```
 Main process:
   collaboration-types.ts         — TypeScript types

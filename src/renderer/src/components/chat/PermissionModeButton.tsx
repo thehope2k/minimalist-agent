@@ -13,6 +13,7 @@ import { Check, ChevronDown, Compass, Zap } from 'lucide-react';
 import { Button } from '../ui';
 import type { PermissionMode } from '@/lib/electron';
 import { cn } from '@/lib/utils';
+import { describeAutonomy, silentRiskCeiling } from '../../../../shared/autonomy';
 
 type Props = {
   mode: PermissionMode;
@@ -118,10 +119,16 @@ export function PermissionModeButton({
             onChange={(e) => onAutonomyChange(Number(e.target.value))}
             disabled={disabled}
             className="w-24 h-1 bg-border rounded-full appearance-none cursor-pointer accent-amber-400 disabled:opacity-50 disabled:cursor-not-allowed"
-            title={getAutonomyDescription(autonomyLevel)}
+            title={describeAutonomy(autonomyLevel)}
           />
           <span className="text-xs font-medium text-fg tabular-nums min-w-[2.5rem] text-right">
             {autonomyLevel}%
+          </span>
+          <span
+            className="text-[10px] text-fg-subtle whitespace-nowrap tabular-nums"
+            title={describeAutonomy(autonomyLevel)}
+          >
+            acts ≤{silentRiskCeiling(autonomyLevel)}
           </span>
         </div>
       )}
@@ -168,19 +175,4 @@ function ModeItem({
       </span>
     </Button>
   );
-}
-
-/* ---- autonomy tooltips ------------------------------------------- */
-
-function getAutonomyDescription(level: number): string {
-  if (level <= 30) {
-    return 'Collaborative — Frequent engagement for decisions, preferences, and feedback';
-  }
-  if (level <= 60) {
-    return 'Balanced — Moderate engagement for complex decisions and risky operations';
-  }
-  if (level <= 80) {
-    return 'Independent — Minimal engagement, only for significant decisions';
-  }
-  return 'Autonomous — Rare engagement, very high independence';
 }

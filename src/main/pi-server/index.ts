@@ -75,6 +75,7 @@ import {
   validateRevisePlanInput,
 } from '../../shared/planning-types';
 import { createLogger } from '../../shared/sub-logger';
+import { shouldEngage } from '../../shared/autonomy';
 import {
   initOtel,
   shutdownOtel,
@@ -431,6 +432,31 @@ function createCollaborationExecutor(
     _onUpdate: any,
     _ctx: any,
   ) => {
+    // Autonomy contract enforcement: in auto mode, a risk that sits within the
+    // user's autonomy budget should NOT interrupt them. We can't stop the model
+    // from *calling* RequestApproval, but we can make a below-threshold call a
+    // cheap no-op — auto-approving and telling the model it didn't need to ask.
+    // This turns the autonomy slider into a guarantee instead of a prose hint.
+    // (Plan mode is exempt: there the user wants to review everything.)
+    if (engagementType === 'approval' && state.permissionMode === 'auto') {
+      const risk = Number((params as { risk_level?: unknown })?.risk_level ?? 0);
+      if (!shouldEngage(risk, state.autonomyLevel)) {
+        log.debug(
+          `Auto-approved RequestApproval (risk ${risk} < autonomy ${state.autonomyLevel}) without prompting`,
+        );
+        return {
+          isError: false,
+          content: [
+            {
+              type: 'text' as const,
+              text: `Auto-approved: risk ${risk} is within the user's autonomy budget (${state.autonomyLevel}). You did not need to ask — proceeding. Reserve RequestApproval for risk ≥ ${state.autonomyLevel} or genuinely irreversible operations.`,
+            },
+          ],
+          details: {},
+        };
+      }
+    }
+
     const response = await requestCollaboration(
       state.currentTurnId || '',
       sessionId,
@@ -439,6 +465,23 @@ function createCollaborationExecutor(
     );
     const result = response.response as any;
     
+    // Dialogic escape hatch: the user chose "Discuss first" instead of picking a
+    // lane. Return control to plain conversation — silence here is NOT consent.
+    if (result.decision === 'defer') {
+      return {
+        isError: false,
+        content: [
+          {
+            type: 'text' as const,
+            text: `User wants to discuss before deciding${
+              result.custom_response ? `: ${result.custom_response}` : ''
+            }. Do NOT implement or take action yet — continue the conversation and help them think it through.`,
+          },
+        ],
+        details: {},
+      };
+    }
+
     // For approval, check if denied
     if (engagementType === 'approval' && result.decision === 'denied') {
       return {

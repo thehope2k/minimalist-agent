@@ -87,7 +87,7 @@ export interface ApprovalPayload {
  */
 export interface EngagementResponse {
   reqId: string;
-  decision: 'approved' | 'denied' | 'custom';
+  decision: 'approved' | 'denied' | 'custom' | 'defer';
   selected_option?: string;
   custom_response?: string;
   feedback?: string;

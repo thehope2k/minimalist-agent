@@ -14,15 +14,28 @@ export function FeedbackDialog({ reqId, payload, onRespond }: DialogProps<Feedba
     });
   };
 
+  const handleDefer = () => {
+    onRespond({
+      reqId,
+      decision: 'defer',
+      custom_response: feedback.trim() || undefined,
+    });
+  };
+
   return (
     <DialogLayout
       title="Feedback Requested"
-      onBackdropClick={handleSubmit}
+      onBackdropClick={handleDefer}
       maxHeight
       footer={
-        <Button onClick={handleSubmit} variant="primary">
-          Submit Feedback
-        </Button>
+        <>
+          <Button onClick={handleDefer} variant="outline">
+            Discuss first
+          </Button>
+          <Button onClick={handleSubmit} variant="primary">
+            Submit Feedback
+          </Button>
+        </>
       }
     >
       <div>

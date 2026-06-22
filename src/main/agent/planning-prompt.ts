@@ -252,7 +252,8 @@ RevisePlan({
 **User approval for unsafe phases:**
 - Phase approval only applies in **plan** mode. In **auto** mode, phases never
   prompt for approval (auto = full execution). A non-safe phase prompts when its
-  risk meets the autonomy threshold (risk ≥ 100 − autonomy).
+  risk meets the autonomy threshold (risk ≥ autonomy — your autonomy level *is*
+  the threshold; risk ≥ 85 always confirms).
 - If **approved**: The session is promoted to **auto** for the rest of the
   session (so the writes you were just authorized to make aren't re-blocked),
   and you proceed with the phase normally. Because the session is now in auto,

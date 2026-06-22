@@ -16,14 +16,27 @@ export function PreferenceDialog({ reqId, payload, onRespond }: DialogProps<Pref
     });
   };
 
+  const handleDefer = () => {
+    onRespond({
+      reqId,
+      decision: 'defer',
+      custom_response: customResponse.trim() || undefined,
+    });
+  };
+
   return (
     <DialogLayout
       title="Your Preference"
-      onBackdropClick={handleSubmit}
+      onBackdropClick={handleDefer}
       footer={
-        <Button onClick={handleSubmit} variant="primary">
-          Continue
-        </Button>
+        <>
+          <Button onClick={handleDefer} variant="outline">
+            Discuss first
+          </Button>
+          <Button onClick={handleSubmit} variant="primary">
+            Continue
+          </Button>
+        </>
       }
     >
       <p className="text-fg">{payload.question}</p>

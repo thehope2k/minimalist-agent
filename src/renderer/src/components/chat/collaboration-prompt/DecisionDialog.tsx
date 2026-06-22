@@ -18,15 +18,28 @@ export function DecisionDialog({ reqId, payload, onRespond }: DialogProps<Decisi
     });
   };
 
+  const handleDefer = () => {
+    onRespond({
+      reqId,
+      decision: 'defer',
+      custom_response: customResponse.trim() || undefined,
+    });
+  };
+
   return (
     <DialogLayout
       title="Decision Needed"
-      onBackdropClick={handleSubmit}
+      onBackdropClick={handleDefer}
       maxHeight
       footer={
-        <Button onClick={handleSubmit} variant="primary">
-          Proceed with {selectedOption || 'selection'}
-        </Button>
+        <>
+          <Button onClick={handleDefer} variant="outline">
+            Discuss first
+          </Button>
+          <Button onClick={handleSubmit} variant="primary">
+            Proceed with {selectedOption || 'selection'}
+          </Button>
+        </>
       }
     >
       <p className="text-fg">{payload.question}</p>

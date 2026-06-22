@@ -14,6 +14,7 @@ import {
   CreatePlanInput,
   RevisePlanInput,
 } from '../../../shared/planning-types';
+import { shouldEngage } from '../../../shared/autonomy';
 import { RevisionDetector } from './revision-detector';
 import { PlanStorage } from './storage';
 
@@ -349,11 +350,10 @@ export class PlanManager extends EventEmitter {
     // Auto permission mode bypasses approval
     if (permissionMode === 'auto') return false;
     
-    // Approval based on risk and autonomy
-    // Lower autonomy = more approvals
-    // Higher risk = more likely to need approval
-    const threshold = 100 - autonomyLevel; // autonomy 50 → threshold 50
-    return phase.risk >= threshold;
+    // Single autonomy contract (shared with the collaboration tools):
+    // the user's autonomy level IS the threshold — engage when risk meets it,
+    // and always engage past the irreversible floor. See shared/autonomy.ts.
+    return shouldEngage(phase.risk, autonomyLevel);
   }
 
   /**
