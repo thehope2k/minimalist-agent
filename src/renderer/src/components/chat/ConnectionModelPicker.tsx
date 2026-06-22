@@ -8,6 +8,7 @@ import {
   OpenAIMark,
 } from '../settings/connection-flow/shared';
 import type { ConnectionMeta } from '@/lib/electron';
+import { Badge } from '@/components/ui';
 import { cn } from '@/lib/utils';
 
 type ProviderCategory = 'anthropic' | 'copilot' | 'chatgpt' | 'local' | 'openai-compatible' | 'other';
@@ -275,7 +276,18 @@ function ModelList({
                 )}
               >
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm text-fg">{m.name}</div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="truncate text-sm text-fg">{m.name}</span>
+                    {m.supportsVision && (
+                      <Badge
+                        variant="accent"
+                        className="shrink-0 normal-case tracking-normal"
+                        title="Supports image input (vision)"
+                      >
+                        Vision
+                      </Badge>
+                    )}
+                  </div>
                   {m.description && (
                     <div className="mt-0.5 truncate text-xs text-fg-subtle">
                       {m.description}

@@ -154,10 +154,11 @@ function shortNameFrom(id: string, family: string): string {
 }
 
 function describe(raw: RawCopilotModel, family: string): string {
+  // Vision is surfaced as a dedicated badge in the model picker, so it's
+  // deliberately omitted here to avoid duplicating the signal.
   const vendor = raw.vendor ?? family ?? 'Copilot';
   const tools = raw.capabilities?.supports?.tool_calls ? 'tools' : 'chat';
-  const vision = raw.capabilities?.supports?.vision ? ' · vision' : '';
-  return `${vendor} via Copilot · ${tools}${vision}`;
+  return `${vendor} via Copilot · ${tools}`;
 }
 
 /**
