@@ -14,6 +14,11 @@ type Props = {
   /** Show this many spinner-bubbles after the existing items. */
   loadingCount?: number;
   disabled?: boolean;
+  /**
+   * When false, image attachments are rendered struck-through/dimmed to
+   * signal they won't be sent to the active (non-vision) model.
+   */
+  supportsVision?: boolean;
 };
 
 /**
@@ -28,6 +33,7 @@ export function AttachmentPreview({
   onUpdate,
   loadingCount = 0,
   disabled,
+  supportsVision = true,
 }: Props) {
   if (attachments.length === 0 && loadingCount === 0) return null;
   return (
@@ -47,6 +53,7 @@ export function AttachmentPreview({
             att={att}
             onRemove={() => onRemove(i)}
             disabled={disabled}
+            excluded={att.type === 'image' && !supportsVision}
           />
         )
       ))}
@@ -69,10 +76,13 @@ function Bubble({
   att,
   onRemove,
   disabled,
+  excluded,
 }: {
   att: DraftAttachment;
   onRemove: () => void;
   disabled?: boolean;
+  /** Image won't be sent to the active model (no vision support). */
+  excluded?: boolean;
 }) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const isImage = att.type === 'image';
@@ -96,9 +106,15 @@ function Bubble({
       {isImage ? (
         <>
           <div
+            title={
+              excluded
+                ? "This model doesn't support images \u2014 won't be sent"
+                : att.name
+            }
             className={cn(
-              'h-14 w-14 overflow-hidden rounded-lg bg-elevated',
+              'relative h-14 w-14 overflow-hidden rounded-lg bg-elevated',
               src && 'cursor-zoom-in',
+              excluded && 'opacity-40 grayscale',
             )}
             onClick={() => src && setLightboxOpen(true)}
           >
@@ -108,6 +124,11 @@ function Bubble({
               <div className="grid h-full w-full place-items-center">
                 <ImageIcon className="h-5 w-5 text-fg-subtle" strokeWidth={1.75} />
               </div>
+            )}
+            {excluded && (
+              <span className="pointer-events-none absolute inset-0 grid place-items-center">
+                <span className="h-px w-[120%] rotate-[-30deg] bg-fg/70" />
+              </span>
             )}
           </div>
           {lightboxOpen && src && (

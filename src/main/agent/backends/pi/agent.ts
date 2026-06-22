@@ -187,6 +187,17 @@ function send(handle: SubprocessHandle, msg: SubprocessInbound): void {
   writeJsonLine(handle.child.stdin, msg, log);
 }
 
+/**
+ * Whether the given connection+model accepts image input, per the app's
+ * stored connection metadata. Defaults to true when unknown so we never
+ * over-strip for providers we don't track (the SDK still guards by model).
+ */
+function resolveVisionSupported(connectionSlug: string, modelId: string): boolean {
+  const meta = listConnections().find((c) => c.slug === connectionSlug);
+  const modelDef = meta?.models.find((m) => m.id === modelId);
+  return modelDef?.supportsVision ?? true;
+}
+
 function ensureSubprocess(
   req: PiChatRequest,
   systemPrompt: string,
@@ -196,7 +207,11 @@ function ensureSubprocess(
   if (existing && !existing.child.killed) {
     // If the model changed, notify the running subprocess.
     if (req.model && req.model !== existing.currentModel) {
-      const upd: MsgSetModel = { type: 'set_model', model: req.model };
+      const upd: MsgSetModel = {
+        type: 'set_model',
+        model: req.model,
+        visionSupported: resolveVisionSupported(req.connectionSlug, req.model),
+      };
       send(existing, upd);
       existing.currentModel = req.model;
     }
@@ -344,6 +359,7 @@ function ensureSubprocess(
     sessionPath: req.chatSessionPath,
     cwd: req.cwd ?? app.getPath('home'),
     model: req.model,
+    visionSupported: resolveVisionSupported(req.connectionSlug, req.model),
     thinkingLevel: req.thinkingLevel ?? 'medium',
     providerType: 'pi',
     authType: 'oauth',

@@ -58,6 +58,13 @@ export interface MsgInit {
   cwd: string;
   /** Pi model id (e.g. "claude-sonnet-4.6"). */
   model: string;
+  /**
+   * Whether the active model accepts image input, per the app's connection
+   * metadata (live provider capability). When false, pi-server drops 'image'
+   * from the resolved model's `input` so the SDK downgrades image blocks to a
+   * text placeholder instead of the provider rejecting the request.
+   */
+  visionSupported?: boolean;
   /** Mini model used for title gen / call_llm defaults. */
   miniModel?: string;
   thinkingLevel: PiThinkingLevel;
@@ -152,6 +159,8 @@ export interface MsgCollaborationResponse {
 export interface MsgSetModel {
   type: 'set_model';
   model: string;
+  /** See MsgInit.visionSupported. */
+  visionSupported?: boolean;
 }
 
 export interface MsgSetThinkingLevel {

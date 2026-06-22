@@ -5,6 +5,7 @@ type Props = {
   attachments: DraftAttachment[];
   loadingCount: number;
   isStreaming: boolean;
+  supportsVision: boolean;
   onRemove: (index: number) => void;
   onUpdate: (index: number, updated: DraftAttachment) => void;
 };
@@ -13,6 +14,7 @@ export function AttachmentSection({
   attachments,
   loadingCount,
   isStreaming,
+  supportsVision,
   onRemove,
   onUpdate,
 }: Props) {
@@ -25,6 +27,7 @@ export function AttachmentSection({
       onUpdate={onUpdate}
       loadingCount={loadingCount}
       disabled={isStreaming}
+      supportsVision={supportsVision}
     />
   );
 }

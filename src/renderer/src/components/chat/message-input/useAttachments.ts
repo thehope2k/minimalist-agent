@@ -39,32 +39,26 @@ export function useAttachments(
   const currentModelDef = connection?.models.find((m) => m.id === model);
   const supportsVision = currentModelDef?.supportsVision ?? false;
 
-  // Disable attachment operations when attachments exist but vision is unsupported
-  const attachmentsDisabled = attachments.length > 0 && !supportsVision;
+  // Images stay in the draft even on a non-vision model (so switching models
+  // restores them); we just won't send them. This flag drives the
+  // strike-through UI + inline notice.
+  const hasUnsendableImages =
+    !supportsVision && attachments.some((a) => a.type === 'image');
 
-  const buildVisionError = (imageCount: number) => {
+  const visionSuggestion = () => {
     const visionModels = connection?.models.filter((m) => m.supportsVision) ?? [];
-    const suggestion =
-      visionModels.length > 0
-        ? `Try ${visionModels.slice(0, 2).map((m) => m.shortName || m.name).join(' or ')} instead.`
-        : 'This connection has no models with vision support.';
-    
-    return `📸 ${imageCount > 1 ? `Skipped ${imageCount} image(s)` : `${currentModelDef?.name} doesn't support images`}. ${suggestion}`;
+    return visionModels.length > 0
+      ? ` Switch to ${visionModels
+          .slice(0, 2)
+          .map((m) => m.shortName || m.name)
+          .join(' or ')} to include them.`
+      : '';
   };
 
   const handlePickFiles = async () => {
     setError(null);
     try {
       const drafts = await pickAttachments();
-      const imageCount = drafts.filter((d) => d.type === 'image').length;
-      
-      if (imageCount > 0 && !supportsVision) {
-        setError(buildVisionError(imageCount));
-        const nonImages = drafts.filter((d) => d.type !== 'image');
-        addDrafts(nonImages);
-        return;
-      }
-      
       addDrafts(drafts);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to read files.');
@@ -83,27 +77,16 @@ export function useAttachments(
     setLoadingCount(dropped.length);
     try {
       const out: DraftAttachment[] = [];
-      let skippedImageCount = 0;
 
       for (const f of dropped) {
         try {
           const draft = f.path
             ? await readAttachmentPath(f.path)
             : await fileToDraft(f);
-          if (draft) {
-            if (draft.type === 'image' && !supportsVision) {
-              skippedImageCount++;
-            } else {
-              out.push(draft);
-            }
-          }
+          if (draft) out.push(draft);
         } catch (e) {
           setError(e instanceof Error ? e.message : 'Failed to read a file.');
         }
-      }
-
-      if (skippedImageCount > 0) {
-        setError(buildVisionError(skippedImageCount));
       }
 
       addDrafts(out);
@@ -175,7 +158,10 @@ export function useAttachments(
     dragging,
     error,
     supportsVision,
-    attachmentsDisabled,
+    hasUnsendableImages,
+    visionNotice: hasUnsendableImages
+      ? `${currentModelDef?.name ?? 'This model'} doesn't support images — image attachments won't be sent.${visionSuggestion()}`
+      : null,
     setError,
     setAttachments,
     clearAttachments,

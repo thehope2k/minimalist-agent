@@ -139,6 +139,8 @@ interface State {
   /** Last value pushed into appendArr — avoids a redundant reload(). */
   lastAppend?: string;
   model?: ReturnType<typeof getModel>;
+  /** Active model's image-input capability, per app metadata (MsgInit/MsgSetModel). */
+  visionSupported?: boolean;
   permissionMode: PiPermissionMode;
   autonomyLevel: number;
   currentTurnId?: string;
@@ -199,6 +201,20 @@ function mapThinkingLevel(level: PiThinkingLevel): ThinkingLevel {
   if (level === 'off') return 'minimal';
   if (level === 'max') return 'xhigh';
   return level;
+}
+
+/**
+ * Drop 'image' from a model's accepted input when the app reports no vision
+ * support. Returns a shallow clone (never mutates the shared registry model).
+ * `visionSupported === undefined` means "unknown" → leave input untouched.
+ */
+function applyVisionInput<M extends { input?: readonly ('text' | 'image')[] }>(
+  model: M,
+  visionSupported: boolean | undefined,
+): M {
+  if (visionSupported !== false || !model?.input) return model;
+  if (!model.input.includes('image')) return model;
+  return { ...model, input: model.input.filter((i) => i !== 'image') };
 }
 
 /* ============================================================ */
@@ -1203,6 +1219,12 @@ async function handleInit(msg: MsgInit): Promise<void> {
       if (adjusted) model = adjusted as typeof model;
     }
   }
+  // Honour the app's live image capability: when the active model can't accept
+  // images (e.g. enterprise Copilot policy), drop 'image' from the model's
+  // input so pi-ai's transformMessages downgrades image blocks (current +
+  // history) to a text placeholder instead of the provider rejecting them.
+  state.visionSupported = msg.visionSupported;
+  model = applyVisionInput(model, msg.visionSupported);
   state.model = model;
 
   // continueRecent resumes the most recent session stored in msg.sessionPath
@@ -1843,6 +1865,11 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
             const [adjusted] = provider.modifyModels([newModel] as never, cred as never);
             if (adjusted) newModel = adjusted as typeof newModel;
           }
+          // Re-apply the image-input gate for the newly selected model so a
+          // mid-conversation switch to a non-vision model downgrades existing
+          // image history instead of erroring.
+          state.visionSupported = msg.visionSupported;
+          newModel = applyVisionInput(newModel, msg.visionSupported);
           state.model = newModel;
           // Propagate to the live session so the next prompt uses the new model.
           if (state.session) {
@@ -1892,7 +1919,10 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
               // The session initializes an HTTP client on creation and caches it;
               // updating state.model.baseUrl alone doesn't update the live client.
               const oldBaseUrl = state.model.baseUrl;
-              state.model = adjusted as typeof state.model;
+              state.model = applyVisionInput(
+                adjusted as typeof state.model,
+                state.visionSupported,
+              );
               
               log.debug(`Token refresh changed baseUrl: ${oldBaseUrl} → ${state.model.baseUrl}`);
               log.debug(`Recreating session to apply new regional endpoint...`);

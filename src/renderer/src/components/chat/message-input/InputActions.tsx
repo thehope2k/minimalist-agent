@@ -18,7 +18,8 @@ type Props = {
   onChangeCwd: (next: string | undefined) => void;
   cwdLocked?: boolean;
   supportsVision: boolean;
-  attachmentsDisabled: boolean;
+  /** Active model can't accept currently-attached images. */
+  hasUnsendableImages: boolean;
   onPickFiles: () => void;
   onTriggerMention: () => void;
   onPickerChange: (slug: string, modelId: string) => void;
@@ -38,7 +39,7 @@ export function InputActions({
   onChangeCwd,
   cwdLocked,
   supportsVision,
-  attachmentsDisabled,
+  hasUnsendableImages,
   onPickFiles,
   onTriggerMention,
   onPickerChange,
@@ -53,11 +54,12 @@ export function InputActions({
           icon={Paperclip}
           label="Attach file"
           onClick={onPickFiles}
-          disabled={attachmentsDisabled}
           title={
-            !supportsVision
-              ? '📸 Images not supported by this model'
-              : 'Attach file'
+            hasUnsendableImages
+              ? "\ud83d\udcf8 This model doesn't support images \u2014 attached images won't be sent"
+              : !supportsVision
+                ? 'Attach file (this model only reads text/files, not images)'
+                : 'Attach file'
           }
         />
         <IconButton

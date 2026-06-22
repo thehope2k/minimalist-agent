@@ -69,7 +69,8 @@ export function MessageInput({
     dragging,
     error,
     supportsVision,
-    attachmentsDisabled,
+    hasUnsendableImages,
+    visionNotice,
     setError,
     setAttachments,
     clearAttachments,
@@ -82,6 +83,11 @@ export function MessageInput({
     onDragLeave,
     onPaste,
   } = useAttachments(connection, model);
+
+  // Drop images the active (non-vision) model can't accept. Kept in the draft
+  // for display/restore, but never sent — matches VS Code's strike-through.
+  const sendableAttachments = (atts: typeof attachments) =>
+    supportsVision ? atts : atts.filter((a) => a.type !== 'image');
 
   // Mentions — @skill, @extension, @file
   const {
@@ -125,6 +131,8 @@ export function MessageInput({
 
   const handleSend = () => {
     if (!canSend || !connection || !model) return;
+    const outgoing = sendableAttachments(attachments);
+    if (!value.trim() && outgoing.length === 0) return;
     onSend({
       text: value,
       connection,
@@ -133,7 +141,7 @@ export function MessageInput({
       maxTurns: data?.settings.maxTurns,
       permissionMode,
       autonomyLevel,
-      attachments,
+      attachments: outgoing,
     });
     setValue('');
     clearAttachments();
@@ -143,10 +151,11 @@ export function MessageInput({
     if (!canSteer || !streamingTurnId || !onSteer) return;
     const text = value.trim();
     const pendingAttachments = attachments;
+    const outgoing = sendableAttachments(pendingAttachments);
     setValue('');
     clearAttachments();
     try {
-      const result = await onSteer(text, pendingAttachments);
+      const result = await onSteer(text, outgoing);
       if (!result.ok) {
         setValue(text);
         setAttachments(pendingAttachments);
@@ -234,9 +243,16 @@ export function MessageInput({
             attachments={attachments}
             loadingCount={loadingCount}
             isStreaming={isStreaming}
+            supportsVision={supportsVision}
             onRemove={removeAttachment}
             onUpdate={updateAttachment}
           />
+
+          {visionNotice && (
+            <div className="border-b border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-300/90">
+              {visionNotice}
+            </div>
+          )}
 
           {error && (
             <div className="border-b border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs text-red-300">
@@ -282,7 +298,7 @@ export function MessageInput({
             onChangeCwd={onChangeCwd}
             cwdLocked={cwdLocked}
             supportsVision={supportsVision}
-            attachmentsDisabled={attachmentsDisabled}
+            hasUnsendableImages={hasUnsendableImages}
             onPickFiles={handlePickFiles}
             onTriggerMention={triggerMentionFromButton}
             onPickerChange={(slug, modelId) =>
