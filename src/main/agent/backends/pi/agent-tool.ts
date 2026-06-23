@@ -20,7 +20,7 @@ import { defineTool, type AgentToolUpdateCallback, type ToolDefinition } from '@
 import type { LoadedAgent } from '../../../agents/types';
 import type { AgentChatEvent, SubagentProgressUpdate } from '../../events';
 import { createLogger } from '../../../../shared/sub-logger';
-import { injectTraceparent } from '../../../../shared/otel';
+import { injectTraceContext } from '../../../../shared/otel';
 import { writeJsonLine } from '../../../../shared/jsonl-stdin';
 
 const log = createLogger('pi-agent-tool');
@@ -241,6 +241,9 @@ function spawnAgentSubprocess(
         ...process.env,
         ELECTRON_RUN_AS_NODE: '1',
         PI_DEBUG: '0', // Less verbose for sub-agents
+        // Isolate this sub-agent's span file from the parent's so concurrent
+        // agents never share one traces file (see perProcessOutfile in otel.ts).
+        MA_OTEL_SUBAGENT: '1',
       },
     });
 
@@ -467,7 +470,7 @@ async function executeAgentTask(
     systemPromptAppend: '', // Agent system prompt is already in init
     // Nest the sub-agent's trace under the active `execute_tool Agent` span.
     // Undefined when tracing is off, so the field is simply omitted.
-    traceparent: injectTraceparent(),
+    traceCarrier: injectTraceContext(),
   };
 
   send(handle, promptMsg);

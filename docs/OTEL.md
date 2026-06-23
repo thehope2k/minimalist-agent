@@ -71,11 +71,11 @@ usage is **not** rolled up onto `invoke_agent` — it stays on the per-call `cha
 spans (the turn carries only `minimalist_agent.llm_request_count`); see Token
 accounting for why. Sub-agent subprocesses inherit the `MA_OTEL_*` env, so their
 spans land in the same sink. Their `invoke_agent` span **nests under** the
-parent's `execute_tool Agent` span: the parent injects a W3C `traceparent` onto
-the sub-agent's prompt message (`MsgPrompt.traceparent`), and the child rebuilds
-it as the parent context of its root span (see `injectTraceparent` /
-`contextFromTraceparent` in [`otel.ts`](../src/shared/otel.ts)). They also share
-`gen_ai.conversation.id`.
+parent's `execute_tool Agent` span: the parent injects a W3C trace carrier
+(`traceparent` + `tracestate`) onto the sub-agent's prompt message
+(`MsgPrompt.traceCarrier`), and the child rebuilds it as the parent context of
+its root span (see `injectTraceContext` / `contextFromCarrier` in
+[`otel.ts`](../src/shared/otel.ts)). They also share `gen_ai.conversation.id`.
 
 ### Token accounting
 
@@ -132,6 +132,16 @@ mirroring `main.log`: when it would exceed the cap it rotates to
 bounded at ~2× the cap. The byte count is tracked in memory (seeded once via
 `statSync`), so there's no per-span `stat`. `console`/`otlp` don't write a file,
 so the cap doesn't apply to them.
+
+**Concurrency / parallel agents:** sub-agent subprocesses get their **own**
+sibling file — the base path with the pid inserted before the extension, e.g.
+`traces.4321.jsonl` (driven by `MA_OTEL_SUBAGENT=1` set on spawn, applied by
+`perProcessOutfile`). This is required because the byte counter and rotation are
+per-process: if N processes shared one file the cap would be N× too large and a
+rotate could clobber another process's archive. The main process keeps the
+exact configured path. **Readers must glob `traces*.jsonl`** (or `<base>*.jsonl`
+for a custom outfile) to include sub-agent spans — a single-file reader would
+miss them.
 
 ### JSONL line shape
 

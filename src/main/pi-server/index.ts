@@ -83,7 +83,7 @@ import {
   startSpan,
   withSpan,
   captureContent,
-  contextFromTraceparent,
+  contextFromCarrier,
   isOtelEnabled,
   recordException,
   safeAttr,
@@ -1662,8 +1662,8 @@ async function handlePrompt(msg: MsgPrompt): Promise<void> {
   state.modelRequestCount = 0;
   const { span: turnSpan, context: turnCtx } = startSpan('invoke_agent minimalist-agent', {
     // When spawned as a sub-agent, nest under the parent's execute_tool span via
-    // the propagated traceparent; otherwise this is a fresh root trace.
-    parentContext: msg.traceparent ? contextFromTraceparent(msg.traceparent) : undefined,
+    // the propagated trace carrier; otherwise this is a fresh root trace.
+    parentContext: msg.traceCarrier ? contextFromCarrier(msg.traceCarrier) : undefined,
     attributes: {
       'gen_ai.operation.name': 'invoke_agent',
       'gen_ai.agent.name': 'minimalist-agent',

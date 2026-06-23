@@ -112,6 +112,19 @@ let provider: NodeTracerProvider | undefined;
 let activeConfig: OtelConfig | undefined;
 let initialized = false;
 
+/**
+ * Insert `.<pid>` before the file extension so a concurrent process gets its own
+ * file (e.g. `traces.jsonl` → `traces.4321.jsonl`). No-op when `enabled` is
+ * false or there is no path. Used to isolate sub-agent span files from the
+ * parent's — see readOtelConfigFromEnv.
+ */
+export function perProcessOutfile(path: string, enabled: boolean, pid = process.pid): string {
+  if (!enabled || !path) return path;
+  const dot = path.lastIndexOf('.');
+  const slash = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+  return dot > slash ? `${path.slice(0, dot)}.${pid}${path.slice(dot)}` : `${path}.${pid}`;
+}
+
 /** Parse `MA_OTEL_*` env into a config. `enabled` is false unless explicitly set. */
 export function readOtelConfigFromEnv(env: NodeJS.ProcessEnv = process.env): OtelConfig {
   const raw = (env.MA_OTEL_EXPORTER ?? 'file').toLowerCase();
@@ -127,7 +140,13 @@ export function readOtelConfigFromEnv(env: NodeJS.ProcessEnv = process.env): Ote
     captureContent:
       env.MA_OTEL_CAPTURE_CONTENT === '1' || env.MA_OTEL_CAPTURE_CONTENT === 'true',
     exporter,
-    outfile: env.MA_OTEL_OUTFILE ?? '',
+    // Sub-agent subprocesses inherit MA_OTEL_OUTFILE from the parent, so without
+    // isolation N processes would append to (and rotate) one file concurrently —
+    // private byte counters make the cap N× too large and a rename can clobber
+    // another process's archive. Give each sub-agent a sibling `<base>.<pid>.jsonl`
+    // so every process owns exactly one file. The main process keeps the user's
+    // exact path (it's the only writer there). Readers should glob `traces*.jsonl`.
+    outfile: perProcessOutfile(env.MA_OTEL_OUTFILE ?? '', env.MA_OTEL_SUBAGENT === '1'),
     otlpEndpoint: env.MA_OTEL_OTLP_ENDPOINT ?? '',
     serviceName: env.MA_OTEL_SERVICE_NAME ?? TRACER_NAME,
     serviceVersion: env.MINIMALIST_AGENT_VERSION ?? '0.0.0',
@@ -307,7 +326,17 @@ export async function initOtel(env: NodeJS.ProcessEnv = process.env): Promise<bo
   activeConfig = cfg;
   if (!cfg.enabled) return false;
 
-  const exporter = await buildExporter(cfg);
+  let exporter: SpanExporter | null;
+  try {
+    exporter = await buildExporter(cfg);
+  } catch (e) {
+    // A failed exporter (e.g. OTLP dynamic import reject) must not leave the
+    // subprocess wedged with an unhandled rejection; degrade to no tracing and
+    // allow a later retry by clearing the init latch.
+    log.warn('exporter init failed; tracing disabled:', e);
+    initialized = false;
+    return false;
+  }
   if (!exporter) return false;
 
   // File/console flush per-span for tailing; OTLP batches to amortize HTTP.
@@ -322,15 +351,17 @@ export async function initOtel(env: NodeJS.ProcessEnv = process.env): Promise<bo
 
   // W3C trace-context propagation so a sub-agent subprocess can nest its
   // `invoke_agent` span under the parent's `execute_tool Agent` span (the
-  // traceparent rides on the prompt message — see injectTraceparent /
-  // contextFromTraceparent).
+  // carrier rides on the prompt message — see injectTraceContext /
+  // contextFromCarrier).
   propagation.setGlobalPropagator(new W3CTraceContextPropagator());
 
   provider = new NodeTracerProvider({
     resource: resourceFromAttributes({
+      // User-supplied attributes first so the canonical service identity can't
+      // be spoofed (a forged service.name would corrupt attribution dashboards).
+      ...cfg.resourceAttributes,
       [ATTR_SERVICE_NAME]: cfg.serviceName,
       [ATTR_SERVICE_VERSION]: cfg.serviceVersion,
-      ...cfg.resourceAttributes,
     }),
     spanProcessors: [processor],
   });
@@ -357,25 +388,27 @@ export function getTracer(): Tracer {
 }
 
 /**
- * Serialize the active span context to a W3C `traceparent` string for handing
- * to a child process. Returns undefined when tracing is off or there is no
- * active span, so callers can omit the field entirely.
+ * Serialize the active span context to a W3C carrier (`traceparent` + optional
+ * `tracestate`) for handing to a child process. Returns undefined when tracing
+ * is off or there is no active span, so callers can omit the field entirely.
  */
-export function injectTraceparent(ctx: Context = context.active()): string | undefined {
+export function injectTraceContext(
+  ctx: Context = context.active(),
+): Record<string, string> | undefined {
   if (!provider) return undefined;
   const carrier: Record<string, string> = {};
   propagation.inject(ctx, carrier);
-  return carrier.traceparent;
+  return carrier.traceparent ? carrier : undefined;
 }
 
 /**
- * Rebuild a parent {@link Context} from a `traceparent` carried over the JSONL
- * protocol, for use as `parentContext` on the child's root span. Falls back to
- * the active context when the header is missing/unparseable.
+ * Rebuild a parent {@link Context} from a W3C carrier (`traceparent` +
+ * `tracestate`) carried over the JSONL protocol, for use as `parentContext` on
+ * the child's root span. Falls back to the active context when absent/unparseable.
  */
-export function contextFromTraceparent(traceparent?: string): Context {
-  if (!traceparent) return context.active();
-  return propagation.extract(context.active(), { traceparent });
+export function contextFromCarrier(carrier?: Record<string, string>): Context {
+  if (!carrier?.traceparent) return context.active();
+  return propagation.extract(context.active(), carrier);
 }
 
 export interface SpanOptions {

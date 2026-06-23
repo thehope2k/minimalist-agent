@@ -154,11 +154,12 @@ export interface MsgPrompt {
   /** Per-turn system-prompt append for dynamic context injection. Pi subprocess updates resourceLoader when this changes. */
   systemPromptAppend?: string;
   /**
-   * W3C `traceparent` of the caller's active span. Present only for sub-agent
-   * subprocesses so their `invoke_agent` span nests under the parent's
-   * `execute_tool Agent` span. See docs/OTEL.md.
+   * W3C trace-context carrier (`traceparent` + optional `tracestate`) of the
+   * caller's active span. Present only for sub-agent subprocesses so their
+   * `invoke_agent` span nests under the parent's `execute_tool Agent` span.
+   * See docs/OTEL.md.
    */
-  traceparent?: string;
+  traceCarrier?: Record<string, string>;
 }
 
 export interface MsgAbort {
