@@ -24,6 +24,15 @@ export function ContextBadge({ messages, contextWindow, className }: Props) {
 
   const used = usage.total;
   const pct = Math.min(100, Math.round((used / contextWindow) * 100));
+
+  // The agent auto-compacts older history once context passes
+  // contextWindow − reserveTokens. Mirrors the Pi SDK default
+  // (DEFAULT_COMPACTION_SETTINGS.reserveTokens) — keep in sync if it changes.
+  const COMPACTION_RESERVE_TOKENS = 16384;
+  const compactAt = Math.max(0, contextWindow - COMPACTION_RESERVE_TOKENS);
+  const compactPct = Math.round((compactAt / contextWindow) * 100);
+  const willCompactSoon = used >= compactAt;
+
   const tone =
     pct >= 95
       ? 'border-red-500/40 bg-red-500/10 text-red-300'
@@ -32,12 +41,17 @@ export function ContextBadge({ messages, contextWindow, className }: Props) {
         : 'border-border bg-elevated/40 text-fg-subtle';
 
   // Tooltip surfaces the cache split so the user can see why "input
-  // tokens" looks small even on big contexts.
+  // tokens" looks small even on big contexts, plus where auto-compaction
+  // kicks in (a common "why don't I ever see compaction?" question).
   const tooltip = [
     `Total: ${used.toLocaleString()} / ${contextWindow.toLocaleString()} input tokens`,
     `· new: ${usage.input.toLocaleString()}`,
     `· cache read: ${usage.cacheRead.toLocaleString()}`,
     `· cache create: ${usage.cacheCreate.toLocaleString()}`,
+    '',
+    willCompactSoon
+      ? 'Auto-compaction imminent — older history compresses next turn.'
+      : `Auto-compacts near the limit (~${compactPct}%, ${compactAt.toLocaleString()} tokens).`,
   ].join('\n');
 
   return (
