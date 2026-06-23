@@ -172,6 +172,12 @@ interface State {
   permissionMode: PiPermissionMode;
   autonomyLevel: number;
   currentTurnId?: string;
+  /** The turn's terminal `turn_done`, buffered until session.prompt() settles.
+   *  The pi SDK runs auto-compaction in its post-`agent_end` lifecycle, so the
+   *  compaction events arrive after `agent_end`. We hold `turn_done` (which
+   *  closes the per-turn channel) until the prompt fully settles, so those
+   *  compaction events still reach the renderer. Flushed in handlePrompt. */
+  pendingTurnDone?: MsgEvent;
   unsubscribe?: () => void;
   pendingPermission: Map<
     string,
@@ -1620,9 +1626,17 @@ function forwardEvent(piEvent: AgentSessionEvent): void {
   const turnId = state.currentTurnId;
   const adapted = adaptPiEvent(piEvent);
   for (const ev of adapted) {
+    // Defer `turn_done`: keep the per-turn channel open so any post-`agent_end`
+    // compaction events (emitted by the SDK's post-run lifecycle) are still
+    // forwarded. handlePrompt flushes the buffered terminal once the prompt
+    // settles. The latest one wins if continuation produces several.
+    if (ev.type === 'turn_done') {
+      state.pendingTurnDone = { type: 'event', turnId, event: ev };
+      continue;
+    }
     const out: MsgEvent = { type: 'event', turnId, event: ev };
     send(out);
-    if (ev.type === 'turn_done' || ev.type === 'error') {
+    if (ev.type === 'error') {
       // Close any dangling model span before the turn span is ended.
       if (state.modelSpan) {
         try { state.modelSpan.end(); } catch { /* */ }
@@ -1630,8 +1644,25 @@ function forwardEvent(piEvent: AgentSessionEvent): void {
       }
       state.currentTurnId = undefined;
       state.turnAbort = undefined;
+      state.pendingTurnDone = undefined;
     }
   }
+}
+
+/** Emit the turn's deferred `turn_done` (see forwardEvent) and tear down the
+ *  per-turn state. Called once session.prompt() has fully settled, including
+ *  any post-turn auto-compaction. No-op if no terminal was buffered. */
+function flushPendingTurnDone(): void {
+  const pending = state.pendingTurnDone;
+  if (!pending) return;
+  state.pendingTurnDone = undefined;
+  send(pending);
+  if (state.modelSpan) {
+    try { state.modelSpan.end(); } catch { /* */ }
+    state.modelSpan = undefined;
+  }
+  state.currentTurnId = undefined;
+  state.turnAbort = undefined;
 }
 
 /* ============================================================ */
@@ -1701,9 +1732,14 @@ async function handlePrompt(msg: MsgPrompt): Promise<void> {
           data: i.data,
         })) as never,
       });
-      // Terminal events emit through forwardEvent; nothing else to do here.
+      // The prompt (including any post-turn auto-compaction) has fully settled;
+      // emit the deferred terminal so the compaction events that arrived after
+      // agent_end have already reached the renderer ahead of turn_done.
+      flushPendingTurnDone();
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
+      // The error path supersedes any buffered terminal for this turn.
+      state.pendingTurnDone = undefined;
       if (state.currentTurnId) {
         // forwardEvent hasn't cleared currentTurnId yet — the turn wasn't
         // acknowledged via a subscription event, so we must emit the error.
@@ -1744,6 +1780,9 @@ async function handlePrompt(msg: MsgPrompt): Promise<void> {
     throw err;
   } finally {
     activePromptPromise = null;
+    // Safety net: never let a turn hang with an unflushed terminal (run()'s
+    // try/catch normally handles this).
+    flushPendingTurnDone();
     if (state.modelSpan) {
       try { state.modelSpan.end(); } catch { /* */ }
       state.modelSpan = undefined;
