@@ -169,6 +169,98 @@ export function buildSdkMcpServers(): Record<string, SdkMcpServerConfig> {
   return out;
 }
 
+/* ---------- Pi backend: resolved, serializable configs ---------- */
+
+/**
+ * A fully-resolved MCP server config, safe to serialize across the
+ * main→subprocess JSONL boundary. Unlike `SdkMcpServerConfig` (consumed
+ * in-process by the Claude SDK), SecretRef env/headers are already decrypted
+ * here, because the Pi subprocess cannot read the secret store.
+ *
+ * Carries `slug` so the subprocess can namespace tools as `mcp__<slug>__<tool>`.
+ */
+export type ResolvedMcpServerConfig =
+  | {
+      slug: string;
+      transport: 'stdio';
+      command: string;
+      args?: string[];
+      env?: Record<string, string>;
+    }
+  | {
+      slug: string;
+      transport: 'http' | 'sse';
+      url: string;
+      headers?: Record<string, string>;
+    };
+
+function toResolvedConfig(ext: LoadedExtension): ResolvedMcpServerConfig | null {
+  const mcp = ext.config.mcp;
+  if (!mcp) return null;
+
+  if (mcp.transport === 'stdio') {
+    const cfg: ResolvedMcpServerConfig = {
+      slug: ext.slug,
+      transport: 'stdio',
+      command: mcp.command,
+      args: mcp.args,
+    };
+    if (mcp.envFromBinding) {
+      const env = resolveEnv(ext);
+      if (env === null) return null; // missing secret — can't spawn safely
+      if (env) cfg.env = env;
+    }
+    return cfg;
+  }
+
+  return {
+    slug: ext.slug,
+    transport: mcp.transport,
+    url: mcp.url,
+    headers: mcp.headers,
+  };
+}
+
+/**
+ * Resolved MCP server configs for the Pi backend. Same gating as
+ * `buildSdkMcpServers` (enabled + consented + secrets satisfied), but the
+ * output is a flat, JSON-serializable array with secrets decrypted — ready to
+ * cross into the Pi subprocess via `MsgInit`.
+ */
+export function buildResolvedMcpServers(): ResolvedMcpServerConfig[] {
+  const out: ResolvedMcpServerConfig[] = [];
+  for (const ext of loadAllExtensions()) {
+    if (!isEnabled(ext.config)) continue;
+    if (!ext.config.mcp) continue;
+    if (!hasConsent(ext)) continue;
+    const cfg = toResolvedConfig(ext);
+    if (cfg) out.push(cfg);
+  }
+  return out;
+}
+
+/* ---------- runtime connection status (Pi backend) ---------- */
+
+/**
+ * Live MCP connection outcome reported by the Pi subprocess, keyed by slug.
+ * Distinct from the config-level status below: an extension can be fully
+ * configured yet fail to connect (bad command, unreachable URL, server crash).
+ */
+interface RuntimeMcpStatus {
+  ok: boolean;
+  toolCount?: number;
+  error?: string;
+}
+const runtimeMcpStatus = new Map<string, RuntimeMcpStatus>();
+
+export function recordPiMcpStatus(
+  servers: Array<{ slug: string; ok: boolean; toolCount?: number; error?: string }>,
+): void {
+  for (const s of servers) {
+    runtimeMcpStatus.set(s.slug, { ok: s.ok, toolCount: s.toolCount, error: s.error });
+  }
+}
+
 /**
  * Same as `buildSdkMcpServers` but enumerates extensions that *would* be
  * included if their blockers were resolved — useful for diagnostics.
@@ -176,7 +268,9 @@ export function buildSdkMcpServers(): Record<string, SdkMcpServerConfig> {
 export function listMcpExtensionsStatus(): Array<{
   slug: string;
   ok: boolean;
-  reason?: 'disabled' | 'missing-secrets' | 'no-consent';
+  reason?: 'disabled' | 'missing-secrets' | 'no-consent' | 'connect-failed';
+  toolCount?: number;
+  error?: string;
 }> {
   return loadAllExtensions()
     .filter((e) => e.config.mcp)
@@ -185,6 +279,10 @@ export function listMcpExtensionsStatus(): Array<{
       if (!hasConsent(e)) return { slug: e.slug, ok: false, reason: 'no-consent' as const };
       if (listMissingSecrets(e).length > 0)
         return { slug: e.slug, ok: false, reason: 'missing-secrets' as const };
-      return { slug: e.slug, ok: true };
+      // Config is satisfied; fold in the live connection outcome if known.
+      const runtime = runtimeMcpStatus.get(e.slug);
+      if (runtime && !runtime.ok)
+        return { slug: e.slug, ok: false, reason: 'connect-failed' as const, error: runtime.error };
+      return { slug: e.slug, ok: true, toolCount: runtime?.toolCount };
     });
 }

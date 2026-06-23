@@ -27,6 +27,63 @@ const VARIANT_LABEL: Record<LoadedExtension['variant'], string> = {
   'mcp-backed': 'mcp',
 };
 
+type McpStatus = {
+  slug: string;
+  ok: boolean;
+  reason?: 'disabled' | 'missing-secrets' | 'no-consent' | 'connect-failed';
+  toolCount?: number;
+  error?: string;
+};
+
+/** Compact badge describing why an mcp-backed extension's tools aren't loaded
+ *  (or that they are). Returns null for non-mcp extensions or unknown status. */
+function McpStatusBadge({ status }: { status: McpStatus | undefined }) {
+  if (!status || status.reason === 'disabled') return null;
+  if (status.ok) {
+    // toolCount is only known after a session actually connects the server.
+    // Until then the extension is merely eligible ("ready"), not verified
+    // — consent/secrets can be satisfied while the server still fails to
+    // start or authenticate on first real use.
+    const connected = status.toolCount != null;
+    return (
+      <span
+        className={
+          connected
+            ? 'rounded bg-emerald-500/15 px-1.5 py-px text-[10px] uppercase tracking-wide text-emerald-300'
+            : 'rounded bg-elevated/80 px-1.5 py-px text-[10px] uppercase tracking-wide text-fg-subtle'
+        }
+        title={
+          connected
+            ? `MCP server connected — ${status.toolCount} tool(s)`
+            : 'Eligible: consent and secrets satisfied. The server connects on first use this session.'
+        }
+      >
+        {connected ? 'active' : 'ready'}
+      </span>
+    );
+  }
+  const label =
+    status.reason === 'no-consent'
+      ? 'consent'
+      : status.reason === 'missing-secrets'
+        ? 'secret'
+        : 'failed';
+  const title =
+    status.reason === 'no-consent'
+      ? 'MCP tools blocked: consent not granted. Open this extension to approve the server.'
+      : status.reason === 'missing-secrets'
+        ? 'MCP tools blocked: a required secret is not set.'
+        : `MCP server failed to start${status.error ? `: ${status.error}` : ''}`;
+  return (
+    <span
+      className="rounded bg-amber-500/15 px-1.5 py-px text-[10px] uppercase tracking-wide text-amber-300"
+      title={title}
+    >
+      {label}
+    </span>
+  );
+}
+
 export function ExtensionsPanel({
   activeSlug,
   onSelect,
@@ -35,15 +92,30 @@ export function ExtensionsPanel({
   const extensions = useExtensions();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [mcpStatus, setMcpStatus] = useState<Record<string, McpStatus>>({});
+
+  const loadMcpStatus = async () => {
+    try {
+      const list = await window.api.extensions.mcpStatus();
+      setMcpStatus(Object.fromEntries(list.map((s) => [s.slug, s as McpStatus])));
+    } catch {
+      /* diagnostics are best-effort; never block the panel */
+    }
+  };
 
   useEffect(() => {
     void reloadExtensions();
+    void loadMcpStatus();
+    // Runtime connection outcomes arrive after a session connects its servers.
+    const off = window.api.extensions.onMcpStatus(() => void loadMcpStatus());
+    return off;
   }, []);
 
   const handleManualRefresh = async () => {
     setRefreshing(true);
     try {
       await reloadExtensions();
+      await loadMcpStatus();
     } finally {
       setRefreshing(false);
     }
@@ -96,6 +168,7 @@ export function ExtensionsPanel({
               key={ext.slug}
               ext={ext}
               active={ext.slug === activeSlug}
+              mcpStatus={ext.variant === 'mcp-backed' ? mcpStatus[ext.slug] : undefined}
               onClick={() => onSelect(ext.slug)}
               onAfterDelete={() => {
                 if (ext.slug === activeSlug) onSelect(null);
@@ -117,11 +190,13 @@ export function ExtensionsPanel({
 function ExtensionRow({
   ext,
   active,
+  mcpStatus,
   onClick,
   onAfterDelete,
 }: {
   ext: LoadedExtension;
   active: boolean;
+  mcpStatus: McpStatus | undefined;
   onClick: () => void;
   onAfterDelete: () => void;
 }) {
@@ -154,6 +229,7 @@ function ExtensionRow({
                 off
               </span>
             )}
+            {enabled && <McpStatusBadge status={mcpStatus} />}
           </div>
           <div className="mt-0.5 truncate text-xs text-fg-subtle">
             {displayDescription(ext)}

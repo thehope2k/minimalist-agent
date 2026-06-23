@@ -1114,8 +1114,15 @@ export interface AppApi {
     revokeConsent: (slug: string) => Promise<boolean>;
 
     mcpStatus: () => Promise<
-      Array<{ slug: string; ok: boolean; reason?: string }>
+      Array<{
+        slug: string;
+        ok: boolean;
+        reason?: 'disabled' | 'missing-secrets' | 'no-consent' | 'connect-failed';
+        toolCount?: number;
+        error?: string;
+      }>
     >;
+    onMcpStatus: (cb: () => void) => () => void;
   };
   attachments: {
     /**

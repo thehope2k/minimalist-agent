@@ -44,6 +44,28 @@ export interface PiPromptImage {
   mimeType: string;
 }
 
+/**
+ * Fully-resolved MCP server config crossing main→subprocess. Mirror of
+ * `ResolvedMcpServerConfig` in extensions/mcp-config.ts — duplicated here to
+ * keep this file dependency-free (it's imported by both processes). Secrets
+ * are already decrypted main-side, since the subprocess can't read the secret
+ * store.
+ */
+export type PiMcpServerConfig =
+  | {
+      slug: string;
+      transport: 'stdio';
+      command: string;
+      args?: string[];
+      env?: Record<string, string>;
+    }
+  | {
+      slug: string;
+      transport: 'http' | 'sse';
+      url: string;
+      headers?: Record<string, string>;
+    };
+
 /* ============================================================ */
 /*  Inbound messages (main → subprocess)                         */
 /* ============================================================ */
@@ -115,6 +137,12 @@ export interface MsgInit {
     path: string;
     iconPath?: string;
   }>;
+  /**
+   * Resolved MCP server configs for enabled+consented mcp-backed extensions.
+   * Secrets are pre-decrypted main-side. The subprocess spawns/connects a
+   * client per entry and exposes their tools as `mcp__<slug>__<tool>`.
+   */
+  mcpServers?: PiMcpServerConfig[];
 }
 
 export interface MsgPrompt {
@@ -355,6 +383,20 @@ export interface MsgPermissionModeChanged {
   mode: 'plan' | 'auto';
 }
 
+/** Per-server connection outcome for mcp-backed extensions, emitted once after
+ *  the subprocess finishes connecting its MCP pool at init. */
+export interface MsgMcpStatus {
+  type: 'mcp_status';
+  sessionId: string;
+  servers: Array<{
+    slug: string;
+    transport: 'stdio' | 'http' | 'sse';
+    ok: boolean;
+    toolCount?: number;
+    error?: string;
+  }>;
+}
+
 export interface MsgPlanApprovalResponse {
   type: 'planning:approval-response';
   sessionId: string;
@@ -377,6 +419,7 @@ export type SubprocessOutbound =
   | MsgPlanError
   | MsgPlanApprovalRequired
   | MsgPermissionModeChanged
+  | MsgMcpStatus
   | MsgMiniCompletionResult
   | MsgLlmQueryResult
   | MsgSessionIdUpdate

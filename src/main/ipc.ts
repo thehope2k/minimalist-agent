@@ -1240,6 +1240,15 @@ export function registerIpc(): void {
 
   // ---- Extension secrets + consent --------------------------------------
 
+  // Consent/secret changes alter which mcp-backed extensions are eligible.
+  // Broadcasting lets open panels re-read `mcp.status` and refresh their
+  // badges immediately, rather than waiting for a manual refresh.
+  const broadcastMcpStatusChanged = () => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) win.webContents.send('mcp-status');
+    }
+  };
+
   ipcMain.handle('extensions:secrets.encryptionAvailable', (): boolean =>
     isSecretsEncryptionAvailable(),
   );
@@ -1251,12 +1260,14 @@ export function registerIpc(): void {
     'extensions:secrets.set',
     (_e, slug: string, keyName: string, value: string): void => {
       setExtensionSecret(slug, keyName, value);
+      broadcastMcpStatusChanged();
     },
   );
   ipcMain.handle(
     'extensions:secrets.delete',
     (_e, slug: string, keyName: string): void => {
       deleteExtensionSecret(slug, keyName);
+      broadcastMcpStatusChanged();
     },
   );
   ipcMain.handle(
@@ -1286,6 +1297,7 @@ export function registerIpc(): void {
       const ext = loadExtensionBySlug(slug);
       if (!ext) return false;
       grantConsent(ext);
+      broadcastMcpStatusChanged();
       return true;
     },
   );
@@ -1295,6 +1307,7 @@ export function registerIpc(): void {
       const ext = loadExtensionBySlug(slug);
       if (!ext) return false;
       revokeConsent(ext);
+      broadcastMcpStatusChanged();
       return true;
     },
   );

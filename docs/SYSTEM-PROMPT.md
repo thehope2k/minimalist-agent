@@ -88,7 +88,7 @@ present (the common case). Collaboration + planning alone are **~60%** of it.
 | Date/time | `getDateTimeContext()` | always | ~50 |
 | Working directory | `getWorkingDirectoryContext()` | when cwd set | ~60 |
 | **Scratch directory** | `getScratchDirContext()` | when session path known | ~30 |
-| Extensions awareness (terse: flat slug list + one path-convention line) | `formatExtensionsAwareness()` (`extensions/directive.ts`) | when extensions installed | ~50–150 |
+| Extensions awareness (terse: flat slug list + one path-convention line; plus a gated "MCP not active" line when an enabled mcp-backed extension is blocked by consent/secret/connect failure) | `formatExtensionsAwareness()` (`extensions/directive.ts`) | when extensions installed | ~50–180 |
 
 The extensions block grows with state (one *slug* per enabled extension) but is
 now near-flat — it lists slugs only, not per-item descriptions or guide paths.

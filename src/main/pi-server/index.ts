@@ -42,6 +42,7 @@ import { getModel, completeSimple, type ThinkingLevel } from '@earendil-works/pi
 import { getOAuthProvider } from '@earendil-works/pi-ai/oauth';
 import { adaptPiEvent } from './event-adapter';
 import { createPiWebFetchTool, createPiWebSearchTool } from './web-tools';
+import { connectMcpServers, closeMcpClients } from './mcp-tools';
 import { createPiAgentTool } from '../agent/backends/pi/agent-tool';
 import type {
   MsgAuthRequired,
@@ -154,6 +155,11 @@ interface State {
     { resolve: (r: MsgCollaborationResponse) => void }
   >;
   planManager?: PlanManager;
+  /** Adapted MCP tools from connected mcp-backed extensions, appended to every
+   *  session build (init + model-switch recreate). */
+  mcpTools: ToolDefinition<any, any, any>[];
+  /** Live MCP clients, closed on shutdown. */
+  mcpClients: import('@modelcontextprotocol/sdk/client/index.js').Client[];
   currentPhaseId?: string; // Track active phase for error attribution
   turnAbort?: AbortController;
   shuttingDown?: boolean;
@@ -179,6 +185,8 @@ const state: State = {
   pendingCollaboration: new Map(),
   appendArr: [],
   availableAgents: [],
+  mcpTools: [],
+  mcpClients: [],
   // planManager initialized in handleInit with sessions directory
 };
 
@@ -1107,6 +1115,11 @@ function buildWrappedTools(
   // Add planning tools (not wrapped with permission gate - they manage the workflow)
   tools.push(...createPlanningTools(agentContext?.sessionId || ''));
 
+  // MCP-backed extension tools. Connected once at init and reused across
+  // session rebuilds. Routed through the permission gate like any other write
+  // tool — an MCP call is an external side effect the user should control.
+  tools.push(...state.mcpTools.map(wrapWithPermissionGate));
+
   return tools.map(instrumentTool);
 }
 
@@ -1260,6 +1273,16 @@ async function handleInit(msg: MsgInit): Promise<void> {
     } : {}),
     permissionMode: msg.permissionMode as 'plan' | 'auto',
   };
+
+  // Connect MCP-backed extensions before building tools so their adapted
+  // tools are present on the very first turn. Failures are isolated per server
+  // and never block boot (bounded global budget inside connectMcpServers).
+  if (msg.mcpServers && msg.mcpServers.length > 0) {
+    const mcp = await connectMcpServers(msg.mcpServers);
+    state.mcpTools = mcp.tools;
+    state.mcpClients = mcp.clients;
+    send({ type: 'mcp_status', sessionId: msg.sessionId, servers: mcp.diagnostics });
+  }
 
   const tools = buildWrappedTools(msg.cwd, agentContext);
 
@@ -2059,6 +2082,7 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
       state.shuttingDown = true;
       try { state.unsubscribe?.(); } catch { /* */ }
       try { state.session?.dispose(); } catch { /* */ }
+      await closeMcpClients(state.mcpClients);
       await shutdownOtel();
       process.exit(0);
   }

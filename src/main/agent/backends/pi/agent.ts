@@ -24,6 +24,7 @@
 
 import {type ChildProcess, spawn} from 'node:child_process';
 import {resolveExtensionEnv} from '../../../extensions/env-resolver';
+import {buildResolvedMcpServers, recordPiMcpStatus} from '../../../extensions/mcp-config';
 import {createInterface, type Interface as ReadlineInterface} from 'node:readline';
 import {app, BrowserWindow} from 'electron';
 import {readFileSync} from 'node:fs';
@@ -56,6 +57,7 @@ import type {
   MsgLlmQueryResult,
   MsgMiniCompletion,
   MsgMiniCompletionResult,
+  MsgMcpStatus,
   MsgPreToolUseRequest,
   MsgPrompt,
   MsgSessionIdUpdate,
@@ -391,6 +393,7 @@ function ensureSubprocess(
       path: a.path,
       iconPath: a.iconPath,
     })),
+    mcpServers: buildResolvedMcpServers(),
   };
   send(handle, init);
 
@@ -647,6 +650,26 @@ async function handleOutbound(
         });
       } catch (e) {
         log.error('failed to persist piSessionId:', e);
+      }
+      return;
+    }
+
+    case 'mcp_status': {
+      const { sessionId = handle.chatSessionId, servers } = msg as MsgMcpStatus;
+      // Runtime connection outcome for mcp-backed extensions. Cache it so the
+      // extensions:mcp.status IPC reflects live connect failures, not just
+      // config-level blockers, and forward to the renderer for surfacing.
+      recordPiMcpStatus(servers);
+      for (const s of servers) {
+        if (s.ok) {
+          log.info(`MCP ${s.slug} connected (${s.toolCount ?? 0} tool(s))`);
+        } else {
+          log.warn(`MCP ${s.slug} failed: ${s.error ?? 'unknown error'}`);
+        }
+      }
+      const win = BrowserWindow.getAllWindows()[0];
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('mcp-status', { sessionId, servers });
       }
       return;
     }

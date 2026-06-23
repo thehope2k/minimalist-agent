@@ -145,14 +145,22 @@ with a per-directory TTL cache invalidated on file-system events.
 
 `extensions/` manages installable capability packs:
 
-- **MCP-backed** — spawns an MCP server (stdio or HTTP/SSE) and wires it
-  into `Options.mcpServers` via `buildSdkMcpServers()`.
+- **MCP-backed** — spawns an MCP server (stdio or HTTP/SSE) and exposes its
+  tools as `mcp__<slug>__<tool>` on **both backends**. The Anthropic backend
+  wires them into `Options.mcpServers` via `buildSdkMcpServers()`; the Pi
+  backend resolves serializable configs (secrets pre-decrypted) with
+  `buildResolvedMcpServers()`, passes them over `MsgInit`, and the pi-server
+  subprocess connects them via `pi-server/mcp-tools.ts` — bounded-parallel
+  connect with per-server timeout + global budget, so a failed server is
+  skipped without blocking the session.
 - **CLI-bound** — injects env vars into the SDK subprocess via
   `resolveExtensionEnv()`, enabling bundled CLI tools.
 - **Guide-only** — provides a `guide.md` injected into the system prompt.
 
 Consent is required before any MCP server is connected; secrets are stored
-per-extension in the OS keychain.
+per-extension in the OS keychain. Because the Pi subprocess can't read the
+keychain, MCP secrets are decrypted in the main process and handed down via
+`MsgInit` (the same boundary the auth credential crosses).
 
 ---
 

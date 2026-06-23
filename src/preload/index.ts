@@ -815,8 +815,22 @@ const api = {
       ipcRenderer.invoke('extensions:consent.revoke', slug),
 
     /* mcp diagnostics */
-    mcpStatus: (): Promise<Array<{ slug: string; ok: boolean; reason?: string }>> =>
-      ipcRenderer.invoke('extensions:mcp.status'),
+    mcpStatus: (): Promise<
+      Array<{
+        slug: string;
+        ok: boolean;
+        reason?: 'disabled' | 'missing-secrets' | 'no-consent' | 'connect-failed';
+        toolCount?: number;
+        error?: string;
+      }>
+    > => ipcRenderer.invoke('extensions:mcp.status'),
+    /** Runtime MCP connection outcomes, pushed when a session connects its
+     *  servers. Fires a refresh hint; callers re-read `mcpStatus()`. */
+    onMcpStatus: (cb: () => void): (() => void) => {
+      const handler = () => cb();
+      ipcRenderer.on('mcp-status', handler);
+      return () => ipcRenderer.removeListener('mcp-status', handler);
+    },
   },
   attachments: {
     pickFiles: (): Promise<unknown[]> => ipcRenderer.invoke('attachments:pickFiles'),

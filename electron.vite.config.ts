@@ -30,6 +30,11 @@ export default defineConfig({
           'electron',
           /^@earendil-works\//,
           /^@mariozechner\//,
+          // The MCP client SDK (used by pi-server for mcp-backed extensions)
+          // pulls in ws/eventsource/cross-spawn; keep it external so those
+          // resolve from node_modules instead of being bundled into the ESM
+          // pi-server bundle.
+          /^@modelcontextprotocol\//,
           // OpenTelemetry packages are runtime deps (see AGENTS.md). Keep them
           // external so they resolve from node_modules instead of bundling the
           // SDK's CJS internals into the ESM pi-server bundle.

@@ -1,6 +1,7 @@
 import { getExtensionRegistry } from './registry';
 import { getExtensionsDir } from './storage';
 import { isEnabled } from './types';
+import { listMcpExtensionsStatus } from './mcp-config';
 import { join } from 'node:path';
 
 /**
@@ -37,6 +38,36 @@ export function formatExtensionsAwareness(): string {
   );
   if (enabled.length > 0) {
     lines.push(`Enabled: ${enabled.map((e) => e.slug).join(', ')}`);
+  }
+
+  // An mcp-backed extension can be enabled yet contribute zero tools — consent
+  // not granted, a required secret missing, or its server failed to start. The
+  // flat "Enabled" list above would otherwise imply those tools exist, so the
+  // model calls a `mcp__<slug>__*` tool that isn't registered and invents a
+  // reason. Naming the blocked servers + the fix keeps the block honest and
+  // lets the model tell the user what to do. Gated: only present when something
+  // is actually blocked.
+  const blockedMcp = listMcpExtensionsStatus().filter(
+    (s) => !s.ok && s.reason !== 'disabled',
+  );
+  if (blockedMcp.length > 0) {
+    const reason = (s: (typeof blockedMcp)[number]): string => {
+      switch (s.reason) {
+        case 'no-consent':
+          return 'consent not granted — user must approve it in the Extensions panel';
+        case 'missing-secrets':
+          return 'a required secret is not set';
+        case 'connect-failed':
+          return `server failed to start${s.error ? `: ${s.error}` : ''}`;
+        default:
+          return 'unavailable';
+      }
+    };
+    lines.push(
+      `MCP not active (their \`mcp__<slug>__*\` tools are NOT available this session — do not call them; tell the user the blocker): ${blockedMcp
+        .map((s) => `${s.slug} (${reason(s)})`)
+        .join('; ')}`,
+    );
   }
   if (disabled.length > 0) {
     lines.push(

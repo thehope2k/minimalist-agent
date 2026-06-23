@@ -4,7 +4,7 @@
  * content changes; the install pass overwrites stale copies.
  */
 
-export const EXTENSIONS_REFERENCE_VERSION = '0.1.4';
+export const EXTENSIONS_REFERENCE_VERSION = '0.1.5';
 
 export const EXTENSIONS_REFERENCE_MD = `# Extensions
 
@@ -254,10 +254,13 @@ better experience than parsing CLI output. Conversely, wrapping a great CLI
 in MCP is unnecessary overhead. When two variants are both reasonable, the
 agent should ask the user.
 
-> **Anthropic-only.** MCP servers are spawned by the Claude Agent SDK and only
-> reach Anthropic-backed sessions. Pi-backed sessions skip mcp-backed
-> extensions silently — \`guide-only\` and \`cli-bound\` variants work on
-> both backends.
+> **Both backends.** MCP servers are spawned on demand and their tools reach
+> the agent on both backends: the Claude Agent SDK spawns them for
+> Anthropic-backed sessions, and the Pi subprocess connects them for Pi-backed
+> sessions. Tools appear as \`mcp__<slug>__<tool>\`. A server that fails to
+> start (or exceeds the connect budget) is skipped without blocking the
+> session; its tools are simply absent that run. Required secrets and user
+> consent are enforced identically on both backends.
 
 ## Creating extensions in chat
 

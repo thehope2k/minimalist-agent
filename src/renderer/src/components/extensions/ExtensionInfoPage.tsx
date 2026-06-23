@@ -109,11 +109,13 @@ function Body({
           <PageHeader extension={extension} />
 
           {extension.variant === 'mcp-backed' && (
-            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-fg-muted">
-              <strong className="text-fg">Anthropic-only.</strong> The MCP
-              server is spawned by the Claude Agent SDK; Pi-backed sessions
-              will skip this extension. Use a <code>guide-only</code> or{' '}
-              <code>cli-bound</code> variant for Pi compatibility.
+            <div className="rounded-lg border border-border bg-elevated-2 px-4 py-3 text-sm text-fg-muted">
+              <strong className="text-fg">MCP-backed.</strong> The MCP server
+              is spawned on demand — by the Claude Agent SDK on Anthropic-backed
+              sessions, and by the Pi subprocess on Pi-backed sessions — and its
+              tools appear to the agent as <code>mcp__{extension.slug}__*</code>.
+              A server that fails to start is skipped without blocking the
+              session.
             </div>
           )}
 
