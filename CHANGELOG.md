@@ -13,23 +13,27 @@ Auto-compaction visibility in the context badge, plus telemetry and token-accoun
 
 **Auto-compaction threshold in the context badge**
 
-- The context badge now shows the auto-compaction threshold, so you can see at a glance how much context headroom remains before the conversation is automatically compacted
+- The context badge now shows the auto-compaction threshold, so you can see at a glance how much context headroom
+  remains before the conversation is automatically compacted
 
 ### Changed
 
-- The context-limit error message now explains that auto-compaction kicks in, making it clearer what happens as a conversation approaches the model's context window
+- The context-limit error message now explains that auto-compaction kicks in, making it clearer what happens as a
+  conversation approaches the model's context window
 
 ### Fixed
 
 **Telemetry (OpenTelemetry)**
 
 - Sub-agent span files are now isolated per process id, preventing concurrent runs from corrupting each other's traces
-- In-flight spans are flushed on exit and standalone completions are traced, so telemetry no longer drops the final spans of a session
+- In-flight spans are flushed on exit and standalone completions are traced, so telemetry no longer drops the final
+  spans of a session
 
 **Context sizing & token usage**
 
 - Pi-AI token fields are now mapped to the usage model so context sizing reflects real token counts
-- Turn completion is now deferred until post-`agent_end` compaction settles, so usage and context state are reported accurately after an automatic compaction
+- Turn completion is now deferred until post-`agent_end` compaction settles, so usage and context state are reported
+  accurately after an automatic compaction
 
 ---
 
@@ -41,21 +45,30 @@ MCP extensions on the Pi backend, smarter image handling on non-vision models, a
 
 **MCP extensions on the Pi backend**
 
-- MCP-backed extensions now connect on Pi sessions too, not just Anthropic-backed ones. Servers connect in parallel with per-server and global timeouts so a failed server is skipped instead of blocking the session, live per-server connection status is shown on panel badges, and the model is told when a server is inactive so it won't call tools that aren't available
+- MCP-backed extensions now connect on Pi sessions too, not just Anthropic-backed ones. Servers connect in parallel with
+  per-server and global timeouts so a failed server is skipped instead of blocking the session, live per-server
+  connection status is shown on panel badges, and the model is told when a server is inactive so it won't call tools
+  that aren't available
 
 **Images on non-vision models**
 
-- Image attachments are no longer rejected when the active model lacks vision support. They stay in the draft (and are restored when you switch models), shown struck-through with an inline notice and excluded from sending — matching VS Code's behaviour. Switching to a vision-capable model mid-conversation re-includes them
+- Image attachments are no longer rejected when the active model lacks vision support. They stay in the draft (and are
+  restored when you switch models), shown struck-through with an inline notice and excluded from sending — matching VS
+  Code's behaviour. Switching to a vision-capable model mid-conversation re-includes them
 
 **Vision badge in the model picker**
 
-- Vision-capable models are now marked with a dedicated badge in the model picker, making them easier to spot at a glance
+- Vision-capable models are now marked with a dedicated badge in the model picker, making them easier to spot at a
+  glance
 
 ### Changed
 
 **Autonomy is now an enforced risk budget**
 
-- Your autonomy level is now a real guarantee enforced in code rather than a prompt hint: the agent acts on its own when an operation's risk is below your level and only engages at or above it. A below-budget approval in auto mode is auto-approved without prompting, an irreversible floor always confirms destructive operations even at 100% autonomy, and collaboration dialogs gain a "Discuss first" option so you can talk before committing
+- Your autonomy level is now a real guarantee enforced in code rather than a prompt hint: the agent acts on its own when
+  an operation's risk is below your level and only engages at or above it. A below-budget approval in auto mode is
+  auto-approved without prompting, an irreversible floor always confirms destructive operations even at 100% autonomy,
+  and collaboration dialogs gain a "Discuss first" option so you can talk before committing
 
 ---
 
@@ -67,7 +80,8 @@ Quality of life improvements — search your sessions at a glance.
 
 **Sessions search**
 
-- The sessions panel now has a search mode that filters your sessions by title and working directory, with a dedicated search header, escape-to-close, and a context-aware empty state when nothing matches
+- The sessions panel now has a search mode that filters your sessions by title and working directory, with a dedicated
+  search header, escape-to-close, and a context-aware empty state when nothing matches
 
 ---
 
@@ -79,7 +93,9 @@ Live model-catalog refresh so your provider model lists stay current.
 
 **Model catalog refresh**
 
-- Each connection's model list is now treated as a cache that refreshes itself as providers add and retire models, rather than a fixed snapshot taken once. Refreshes run on startup, on use, and on demand via a new manual "Refresh models" action in AI settings, and open model pickers and settings update live when the catalog changes
+- Each connection's model list is now treated as a cache that refreshes itself as providers add and retire models,
+  rather than a fixed snapshot taken once. Refreshes run on startup, on use, and on demand via a new manual "Refresh
+  models" action in AI settings, and open model pickers and settings update live when the catalog changes
 
 ---
 
@@ -91,7 +107,8 @@ Bug fixes.
 
 **Plan mode**
 
-- Approving a risky operation, tool use, or non-safe phase while in plan mode no longer leaves the agent stuck — saying yes now promotes the session to auto so the next write actually goes through
+- Approving a risky operation, tool use, or non-safe phase while in plan mode no longer leaves the agent stuck — saying
+  yes now promotes the session to auto so the next write actually goes through
 
 ---
 
@@ -103,7 +120,11 @@ Opt-in OpenTelemetry tracing, branched-session quality of life, and a planning f
 
 **OpenTelemetry tracing**
 
-- Optionally emit OTel spans for agent turns, model requests, and tool calls — off by default, enabled from Settings → Telemetry. Spans follow the GenAI semantic conventions for compatibility with GenAI-aware backends, prompt/response content is gated behind a capture-content toggle (default off), secrets are never recorded, and per-user attribution rides on the OTel resource. Paths use `~` expansion and anchor relative output files under your home directory for predictable locations
+- Optionally emit OTel spans for agent turns, model requests, and tool calls — off by default, enabled from Settings →
+  Telemetry. Spans follow the GenAI semantic conventions for compatibility with GenAI-aware backends, prompt/response
+  content is gated behind a capture-content toggle (default off), secrets are never recorded, and per-user attribution
+  rides on the OTel resource. Paths use `~` expansion and anchor relative output files under your home directory for
+  predictable locations
 
 **Branched sessions**
 
@@ -113,7 +134,8 @@ Opt-in OpenTelemetry tracing, branched-session quality of life, and a planning f
 
 **Planning**
 
-- Phase progress reporting after a plan revision no longer targets already-completed phases — revised phase lists now use absolute, continuous indices
+- Phase progress reporting after a plan revision no longer targets already-completed phases — revised phase lists now
+  use absolute, continuous indices
 
 ---
 
@@ -125,7 +147,8 @@ Agent session scratch directory for cleaner project output, plus Mermaid renderi
 
 **Session scratch directory**
 
-- Agents now have a dedicated per-session scratch directory for notes, throwaway scripts, and intermediate files, keeping your project and git status clean while deliverables still land in your project
+- Agents now have a dedicated per-session scratch directory for notes, throwaway scripts, and intermediate files,
+  keeping your project and git status clean while deliverables still land in your project
 
 ### Fixed
 
@@ -144,13 +167,15 @@ OpenAI-compatible provider support plus broad security hardening across the rend
 
 **OpenAI-compatible providers**
 
-- Connect to any OpenAI-compatible endpoint as a custom provider, with models discovered automatically from its `/v1/models` route
+- Connect to any OpenAI-compatible endpoint as a custom provider, with models discovered automatically from its
+  `/v1/models` route
 
 ### Changed
 
 **Security hardening**
 
-- Renderer is hardened against XSS→IPC remote-code-execution chains, and filesystem and terminal access is now confined to known project roots
+- Renderer is hardened against XSS→IPC remote-code-execution chains, and filesystem and terminal access is now confined
+  to known project roots
 - `git:diff` file reads are restricted to allowed roots, and git commands run via `execFile` to prevent shell injection
 - Agent `web_fetch` and `web_search` now block SSRF attempts
 - At-rest secret files are written with owner-only permissions
@@ -172,12 +197,15 @@ Session export with shareable links, copy-to-clipboard actions throughout the UI
 
 **Session export**
 
-- Export a session to HTML straight from the chat header — save it locally via a native dialog, or publish it as an ephemeral share link with a configurable expiry that you can revoke at any time
+- Export a session to HTML straight from the chat header — save it locally via a native dialog, or publish it as an
+  ephemeral share link with a configurable expiry that you can revoke at any time
 
 **Copy to clipboard**
 
-- Copy buttons now appear on tool input/result blocks, diff views, error frames, and snippet previews for grabbing text in one click
-- Rendered images in the file viewer and lightbox can be copied straight to the clipboard, re-encoded to PNG so they paste anywhere
+- Copy buttons now appear on tool input/result blocks, diff views, error frames, and snippet previews for grabbing text
+  in one click
+- Rendered images in the file viewer and lightbox can be copied straight to the clipboard, re-encoded to PNG so they
+  paste anywhere
 
 ### Fixed
 
@@ -200,7 +228,8 @@ Bug fixes across the diff viewer and session management.
 
 **Sessions**
 
-- The "New session" draft (mode, autonomy, working directory, connection) is now preserved when switching between session slots instead of resetting
+- The "New session" draft (mode, autonomy, working directory, connection) is now preserved when switching between
+  session slots instead of resetting
 
 ---
 
@@ -212,11 +241,13 @@ Bug fixes for the file explorer and autonomy slider.
 
 **File Explorer**
 
-- Large directories no longer stall the tree — child folders now load on demand as they're expanded, and searching walks the full project depth so deeply nested files (and dotfolders) show up in results
+- Large directories no longer stall the tree — child folders now load on demand as they're expanded, and searching walks
+  the full project depth so deeply nested files (and dotfolders) show up in results
 
 **Autonomy**
 
-- The in-session autonomy slider value now persists when starting a fresh chat instead of snapping back to the project or global default
+- The in-session autonomy slider value now persists when starting a fresh chat instead of snapping back to the project
+  or global default
 
 ---
 
@@ -228,7 +259,8 @@ Expanded model and provider support via pi runtime upgrade; security hardening a
 
 **Models & Providers**
 
-- New selectable models on GitHub Copilot including `claude-opus-4.8` (fixes a previously reported model resolution error), `gpt-5.5`, `gpt-5.4-mini`, `gemini-3.5-flash`, `gemini-3.1-pro-preview`, and `grok-code-fast-1`
+- New selectable models on GitHub Copilot including `claude-opus-4.8` (fixes a previously reported model resolution
+  error), `gpt-5.5`, `gpt-5.4-mini`, `gemini-3.5-flash`, `gemini-3.1-pro-preview`, and `grok-code-fast-1`
 - New providers exposed in the model picker: Together AI, Moonshot, Cloudflare AI Gateway, DeepSeek, and Fireworks
 
 ### Changed
@@ -241,7 +273,9 @@ Expanded model and provider support via pi runtime upgrade; security hardening a
 
 **Security**
 
-- Blocked dangerous URL schemes (e.g. `file:`, `javascript:`) from agent-generated links in markdown, terminal output, and top-frame navigations — all renderer-initiated external URLs now flow through a shared classifier before reaching the OS protocol handler, closing RCE-class escape routes
+- Blocked dangerous URL schemes (e.g. `file:`, `javascript:`) from agent-generated links in markdown, terminal output,
+  and top-frame navigations — all renderer-initiated external URLs now flow through a shared classifier before reaching
+  the OS protocol handler, closing RCE-class escape routes
 
 ---
 
@@ -253,7 +287,8 @@ Planning workflow enhancements, file explorer panel, and Git UI improvements.
 
 **Planning**
 
-- Phase-level approval workflow with autonomy controls — users can now configure when phases require approval based on risk level and autonomy settings
+- Phase-level approval workflow with autonomy controls — users can now configure when phases require approval based on
+  risk level and autonomy settings
 
 **File Explorer**
 
@@ -295,7 +330,8 @@ Bug fixes and stability improvements.
 
 **Planning workflow**
 
-- Fixed IPC event leakage across sessions — planning events now properly scoped to originating session and pinned to messages
+- Fixed IPC event leakage across sessions — planning events now properly scoped to originating session and pinned to
+  messages
 
 **Project settings**
 
@@ -305,17 +341,20 @@ Bug fixes and stability improvements.
 
 ## [1.0.0] — 2026-06-01
 
-Adds multi-phase planning workflow, AI Credits billing support, parallel agent execution with worktree isolation, and HTML previews.
+Adds multi-phase planning workflow, AI Credits billing support, parallel agent execution with worktree isolation, and
+HTML previews.
 
 ### Added
 
 **Planning workflow**
 
-- Multi-phase execution planning workflow with approval system and user controls — the agent can now break down complex tasks into phases, present them for review, and execute with explicit user approval between phases
+- Multi-phase execution planning workflow with approval system and user controls — the agent can now break down complex
+  tasks into phases, present them for review, and execute with explicit user approval between phases
 
 **Agent system**
 
-- Git worktree isolation for parallel agents — sub-agents now execute in dedicated worktrees, enabling true concurrent execution without resource contention or file-system conflicts
+- Git worktree isolation for parallel agents — sub-agents now execute in dedicated worktrees, enabling true concurrent
+  execution without resource contention or file-system conflicts
 - Cached agents awareness block in system prompt assembly for improved performance
 
 **Billing & quota**
@@ -328,7 +367,8 @@ Adds multi-phase planning workflow, AI Credits billing support, parallel agent e
 
 **Commit workflow**
 
-- User-provided context for commit message generation — supply custom context to guide the AI when generating commit messages
+- User-provided context for commit message generation — supply custom context to guide the AI when generating commit
+  messages
 
 ### Changed
 
@@ -351,7 +391,8 @@ Quality of life improvements for session management.
 
 **Session management**
 
-- Draft state now clears automatically when starting a fresh session, preventing stale text and attachments from carrying over from previous sessions
+- Draft state now clears automatically when starting a fresh session, preventing stale text and attachments from
+  carrying over from previous sessions
 
 ---
 
@@ -363,7 +404,8 @@ Adds global agent management and richer chat workflow visibility, plus model-pic
 
 **Agent system**
 
-- Added a global agent registry with IPC wiring and a dedicated management UI, making configured agents available app-wide
+- Added a global agent registry with IPC wiring and a dedicated management UI, making configured agents available
+  app-wide
 
 **Chat**
 
@@ -379,7 +421,8 @@ Adds global agent management and richer chat workflow visibility, plus model-pic
 
 **Editor**
 
-- Monaco semantic features are now disabled when language workers are unavailable, reducing editor noise in unsupported contexts
+- Monaco semantic features are now disabled when language workers are unavailable, reducing editor noise in unsupported
+  contexts
 
 ### Fixed
 
@@ -398,13 +441,15 @@ Adds new-session draft persistence for mode, folder, and model; fixes terminal k
 
 **Chat**
 
-- Permission mode, working folder, and connection/model selection are now preserved when switching away from an unsaved new session and back — only text and attachments were previously saved
+- Permission mode, working folder, and connection/model selection are now preserved when switching away from an unsaved
+  new session and back — only text and attachments were previously saved
 
 ### Fixed
 
 **Terminal**
 
-- `Cmd+←/→` tab switching and `Cmd+Shift+↑/↓` panel resize shortcuts no longer silently fail when the terminal has keyboard focus (regression introduced by the auto-focus change in v0.16.0)
+- `Cmd+←/→` tab switching and `Cmd+Shift+↑/↓` panel resize shortcuts no longer silently fail when the terminal has
+  keyboard focus (regression introduced by the auto-focus change in v0.16.0)
 
 ---
 
@@ -416,7 +461,8 @@ Adds merge conflict detection and three-way resolution UI; terminal tab enhancem
 
 **Git**
 
-- Merge conflicts are now detected automatically and surfaced with a three-way resolution UI — choose incoming, current, or manually edit the merged result
+- Merge conflicts are now detected automatically and surfaced with a three-way resolution UI — choose incoming, current,
+  or manually edit the merged result
 
 **Terminal**
 
@@ -431,7 +477,8 @@ Adds merge conflict detection and three-way resolution UI; terminal tab enhancem
 
 **UI**
 
-- Expanded modals (fullscreen code blocks) now receive focus immediately on open, enabling keyboard interaction without an extra click
+- Expanded modals (fullscreen code blocks) now receive focus immediately on open, enabling keyboard interaction without
+  an extra click
 
 ---
 
@@ -443,7 +490,8 @@ Adds persistent hunk-level staging state in the Git diff panel; selections survi
 
 **Git**
 
-- Hunk-level staging selections are now persisted and restored across sessions — partial stage state survives editor restarts
+- Hunk-level staging selections are now persisted and restored across sessions — partial stage state survives editor
+  restarts
 
 ---
 
@@ -455,11 +503,13 @@ Adds Claude OAuth usage badges in Settings and persistent attachment drafts acro
 
 **Settings**
 
-- Claude OAuth connections now show a live usage badge in Settings — fetches current quota consumption and displays it alongside the connection row
+- Claude OAuth connections now show a live usage badge in Settings — fetches current quota consumption and displays it
+  alongside the connection row
 
 **Chat**
 
-- Attachment drafts (files, images, snippets) are now persisted per session and restored when switching back, so in-progress attachments are never lost mid-workflow
+- Attachment drafts (files, images, snippets) are now persisted per session and restored when switching back, so
+  in-progress attachments are never lost mid-workflow
 
 ---
 
@@ -480,7 +530,8 @@ Adds a Recent Files palette (Cmd+E); fixes reload shortcuts in production and a 
 
 ## [0.12.0] — 2026-05-24
 
-Adds in-app terminal with search, conversation branching, new shortcuts, and performance improvements; quality of life improvements and bug fixes.
+Adds in-app terminal with search, conversation branching, new shortcuts, and performance improvements; quality of life
+improvements and bug fixes.
 
 ### Added
 
@@ -524,7 +575,8 @@ Adds in-app terminal with search, conversation branching, new shortcuts, and per
 
 ## [0.11.0] — 2026-05-23
 
-Adds Search Everywhere, smart file viewer, Ollama support, git diff review, and turn summary cards; several model management fixes.
+Adds Search Everywhere, smart file viewer, Ollama support, git diff review, and turn summary cards; several model
+management fixes.
 
 ### Added
 
@@ -532,7 +584,8 @@ Adds Search Everywhere, smart file viewer, Ollama support, git diff review, and 
 
 - Double-tap Shift opens a unified Search Everywhere palette — search across file names and file contents in one place
 - Bundled `@vscode/ripgrep` for fast content search; common build/dep directories are excluded from results
-- Smart file viewer routes results to the right renderer automatically: Markdown, images, JSON, or syntax-highlighted code
+- Smart file viewer routes results to the right renderer automatically: Markdown, images, JSON, or syntax-highlighted
+  code
 
 **Git tooling**
 
@@ -571,26 +624,31 @@ Adds ChatGPT Plus (Codex) as a supported connection provider.
 
 **ChatGPT Plus (Codex) connection**
 
-- ChatGPT Plus (Codex) is now available as a connection type — add it from the Connections settings to use Codex models in your sessions
+- ChatGPT Plus (Codex) is now available as a connection type — add it from the Connections settings to use Codex models
+  in your sessions
 
 ---
 
 ## [0.9.0] — 2026-05-20
 
-Adds a native datatable renderer for code blocks; several bug fixes including session rename and regenerate-title actions.
+Adds a native datatable renderer for code blocks; several bug fixes including session rename and regenerate-title
+actions.
 
 ### Added
 
 **Datatable code block renderer**
 
-- ` ```datatable ` fenced blocks now render as an interactive table with an expand-to-fullscreen button and a copy-as-Markdown-table action
+- ` ```datatable ` fenced blocks now render as an interactive table with an expand-to-fullscreen button and a
+  copy-as-Markdown-table action
 
 ### Fixed
 
 **Session actions**
 
-- Rename: replaced `window.prompt` (disabled by Electron) with an inline input that auto-focuses in the row; Enter/blur saves, Escape cancels
-- Regenerate title: now surfaces failures via an alert instead of silently doing nothing; shows a *"Regenerating title…"* placeholder while the LLM call is in-flight
+- Rename: replaced `window.prompt` (disabled by Electron) with an inline input that auto-focuses in the row; Enter/blur
+  saves, Escape cancels
+- Regenerate title: now surfaces failures via an alert instead of silently doing nothing; shows a *"Regenerating
+  title…"* placeholder while the LLM call is in-flight
 
 **Datatable**
 
@@ -602,7 +660,8 @@ Adds a native datatable renderer for code blocks; several bug fixes including se
 
 **SDD**
 
-- Re-watch all entities in `watchCb` so a newly-created `specs/` directory is detected without requiring a restart (BUG-SDD-08)
+- Re-watch all entities in `watchCb` so a newly-created `specs/` directory is detected without requiring a restart (
+  BUG-SDD-08)
 
 ### Changed
 
@@ -612,16 +671,25 @@ Adds a native datatable renderer for code blocks; several bug fixes including se
 
 ## [0.8.4] — 2026-05-13
 
-SDD bug fix: agent now uses absolute artifact paths, eliminating lookup failures in monorepo and nested workspace layouts.
+SDD bug fix: agent now uses absolute artifact paths, eliminating lookup failures in monorepo and nested workspace
+layouts.
 
 ### Fixed
 
 **SDD — subdirectory entity layouts (monorepo / multi-service workspaces)**
 
-- When the SDD entity root is a subdirectory of the session cwd, the agent was resolving artifact paths relative to cwd instead of entity root, causing ENOENT errors and requiring trial-and-error file discovery. The `<sdd_context>` block now provides the absolute entity root, absolute feature path, and an explicit absolute path per existing artifact so the agent can read/write files without any search step.
-- Phase action buttons (▶ Tasks, ▶ Plan, ▶ Implement, etc.) now embed absolute `@file` references to relevant artifacts in the composed message — e.g. clicking ▶ Tasks includes `@/abs/path/spec.md` and `@/abs/path/plan.md`, so the agent reads them before running the command.
-- The coaching "Resuming" section previously directed the agent to `ls .specify/specs/` (legacy pre-speckit path). Updated to use the injected `Feature path` from `<sdd_context>` first, with `ls specs/` in entity root as the fallback.
-- Full-context feature list (no feature pinned) now appends the absolute path per feature entry so the no-pin codepath is equally unambiguous.
+- When the SDD entity root is a subdirectory of the session cwd, the agent was resolving artifact paths relative to cwd
+  instead of entity root, causing ENOENT errors and requiring trial-and-error file discovery. The `<sdd_context>` block
+  now provides the absolute entity root, absolute feature path, and an explicit absolute path per existing artifact so
+  the agent can read/write files without any search step.
+- Phase action buttons (▶ Tasks, ▶ Plan, ▶ Implement, etc.) now embed absolute `@file` references to relevant artifacts
+  in the composed message — e.g. clicking ▶ Tasks includes `@/abs/path/spec.md` and `@/abs/path/plan.md`, so the agent
+  reads them before running the command.
+- The coaching "Resuming" section previously directed the agent to `ls .specify/specs/` (legacy pre-speckit path).
+  Updated to use the injected `Feature path` from `<sdd_context>` first, with `ls specs/` in entity root as the
+  fallback.
+- Full-context feature list (no feature pinned) now appends the absolute path per feature entry so the no-pin codepath
+  is equally unambiguous.
 
 ---
 
@@ -633,8 +701,11 @@ Bug fix: conversation context is now correctly restored after app reinstall or u
 
 **Session resumption after reinstall / upgrade**
 
-- Pi backend now resumes the previous conversation after an app restart instead of silently starting a new session. The root cause was `SessionManager.create()` being called with the session storage path as `cwd`, causing Pi to write session files to the wrong location and always begin fresh.
-- Anthropic backend now logs a warning when a stored resume session ID has no matching transcript file, surfacing silent context-loss events that would otherwise go unnoticed.
+- Pi backend now resumes the previous conversation after an app restart instead of silently starting a new session. The
+  root cause was `SessionManager.create()` being called with the session storage path as `cwd`, causing Pi to write
+  session files to the wrong location and always begin fresh.
+- Anthropic backend now logs a warning when a stored resume session ID has no matching transcript file, surfacing silent
+  context-loss events that would otherwise go unnoticed.
 
 ---
 
@@ -644,7 +715,8 @@ Bug fix: SDD mode enabled on a fresh chat reverted to off after the first messag
 
 ### Fixed
 
-- SDD mode toggled on a new session (before the first message) was not persisted — on send, the newly created session was rehydrated without a saved `sddMode`, resetting it to off
+- SDD mode toggled on a new session (before the first message) was not persisted — on send, the newly created session
+  was rehydrated without a saved `sddMode`, resetting it to off
 
 ---
 
@@ -656,14 +728,21 @@ Bug fixes for SDD context injection on both Anthropic and Pi backends.
 
 **SDD — Anthropic backend**
 
-- `chatSessionId` was not forwarded to `runAnthropicChat`, so `buildSddPromptBlock` always received `sessionId = undefined` and returned empty — the SDD coaching block was never injected for Anthropic connections
-- Phase action button (▶ Tasks, ▶ Plan, etc.) on the active/default feature silently did nothing in new sessions — the dedup ref in `MessageInput` was never reset between sessions, causing identical message strings to be skipped
+- `chatSessionId` was not forwarded to `runAnthropicChat`, so `buildSddPromptBlock` always received
+  `sessionId = undefined` and returned empty — the SDD coaching block was never injected for Anthropic connections
+- Phase action button (▶ Tasks, ▶ Plan, etc.) on the active/default feature silently did nothing in new sessions — the
+  dedup ref in `MessageInput` was never reset between sessions, causing identical message strings to be skipped
 
 **SDD — Pi backend**
 
-- SDD system prompt was set once at subprocess init and never updated; the freshly-computed per-turn append was silently discarded on all subsequent turns. Fixed by threading `systemPromptAppend` through `MsgPrompt` and calling `resourceLoader.reload()` when the value changes
-- First-turn race condition: `initSessionState` fires from a React `useEffect` after the chat turn IPC starts, so `getState(chatSessionId)` was null when the initial append was computed. The append is now re-computed after `handle.ready` to capture state that settled during the subprocess spawn window
-- Lean `<sdd_context>` block omitted the feature directory path, forcing the AI to explore the repo to locate artifact files. `Feature dir` is now included so the AI reads/writes to the right path immediately
+- SDD system prompt was set once at subprocess init and never updated; the freshly-computed per-turn append was silently
+  discarded on all subsequent turns. Fixed by threading `systemPromptAppend` through `MsgPrompt` and calling
+  `resourceLoader.reload()` when the value changes
+- First-turn race condition: `initSessionState` fires from a React `useEffect` after the chat turn IPC starts, so
+  `getState(chatSessionId)` was null when the initial append was computed. The append is now re-computed after
+  `handle.ready` to capture state that settled during the subprocess spawn window
+- Lean `<sdd_context>` block omitted the feature directory path, forcing the AI to explore the repo to locate artifact
+  files. `Feature dir` is now included so the AI reads/writes to the right path immediately
 
 ---
 
@@ -675,15 +754,20 @@ SDD workspace panel improvements and bug fixes for modern SpecKit layouts.
 
 **SDD workspace panel**
 
-- The workspace panel button (PanelRight) is now always visible on new sessions — no need to send a message first before you can open the SDD panel and browse features
+- The workspace panel button (PanelRight) is now always visible on new sessions — no need to send a message first before
+  you can open the SDD panel and browse features
 
 ### Fixed
 
 **SDD — modern SpecKit layout (`specs/` at repo root)**
 
-- Features no longer show `▶ Constitution` when the constitution already exists. `scanFeatures()` was recomputing the constitution path relative to `specsDir`, resolving to `{root}/memory/constitution.md` (never exists), so every feature was stuck at the `constitution` phase
-- File-system watcher now also watches `{root}/specs/` in addition to `.specify/`. Previously only `.specify/` was watched, so edits to `spec.md`, `plan.md`, and `tasks.md` in the modern layout never triggered a panel rescan
-- Agent hint for feature overflow now correctly shows `ls specs/` instead of `ls .specify/specs/` (which is always empty in the modern layout)
+- Features no longer show `▶ Constitution` when the constitution already exists. `scanFeatures()` was recomputing the
+  constitution path relative to `specsDir`, resolving to `{root}/memory/constitution.md` (never exists), so every
+  feature was stuck at the `constitution` phase
+- File-system watcher now also watches `{root}/specs/` in addition to `.specify/`. Previously only `.specify/` was
+  watched, so edits to `spec.md`, `plan.md`, and `tasks.md` in the modern layout never triggered a panel rescan
+- Agent hint for feature overflow now correctly shows `ls specs/` instead of `ls .specify/specs/` (which is always empty
+  in the modern layout)
 
 ---
 
@@ -695,7 +779,9 @@ Bug fixes for SDD artifact viewing.
 
 **SDD artifact viewer**
 
-- Feature spec, plan, and task files now load correctly in the viewer for non-legacy SpecKit projects where artifacts live at `$repo_root/specs/` rather than inside `.specify/specs/`. Previously the IPC security guard only allowed reads from `.specify/`, causing the viewer to show "spec.md not found" even when the SDD panel phase badge was correct.
+- Feature spec, plan, and task files now load correctly in the viewer for non-legacy SpecKit projects where artifacts
+  live at `$repo_root/specs/` rather than inside `.specify/specs/`. Previously the IPC security guard only allowed reads
+  from `.specify/`, causing the viewer to show "spec.md not found" even when the SDD panel phase badge was correct.
 
 ---
 
@@ -707,21 +793,25 @@ New features: Mermaid copy button, per-project Co-Authored-By, Copilot capabilit
 
 **Mermaid diagrams**
 
-- Copy button (copies raw Mermaid source) now appears on hover next to the Expand button in both the rendered view and the error/fallback view
+- Copy button (copies raw Mermaid source) now appears on hover next to the Expand button in both the rendered view and
+  the error/fallback view
 
 **Projects**
 
-- Projects can now override the global Co-Authored-By trailer preference — set _On_, _Off_, or _Use global default_ per project in Settings → Projects
+- Projects can now override the global Co-Authored-By trailer preference — set _On_, _Off_, or _Use global default_ per
+  project in Settings → Projects
 - The project list row shows a Co-Author chip alongside the existing Mode and Connection chips
 
 **Copilot connections**
 
-- Connection picker now shows a "No subagents (Task tool)" indicator under each Copilot connection row, making the capability gap visible before drilling in
+- Connection picker now shows a "No subagents (Task tool)" indicator under each Copilot connection row, making the
+  capability gap visible before drilling in
 - Copilot model list shows an info callout explaining that the Task tool requires an Anthropic connection
 
 **Compaction UI (Copilot / Pi-server connections)**
 
-- Pi-server sessions (Copilot, Bedrock, etc.) now surface the same amber scissors divider and sparkles toast on context compaction that Claude SDK sessions already show
+- Pi-server sessions (Copilot, Bedrock, etc.) now surface the same amber scissors divider and sparkles toast on context
+  compaction that Claude SDK sessions already show
 - Aborted compactions are silently skipped; manual vs. auto trigger is correctly mapped from Pi SDK events
 
 ---
@@ -732,7 +822,8 @@ Bug fixes and stability improvements.
 
 ### Fixed
 
-- Elapsed turn timer no longer resets to 0:00 when switching sessions mid-stream — the counter now counts from when the turn actually started, surviving any number of session switches
+- Elapsed turn timer no longer resets to 0:00 when switching sessions mid-stream — the counter now counts from when the
+  turn actually started, surviving any number of session switches
 
 ---
 
@@ -744,7 +835,8 @@ Adds attachment support to mid-turn message injection; fixes Mermaid cylinder sh
 
 **Attachments in mid-turn steer**
 
-- Images, PDFs, text files, and snippets can now be attached when injecting a message into a running turn via the Steer button (⌘+Enter)
+- Images, PDFs, text files, and snippets can now be attached when injecting a message into a running turn via the Steer
+  button (⌘+Enter)
 - The Paperclip button is no longer disabled while the agent is streaming
 - Attached files appear in the ghost "Injected mid-turn" bubble so there is a visible record of what was sent
 - Attachments are restored to the composer if the steer fails, matching the existing text restore behaviour
@@ -753,7 +845,9 @@ Adds attachment support to mid-turn message injection; fixes Mermaid cylinder sh
 
 **Mermaid diagram rendering**
 
-- Cylinder / database node shapes (`[("text\nmore")]`) were being mangled by the `preprocessMermaid` function, producing an unmatched inner quote that caused Mermaid to fall back to raw source. The preprocessor now correctly preserves `(…)` delimiters when converting `\n` to `<br/>`.
+- Cylinder / database node shapes (`[("text\nmore")]`) were being mangled by the `preprocessMermaid` function, producing
+  an unmatched inner quote that caused Mermaid to fall back to raw source. The preprocessor now correctly preserves
+  `(…)` delimiters when converting `\n` to `<br/>`.
 
 ---
 
@@ -765,13 +859,16 @@ Adds smart snippet attachments for large clipboard pastes.
 
 **Smart snippet attachments**
 
-- Large clipboard pastes (≥30 lines or ≥1 500 chars) are automatically converted into named snippet chips instead of flooding the composer
+- Large clipboard pastes (≥30 lines or ≥1 500 chars) are automatically converted into named snippet chips instead of
+  flooding the composer
 - Snippet chip shows a language badge and line count in the attachment strip
 - Hover the chip for a popover preview of the first ~8 lines
 - Click the chip to open a full edit modal — rename, edit content, or change the detected language
 - Language auto-detection covers 16+ languages via a new pure-sync heuristic (`lib/language-detect.ts`)
-- Snippet content is fully delivered to the AI: Anthropic backend receives a fenced code block; Pi backend prepends it to the prompt — previously text attachments were silently dropped
-- Session Info panel: snippet and code-file entries now show a `FileCode` icon with accent colour and an inline toggle-preview instead of only a Finder reveal button
+- Snippet content is fully delivered to the AI: Anthropic backend receives a fenced code block; Pi backend prepends it
+  to the prompt — previously text attachments were silently dropped
+- Session Info panel: snippet and code-file entries now show a `FileCode` icon with accent colour and an inline
+  toggle-preview instead of only a Finder reveal button
 
 ---
 
