@@ -40,9 +40,8 @@ export function ContextBadge({ messages, contextWindow, className }: Props) {
         ? 'border-amber-500/40 bg-amber-500/10 text-amber-300'
         : 'border-border bg-elevated/40 text-fg-subtle';
 
-  // Tooltip surfaces the cache split so the user can see why "input
-  // tokens" looks small even on big contexts, plus where auto-compaction
-  // kicks in (a common "why don't I ever see compaction?" question).
+  // Tooltip surfaces the cache split (so a small `new` count next to a large
+  // total makes sense) and the auto-compaction point derived above.
   const tooltip = [
     `Total: ${used.toLocaleString()} / ${contextWindow.toLocaleString()} input tokens`,
     `· new: ${usage.input.toLocaleString()}`,

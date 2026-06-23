@@ -312,6 +312,31 @@ export function adaptPiEvent(event: AgentSessionEvent): AgentChatEvent[] {
         reset();
         return out;
       }
+      // pi-ai reports token usage as input/output/cacheRead/cacheWrite;
+      // AgentUsage names them *InputTokens. Map across so the renderer can
+      // size the context. A turn has one message_end per assistant round;
+      // the latest round's usage is the true current context footprint
+      // (cacheRead grows as history accumulates), so the renderer overwrites
+      // on each `assistant_usage`.
+      const u = (msg as {
+        usage?: {
+          input?: number;
+          output?: number;
+          cacheRead?: number;
+          cacheWrite?: number;
+        };
+      }).usage;
+      if (u && (u.input || u.output || u.cacheRead || u.cacheWrite)) {
+        out.push({
+          type: 'assistant_usage',
+          usage: {
+            inputTokens: u.input ?? 0,
+            outputTokens: u.output ?? 0,
+            cacheReadInputTokens: u.cacheRead ?? 0,
+            cacheCreationInputTokens: u.cacheWrite ?? 0,
+          },
+        });
+      }
       const finalText = pickAssistantText(msg);
       if (!state.emittedAnyDelta && finalText) {
         out.push({ type: 'text_complete', text: finalText });
