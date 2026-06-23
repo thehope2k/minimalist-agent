@@ -5,6 +5,34 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.10.0] — 2026-06-23
+
+Auto-compaction visibility in the context badge, plus telemetry and token-accounting fixes.
+
+### Added
+
+**Auto-compaction threshold in the context badge**
+
+- The context badge now shows the auto-compaction threshold, so you can see at a glance how much context headroom remains before the conversation is automatically compacted
+
+### Changed
+
+- The context-limit error message now explains that auto-compaction kicks in, making it clearer what happens as a conversation approaches the model's context window
+
+### Fixed
+
+**Telemetry (OpenTelemetry)**
+
+- Sub-agent span files are now isolated per process id, preventing concurrent runs from corrupting each other's traces
+- In-flight spans are flushed on exit and standalone completions are traced, so telemetry no longer drops the final spans of a session
+
+**Context sizing & token usage**
+
+- Pi-AI token fields are now mapped to the usage model so context sizing reflects real token counts
+- Turn completion is now deferred until post-`agent_end` compaction settles, so usage and context state are reported accurately after an automatic compaction
+
+---
+
 ## [1.9.0] — 2026-06-23
 
 MCP extensions on the Pi backend, smarter image handling on non-vision models, and autonomy as an enforced risk budget.
