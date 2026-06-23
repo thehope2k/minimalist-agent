@@ -153,8 +153,8 @@ const ERROR_DEFINITIONS: Record<ErrorCode, ErrorDef> = {
     title: 'Context window exceeded',
     message:
       "This session's history has grown beyond the model's context limit. " +
-      'Enable auto-compaction in Settings → AI to let the agent compress history automatically, ' +
-      'or start a new chat session.',
+      'The agent compresses older history automatically as it nears the limit; if this still ' +
+      'happened, start a new chat session or switch to a model with a larger context window.',
     canRetry: false,
   },
   image_too_large: {
