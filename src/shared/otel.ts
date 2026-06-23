@@ -10,17 +10,18 @@
 // cheap no-op: `getTracer()` returns the API's built-in no-op tracer because no
 // provider is registered, so instrumented code pays effectively nothing.
 //
-// Span model (see docs/OTEL.md):
-//   session.turn  → model.request, tool.<name>, subagent.exec (child process)
+// Span model (see docs/OTEL.md), GenAI semantic conventions:
+//   invoke_agent → chat (SpanKind.CLIENT), execute_tool <name>
 //
 // Content capture (prompt/response/tool args) is gated behind
 // MA_OTEL_CAPTURE_CONTENT and defaults OFF. Secrets are never recorded.
 
-import { appendFileSync, mkdirSync } from 'node:fs';
+import { appendFileSync, mkdirSync, renameSync, statSync } from 'node:fs';
 import { dirname } from 'node:path';
 import {
   context,
   trace,
+  propagation,
   SpanStatusCode,
   SpanKind,
   type Attributes,
@@ -37,6 +38,7 @@ import {
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
 import { resourceFromAttributes } from '@opentelemetry/resources';
+import { W3CTraceContextPropagator } from '@opentelemetry/core';
 import {
   ATTR_SERVICE_NAME,
   ATTR_SERVICE_VERSION,
@@ -63,9 +65,23 @@ export interface OtelConfig {
    * attribute usage to a person.
    */
   resourceAttributes: Record<string, string>;
+  /** Size cap (bytes) for the `file` exporter before it rotates to `<file>.old`. */
+  maxFileBytes: number;
 }
 
 const TRACER_NAME = 'minimalist-agent';
+
+/**
+ * Size cap for the `file` exporter before it rotates to `<file>.old`. Matches
+ * `main.log` (5 MB → `main.old.log`); disk use is bounded at ~2× this. Override
+ * with `MA_OTEL_MAX_FILE_MB` (0/invalid → default).
+ */
+const DEFAULT_TRACES_MAX_BYTES = 5 * 1024 * 1024;
+
+function tracesMaxBytes(env: NodeJS.ProcessEnv): number {
+  const mb = Number(env.MA_OTEL_MAX_FILE_MB);
+  return Number.isFinite(mb) && mb > 0 ? Math.floor(mb * 1024 * 1024) : DEFAULT_TRACES_MAX_BYTES;
+}
 
 /**
  * Parse the W3C `OTEL_RESOURCE_ATTRIBUTES` format: a comma-separated list of
@@ -122,6 +138,7 @@ export function readOtelConfigFromEnv(env: NodeJS.ProcessEnv = process.env): Ote
       ...parseResourceAttributes(env.OTEL_RESOURCE_ATTRIBUTES),
       ...parseResourceAttributes(env.MA_OTEL_RESOURCE_ATTRIBUTES),
     },
+    maxFileBytes: tracesMaxBytes(env),
   };
 }
 
@@ -130,16 +147,48 @@ export function readOtelConfigFromEnv(env: NodeJS.ProcessEnv = process.env): Ote
  * MA equivalent of Copilot's `file` exporter: local, tail-able, no collector.
  * SimpleSpanProcessor is used with it so lines flush as spans end (better for
  * `tail -f`); the small synchronous append is acceptable in the subprocess.
+ *
+ * Size-capped with a single rotation, mirroring `main.log` (electron-log caps
+ * at 5 MB → `main.old.log`). When the file would exceed `maxBytes` it is renamed
+ * to `<file>.old` (overwriting any prior archive) and a fresh file is started,
+ * so disk use is bounded at ~2× the cap. We track bytes in memory (seeded by one
+ * `statSync` at construction) and rotate on the byte counter rather than
+ * `stat`-ing per span.
  */
 class JsonlFileSpanExporter implements SpanExporter {
   private failed = false;
+  private bytes = 0;
+  private readonly maxBytes: number;
 
-  constructor(private readonly file: string) {
+  constructor(
+    private readonly file: string,
+    maxBytes = DEFAULT_TRACES_MAX_BYTES,
+  ) {
+    this.maxBytes = maxBytes > 0 ? maxBytes : DEFAULT_TRACES_MAX_BYTES;
     try {
       mkdirSync(dirname(file), { recursive: true });
     } catch (e) {
       this.failed = true;
       log.warn('could not create traces dir:', e);
+      return;
+    }
+    try {
+      this.bytes = statSync(file).size;
+    } catch {
+      // file doesn't exist yet — starts at 0
+    }
+  }
+
+  /** Rename the current file to `<file>.old` (single archive) and reset the counter. */
+  private rotate(): void {
+    try {
+      renameSync(this.file, `${this.file}.old`);
+      this.bytes = 0;
+    } catch (e) {
+      // Rotation is best-effort; if it fails we keep appending rather than
+      // dropping spans. Worst case the file grows past the cap until the next
+      // successful rotate.
+      log.warn('traces rotation failed:', e);
     }
   }
 
@@ -150,7 +199,12 @@ class JsonlFileSpanExporter implements SpanExporter {
     }
     try {
       const lines = spans.map((s) => JSON.stringify(serializeSpan(s))).join('\n') + '\n';
+      const size = Buffer.byteLength(lines);
+      // Rotate before writing when this batch would push us over the cap (and
+      // there is already content), so an existing line never gets split.
+      if (this.bytes > 0 && this.bytes + size > this.maxBytes) this.rotate();
       appendFileSync(this.file, lines);
+      this.bytes += size;
       resultCallback({ code: ExportResultCode.SUCCESS });
     } catch (e) {
       log.warn('span export failed:', e);
@@ -237,7 +291,7 @@ async function buildExporter(cfg: OtelConfig): Promise<SpanExporter | null> {
     log.warn('exporter=file but MA_OTEL_OUTFILE is empty; tracing disabled');
     return null;
   }
-  return new JsonlFileSpanExporter(cfg.outfile);
+  return new JsonlFileSpanExporter(cfg.outfile, cfg.maxFileBytes);
 }
 
 /**
@@ -265,6 +319,12 @@ export async function initOtel(env: NodeJS.ProcessEnv = process.env): Promise<bo
   const contextManager = new AsyncLocalStorageContextManager();
   contextManager.enable();
   context.setGlobalContextManager(contextManager);
+
+  // W3C trace-context propagation so a sub-agent subprocess can nest its
+  // `invoke_agent` span under the parent's `execute_tool Agent` span (the
+  // traceparent rides on the prompt message — see injectTraceparent /
+  // contextFromTraceparent).
+  propagation.setGlobalPropagator(new W3CTraceContextPropagator());
 
   provider = new NodeTracerProvider({
     resource: resourceFromAttributes({
@@ -294,6 +354,28 @@ export function captureContent(): boolean {
 export function getTracer(): Tracer {
   // With no provider registered this returns the API's no-op tracer.
   return trace.getTracer(TRACER_NAME);
+}
+
+/**
+ * Serialize the active span context to a W3C `traceparent` string for handing
+ * to a child process. Returns undefined when tracing is off or there is no
+ * active span, so callers can omit the field entirely.
+ */
+export function injectTraceparent(ctx: Context = context.active()): string | undefined {
+  if (!provider) return undefined;
+  const carrier: Record<string, string> = {};
+  propagation.inject(ctx, carrier);
+  return carrier.traceparent;
+}
+
+/**
+ * Rebuild a parent {@link Context} from a `traceparent` carried over the JSONL
+ * protocol, for use as `parentContext` on the child's root span. Falls back to
+ * the active context when the header is missing/unparseable.
+ */
+export function contextFromTraceparent(traceparent?: string): Context {
+  if (!traceparent) return context.active();
+  return propagation.extract(context.active(), { traceparent });
 }
 
 export interface SpanOptions {
@@ -336,7 +418,7 @@ export async function withSpan<T>(
 
 /**
  * Start a long-lived span the caller is responsible for ending. Used for the
- * turn span (which spans many event callbacks) and the model.request span
+ * turn span (which spans many event callbacks) and the `chat` span
  * (opened on message_start, closed on message_end). Returns the span plus the
  * context that has it active, so callers can run work under it.
  */

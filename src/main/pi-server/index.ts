@@ -83,6 +83,7 @@ import {
   startSpan,
   withSpan,
   captureContent,
+  contextFromTraceparent,
   isOtelEnabled,
   recordException,
   safeAttr,
@@ -109,7 +110,33 @@ function send(msg: SubprocessOutbound): void {
 function fatal(message: string): never {
   const m: MsgFatalError = { type: 'error', message };
   send(m);
+  // End any in-flight spans so the file exporter (synchronous append on span
+  // end) persists them, and kick a best-effort flush for batched exporters.
+  endInflightSpans('fatal');
+  void shutdownOtel();
   process.exit(1);
+}
+
+/**
+ * End any open model/turn spans before an abrupt exit so they aren't lost. The
+ * file/console exporters flush synchronously on `span.end()`; OTLP relies on the
+ * accompanying best-effort `shutdownOtel()`.
+ */
+function endInflightSpans(reason: string): void {
+  try {
+    if (state.modelSpan) {
+      state.modelSpan.setAttribute('error.type', reason);
+      state.modelSpan.end();
+      state.modelSpan = undefined;
+    }
+    if (state.turnSpan) {
+      state.turnSpan.setAttribute('error.type', reason);
+      state.turnSpan.end();
+      state.turnSpan = undefined;
+    }
+  } catch {
+    /* best-effort */
+  }
 }
 
 function isLocalhostUrl(url: string): boolean {
@@ -176,6 +203,10 @@ interface State {
   modelRequestCount?: number;
   /** Accumulated assistant text for opt-in content capture on the turn span. */
   turnAssistantText?: string;
+  /** Turn input (user message + system instructions), captured under
+   *  captureContent, mirrored onto the turn's FIRST chat span so per-call input
+   *  appears where GenAI consumers expect it. Reset at turn end. */
+  turnInputAttrs?: Record<string, unknown>;
 }
 
 const state: State = {
@@ -1404,11 +1435,13 @@ interface AssistantMsg {
   content?: unknown;
 }
 
-function finishModelSpan(m?: AssistantMsg): void {
-  const span = state.modelSpan;
-  if (!span) return;
-  state.modelSpan = undefined;
-
+/**
+ * Map a finished provider response (usage, response ids, finish reason, status)
+ * onto a `chat` span. Shared by the agent-loop model span and the standalone
+ * `completeSimple` paths (mini_completion / llm_query). Does NOT end the span or
+ * touch turn-level state — callers own those.
+ */
+function applyChatResultAttrs(span: Span, m?: AssistantMsg): void {
   const usage = readUsage(m?.usage);
   const reason = finishReason(m?.stopReason);
   // gen_ai.usage.input_tokens is the TOTAL prompt size (OpenAI-style: cached
@@ -1436,19 +1469,69 @@ function finishModelSpan(m?: AssistantMsg): void {
   if (captureContent() && m?.content) {
     span.setAttribute('gen_ai.output.messages', safeAttr(m.content));
   }
-  // Track the latest assistant text so the turn span can carry the final
-  // response when content capture is on (the last non-empty wins).
-  if (m?.content) {
-    const text = pickTextFromMessage(m);
-    if (text) state.turnAssistantText = text;
-  }
   if (m?.stopReason === 'error' || m?.stopReason === 'aborted') {
     span.setAttribute('error.type', m?.stopReason === 'aborted' ? 'aborted' : 'model_error');
     span.setStatus({ code: SpanStatusCode.ERROR, message: m?.errorMessage ?? 'model error' });
   } else {
     span.setStatus({ code: SpanStatusCode.OK });
   }
+}
+
+function finishModelSpan(m?: AssistantMsg): void {
+  const span = state.modelSpan;
+  if (!span) return;
+  state.modelSpan = undefined;
+  applyChatResultAttrs(span, m);
+  // Track the latest assistant text so the turn span can carry the final
+  // response when content capture is on (the last non-empty wins).
+  if (m?.content) {
+    const text = pickTextFromMessage(m);
+    if (text) state.turnAssistantText = text;
+  }
   span.end();
+}
+
+/**
+ * Wrap a standalone `completeSimple` call (mini_completion / llm_query) in a
+ * GenAI `chat` span so its token usage is counted like an agent-loop model call.
+ * Without this these LLM calls would consume tokens invisibly to cost/usage
+ * dashboards. Runs as a root span (these paths have no turn span); errors set
+ * the span status via withSpan and propagate to the handler's catch.
+ */
+async function tracedCompletion<T extends AssistantMsg>(
+  opts: {
+    model: string;
+    callKind: 'mini_completion' | 'llm_query';
+    maxTokens?: number;
+    inputMessages?: unknown;
+    systemInstructions?: string;
+  },
+  run: () => Promise<T>,
+): Promise<T> {
+  return withSpan(
+    `chat ${opts.model}`,
+    async (span) => {
+      setAttrs(span, {
+        'gen_ai.operation.name': 'chat',
+        'gen_ai.provider.name': state.init?.piAuthProvider,
+        'gen_ai.request.model': opts.model,
+        'gen_ai.request.max_tokens': opts.maxTokens,
+        'gen_ai.conversation.id': state.init?.sessionId,
+        'server.address': serverAddress(),
+        'minimalist_agent.call_kind': opts.callKind,
+      });
+      if (captureContent()) {
+        if (opts.inputMessages !== undefined)
+          span.setAttribute('gen_ai.input.messages', safeAttr(opts.inputMessages));
+        if (opts.systemInstructions)
+          span.setAttribute('gen_ai.system_instructions', safeAttr(opts.systemInstructions));
+      }
+      const result = await run();
+      applyChatResultAttrs(span, result);
+      return result;
+    },
+    { kind: SpanKind.CLIENT },
+  );
 }
 
 function forwardEvent(piEvent: AgentSessionEvent): void {
@@ -1480,6 +1563,11 @@ function forwardEvent(piEvent: AgentSessionEvent): void {
         state.modelSpanStartMs = Date.now();
         state.modelFirstTokenSeen = false;
         state.modelRequestCount = (state.modelRequestCount ?? 0) + 1;
+        // The first model call's input is the turn's user message + system
+        // prompt; attach it to this chat span (per-call input belongs here).
+        if (state.modelRequestCount === 1 && state.turnInputAttrs) {
+          setAttrs(span, state.turnInputAttrs);
+        }
       }
     } else if (t === 'message_update' && state.modelSpan && !state.modelFirstTokenSeen) {
       const sub = (piEvent as { assistantMessageEvent?: { type?: string } }).assistantMessageEvent;
@@ -1573,6 +1661,9 @@ async function handlePrompt(msg: MsgPrompt): Promise<void> {
   // under its context; it stays open until session.prompt() settles below.
   state.modelRequestCount = 0;
   const { span: turnSpan, context: turnCtx } = startSpan('invoke_agent minimalist-agent', {
+    // When spawned as a sub-agent, nest under the parent's execute_tool span via
+    // the propagated traceparent; otherwise this is a fresh root trace.
+    parentContext: msg.traceparent ? contextFromTraceparent(msg.traceparent) : undefined,
     attributes: {
       'gen_ai.operation.name': 'invoke_agent',
       'gen_ai.agent.name': 'minimalist-agent',
@@ -1588,13 +1679,18 @@ async function handlePrompt(msg: MsgPrompt): Promise<void> {
   });
   state.turnSpan = turnSpan;
   state.turnContext = turnCtx;
+  state.turnInputAttrs = undefined;
   if (captureContent()) {
-    setAttrs(turnSpan, {
+    const inputAttrs = {
       'gen_ai.input.messages': safeAttr([{ role: 'user', content: msg.message }]),
       'gen_ai.system_instructions': msg.systemPromptAppend
         ? safeAttr(msg.systemPromptAppend)
         : undefined,
-    });
+    };
+    setAttrs(turnSpan, inputAttrs);
+    // Mirror onto the first chat span of the turn (see forwardEvent): for the
+    // first model call the input *is* this user message + system prompt.
+    state.turnInputAttrs = inputAttrs;
   }
 
   const run = async (): Promise<void> => {
@@ -1668,6 +1764,7 @@ async function handlePrompt(msg: MsgPrompt): Promise<void> {
     state.turnSpan = undefined;
     state.turnContext = undefined;
     state.turnAssistantText = undefined;
+    state.turnInputAttrs = undefined;
   }
 }
 
@@ -1724,19 +1821,29 @@ async function handleMiniCompletion(msg: MsgMiniCompletion): Promise<void> {
     const options: Record<string, unknown> = {};
     if (apiKey) options.apiKey = apiKey;
     if (msg.maxTokens !== undefined) options.maxTokens = msg.maxTokens;
-    const result = await completeSimple(
-      model,
+    const result = await tracedCompletion(
       {
-        systemPrompt: msg.systemPrompt,
-        messages: [
+        model: (model as { id?: string }).id ?? msg.model ?? state.model?.id ?? '',
+        callKind: 'mini_completion',
+        maxTokens: msg.maxTokens,
+        inputMessages: [{ role: 'user', content: msg.userPrompt }],
+        systemInstructions: msg.systemPrompt,
+      },
+      () =>
+        completeSimple(
+          model,
           {
-            role: 'user',
-            content: [{ type: 'text', text: msg.userPrompt }],
-          },
-        ],
-        tools: [],
-      } as never,
-      Object.keys(options).length > 0 ? (options as never) : undefined,
+            systemPrompt: msg.systemPrompt,
+            messages: [
+              {
+                role: 'user',
+                content: [{ type: 'text', text: msg.userPrompt }],
+              },
+            ],
+            tools: [],
+          } as never,
+          Object.keys(options).length > 0 ? (options as never) : undefined,
+        ) as Promise<AssistantMsg>,
     );
 
     // Pull plain text out of the assistant message.
@@ -1796,16 +1903,25 @@ async function handleLlmQuery(msg: MsgLlmQuery): Promise<void> {
       return;
     }
     
-    const result = await completeSimple(model, {
-      systemPrompt: req.systemPrompt,
-      messages: [
-        {
-          role: 'user',
-          content: [{ type: 'text', text: req.userPrompt }],
-        },
-      ],
-      tools: req.tools ?? [],
-    } as never);
+    const result = await tracedCompletion(
+      {
+        model: (model as { id?: string }).id ?? req.model ?? state.model?.id ?? '',
+        callKind: 'llm_query',
+        inputMessages: [{ role: 'user', content: req.userPrompt }],
+        systemInstructions: req.systemPrompt,
+      },
+      () =>
+        completeSimple(model, {
+          systemPrompt: req.systemPrompt,
+          messages: [
+            {
+              role: 'user',
+              content: [{ type: 'text', text: req.userPrompt }],
+            },
+          ],
+          tools: req.tools ?? [],
+        } as never) as Promise<AssistantMsg>,
+    );
     const out: MsgLlmQueryResult = {
       type: 'llm_query_result',
       requestId: msg.requestId,
@@ -2128,5 +2244,21 @@ rl.on('line', (line) => {
 });
 
 rl.on('close', () => {
-  if (!state.shuttingDown) process.exit(0);
+  if (state.shuttingDown) return;
+  // Flush spans before exiting on stdin close (parent went away).
+  void shutdownOtel().finally(() => process.exit(0));
+});
+
+// Flush tracing on signals / uncaught crashes so batched spans aren't dropped.
+for (const sig of ['SIGTERM', 'SIGINT'] as const) {
+  process.on(sig, () => {
+    if (state.shuttingDown) return;
+    state.shuttingDown = true;
+    void shutdownOtel().finally(() => process.exit(0));
+  });
+}
+process.on('uncaughtException', (err) => {
+  log.error('uncaught exception:', err);
+  endInflightSpans('uncaught_exception');
+  void shutdownOtel().finally(() => process.exit(1));
 });

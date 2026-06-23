@@ -49,23 +49,33 @@ in attributes. `gen_ai.conversation.id` (= `session.id`) stitches a trace to the
 invoke_agent minimalist-agent      one user message → assistant turn
 │   attrs: gen_ai.operation.name=invoke_agent, gen_ai.agent.name,
 │          gen_ai.provider.name, gen_ai.conversation.id, gen_ai.request.model,
-│          gen_ai.usage.{input,output,cache_read_input,cache_creation_input}_tokens,
-│          minimalist_agent.llm_request_count, status (OK|ERROR)
+│          minimalist_agent.llm_request_count, status (OK|ERROR),
+│          session.id, turn.id, permission.mode, autonomy.level, pi.provider
+│          (no gen_ai.usage.* here — usage lives on the child chat spans only;
+│           see Token accounting)
 ├── chat <model>                    one provider/LLM call (SpanKind.CLIENT)
 │     attrs: gen_ai.operation.name=chat, gen_ai.provider.name,
+│            gen_ai.system (deprecated provider alias),
 │            gen_ai.request.model, gen_ai.request.max_tokens,
 │            gen_ai.response.{model,id}, gen_ai.response.finish_reasons[],
 │            gen_ai.usage.{input,output,cache_read_input,cache_creation_input}_tokens,
-│            gen_ai.server.time_to_first_token, server.address, error.type
+│            gen_ai.server.time_to_first_token, server.address, error.type,
+│            minimalist_agent.call_kind (mini_completion|llm_query standalone calls)
 └── execute_tool <name>             one tool invocation
       attrs: gen_ai.operation.name=execute_tool, gen_ai.tool.{name,type,call.id,
              description}, gen_ai.conversation.id, error.type
 ```
 
-A tool loop produces several `chat` + `execute_tool` children per turn. Per-turn
-usage is aggregated back onto the `invoke_agent` span. Sub-agent subprocesses
-inherit the `MA_OTEL_*` env, so their spans land in the same sink (joined by
-`gen_ai.conversation.id`; full parent/child nesting is a follow-up below).
+A tool loop produces several `chat` + `execute_tool` children per turn. Token
+usage is **not** rolled up onto `invoke_agent` — it stays on the per-call `chat`
+spans (the turn carries only `minimalist_agent.llm_request_count`); see Token
+accounting for why. Sub-agent subprocesses inherit the `MA_OTEL_*` env, so their
+spans land in the same sink. Their `invoke_agent` span **nests under** the
+parent's `execute_tool Agent` span: the parent injects a W3C `traceparent` onto
+the sub-agent's prompt message (`MsgPrompt.traceparent`), and the child rebuilds
+it as the parent context of its root span (see `injectTraceparent` /
+`contextFromTraceparent` in [`otel.ts`](../src/shared/otel.ts)). They also share
+`gen_ai.conversation.id`.
 
 ### Token accounting
 
@@ -111,9 +121,17 @@ MA_OTEL_EXPORTER=file              # file | otlp | console (otlp-http/otlp-grpc 
 MA_OTEL_OUTFILE=/…/userData/logs/traces.jsonl
 MA_OTEL_OTLP_ENDPOINT=             # used when exporter=otlp
 MA_OTEL_RESOURCE_ATTRIBUTES=user.name=alice,team.id=team-a
+MA_OTEL_MAX_FILE_MB=5              # file exporter rotation cap (default 5; 0/invalid → 5)
 ```
 
 Default traces file: `<userData>/logs/traces.jsonl`.
+
+The `file` exporter is **size-capped** (default 5 MB, `MA_OTEL_MAX_FILE_MB`),
+mirroring `main.log`: when it would exceed the cap it rotates to
+`traces.jsonl.old` (single archive, overwritten each time), so disk use is
+bounded at ~2× the cap. The byte count is tracked in memory (seeded once via
+`statSync`), so there's no per-span `stat`. `console`/`otlp` don't write a file,
+so the cap doesn't apply to them.
 
 ### JSONL line shape
 
@@ -165,11 +183,6 @@ at a synced/collected folder to feed such a pipeline.
 
 ## Follow-ups (not yet done)
 
-1. **Cross-process trace correlation** — propagate W3C trace context over the
-   JSONL protocol so a sub-agent's `invoke_agent` span nests under the parent's
-   `execute_tool Agent` span instead of forming a separate trace.
-2. **Metrics + log events** — a `gen_ai.client.token.usage` histogram (and
+1. **Metrics + log events** — a `gen_ai.client.token.usage` histogram (and
    operation-duration histogram) for cheap aggregation without replaying spans;
    currently spans only.
-3. **File rotation** — `traces.jsonl` grows unbounded; add rotation like
-   `main.log` if volume becomes an issue.

@@ -20,6 +20,7 @@ import { defineTool, type AgentToolUpdateCallback, type ToolDefinition } from '@
 import type { LoadedAgent } from '../../../agents/types';
 import type { AgentChatEvent, SubagentProgressUpdate } from '../../events';
 import { createLogger } from '../../../../shared/sub-logger';
+import { injectTraceparent } from '../../../../shared/otel';
 import { writeJsonLine } from '../../../../shared/jsonl-stdin';
 
 const log = createLogger('pi-agent-tool');
@@ -464,6 +465,9 @@ async function executeAgentTask(
     turnId: 'agent-task',
     message: task,
     systemPromptAppend: '', // Agent system prompt is already in init
+    // Nest the sub-agent's trace under the active `execute_tool Agent` span.
+    // Undefined when tracing is off, so the field is simply omitted.
+    traceparent: injectTraceparent(),
   };
 
   send(handle, promptMsg);
