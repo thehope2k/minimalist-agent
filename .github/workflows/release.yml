@@ -66,9 +66,11 @@ jobs:
         run: npm run release
 
   # After all matrix builds finish, fill in the draft release's title and notes
-  # from CHANGELOG.md so they don't have to be copy/pasted by hand. The draft
-  # itself is pre-created by the create_draft job, so there is exactly one
-  # release for the tag to edit here.
+  # from CHANGELOG.md, then publish it. Building into a draft and only flipping
+  # to published here means a failed/partial matrix build never exposes a
+  # half-finished release — the release goes live atomically, with all assets
+  # uploaded, only when every matrix job succeeded. (needs: release ensures
+  # this step is skipped if any platform build failed.)
   finalize:
     needs: release
     runs-on: ubuntu-latest
@@ -89,10 +91,12 @@ jobs:
             echo "__TITLE__"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Set release title + notes
+      - name: Set release title + notes, then publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release edit "$GITHUB_REF_NAME" \
             --title "${{ steps.changelog.outputs.title }}" \
-            --notes-file release-notes.md
+            --notes-file release-notes.md \
+            --draft=false \
+            --latest
