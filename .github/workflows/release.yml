@@ -6,7 +6,31 @@ on:
       - "v*"
 
 jobs:
+  # Create the draft release ONCE, before the build matrix. Without this,
+  # the three matrix jobs start within the same second, each finds no existing
+  # draft for the tag, and each creates its own — scattering the 16 artifacts
+  # across 2–3 duplicate drafts. Pre-creating a single draft gives every
+  # matrix job an existing release to append assets to.
+  create_draft:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Ensure a single draft release exists for the tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if ! gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release create "$GITHUB_REF_NAME" \
+              --draft \
+              --title "$GITHUB_REF_NAME" \
+              --notes "Build in progress…"
+          fi
+
   release:
+    needs: create_draft
     permissions:
       contents: write
     strategy:
@@ -34,16 +58,17 @@ jobs:
         run: npm run typecheck
 
       # electron-builder picks up GH_TOKEN to upload artifacts + latest-*.yml
-      # manifests to a GitHub Release matching the pushed tag (created as a
-      # draft on the first matrix job; subsequent jobs append their assets).
+      # manifests to the draft release pre-created by the create_draft job
+      # above. All matrix jobs append to that single draft (no creation race).
       - name: Build & publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run release
 
   # After all matrix builds finish, fill in the draft release's title and notes
-  # from CHANGELOG.md so they don't have to be copy/pasted by hand. The release
-  # itself is created (as a draft) by electron-builder in the matrix above.
+  # from CHANGELOG.md so they don't have to be copy/pasted by hand. The draft
+  # itself is pre-created by the create_draft job, so there is exactly one
+  # release for the tag to edit here.
   finalize:
     needs: release
     runs-on: ubuntu-latest
