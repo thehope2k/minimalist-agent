@@ -5,6 +5,32 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.9.0] — 2026-06-23
+
+MCP extensions on the Pi backend, smarter image handling on non-vision models, and autonomy as an enforced risk budget.
+
+### Added
+
+**MCP extensions on the Pi backend**
+
+- MCP-backed extensions now connect on Pi sessions too, not just Anthropic-backed ones. Servers connect in parallel with per-server and global timeouts so a failed server is skipped instead of blocking the session, live per-server connection status is shown on panel badges, and the model is told when a server is inactive so it won't call tools that aren't available
+
+**Images on non-vision models**
+
+- Image attachments are no longer rejected when the active model lacks vision support. They stay in the draft (and are restored when you switch models), shown struck-through with an inline notice and excluded from sending — matching VS Code's behaviour. Switching to a vision-capable model mid-conversation re-includes them
+
+**Vision badge in the model picker**
+
+- Vision-capable models are now marked with a dedicated badge in the model picker, making them easier to spot at a glance
+
+### Changed
+
+**Autonomy is now an enforced risk budget**
+
+- Your autonomy level is now a real guarantee enforced in code rather than a prompt hint: the agent acts on its own when an operation's risk is below your level and only engages at or above it. A below-budget approval in auto mode is auto-approved without prompting, an irreversible floor always confirms destructive operations even at 100% autonomy, and collaboration dialogs gain a "Discuss first" option so you can talk before committing
+
+---
+
 ## [1.8.0] — 2026-06-21
 
 Quality of life improvements — search your sessions at a glance.
