@@ -68,15 +68,16 @@ function isStale(meta: ConnectionMeta): boolean {
 
 function sameModelList(a: ModelDef[], b: ModelDef[]): boolean {
   if (a.length !== b.length) return false;
-  // Compare the fields that actually affect selection/runtime, order-sensitive
-  // (order is meaningful — it drives picker presentation).
+  // Compare the fields that affect selection/runtime and UI display,
+  // order-sensitive (order drives picker presentation).
   return a.every((x, i) => {
     const y = b[i];
     return (
       x.id === y.id &&
       x.name === y.name &&
       x.contextWindow === y.contextWindow &&
-      x.category === y.category
+      x.category === y.category &&
+      !!x.supportsVision === !!y.supportsVision
     );
   });
 }

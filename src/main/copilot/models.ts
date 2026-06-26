@@ -113,7 +113,10 @@ function modelDefFrom(raw: RawCopilotModel): ModelDef | null {
   const family = raw.capabilities?.family ?? '';
   const description = describe(raw, family);
   
-  // Extract capabilities from raw model
+  // Extract capabilities from raw model — trust the Copilot API as-is.
+  // Vision for Copilot connections is a plan/account-level setting controlled
+  // by GitHub, not a per-model capability. We do not apply any fallback
+  // heuristic here; whatever Copilot reports is the ground truth.
   const supportsVision = !!raw.capabilities?.supports?.vision;
   const supportsToolCalls = raw.capabilities?.supports?.tool_calls ?? false;
   const supportsStreaming = true; // Assume streaming support for all models
@@ -154,11 +157,10 @@ function shortNameFrom(id: string, family: string): string {
 }
 
 function describe(raw: RawCopilotModel, family: string): string {
-  // Vision is surfaced as a dedicated badge in the model picker, so it's
-  // deliberately omitted here to avoid duplicating the signal.
+  // Capabilities (vision, tools) are surfaced as icons in the model picker;
+  // the description just names the vendor/provider.
   const vendor = raw.vendor ?? family ?? 'Copilot';
-  const tools = raw.capabilities?.supports?.tool_calls ? 'tools' : 'chat';
-  return `${vendor} via Copilot · ${tools}`;
+  return `${vendor} via Copilot`;
 }
 
 /**

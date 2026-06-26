@@ -81,16 +81,37 @@ function migrateV1toV2(prev: unknown): ConnectionsData {
   };
 }
 
+// v2 → v3 was a bad migration (applied a vision heuristic that incorrectly
+// marked all Copilot models as supportsVision:true). v3 → v4 corrects this by
+// zeroing modelsFetchedAt on all Copilot connections so the real API is
+// re-queried on the next boot and the correct values are stored.
+function migrateV3toV4(prev: unknown): ConnectionsData {
+  const data = (prev ?? {}) as ConnectionsData;
+  return {
+    ...data,
+    connections: (data.connections ?? []).map((c) => {
+      const isCopilot =
+        c.providerType === 'pi' && c.piAuthProvider === 'github-copilot';
+      if (!isCopilot) return c;
+      return { ...c, modelsFetchedAt: 0 };
+    }),
+  };
+}
+
 const SCHEMA: FileSchema<ConnectionsData> = {
   path: Paths.connections(),
-  currentVersion: 2,
+  currentVersion: 4,
   defaultValue: { connections: [] },
   migrations: [
-    // index 0: v0 (legacy/unset) → v1. No prior versions existed before the
-    // versioned envelope, so this is an identity passthrough.
+    // index 0: v0 (legacy/unset) → v1. Identity passthrough.
     (prev) => (prev ?? { connections: [] }) as ConnectionsData,
     // index 1: v1 → v2 — stamp connections with a (stale) modelsFetchedAt.
     migrateV1toV2,
+    // index 2: v2 → v3 — bad heuristic migration (vision flags). Identity passthrough.
+    (prev) => (prev ?? { connections: [] }) as ConnectionsData,
+    // index 3: v3 → v4 — zero modelsFetchedAt for Copilot connections to
+    // force a re-fetch and correct the bad supportsVision values.
+    migrateV3toV4,
   ],
 };
 

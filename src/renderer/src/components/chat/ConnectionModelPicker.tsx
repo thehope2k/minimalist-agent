@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
-import { Check, ChevronDown, ChevronLeft, ChevronRight, Monitor, Plug } from 'lucide-react';
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Eye, EyeOff, Monitor, Plug } from 'lucide-react';
 import {
   AnthropicMark,
   BrandMark as ConnectionBrandMark,
@@ -8,7 +8,6 @@ import {
   OpenAIMark,
 } from '../settings/connection-flow/shared';
 import type { ConnectionMeta } from '@/lib/electron';
-import { Badge } from '@/components/ui';
 import { cn } from '@/lib/utils';
 
 type ProviderCategory = 'anthropic' | 'copilot' | 'chatgpt' | 'local' | 'openai-compatible' | 'other';
@@ -119,6 +118,21 @@ export function ConnectionModelPicker({
           <span className="truncate">
             {activeModel?.name ?? 'Pick a model'}
           </span>
+          {activeModel && (
+            activeModel.supportsVision ? (
+              <Eye
+                className="h-3 w-3 shrink-0 text-fg-subtle"
+                strokeWidth={1.75}
+                title="Vision supported"
+              />
+            ) : (
+              <EyeOff
+                className="h-3 w-3 shrink-0 text-fg-subtle opacity-40"
+                strokeWidth={1.75}
+                title="No vision support"
+              />
+            )
+          )}
           <ChevronDown
             className="h-3 w-3 shrink-0 text-fg-subtle"
             strokeWidth={1.75}
@@ -278,14 +292,18 @@ function ModelList({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
                     <span className="truncate text-sm text-fg">{m.name}</span>
-                    {m.supportsVision && (
-                      <Badge
-                        variant="accent"
-                        className="shrink-0 normal-case tracking-normal"
-                        title="Supports image input (vision)"
-                      >
-                        Vision
-                      </Badge>
+                    {m.supportsVision ? (
+                      <Eye
+                        className="h-3.5 w-3.5 shrink-0 text-fg-muted"
+                        strokeWidth={1.75}
+                        title="Vision supported"
+                      />
+                    ) : (
+                      <EyeOff
+                        className="h-3.5 w-3.5 shrink-0 text-fg-subtle opacity-40"
+                        strokeWidth={1.75}
+                        title="No vision support"
+                      />
                     )}
                   </div>
                   {m.description && (
