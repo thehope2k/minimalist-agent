@@ -120,17 +120,19 @@ export function ConnectionModelPicker({
           </span>
           {activeModel && (
             activeModel.supportsVision ? (
-              <Eye
-                className="h-3 w-3 shrink-0 text-fg-subtle"
-                strokeWidth={1.75}
-                title="Vision supported"
-              />
+              <span title="Vision supported">
+                <Eye
+                  className="h-3 w-3 shrink-0 text-fg-subtle"
+                  strokeWidth={1.75}
+                />
+              </span>
             ) : (
-              <EyeOff
-                className="h-3 w-3 shrink-0 text-fg-subtle opacity-40"
-                strokeWidth={1.75}
-                title="No vision support"
-              />
+              <span title="No vision support">
+                <EyeOff
+                  className="h-3 w-3 shrink-0 text-fg-subtle opacity-40"
+                  strokeWidth={1.75}
+                />
+              </span>
             )
           )}
           <ChevronDown
@@ -293,17 +295,19 @@ function ModelList({
                   <div className="flex items-center gap-1.5">
                     <span className="truncate text-sm text-fg">{m.name}</span>
                     {m.supportsVision ? (
-                      <Eye
-                        className="h-3.5 w-3.5 shrink-0 text-fg-muted"
-                        strokeWidth={1.75}
-                        title="Vision supported"
-                      />
+                      <span title="Vision supported">
+                        <Eye
+                          className="h-3.5 w-3.5 shrink-0 text-fg-muted"
+                          strokeWidth={1.75}
+                        />
+                      </span>
                     ) : (
-                      <EyeOff
-                        className="h-3.5 w-3.5 shrink-0 text-fg-subtle opacity-40"
-                        strokeWidth={1.75}
-                        title="No vision support"
-                      />
+                      <span title="No vision support">
+                        <EyeOff
+                          className="h-3.5 w-3.5 shrink-0 text-fg-subtle opacity-40"
+                          strokeWidth={1.75}
+                        />
+                      </span>
                     )}
                   </div>
                   {m.description && (
