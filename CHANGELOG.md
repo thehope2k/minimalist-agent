@@ -5,6 +5,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.10.1] — 2026-06-26
+
+Bug fixes — corrects Copilot vision detection and refreshes the affected model cache.
+
+### Fixed
+
+**Copilot vision**
+
+- Removed an incorrect client-side heuristic that was marking all Copilot models as vision-capable; Copilot vision is a plan-level account setting controlled by GitHub, not a per-model capability
+- Added a storage migration (v3 → v4) that resets the model cache for every Copilot connection, forcing a fresh API fetch on next boot so corrected vision flags are persisted
+- Added `supportsVision` to the model equality check so stale cached models are replaced when the API returns updated data
+- Replaced the "Vision" badge in the model picker with Eye / EyeOff icons shown for every model (including the active model in the trigger), making vision status always visible at a glance
+
+---
+
 ## [1.10.0] — 2026-06-23
 
 Auto-compaction visibility in the context badge, plus telemetry and token-accounting fixes.
