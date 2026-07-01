@@ -5,6 +5,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.10.2] — 2026-07-01
+
+Bug fixes: file mentions with spaces in their names now highlight correctly, and agent retry handles partial progress gracefully.
+
+### Fixed
+
+**File mentions**
+
+- Mentioning a file or folder whose name contains spaces (e.g. `@My Document.txt`) now highlights the full path in the input and renders a correct chip in the sent message; previously only the text up to the first space was recognised
+- The main-process mention parser and the in-app renderer both strip the backtick quoting used internally, so file content is correctly injected into the agent prompt
+
+**Agent retry**
+
+- Clicking Retry on an immediately-failed turn no longer flashes the chat to an empty state while disk I/O completes; the UI transitions directly from the error state to the new streaming response
+- When an error occurs mid-turn after the agent has already completed tool calls, Retry now preserves the completed work in the transcript and sends a continuation prompt instead of replaying the original message from scratch
+
+---
+
 ## [1.10.1] — 2026-06-26
 
 Bug fixes — corrects Copilot vision detection and refreshes the affected model cache.
