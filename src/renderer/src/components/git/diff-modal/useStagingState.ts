@@ -7,7 +7,7 @@ import type { PartialContentRefs } from './types';
  * Manages file-level and hunk-level staging state.
  */
 export function useStagingState(
-  lineChangesCacheRef: React.MutableRefObject<Map<string, LineChange[]>>,
+  lineChangesCacheRef: React.RefObject<Map<string, LineChange[]>>,
   partialContentRefs: PartialContentRefs,
 ) {
   // File-level staging: all files staged by default

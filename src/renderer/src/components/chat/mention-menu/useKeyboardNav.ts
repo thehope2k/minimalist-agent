@@ -4,8 +4,8 @@ import type { MentionMenuHandle, MentionItem } from './types';
 interface UseKeyboardNavParams {
   items: MentionItem[];
   query: string;
-  handleRef?: React.MutableRefObject<MentionMenuHandle | null>;
-  listRef: React.MutableRefObject<HTMLUListElement | null>;
+  handleRef?: React.RefObject<MentionMenuHandle | null>;
+  listRef: React.RefObject<HTMLUListElement | null>;
   onSelect: (item: MentionItem) => void;
 }
 

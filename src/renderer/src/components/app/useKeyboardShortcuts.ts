@@ -1,4 +1,4 @@
-import { useEffect, useRef, type MutableRefObject } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 import type { PanelImperativeHandle } from 'react-resizable-panels';
 import type { View } from '../layout/TopBar';
 import { deleteSession } from '@/lib/sessions';
@@ -21,8 +21,8 @@ export function useKeyboardShortcuts(
   toggleTerminal: () => void,
   toggleFileExplorer: () => void,
   handleNewSession: () => void,
-  terminalOpenRef: MutableRefObject<boolean>,
-  terminalPanelRef: MutableRefObject<PanelImperativeHandle | null>,
+  terminalOpenRef: RefObject<boolean>,
+  terminalPanelRef: RefObject<PanelImperativeHandle | null>,
   activeSessionId: string | null,
   sessions: SessionListEntry[] | null,
 ) {

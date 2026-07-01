@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { usePanelRef } from 'react-resizable-panels';
 import type { PanelImperativeHandle } from 'react-resizable-panels';
 
@@ -15,7 +15,7 @@ export function usePanelStates() {
   const terminalPanelRef = usePanelRef();
   const fileExplorerPanelRef = usePanelRef();
 
-  const terminalOpenRef = { current: terminalOpen };
+  const terminalOpenRef = useRef(terminalOpen);
   terminalOpenRef.current = terminalOpen;
 
   const toggleSidebar = useCallback(() => {

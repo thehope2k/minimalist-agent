@@ -28,7 +28,7 @@ export type { MentionItem, MentionMenuHandle } from './mention-menu/types';
 
 export const MentionMenu = function MentionMenuImpl(
   props: MentionMenuProps & {
-    handleRef?: React.MutableRefObject<MentionMenuHandle | null>;
+    handleRef?: React.RefObject<MentionMenuHandle | null>;
   },
 ) {
   const { open, query, skills, extensions, cwd, onSelect, onClose, handleRef } =
