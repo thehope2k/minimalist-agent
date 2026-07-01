@@ -1321,26 +1321,61 @@ export function useChat(
 
       const last = lastSendBySession.current.get(sid);
       if (last) {
-        // Hot path: retry within the same app run — replay the captured
-        // SendArgs verbatim. Drops the failed pair so the new turn slots
-        // cleanly into the conversation.
+        // Hot path: retry within the same app run.
         const failedAssistantId = last.assistantId;
         const current = messagesBySession.current.get(sid) ?? [];
         const idx = current.findIndex((m) => m.id === failedAssistantId);
+        const failedMsg = idx >= 0 ? current[idx] : null;
+
+        // If the turn made meaningful progress (at least one tool call
+        // completed successfully), preserve the partial work in the
+        // transcript and ask the agent to continue. Re-playing the
+        // original message from scratch would redo work already done and
+        // lose the context the model built up during those tool calls.
+        const hadProgress =
+          failedMsg?.parts.some((p) => p.kind === 'tool' && p.status === 'done') ?? false;
+
+        if (hadProgress && failedMsg) {
+          // Finalize the partial bubble: clear the error flags and mark it
+          // as aborted so it looks like a stopped (not failed) turn while
+          // still showing every tool call that already ran.
+          const finalized: ChatMessage = {
+            ...failedMsg,
+            isStreaming: false,
+            stopReason: 'aborted',
+            errorInfo: undefined,
+            error: undefined,
+            durationMs:
+              failedMsg.createdAt != null
+                ? Date.now() - failedMsg.createdAt
+                : failedMsg.durationMs,
+          };
+          const withFinalized =
+            [...current.slice(0, idx), finalized, ...current.slice(idx + 1)];
+          messagesBySession.current.set(sid, withFinalized);
+          if (sid === activeSessionIdRef.current) setMessages(withFinalized);
+          const stored = chatToStored(finalized);
+          if (!stored.content) stored.content = partsToContent(finalized.parts);
+          await replaceLastMessage(sid, stored);
+
+          await send({ ...last.args, text: 'continue' });
+          return;
+        }
+
+        // No meaningful progress — drop the failed pair and re-send verbatim.
+        // Do not update the UI here: send() will call setMessages() with the
+        // full replacement messages, so the chat never flashes to a truncated
+        // or empty state during the disk I/O below.
         const userBeforeId =
           idx > 0 && current[idx - 1].role === 'user'
             ? current[idx - 1].id
             : null;
-
         const cutFrom =
           idx > 0 && current[idx - 1].role === 'user' ? idx - 1 : idx;
-        const trimmed = idx < 0 ? current : current.slice(0, cutFrom);
-        messagesBySession.current.set(sid, trimmed);
-        if (sid === activeSessionIdRef.current) setMessages(trimmed);
-
+        const withoutFailed = idx < 0 ? current : current.slice(0, cutFrom);
+        messagesBySession.current.set(sid, withoutFailed);
         const dropFromId = userBeforeId ?? failedAssistantId;
         await truncateSessionMessages(sid, dropFromId);
-
         await send(last.args);
         return;
       }
@@ -1362,17 +1397,50 @@ export function useChat(
       }
       const userIdx = assistantIdx > 0 ? assistantIdx - 1 : -1;
       if (userIdx < 0 || current[userIdx].role !== 'user') return;
+
+      const failedCold = assistantIdx >= 0 ? current[assistantIdx] : null;
+      const hadColdProgress =
+        failedCold?.parts.some((p) => p.kind === 'tool' && p.status === 'done') ?? false;
+
+      if (hadColdProgress && failedCold) {
+        // Same logic as the hot path: finalize the partial bubble and continue.
+        const finalized: ChatMessage = {
+          ...failedCold,
+          isStreaming: false,
+          stopReason: 'aborted',
+          errorInfo: undefined,
+          error: undefined,
+        };
+        const withFinalized = [
+          ...current.slice(0, assistantIdx),
+          finalized,
+          ...current.slice(assistantIdx + 1),
+        ];
+        messagesBySession.current.set(sid, withFinalized);
+        if (sid === activeSessionIdRef.current) setMessages(withFinalized);
+        const stored = chatToStored(finalized);
+        if (!stored.content) stored.content = partsToContent(finalized.parts);
+        await replaceLastMessage(sid, stored);
+        await send({
+          text: 'continue',
+          connection: fallback.connection,
+          model: fallback.model,
+          cwd: fallback.cwd,
+          maxTurns: fallback.maxTurns,
+          permissionMode: fallback.permissionMode,
+        });
+        return;
+      }
+
       const userMsg = current[userIdx];
       const userText = partsToContent(userMsg.parts).trim();
       if (!userText) return;
 
-      // Drop both messages from memory + disk before re-sending so the
-      // SDK's resume-by-sessionId picks up at the prior user message.
-      const trimmed = current.slice(0, userIdx);
-      messagesBySession.current.set(sid, trimmed);
-      if (sid === activeSessionIdRef.current) setMessages(trimmed);
+      // No meaningful progress — drop both messages and re-send.
+      // Defer the state update for the same reason as the hot path.
+      const withoutFailed = current.slice(0, userIdx);
+      messagesBySession.current.set(sid, withoutFailed);
       await truncateSessionMessages(sid, userMsg.id);
-
       await send({
         text: userText,
         connection: fallback.connection,
