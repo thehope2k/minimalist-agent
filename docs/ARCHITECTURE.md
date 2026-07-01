@@ -168,7 +168,9 @@ keychain, MCP secrets are decrypted in the main process and handed down via
 
 `skills/` resolves `@slug` mentions in user messages:
 
-1. `mentions.ts` — scans the message for `@slug` tokens.
+1. `mentions.ts` — scans the message for `@token` mentions. Two token forms are supported:
+   - Plain: `@src/utils.ts` — word chars, dots, slashes, hyphens
+   - Quoted: `` @`My Document.txt` `` — backtick-delimited, used when a path contains spaces
 2. `storage.ts` — locates `<userData>/skills/<slug>/SKILL.md`.
 3. `directive.ts` — formats the "read these files first" directive injected
    before the user message.
@@ -205,7 +207,7 @@ Collapsible file tree panel (Cmd+B) for browsing project structure. Read-only, g
 **IPC:** `files:listDirectory`, `files:buildFileTree` (`src/main/files/list-directory.ts`)
 
 **State:**
-- Panel open/closed + width: `useResizablePanels('explorer-v1')` (localStorage)
+- Panel open/closed + width: `useResizablePanels('explorer-v2')` (localStorage)
 - Expanded paths: `session.json → SessionMetadata.fileExplorer.expandedPaths` (per-session)
 
 **Performance:** Virtual scrolling via `@tanstack/react-virtual` (activates at >200 items)

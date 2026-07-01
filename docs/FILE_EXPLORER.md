@@ -109,7 +109,7 @@ Right-click any file or folder to access:
 
 ### Global (useResizablePanels)
 
-**Key:** `explorer-v1`
+**Key:** `explorer-v2`
 
 **Persists:**
 - Panel open/closed state
