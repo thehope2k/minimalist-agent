@@ -1111,10 +1111,6 @@ export function registerIpc(): void {
 
   ipcMain.handle('agents:getDir', (): string => getAgentsDir());
   ipcMain.handle(
-    'agents:getReferenceDocPath',
-    (): string => Paths.agentsReferenceDoc(),
-  );
-  ipcMain.handle(
     'agents:list',
     (): LoadedAgent[] => loadAllAgents(),
   );

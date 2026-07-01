@@ -8,7 +8,6 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { ArrowUp, Pencil, X } from 'lucide-react';
-import { getAgentsReferenceDocPath } from '@/lib/agents';
 import { cn } from '@/lib/utils';
 import type { LoadedAgent } from '@/lib/electron';
 import type { SeedSubmit } from '@/App';
@@ -57,26 +56,24 @@ export function EditAgentDialog({
   onSubmit: (submit: SeedSubmit) => void;
 }) {
   const [description, setDescription] = useState('');
-  const [refDocPath, setRefDocPath] = useState<string | null>(null);
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const copy = COPY[mode];
 
   useEffect(() => {
     if (!open) return;
     setDescription('');
-    void getAgentsReferenceDocPath().then(setRefDocPath);
     requestAnimationFrame(() => taRef.current?.focus());
   }, [open]);
 
   if (!open) return null;
 
-  const canSubmit = description.trim().length > 0 && !!refDocPath;
+  const canSubmit = description.trim().length > 0;
   const handleSubmit = () => {
-    if (!canSubmit || !refDocPath) return;
+    if (!canSubmit) return;
     const desc = description.trim();
     onSubmit({
       displayText: desc,
-      agentText: buildEditPrompt(mode, desc, agent, refDocPath),
+      agentText: buildEditPrompt(mode, desc, agent),
       intentTag: copy.intentTag,
     });
     onClose();
@@ -173,27 +170,44 @@ function buildEditPrompt(
   mode: EditAgentMode,
   description: string,
   agent: LoadedAgent,
-  refDocPath: string,
 ): string {
   const target = `${agent.path}/AGENT.md`;
   if (mode === 'metadata') {
     return `<agent_edit_metadata>
-<reference_doc>${refDocPath}</reference_doc>
 <target_file>${target}</target_file>
 <slug>${agent.slug}</slug>
 </agent_edit_metadata>
 
-Read the reference doc at \`<reference_doc>\` for the AGENT.md format. Then edit ONLY the YAML frontmatter at the top of \`<target_file>\` per the user's request. Preserve the markdown body (system prompt) unchanged. Read the file back to confirm it parses, then briefly summarize what you changed.
+Edit ONLY the YAML frontmatter of \`${target}\` per the user's request. Preserve the markdown body (system prompt) unchanged.
+
+Frontmatter fields reference:
+- \`name\` (required) — display name string
+- \`description\` (required) — one-sentence summary used by the model to decide when to spawn this agent
+- \`model\` (optional) — full provider model ID only (e.g. claude-sonnet-4, gpt-4o); omit to inherit session model
+- \`tools\` (optional) — array from: Read Write Edit Bash Grep Find Ls WebFetch WebSearch Agent
+- \`maxTurns\` (optional) — number, default 10
+- \`permissionMode\` (optional) — "plan" (no mutations) or "auto" (intelligent autonomy)
+- \`effort\` (optional) — Anthropic only: low | medium | high
+- \`icon\` (optional) — emoji or URL
+
+Read the file back to confirm it looks correct, then briefly summarize what you changed.
 
 User request: ${description}`;
   }
   return `<agent_edit_instructions>
-<reference_doc>${refDocPath}</reference_doc>
 <target_file>${target}</target_file>
 <slug>${agent.slug}</slug>
 </agent_edit_instructions>
 
-Read the reference doc at \`<reference_doc>\` for the AGENT.md format and system prompt conventions. Then edit ONLY the markdown body of \`<target_file>\` (everything after the closing \`---\` of the YAML frontmatter). This is the agent's system prompt. Preserve the frontmatter unchanged. Read the file back to confirm it parses, then briefly summarize what you changed.
+Edit ONLY the markdown body of \`${target}\` (everything after the closing \`---\` of the YAML frontmatter). This is the agent's system prompt. Preserve the frontmatter unchanged.
+
+Guidelines for a good agent system prompt:
+- Be specific about what the agent should do and how
+- Define constraints explicitly (e.g. "never modify files", "always return structured output")
+- Describe the output format the agent should produce
+- Keep it focused — one agent, one job
+
+Read the file back to confirm it looks correct, then briefly summarize what you changed.
 
 User request: ${description}`;
 }

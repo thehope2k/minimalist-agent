@@ -80,7 +80,6 @@ export const Paths = {
   },
   extensionSecrets: () => join(root(), 'extension-secrets.enc'),
   extensionConsents: () => join(root(), 'extension-consents.json'),
-  agentsReferenceDoc: () => join(root(), 'docs', 'agents.md'),
   // Sandboxed CLAUDE_CONFIG_DIR for the agent SDK's native binary. We
   // write `.credentials.json` here per-turn so OAuth users don't need a
   // system-wide `claude /login`. Kept under userData so it survives

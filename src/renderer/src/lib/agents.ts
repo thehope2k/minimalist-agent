@@ -6,8 +6,6 @@ let cache: LoadedAgent[] | null = null;
 let bootPromise: Promise<LoadedAgent[]> | null = null;
 let dirCache: string | null = null;
 let dirPromise: Promise<string> | null = null;
-let refDocCache: string | null = null;
-let refDocPromise: Promise<string> | null = null;
 const subscribers = new Set<() => void>();
 
 export function getAgentsDir(): Promise<string> {
@@ -20,19 +18,6 @@ export function getAgentsDir(): Promise<string> {
     });
   }
   return dirPromise;
-}
-
-/** Resolve and cache the path to the bundled agents reference doc. */
-export function getAgentsReferenceDocPath(): Promise<string> {
-  if (refDocCache) return Promise.resolve(refDocCache);
-  if (!refDocPromise) {
-    refDocPromise = window.api.agents.getReferenceDocPath().then((p) => {
-      refDocCache = p;
-      refDocPromise = null;
-      return p;
-    });
-  }
-  return refDocPromise;
 }
 
 function notify(): void {

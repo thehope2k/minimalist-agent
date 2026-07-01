@@ -8,7 +8,6 @@ import { Paths } from './storage/paths';
 import { terminalManager } from './terminal/manager';
 import { installSkillsReferenceDoc } from './skills/install-reference';
 import { installExtensionsReferenceDoc } from './extensions/install-reference';
-import { installAgentsReferenceDoc } from './agents/install-reference';
 import { getAppIcon } from './app-icon';
 import { checkOnLaunch } from './auto-update';
 import { classifyExternalUrl, formatBlockedUrlError } from '../shared/url-safety';
@@ -224,7 +223,6 @@ app.whenReady().then(async () => {
   initLogging(Paths.logsDir());
   installSkillsReferenceDoc();
   installExtensionsReferenceDoc();
-  installAgentsReferenceDoc();
   
   // Check git/worktree support for parallel agent isolation
   const worktreeSupported = await isWorktreeSupported();

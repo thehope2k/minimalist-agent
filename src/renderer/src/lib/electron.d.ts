@@ -1073,7 +1073,6 @@ export interface AppApi {
   };
   agents: {
     getDir: () => Promise<string>;
-    getReferenceDocPath: () => Promise<string>;
     list: () => Promise<LoadedAgent[]>;
     get: (slug: string) => Promise<LoadedAgent | null>;
     listFiles: (dirPath: string) => Promise<AgentFileNode[]>;

@@ -7,7 +7,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { X, Sparkles } from 'lucide-react';
-import { getAgentsDir, getAgentsReferenceDocPath } from '@/lib/agents';
+import { getAgentsDir } from '@/lib/agents';
 import { cn } from '@/lib/utils';
 import { Button, Input, Textarea } from '@/components/ui';
 import type { SeedSubmit } from '@/App';
@@ -35,7 +35,6 @@ export function AddAgentDialog({
   const [slug, setSlug] = useState('');
   const [slugTouched, setSlugTouched] = useState(false);
   const [agentsDir, setAgentsDir] = useState<string | null>(null);
-  const [refDocPath, setRefDocPath] = useState<string | null>(null);
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const [placeholder, setPlaceholder] = useState(PLACEHOLDERS[0]);
 
@@ -48,7 +47,6 @@ export function AddAgentDialog({
       PLACEHOLDERS[Math.floor(Math.random() * PLACEHOLDERS.length)],
     );
     void getAgentsDir().then(setAgentsDir);
-    void getAgentsReferenceDocPath().then(setRefDocPath);
     requestAnimationFrame(() => taRef.current?.focus());
   }, [open]);
 
@@ -67,15 +65,14 @@ export function AddAgentDialog({
   const canSubmit =
     description.trim().length > 0 &&
     SLUG_RE.test(slug) &&
-    !!agentsDir &&
-    !!refDocPath;
+    !!agentsDir;
 
   const handleSubmit = () => {
-    if (!canSubmit || !agentsDir || !refDocPath) return;
+    if (!canSubmit || !agentsDir) return;
     const desc = description.trim();
     onSubmit({
       displayText: desc,
-      agentText: buildAgentScaffoldPrompt(desc, slug, agentsDir, refDocPath),
+      agentText: buildAgentScaffoldPrompt(desc, slug, agentsDir),
       intentTag: 'add-agent',
     });
     onClose();
@@ -188,32 +185,44 @@ function suggestSlug(description: string): string {
 }
 
 /**
- * Build the system prompt that coaches the model to create an AGENT.md file.
+ * Build the prompt that coaches the model to create an AGENT.md file.
+ * The format spec is inlined here — no static reference doc on disk.
  */
 function buildAgentScaffoldPrompt(
   description: string,
   slug: string,
   agentsDir: string,
-  refDocPath: string,
 ): string {
   const target = `${agentsDir}/${slug}/AGENT.md`;
   return `<agent_create>
-<reference_doc>${refDocPath}</reference_doc>
 <target_file>${target}</target_file>
 <slug>${slug}</slug>
 </agent_create>
 
-Read the reference doc at \`<reference_doc>\` first — it covers the AGENT.md format, frontmatter fields (including valid model IDs), slug rules, system prompt conventions, and examples.
+Create the file at \`${target}\` with this exact structure:
 
-Then create the new agent at \`<target_file>\` exactly (do NOT change the slug or location), validate it parses by reading it back, and briefly summarize what you built.
+\`\`\`markdown
+---
+name: "Display Name"
+description: "One sentence — what this agent does. The model uses this to decide when to spawn it."
+# model: omit unless the user explicitly asked for a specific model ID.
+#        If set, use the FULL provider model ID (e.g. claude-sonnet-4, gpt-4o).
+#        Short names like "haiku" or "sonnet" are NOT valid and will fail.
+tools: [Read, Grep, Find]   # optional — restrict from: Read Write Edit Bash Grep Find Ls WebFetch WebSearch Agent
+maxTurns: 10                # optional — default 10
+permissionMode: plan        # optional — "plan" (no mutations) or "auto" (intelligent autonomy)
+effort: low                 # optional — Anthropic only: low | medium | high
+icon: "🔍"                  # optional — emoji or URL
+---
 
-**IMPORTANT about the 'model' field:**
-- The reference doc lists all valid model IDs with examples
-- Use FULL model IDs only (e.g., "claude-sonnet-4", "gpt-4o", "o1")
-- DO NOT use short names like "sonnet", "haiku", "opus" — they will fail validation
-- When in doubt, omit the model field entirely (agent inherits the session model)
-- You can also use "session-default" to explicitly inherit the session model
-- After creating the agent, validation will check if the model ID is valid and give clear errors if not
+System prompt body goes here. Be specific, set constraints, define output format.
+\`\`\`
+
+Rules:
+- \`name\` and \`description\` are required; all other fields are optional
+- Omit \`model\` unless the user asked for one — the agent inherits the session model
+- Slug must match the directory name: \`${slug}\`
+- After writing, read the file back to confirm it looks correct, then briefly summarize what you built
 
 User wants an agent that will: ${description}`;
 }

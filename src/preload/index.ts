@@ -746,8 +746,6 @@ const api = {
   },
   agents: {
     getDir: (): Promise<string> => ipcRenderer.invoke('agents:getDir'),
-    getReferenceDocPath: (): Promise<string> =>
-      ipcRenderer.invoke('agents:getReferenceDocPath'),
     list: (): Promise<unknown[]> => ipcRenderer.invoke('agents:list'),
     get: (slug: string): Promise<unknown | null> =>
       ipcRenderer.invoke('agents:get', slug),
