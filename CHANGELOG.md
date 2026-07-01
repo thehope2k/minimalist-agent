@@ -5,6 +5,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.10.3] — 2026-07-01
+
+Dependency updates and infrastructure: Electron 43, react-resizable-panels v4, pi-ai 0.80 API, and safe package updates.
+
+### Changed
+
+**Runtime**
+
+- Upgraded Electron 42 → 43 — newer Chromium, improved security; on macOS/Linux, frameless windows now use rounded corners by default
+
+**Dependencies**
+
+- Upgraded `react-resizable-panels` 3 → 4 — fully migrated to the v4 API (`Group`/`Separator` components, percentage-based sizes, `usePanelRef`, keyed layout persistence); double-clicking a separator now resets the adjacent panel to its default size
+- Migrated `@earendil-works/pi-ai` 0.79 → 0.80 — adopted the new provider-instance API (`getBuiltinModel`, `builtinModels`) replacing the removed standalone functions
+- Updated `@anthropic-ai/claude-agent-sdk`, Radix UI primitives, Tailwind CSS 4.3.2, `@xterm` addons, `@tanstack/react-virtual`, Shiki, Mermaid, Sharp, `@electron/rebuild`, and other safe patch/minor packages
+
+---
+
 ## [1.10.2] — 2026-07-01
 
 Bug fixes: file mentions with spaces in their names now highlight correctly, and agent retry handles partial progress gracefully.
