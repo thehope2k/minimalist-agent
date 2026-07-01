@@ -19,8 +19,14 @@
 import { existsSync, statSync } from 'node:fs';
 import { join, isAbsolute } from 'node:path';
 
-/** Detect a mention candidate at the start of input or after whitespace. */
-const MENTION_RE = /(^|\s)@([\w./-]+)/g;
+// Mention token syntax:
+//   Plain:   @src/utils.ts           — word chars, dots, slashes, hyphens
+//   Quoted:  @`My Document.txt`      — backtick-delimited, allows any char
+//
+// The quoted form is used whenever a path contains whitespace; wrapping in
+// backticks keeps the token self-contained without needing shell-style
+// escaping or URL encoding in the message text.
+const MENTION_RE = /(^|\s)@(`[^`]+`|[\w./-]+)/g;
 
 export interface ParsedMentions {
   /** Skill slugs that are present in `availableSkillSlugs`. */
@@ -65,7 +71,7 @@ export function parseMentions(
   };
 
   for (const match of text.matchAll(MENTION_RE)) {
-    const token = match[2]!.replace(/\/$/, '');
+    const token = stripBackticks(match[2]!).replace(/\/$/, '');
     if (availableSkillSlugs.includes(token)) {
       if (!result.skills.includes(token)) result.skills.push(token);
       continue;
@@ -122,7 +128,7 @@ export function resolveMentions(
   },
 ): string {
   return text.replace(MENTION_RE, (whole, leading: string, raw: string) => {
-    const token = raw.replace(/\/$/, '');
+    const token = stripBackticks(raw).replace(/\/$/, '');
     const skillName = ctx.skillNames.get(token);
     if (skillName !== undefined) {
       return `${leading}[Mentioned skill: ${skillName} (slug: ${token})]`;
@@ -147,6 +153,11 @@ export function resolveMentions(
 }
 
 /* ---------- helpers ---------- */
+
+/** Return the bare path from a token, removing backtick quoting if present. */
+function stripBackticks(token: string): string {
+  return token.startsWith('`') && token.endsWith('`') ? token.slice(1, -1) : token;
+}
 
 const SKILL_SLUG_RE = /^[a-z0-9][a-z0-9-]{0,29}$/;
 

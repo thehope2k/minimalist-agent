@@ -41,11 +41,15 @@ export function useMentionHandling(
     } else if (item.kind === 'extension') {
       token = `@${item.extension.slug}`;
     } else {
-      // Folders get a trailing slash
-      token =
+      // Folders get a trailing slash. Paths containing whitespace are
+      // quoted with backticks — the token format is @`path with spaces` —
+      // so the highlight regex and the main-process parser both see a
+      // single, unambiguous token rather than stopping at the first space.
+      const relPath =
         item.entry.type === 'directory'
-          ? `@${item.entry.relativePath}/`
-          : `@${item.entry.relativePath}`;
+          ? `${item.entry.relativePath}/`
+          : item.entry.relativePath;
+      token = relPath.includes(' ') ? `@\`${relPath}\`` : `@${relPath}`;
     }
     
     const insertion = `${token} `;

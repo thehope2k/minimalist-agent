@@ -13,7 +13,11 @@
 import { forwardRef, useEffect, useRef, type TextareaHTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 
-const MENTION_RE = /(^|\s)@([\w./-]+)/g;
+// Token syntax: plain `@word/path.ts` or backtick-quoted `@\`path with spaces\``.
+// Backtick quoting is used whenever a file or folder name contains whitespace,
+// since the regex boundary is whitespace and a quoted form makes the full path
+// unambiguous without needing any escaping inside the token.
+const MENTION_RE = /(^|\s)@(`[^`]+`|[\w./-]+)/g;
 
 /** Classes shared between the textarea and the overlay so widths align. */
 const TYPO =

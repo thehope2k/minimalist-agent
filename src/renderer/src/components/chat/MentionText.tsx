@@ -19,7 +19,12 @@ import { SkillAvatar } from '../skills/SkillAvatar';
 import { ExtensionAvatar } from '../extensions/ExtensionAvatar';
 import type { LoadedExtension, LoadedSkill } from '@/lib/electron';
 
-const MENTION_RE = /(^|\s)@([\w./-]+)/g;
+// Two token forms are supported:
+//   Plain:   @src/utils.ts  (no whitespace in path)
+//   Quoted:  @`My Folder/file.ts`  (backtick-quoted when path contains spaces)
+// Both are inserted by the mention picker; the quoted form keeps the token
+// unambiguous because whitespace normally terminates a token.
+const MENTION_RE = /(^|\s)@(`[^`]+`|[\w./-]+)/g;
 
 type Run =
   | { kind: 'text'; value: string }
@@ -69,13 +74,17 @@ export function MentionText({ text }: { text: string }) {
           <MentionChip
             key={i}
             token={r.token}
-            skill={skillBySlug.get(stripSlash(r.token))}
-            extension={extensionBySlug.get(stripSlash(r.token))}
+            skill={skillBySlug.get(stripSlash(stripBackticks(r.token)))}
+            extension={extensionBySlug.get(stripSlash(stripBackticks(r.token)))}
           />
         ),
       )}
     </>
   );
+}
+
+function stripBackticks(token: string): string {
+  return token.startsWith('`') && token.endsWith('`') ? token.slice(1, -1) : token;
 }
 
 function stripSlash(token: string): string {
@@ -97,6 +106,9 @@ function MentionChip({
   skill?: LoadedSkill;
   extension?: LoadedExtension;
 }) {
+  // Normalise the token: remove backtick quoting so the rest of the
+  // component always works with the bare path string.
+  const rawToken = stripBackticks(token);
   // Skill takes priority over extension on slug collision — matches the
   // backend resolution rules in `parseMentions` / `resolveMentions`.
   if (skill) {
@@ -126,22 +138,22 @@ function MentionChip({
     );
   }
 
-  const isFolder = token.endsWith('/');
-  const isPath = isFolder || token.includes('/') || token.includes('.');
+  const isFolder = rawToken.endsWith('/');
+  const isPath = isFolder || rawToken.includes('/') || rawToken.includes('.');
 
   if (!isPath) {
     // Looks like prose ("ping @joe"). Render literally.
-    return <span>@{token}</span>;
+    return <span>@{rawToken}</span>;
   }
 
   const Icon = isFolder ? FolderIcon : FileIcon;
   return (
     <span
       className="mx-0.5 inline-flex items-center gap-1 rounded-md border border-border/60 bg-elevated/80 px-1.5 py-px align-baseline text-[0.9em] text-fg"
-      title={`@${token}`}
+      title={`@${rawToken}`}
     >
       <Icon className="h-3 w-3 text-fg-muted" strokeWidth={1.75} />
-      <span>{basename(token)}</span>
+      <span>{basename(rawToken)}</span>
     </span>
   );
 }
