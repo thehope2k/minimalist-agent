@@ -38,8 +38,13 @@ import {
 } from '@earendil-works/pi-coding-agent';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { getModel, completeSimple, type ThinkingLevel } from '@earendil-works/pi-ai';
+import { getBuiltinModel, builtinModels } from '@earendil-works/pi-ai/providers/all';
+import type { Api, Model, ThinkingLevel } from '@earendil-works/pi-ai';
 import { getOAuthProvider } from '@earendil-works/pi-ai/oauth';
+
+/** Shared models instance for `completeSimple` calls (title gen, llm_query).
+ *  Built-in provider catalog; auth is passed inline via `StreamOptions.apiKey`. */
+const piModels = builtinModels();
 import { adaptPiEvent } from './event-adapter';
 import { createPiWebFetchTool, createPiWebSearchTool } from './web-tools';
 import { connectMcpServers, closeMcpClients } from './mcp-tools';
@@ -166,7 +171,7 @@ interface State {
   appendArr: string[];
   /** Last value pushed into appendArr — avoids a redundant reload(). */
   lastAppend?: string;
-  model?: ReturnType<typeof getModel>;
+  model?: Model<Api>;
   /** Active model's image-input capability, per app metadata (MsgInit/MsgSetModel). */
   visionSupported?: boolean;
   permissionMode: PiPermissionMode;
@@ -1195,7 +1200,7 @@ async function handleInit(msg: MsgInit): Promise<void> {
   const hasCustomEndpoint = !!msg.baseUrl?.trim() && !!msg.customEndpoint;
 
   const modelRegistry = ModelRegistry.inMemory(authStorage);
-  let model: ReturnType<typeof getModel>;
+  let model: Model<Api>;
   if (hasCustomEndpoint) {
     const modelId = msg.model;
     const rawBase = msg.baseUrl!.trim();
@@ -1227,15 +1232,14 @@ async function handleInit(msg: MsgInit): Promise<void> {
         maxTokens: ce.maxTokens ?? 8_192,
       }],
     } as never);
-    const resolved = (modelRegistry as unknown as { find: (p: string, id: string) => ReturnType<typeof getModel> | undefined })
+    const resolved = (modelRegistry as unknown as { find: (p: string, id: string) => Model<Api> | undefined })
       .find('custom-endpoint', modelId);
     if (!resolved) fatal(`Could not resolve custom-endpoint model: ${modelId}`);
     model = resolved!;
   } else {
-    // Resolve the Pi model. The cast to `never` for the model id is
-    // necessary because Pi's getModel<TProvider, TModelId> signature uses
-    // a typed lookup; we pass model ids dynamically.
-    model = getModel(msg.piAuthProvider as 'github-copilot', msg.model as never);
+    // Resolve the Pi model. Dynamic model ids are passed at runtime so we
+    // cast the provider string to its literal type for the typed catalog.
+    model = getBuiltinModel(msg.piAuthProvider as 'github-copilot', msg.model as never);
     
     // Validate that the model resolved successfully
     if (!model) {
@@ -1818,7 +1822,7 @@ async function handleMiniCompletion(msg: MsgMiniCompletion): Promise<void> {
   }
   try {
     let model = msg.model
-      ? getModel(state.init.piAuthProvider as 'github-copilot', msg.model as never)
+      ? getBuiltinModel(state.init.piAuthProvider as 'github-copilot', msg.model as never)
       : state.model!;
     
     // Validate model resolved successfully
@@ -1869,7 +1873,7 @@ async function handleMiniCompletion(msg: MsgMiniCompletion): Promise<void> {
         systemInstructions: msg.systemPrompt,
       },
       () =>
-        completeSimple(
+        piModels.completeSimple(
           model,
           {
             systemPrompt: msg.systemPrompt,
@@ -1928,7 +1932,7 @@ async function handleLlmQuery(msg: MsgLlmQuery): Promise<void> {
       tools?: never[];
     };
     const model = req.model
-      ? getModel(state.init.piAuthProvider as 'github-copilot', req.model as never)
+      ? getBuiltinModel(state.init.piAuthProvider as 'github-copilot', req.model as never)
       : state.model;
     
     // Validate model resolved successfully
@@ -1950,7 +1954,7 @@ async function handleLlmQuery(msg: MsgLlmQuery): Promise<void> {
         systemInstructions: req.systemPrompt,
       },
       () =>
-        completeSimple(model, {
+        piModels.completeSimple(model, {
           systemPrompt: req.systemPrompt,
           messages: [
             {
@@ -2021,7 +2025,7 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
     case 'set_model':
       if (state.init) {
         try {
-          let newModel = getModel(
+          let newModel = getBuiltinModel(
             state.init.piAuthProvider as 'github-copilot',
             msg.model as never,
           );
