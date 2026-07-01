@@ -19,7 +19,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DiffOnMount, OnMount } from '@monaco-editor/react';
 import type * as MonacoType from 'monaco-editor';
 import { Loader2 } from 'lucide-react';
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
+import { Group, Panel, Separator } from 'react-resizable-panels';
 import { registerAppMonacoTheme } from '@/lib/monaco-setup';
 import { parseConflictBlocks, hasConflictMarkers, resolveBlock } from './conflict-parser';
 import { MonacoPanes } from './conflict-flow/MonacoPanes';
@@ -220,11 +220,11 @@ export function ConflictView({ file, onResolved }: ConflictViewProps) {
       />
 
       <div className="flex-1">
-        <PanelGroup direction="vertical">
+        <Group orientation="vertical">
           {/* Top: OURS vs BASE | THEIRS vs BASE */}
-          <Panel defaultSize={50} minSize={20}>
-            <PanelGroup direction="horizontal">
-              <Panel defaultSize={50} minSize={20}>
+          <Panel defaultSize="50%" minSize="20%">
+            <Group orientation="horizontal">
+              <Panel defaultSize="50%" minSize="20%">
                 <MonacoPanes
                   baseContent={content.base}
                   oursContent={content.ours}
@@ -232,24 +232,24 @@ export function ConflictView({ file, onResolved }: ConflictViewProps) {
                   onMount={onDiffMount}
                 />
               </Panel>
-              <PanelResizeHandle className="w-px bg-border" />
-              <Panel defaultSize={50} minSize={20}>
+              <Separator className="w-px bg-border" />
+              <Panel defaultSize="50%" minSize="20%">
                 <div className="h-full" />
               </Panel>
-            </PanelGroup>
+            </Group>
           </Panel>
 
-          <PanelResizeHandle className="h-px bg-border" />
+          <Separator className="h-px bg-border" />
 
           {/* Bottom: RESULT (editable) */}
-          <Panel defaultSize={50} minSize={30}>
+          <Panel defaultSize="50%" minSize="30%">
             <ResultEditor
               value={resultText}
               onChange={(v) => setResultText(v ?? '')}
               onMount={onResultMount}
             />
           </Panel>
-        </PanelGroup>
+        </Group>
       </div>
     </div>
   );

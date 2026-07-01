@@ -98,9 +98,12 @@ export default function App() {
 
   useDataRefresh();
 
-  const { layout, onLayoutChange } = useResizablePanels('main-v3', [28, 72]);
-  const { layout: termLayout, onLayoutChange: onTermLayout } = useResizablePanels('terminal-v1', [65, 35]);
-  const { layout: explorerLayout, onLayoutChange: onExplorerLayoutChange } = useResizablePanels('explorer-v1', [100, 0]);
+  const { defaultLayout: mainLayout, defaultSizesFromLayout: mainSizes, onLayoutChange } =
+    useResizablePanels('main-v4', ['main-left', 'main-right'], [28, 72]);
+  const { defaultLayout: termGroupLayout, defaultSizesFromLayout: termSizes, onLayoutChange: onTermLayout } =
+    useResizablePanels('terminal-v2', ['term-top', 'term-bottom'], [65, 35]);
+  const { defaultLayout: explorerGroupLayout, defaultSizesFromLayout: explorerSizes, onLayoutChange: onExplorerLayoutChange } =
+    useResizablePanels('explorer-v2', ['explorer-main', 'explorer-side'], [100, 0]);
 
   return (
     <TooltipProvider>
@@ -123,16 +126,18 @@ export default function App() {
         <UpdateBanner />
 
         <div className="min-h-0 flex-1 px-1.5 pb-1.5">
-          <ResizablePanelGroup direction="horizontal" onLayout={onLayoutChange}>
+          <ResizablePanelGroup orientation="horizontal" defaultLayout={mainLayout} onLayoutChange={onLayoutChange}>
             <ResizablePanel
-              ref={listPanelRef}
-              defaultSize={layout[0]}
-              minSize={14}
-              maxSize={38}
+              id="main-left"
+              panelRef={listPanelRef}
+              defaultSize={mainSizes[0]}
+              minSize="14%"
+              maxSize="38%"
               collapsible
               collapsedSize={0}
-              onCollapse={() => setSidebarCollapsed(true)}
-              onExpand={() => setSidebarCollapsed(false)}
+              onResize={(size) => {
+                setSidebarCollapsed(size.asPercentage === 0);
+              }}
             >
               <div className={PANEL_CARD}>
                 <LeftSidebar
@@ -163,11 +168,11 @@ export default function App() {
 
             <ResizableHandle />
 
-            <ResizablePanel defaultSize={layout[1]} minSize={30}>
-              <ResizablePanelGroup direction="vertical" onLayout={onTermLayout}>
-                <ResizablePanel defaultSize={termLayout[0]} minSize={25}>
-                  <ResizablePanelGroup direction="horizontal" onLayout={onExplorerLayoutChange}>
-                    <ResizablePanel defaultSize={explorerLayout[0]} minSize={50}>
+            <ResizablePanel id="main-right" defaultSize={mainSizes[1]} minSize="30%">
+              <ResizablePanelGroup orientation="vertical" defaultLayout={termGroupLayout} onLayoutChange={onTermLayout}>
+                <ResizablePanel id="term-top" defaultSize={termSizes[0]} minSize="25%">
+                  <ResizablePanelGroup orientation="horizontal" defaultLayout={explorerGroupLayout} onLayoutChange={onExplorerLayoutChange}>
+                    <ResizablePanel id="explorer-main" defaultSize={explorerSizes[0]} minSize="50%">
                       <div className={PANEL_CARD}>
                         <MainContent
                           view={view}
@@ -203,14 +208,14 @@ export default function App() {
                     <ResizableHandle />
 
                     <ResizablePanel
-                      ref={fileExplorerPanelRef}
-                      defaultSize={28}
-                      minSize={15}
-                      maxSize={40}
+                      id="explorer-side"
+                      panelRef={fileExplorerPanelRef}
+                      defaultSize={explorerSizes[1]}
+                      minSize="15%"
+                      maxSize="40%"
                       collapsible
                       collapsedSize={0}
-                      onCollapse={() => {}}
-                      onExpand={() => {}}
+                      onResize={() => {}}
                     >
                       <div className={PANEL_CARD}>
                         <FileExplorerPanel
@@ -228,14 +233,14 @@ export default function App() {
                 <ResizableHandle />
 
                 <ResizablePanel
-                  ref={terminalPanelRef}
-                  defaultSize={termLayout[1]}
-                  minSize={15}
-                  maxSize={70}
+                  id="term-bottom"
+                  panelRef={terminalPanelRef}
+                  defaultSize={termSizes[1]}
+                  minSize="15%"
+                  maxSize="70%"
                   collapsible
                   collapsedSize={0}
-                  onCollapse={() => {}}
-                  onExpand={() => {}}
+                  onResize={() => {}}
                 >
                   <div className={PANEL_CARD}>
                     <TerminalPanel

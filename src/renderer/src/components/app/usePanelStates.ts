@@ -1,5 +1,6 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
-import type { ImperativePanelHandle } from 'react-resizable-panels';
+import { useState, useCallback, useEffect } from 'react';
+import { usePanelRef } from 'react-resizable-panels';
+import type { PanelImperativeHandle } from 'react-resizable-panels';
 
 /**
  * Manages state for collapsible panels (sidebar, terminal, file explorer).
@@ -10,22 +11,22 @@ export function usePanelStates() {
   const [terminalOpen, setTerminalOpen] = useState(false);
   const [fileExplorerOpen, setFileExplorerOpen] = useState(false);
 
-  const listPanelRef = useRef<ImperativePanelHandle>(null);
-  const terminalPanelRef = useRef<ImperativePanelHandle>(null);
-  const fileExplorerPanelRef = useRef<ImperativePanelHandle>(null);
+  const listPanelRef = usePanelRef();
+  const terminalPanelRef = usePanelRef();
+  const fileExplorerPanelRef = usePanelRef();
 
-  const terminalOpenRef = useRef(false);
+  const terminalOpenRef = { current: terminalOpen };
   terminalOpenRef.current = terminalOpen;
 
   const toggleSidebar = useCallback(() => {
-    const p = listPanelRef.current;
+    const p: PanelImperativeHandle | null = listPanelRef.current;
     if (!p) return;
     if (p.isCollapsed()) p.expand();
     else p.collapse();
-  }, []);
+  }, [listPanelRef]);
 
   const toggleTerminal = useCallback(() => {
-    const p = terminalPanelRef.current;
+    const p: PanelImperativeHandle | null = terminalPanelRef.current;
     if (!p) return;
     if (p.isCollapsed()) {
       p.expand();
@@ -34,10 +35,10 @@ export function usePanelStates() {
       p.collapse();
       setTerminalOpen(false);
     }
-  }, []);
+  }, [terminalPanelRef]);
 
   const toggleFileExplorer = useCallback(() => {
-    const p = fileExplorerPanelRef.current;
+    const p: PanelImperativeHandle | null = fileExplorerPanelRef.current;
     if (!p) return;
     if (p.isCollapsed()) {
       p.expand();
@@ -46,13 +47,13 @@ export function usePanelStates() {
       p.collapse();
       setFileExplorerOpen(false);
     }
-  }, []);
+  }, [fileExplorerPanelRef]);
 
   // Ensure terminal and file explorer start collapsed on mount
   useEffect(() => {
     terminalPanelRef.current?.collapse();
     fileExplorerPanelRef.current?.collapse();
-  }, []);
+  }, [terminalPanelRef, fileExplorerPanelRef]);
 
   return {
     sidebarCollapsed,

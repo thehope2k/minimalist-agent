@@ -6,14 +6,11 @@ import { cn } from '@/lib/utils';
 function ResizablePanelGroup({
   className,
   ...props
-}: React.ComponentProps<typeof ResizablePrimitive.PanelGroup>) {
+}: React.ComponentProps<typeof ResizablePrimitive.Group>) {
   return (
-    <ResizablePrimitive.PanelGroup
+    <ResizablePrimitive.Group
       data-slot="resizable-panel-group"
-      className={cn(
-        'flex h-full w-full data-[panel-group-direction=vertical]:flex-col',
-        className,
-      )}
+      className={cn('flex h-full w-full', className)}
       {...props}
     />
   );
@@ -25,22 +22,27 @@ function ResizableHandle({
   withHandle,
   className,
   ...props
-}: React.ComponentProps<typeof ResizablePrimitive.PanelResizeHandle> & {
+}: React.ComponentProps<typeof ResizablePrimitive.Separator> & {
   withHandle?: boolean;
 }) {
   return (
-    <ResizablePrimitive.PanelResizeHandle
+    <ResizablePrimitive.Separator
       data-slot="resizable-handle"
       className={cn(
-        // 6px transparent gap. Inner pseudo-element fills on hover/drag for
-        // feedback. data-resize-handle-active is set by react-resizable-panels.
+        // Default: vertical separator (lives in a horizontal group).
+        // flex-1 cross-axis fills full height automatically in a flex row.
         'group relative flex w-1.5 shrink-0 items-center justify-center bg-app transition-colors',
-        // Always-visible 1px separator at rest so columns read as distinct
-        // even with no content. Brighter on hover, accent on drag.
+        // Horizontal separator (lives in a vertical group).
+        // v4 sets aria-orientation="horizontal" when the GROUP is vertical.
+        'aria-[orientation=horizontal]:h-1.5 aria-[orientation=horizontal]:w-full',
+        // Visual 1px line — vertical by default (pseudo-element).
         'after:pointer-events-none after:absolute after:inset-y-0 after:left-1/2 after:w-px after:-translate-x-1/2 after:bg-border',
-        'hover:after:bg-border-strong data-[resize-handle-active]:after:bg-accent',
-        'data-[panel-group-direction=vertical]:h-1.5 data-[panel-group-direction=vertical]:w-full',
-        'data-[panel-group-direction=vertical]:after:inset-x-0 data-[panel-group-direction=vertical]:after:left-0 data-[panel-group-direction=vertical]:after:h-px data-[panel-group-direction=vertical]:after:w-full data-[panel-group-direction=vertical]:after:translate-x-0 data-[panel-group-direction=vertical]:after:top-1/2 data-[panel-group-direction=vertical]:after:-translate-y-1/2',
+        'hover:after:bg-border-strong data-[separator=active]:after:bg-accent',
+        // Override pseudo-element to a horizontal line when aria-orientation=horizontal.
+        'aria-[orientation=horizontal]:after:inset-y-[auto] aria-[orientation=horizontal]:after:top-1/2 aria-[orientation=horizontal]:after:bottom-auto',
+        'aria-[orientation=horizontal]:after:inset-x-0 aria-[orientation=horizontal]:after:left-0',
+        'aria-[orientation=horizontal]:after:h-px aria-[orientation=horizontal]:after:w-full',
+        'aria-[orientation=horizontal]:after:translate-x-0 aria-[orientation=horizontal]:after:-translate-y-1/2',
         className,
       )}
       {...props}
@@ -50,7 +52,7 @@ function ResizableHandle({
           <GripVertical className="size-2.5 text-fg-muted" />
         </div>
       )}
-    </ResizablePrimitive.PanelResizeHandle>
+    </ResizablePrimitive.Separator>
   );
 }
 

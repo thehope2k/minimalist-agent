@@ -1,5 +1,5 @@
 import { useEffect, useRef, type MutableRefObject } from 'react';
-import type { ImperativePanelHandle } from 'react-resizable-panels';
+import type { PanelImperativeHandle } from 'react-resizable-panels';
 import type { View } from '../layout/TopBar';
 import { deleteSession } from '@/lib/sessions';
 
@@ -22,7 +22,7 @@ export function useKeyboardShortcuts(
   toggleFileExplorer: () => void,
   handleNewSession: () => void,
   terminalOpenRef: MutableRefObject<boolean>,
-  terminalPanelRef: MutableRefObject<ImperativePanelHandle | null>,
+  terminalPanelRef: MutableRefObject<PanelImperativeHandle | null>,
   activeSessionId: string | null,
   sessions: SessionListEntry[] | null,
 ) {
@@ -109,13 +109,13 @@ export function useKeyboardShortcuts(
       if (e.key === 'ArrowUp' && e.shiftKey && !e.altKey) {
         e.preventDefault();
         const p = terminalPanelRef.current;
-        if (p) p.resize(Math.min(p.getSize() + RESIZE_STEP, 70));
+        if (p) p.resize(`${Math.min(p.getSize().asPercentage + RESIZE_STEP, 70)}%`);
         return;
       }
       if (e.key === 'ArrowDown' && e.shiftKey && !e.altKey) {
         e.preventDefault();
         const p = terminalPanelRef.current;
-        if (p) p.resize(Math.max(p.getSize() - RESIZE_STEP, 15));
+        if (p) p.resize(`${Math.max(p.getSize().asPercentage - RESIZE_STEP, 15)}%`);
         return;
       }
     };

@@ -27,3 +27,11 @@ export function set<T>(key: Key, value: T, scope?: string): void {
     /* quota or private mode — ignore */
   }
 }
+
+export function remove(key: Key, scope?: string): void {
+  try {
+    localStorage.removeItem(fullKey(key, scope));
+  } catch {
+    /* ignore */
+  }
+}
