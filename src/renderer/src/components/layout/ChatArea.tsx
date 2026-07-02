@@ -86,7 +86,7 @@ export function ChatArea({
     onSessionCreated,
   );
 
-  // Keyboard shortcuts (Git, Search, Recent Files)
+  // Keyboard shortcuts (Git, Search, Recent Files, Find in Chat)
   const activeSession = activeSessionId ?? sessionId;
   const {
     gitModalOpen,
@@ -95,6 +95,9 @@ export function ChatArea({
     setSearchOpen,
     recentOpen,
     setRecentOpen,
+    findOpen,
+    setFindOpen,
+    findInputRef,
   } = useKeyboardShortcuts(shortcutsEnabled, activeSession, cwd);
 
   // Auto-send seeded submissions (e.g. New Skill)
@@ -267,6 +270,9 @@ export function ChatArea({
           onContinue={handleContinue}
           onBranch={(id) => void handleBranch(id)}
           getPlanForMessage={getPlanForMessage}
+          findOpen={findOpen}
+          onFindClose={() => setFindOpen(false)}
+          findInputRef={findInputRef}
         />
       </div>
 

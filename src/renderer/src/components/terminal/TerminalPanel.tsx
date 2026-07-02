@@ -110,11 +110,14 @@ export function TerminalPanel({ isOpen, initialCwd, onClose }: TerminalPanelProp
         return;
       }
 
-      // Cmd+F — open search bar
+      // Cmd+F — open search bar.
+      // stopPropagation() ensures bubble-phase handlers (e.g. chat find) do not
+      // also fire when the terminal panel is open and this handler intercepts.
       if (e.key === 'f' && !e.shiftKey && !e.altKey) {
         // Only intercept when terminal panel is in focus context (not chat input etc.)
         if (!isTextInput(e)) {
           e.preventDefault();
+          e.stopPropagation();
           openSearch();
           return;
         }

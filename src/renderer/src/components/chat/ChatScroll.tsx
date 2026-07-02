@@ -15,7 +15,7 @@
 //      Telegram-style: shows once you've scrolled meaningfully away from
 //      the top, jumps back to the very first message on click.
 
-import { useEffect, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp } from 'lucide-react';
 import { IconButton } from '../ui';
 import { cn } from '@/lib/utils';
@@ -37,8 +37,31 @@ type Props = {
   children: React.ReactNode;
 };
 
-export function ChatScroll({ sessionId, contentSignal, children }: Props) {
+/**
+ * Imperative handle exposed via the forwarded ref. The parent (ChatContent)
+ * uses this to obtain the raw scroll container DOM node so that mark.js can
+ * be scoped to the message list when find-in-chat is active.
+ *
+ * Only the scroll container element is exposed — not internal state — so
+ * external consumers cannot accidentally break the stick-to-bottom logic.
+ */
+export interface ChatScrollHandle {
+  /** The inner scrollable <div> that wraps the message list. */
+  scrollContainer: HTMLDivElement | null;
+}
+
+export const ChatScroll = forwardRef<ChatScrollHandle, Props>(function ChatScroll(
+  { sessionId, contentSignal, children }: Props,
+  ref,
+) {
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Expose only the scroll container node — keeps the imperative surface small.
+  useImperativeHandle(ref, () => ({
+    get scrollContainer() {
+      return scrollRef.current;
+    },
+  }));
   /** True when we're (still) following live content at the bottom. */
   const stickRef = useRef(true);
   /**
@@ -113,6 +136,8 @@ export function ChatScroll({ sessionId, contentSignal, children }: Props) {
     // `relative` so the floating button positions against this container,
     // not the page. `min-h-0 flex-1` lets it actually shrink inside the
     // chat column's flex layout (otherwise it'd push the composer off).
+    // The forwarded ref (ChatScrollHandle) gives find-in-chat access to the
+    // scroll container node without leaking internal state.
     <div className="relative min-h-0 flex-1">
       <div
         ref={scrollRef}
@@ -165,4 +190,4 @@ export function ChatScroll({ sessionId, contentSignal, children }: Props) {
       </div>
     </div>
   );
-}
+});

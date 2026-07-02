@@ -215,6 +215,36 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     ],
   },
   {
+    title: 'Chat Navigation',
+    shortcuts: [
+      {
+        macKeys: ['⌘', 'F'],
+        winKeys: ['Ctrl', 'F'],
+        label: 'Find in chat history',
+        condition:
+          'Chat view; terminal panel is closed (terminal Cmd+F takes priority when panel is open)',
+      },
+      {
+        macKeys: ['↵'],
+        winKeys: ['Enter'],
+        label: 'Next match',
+        condition: 'Find bar is open',
+      },
+      {
+        macKeys: ['⇧', '↵'],
+        winKeys: ['Shift', 'Enter'],
+        label: 'Previous match',
+        condition: 'Find bar is open',
+      },
+      {
+        macKeys: ['Esc'],
+        winKeys: ['Esc'],
+        label: 'Close find bar',
+        condition: 'Find bar is open',
+      },
+    ],
+  },
+  {
     title: 'Search',
     shortcuts: [
       {

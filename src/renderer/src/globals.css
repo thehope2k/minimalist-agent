@@ -198,6 +198,31 @@ body {
 .conflict-marker-line {
   background-color: rgba(56, 40, 26, 0.55);
 }
+/* ── Find-in-chat highlights (mark.js) ─────────────────────────────────────
+ * mark.js wraps every matched text run in <mark data-markjs="true">.
+ * `.find-active` is added to the single currently-navigated match.
+ *
+ * Colors are chosen to be clearly visible against both prose and code-block
+ * backgrounds without interfering with syntax coloring:
+ *   inactive matches  → warm amber tint at 35% opacity
+ *   active match      → accent purple at 55% opacity with a subtle outline
+ *
+ * These are global class rules because mark.js injects elements deep inside
+ * rendered Markdown and code block DOM where Tailwind utility classes are not
+ * applicable at component-scope.
+ */
+mark[data-markjs] {
+  background-color: rgba(251, 191, 36, 0.30); /* amber-400 @ 30% */
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+mark[data-markjs].find-active {
+  background-color: rgba(124, 58, 237, 0.50); /* violet-600 @ 50% */
+  outline: 1px solid rgba(124, 58, 237, 0.75);
+  border-radius: 2px;
+}
+
 /* Inline word highlights */
 .conflict-ours-word {
   background-color: rgba(42, 84, 56, 0.6);

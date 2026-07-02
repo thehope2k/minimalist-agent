@@ -1,4 +1,7 @@
-import { ChatScroll } from '@/components/chat/ChatScroll';
+import { useRef, useState } from 'react';
+import { ChatScroll, type ChatScrollHandle } from '@/components/chat/ChatScroll';
+import { FindBar } from '@/components/chat/FindBar';
+import { useFindInChat } from '@/hooks/useFindInChat';
 import { MessageList } from '@/components/chat/MessageList';
 import { MessageInput } from '@/components/chat/MessageInput';
 import { EmptyState } from '@/components/chat/EmptyState';
@@ -36,6 +39,9 @@ type Props = {
   onContinue: () => void;
   onBranch: (id: string) => void;
   getPlanForMessage: (sessionId: string | null | undefined, messageId: string) => Plan | null;
+  findOpen: boolean;
+  onFindClose: () => void;
+  findInputRef: React.RefObject<HTMLInputElement | null>;
 };
 
 export function ChatContent({
@@ -66,10 +72,59 @@ export function ChatContent({
   onContinue,
   onBranch,
   getPlanForMessage,
+  findOpen,
+  onFindClose,
+  findInputRef,
 }: Props) {
+  // Ref forwarded to ChatScroll so that useFindInChat can scope mark.js to
+  // the message list DOM node rather than the whole chat panel.
+  const chatScrollRef = useRef<ChatScrollHandle>(null);
+
+  // findInputRef is owned by the parent (ChatArea / useKeyboardShortcuts) so the
+  // Cmd+F shortcut handler can call focus()+select() on the input from outside
+  // this component. We do not create our own ref here.
+
+  // Local query state lives here (not in the parent) because only ChatContent
+  // and its children care about it; the parent only controls open/close.
+  const [findQuery, setFindQuery] = useState('');
+
+  // Derive the container ref from the imperative handle. mark.js needs the raw
+  // HTMLElement, not the handle itself.
+  const scrollContainerRef = {
+    get current() {
+      return chatScrollRef.current?.scrollContainer ?? null;
+    },
+  } as React.RefObject<HTMLElement | null>;
+
+  const { matchCount, activeIndex, next, prev, clear } = useFindInChat(
+    scrollContainerRef,
+    findQuery,
+    findOpen,
+  );
+
+  const handleFindClose = () => {
+    clear();
+    setFindQuery('');
+    onFindClose();
+  };
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <ChatScroll sessionId={activeSessionId ?? sessionId} contentSignal={contentSignal}>
+      {/* Find bar slides in between the header and the message list. The bar
+          is always rendered (not conditionally mounted) so that the slide-out
+          animation plays correctly — if we unmounted on close the bar would
+          disappear instantly instead of sliding up. */}
+      <FindBar
+        open={findOpen}
+        query={findQuery}
+        onQueryChange={setFindQuery}
+        matchCount={matchCount}
+        activeIndex={activeIndex}
+        onNext={next}
+        onPrev={prev}
+        onClose={handleFindClose}
+        inputRef={findInputRef}
+      />
+      <ChatScroll ref={chatScrollRef} sessionId={activeSessionId ?? sessionId} contentSignal={contentSignal}>
         {messages.length === 0 ? (
           <EmptyState />
         ) : (
