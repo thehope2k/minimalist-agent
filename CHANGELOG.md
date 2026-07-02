@@ -5,6 +5,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.11.0] — 2026-07-02
+
+New feature: find in chat. Press Cmd/Ctrl+F to search and highlight text across the active session's full message history.
+
+### Added
+
+**Find in Chat (Cmd/Ctrl+F)**
+
+- Pressing Cmd+F (macOS) or Ctrl+F (Windows/Linux) opens an inline find bar between the chat header and the message list; Escape or ✕ closes it and removes all highlights
+- All matches are highlighted with an amber tint; the active (navigated) match is highlighted in accent-purple with an outline
+- Match counter shows current position (`3 / 12`); turns red with `No results` when the query has no matches
+- Navigate with Enter / ↓ (next) and Shift+Enter / ↑ (prev); active match is smoothly scrolled to the centre of the viewport
+- Re-pressing Cmd+F when the bar is already open re-focuses and selects the input text, matching browser find-in-page behaviour
+- Keyboard shortcut priority: terminal-open → terminal search (existing behaviour unchanged); file explorer focused → explorer filter; otherwise → chat find
+
+---
+
 ## [1.10.3] — 2026-07-01
 
 Dependency updates and infrastructure: Electron 43, react-resizable-panels v4, pi-ai 0.80 API, and safe package updates.
