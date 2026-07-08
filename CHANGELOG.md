@@ -5,6 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.12.1] — 2026-07-08
+
+Bug fix: context badge now shows live context pressure instead of an inflated token total that included cached history.
+
+### Fixed
+
+**Context badge**
+
+- The context usage percentage now measures live tokens (`input + cache_creation`) rather than the full sum including `cache_read`; cache-read tokens are served from the prompt cache and don't consume context window space, so the old calculation overstated proximity to the compaction threshold
+- Tooltip now shows a full breakdown: live tokens, cached tokens, running total, and how many times the conversation has been compacted
+- Compaction count appears inline on the badge (e.g. `42% · 2×`) when the conversation has been compacted at least once
+
+---
+
 ## [1.12.0] — 2026-07-08
 
 Adds project-scope tier for skills, agents, and extensions; new Context Panel (Cmd+Shift+B) to discover and pin assets per session.
