@@ -765,19 +765,32 @@ const api = {
     ): Promise<{ ok: boolean; report: string }> =>
       ipcRenderer.invoke('agents:validate', dirPath, slug),
   },
+  context: {
+    listAvailable: (
+      cwd?: string,
+      invalidate?: boolean,
+    ): Promise<{ skills: unknown[]; agents: unknown[]; extensions: unknown[] }> =>
+      ipcRenderer.invoke('context:listAvailable', cwd, invalidate),
+    pin: (sessionId: string, scopedSlug: string): Promise<unknown> =>
+      ipcRenderer.invoke('context:pin', sessionId, scopedSlug),
+    unpin: (sessionId: string, scopedSlug: string): Promise<unknown> =>
+      ipcRenderer.invoke('context:unpin', sessionId, scopedSlug),
+    estimateTokens: (pinnedAssets: string[], cwd?: string): Promise<number> =>
+      ipcRenderer.invoke('context:estimateTokens', pinnedAssets, cwd),
+    hasProjectAssets: (cwd: string): Promise<boolean> =>
+      ipcRenderer.invoke('context:hasProjectAssets', cwd),
+  },
   extensions: {
     getDir: (): Promise<string> => ipcRenderer.invoke('extensions:getDir'),
     getReferenceDocPath: (): Promise<string> =>
       ipcRenderer.invoke('extensions:getReferenceDocPath'),
-    list: (): Promise<unknown[]> => ipcRenderer.invoke('extensions:list'),
+    list: (cwd?: string): Promise<unknown[]> => ipcRenderer.invoke('extensions:list', cwd),
     get: (slug: string): Promise<unknown | null> =>
       ipcRenderer.invoke('extensions:get', slug),
     listFiles: (dirPath: string): Promise<unknown[]> =>
       ipcRenderer.invoke('extensions:listFiles', dirPath),
     delete: (slug: string): Promise<boolean> =>
       ipcRenderer.invoke('extensions:delete', slug),
-    setEnabled: (slug: string, enabled: boolean): Promise<boolean | null> =>
-      ipcRenderer.invoke('extensions:setEnabled', slug, enabled),
     invalidateCache: (): Promise<void> =>
       ipcRenderer.invoke('extensions:invalidateCache'),
     openInEditor: (dirPath: string): Promise<string> =>

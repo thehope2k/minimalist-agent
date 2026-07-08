@@ -34,6 +34,7 @@ export function ChatArea({
   onOpenFile,
   onToggleFileExplorer,
   fileExplorerOpen,
+  onToggleContextPanel,
 }: ChatAreaProps) {
   const {
     messages,
@@ -273,6 +274,7 @@ export function ChatArea({
           findOpen={findOpen}
           onFindClose={() => setFindOpen(false)}
           findInputRef={findInputRef}
+          onToggleContextPanel={onToggleContextPanel}
         />
       </div>
 

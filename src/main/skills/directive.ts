@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadAllSkills } from './storage';
 import { loadAllExtensions } from '../extensions/storage';
-import { displayName, isEnabled } from '../extensions/types';
+import { displayName } from '../extensions/types';
 import { parseMentions, resolveMentions } from './mentions';
 
 export interface SkillExtraction {
@@ -32,12 +32,12 @@ export function extractSkillPaths(
   message: string,
   cwd?: string,
 ): SkillExtraction {
-  const skills = loadAllSkills();
+  const skills = loadAllSkills(cwd);
   const skillSlugs = skills.map((s) => s.slug);
 
   // Only enabled extensions can be mentioned — disabled ones can't act
   // anyway, so referring to them would just confuse the model.
-  const extensions = loadAllExtensions().filter((e) => isEnabled(e.config));
+  const extensions = loadAllExtensions(cwd);
   const extensionSlugs = extensions.map((e) => e.slug);
 
   const parsed = parseMentions(message, skillSlugs, extensionSlugs, cwd);

@@ -14,6 +14,7 @@ import {formatExtensionsAwareness} from '../extensions/directive';
 import { getCollaborationGuidance } from './collaboration-prompt';
 import { getPlanningGuidance } from './planning-prompt';
 import { loadAllAgents } from '../agents/storage';
+import { loadAllSkills } from '../skills/storage';
 import { getSettings, DEFAULT_CONTEXT_FILE_NAMES } from '../storage/settings';
 import { getActivePlan } from './plan-cache';
 import type { Plan } from '../../shared/planning-types';
@@ -684,14 +685,74 @@ export function buildSystemPromptAppend(input: {
  *
  * Kept out of the system prompt so per-turn changes don't bust the cache.
  */
-export function buildPromptPrefix(input: { cwd?: string; scratchDir?: string }): string {
+/**
+ * Build the <pinned_context> per-turn block from a session's pinnedAssets list.
+ *
+ * Emits a lightweight awareness note — name + description only — so the model
+ * knows these skills/agents are relevant for this session without injecting
+ * full content or file paths. The model can @mention them to invoke as needed.
+ *
+ * Cost: ~15 tokens per item regardless of content length.
+ */
+export function buildPinnedContextBlock(
+  pinnedAssets: string[] | undefined,
+  cwd?: string,
+): string {
+  if (!pinnedAssets || pinnedAssets.length === 0) return '';
+
+  const allSkills = loadAllSkills(cwd);
+  const allAgents = loadAllAgents(cwd);
+
+  const lines: string[] = [];
+
+  for (const scopedSlug of pinnedAssets) {
+    const [scope, ...rest] = scopedSlug.split(':');
+    const slug = rest.join(':');
+    if (!slug) continue;
+
+    if (scope === 'user' || scope === 'project') {
+      const skill = allSkills.find((s) => s.slug === slug && s.source === scope);
+      if (skill) {
+        lines.push(`- @${slug} (skill): ${skill.metadata.description}`);
+        continue;
+      }
+      const agent = allAgents.find((a) => a.slug === slug && a.source === scope);
+      if (agent) {
+        lines.push(`- ${slug} (agent): ${agent.metadata.description}`);
+        continue;
+      }
+    }
+  }
+
+  if (lines.length === 0) return '';
+
+  return `<pinned_context>
+The following skills and agents are pinned for this session:
+${lines.join('\n')}
+</pinned_context>`;
+}
+
+/**
+ * Token cost estimate for pinned assets.
+ * ~15 tokens per item (name + description line).
+ */
+export function estimatePinnedTokens(
+  pinnedAssets: string[] | undefined,
+  _cwd?: string,
+): number {
+  return (pinnedAssets?.length ?? 0) * 15;
+}
+
+export function buildPromptPrefix(input: { cwd?: string; scratchDir?: string; pinnedAssets?: string[] }): string {
   const blocks: string[] = [];
   blocks.push(getDateTimeContext());
   const wd = getWorkingDirectoryContext(input.cwd);
   if (wd) blocks.push(wd);
   const scratch = getScratchDirContext(input.scratchDir);
   if (scratch) blocks.push(scratch);
-  const ext = formatExtensionsAwareness();
+  const ext = formatExtensionsAwareness(input.cwd);
   if (ext) blocks.push(ext);
+  const pinned = buildPinnedContextBlock(input.pinnedAssets, input.cwd);
+  if (pinned) blocks.push(pinned);
   return blocks.join('\n\n');
 }

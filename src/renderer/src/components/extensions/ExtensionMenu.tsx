@@ -3,17 +3,14 @@ import {
   FolderOpen,
   MoreHorizontal,
   Pencil,
-  Power,
   Trash2,
 } from 'lucide-react';
 import { IconButton, Menu, type MenuItem } from '../ui';
 import {
   deleteExtension as deleteExtensionRpc,
   displayName,
-  isEnabled,
   openInEditor,
   revealInFinder,
-  setEnabled,
   validate as validateRpc,
 } from '@/lib/extensions';
 import type { LoadedExtension } from '@/lib/electron';
@@ -31,8 +28,6 @@ export function ExtensionMenu({
   variant = 'panel',
   onOpenChange,
 }: Props) {
-  const enabled = isEnabled(extension);
-
   const handleOpen = () => void openInEditor(extension.path);
   const handleReveal = () => void revealInFinder(extension.path);
 
@@ -40,8 +35,6 @@ export function ExtensionMenu({
     const { ok, report } = await validateRpc(extension.path, extension.slug);
     window.alert(`${ok ? 'Extension OK' : 'Validation failed'}\n\n${report}`);
   };
-
-  const handleToggle = () => void setEnabled(extension.slug, !enabled);
 
   const handleDelete = async () => {
     if (
@@ -58,12 +51,6 @@ export function ExtensionMenu({
   };
 
   const items: Array<MenuItem | 'separator'> = [
-    {
-      label: enabled ? 'Disable' : 'Enable',
-      icon: Power,
-      onSelect: handleToggle,
-    },
-    'separator',
     { label: 'Open in editor', icon: Pencil, onSelect: handleOpen },
     { label: 'Show in Finder', icon: FolderOpen, onSelect: handleReveal },
     { label: 'Validate', icon: CheckCircle2, onSelect: handleValidate },

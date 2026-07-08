@@ -18,6 +18,9 @@ export interface AgentMetadata {
   icon?: string;
 }
 
+/** Which directory tier an agent was loaded from. */
+export type AgentSource = 'user' | 'project';
+
 /** A loaded agent — frontmatter + body + on-disk paths. */
 export interface LoadedAgent {
   /** Directory name (slug). */
@@ -30,4 +33,6 @@ export interface LoadedAgent {
   iconPath?: string;
   /** Absolute path to the agent directory. */
   path: string;
+  /** Tier the agent was loaded from. */
+  source: AgentSource;
 }

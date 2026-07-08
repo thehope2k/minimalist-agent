@@ -3,6 +3,7 @@ import { TopBar } from './components/layout/TopBar';
 import { UpdateBanner } from './components/UpdateBanner';
 import { TerminalPanel } from './components/terminal/TerminalPanel';
 import { FileExplorerPanel } from './components/files';
+import { ContextPanel } from './components/context/ContextPanel';
 import { FileViewModal } from './components/search/FileViewModal';
 import { TooltipProvider, ResizablePanelGroup, ResizablePanel, ResizableHandle } from './components/ui';
 import { useResizablePanels } from './hooks/useResizablePanels';
@@ -15,6 +16,7 @@ import { useSessionManagement, useProjectFilter } from './components/app/useSess
 import { useKeyboardShortcuts } from './components/app/useKeyboardShortcuts';
 import { useDataRefresh } from './components/app/useDataRefresh';
 import { PANEL_CARD } from './components/app/types';
+import { reload as reloadSessions } from './lib/sessions';
 
 export type { SeedSubmit } from './components/app/types';
 
@@ -46,13 +48,16 @@ export default function App() {
     setSidebarCollapsed,
     terminalOpen,
     terminalOpenRef,
+    activeSidePanel,
     fileExplorerOpen,
+    contextPanelOpen,
     listPanelRef,
     terminalPanelRef,
-    fileExplorerPanelRef,
+    sidePanelRef,
     toggleSidebar,
     toggleTerminal,
     toggleFileExplorer,
+    toggleContextPanel,
   } = usePanelStates();
 
   const {
@@ -89,6 +94,7 @@ export default function App() {
     setView,
     toggleTerminal,
     toggleFileExplorer,
+    toggleContextPanel,
     handleNewSession,
     terminalOpenRef,
     terminalPanelRef,
@@ -199,6 +205,7 @@ export default function App() {
                           onCwdChange={setActiveCwd}
                           onOpenFile={handleOpenFile}
                           onToggleFileExplorer={toggleFileExplorer}
+                          onToggleContextPanel={toggleContextPanel}
                           fileExplorerOpen={fileExplorerOpen}
                           startSessionWithSubmission={startSessionWithSubmission}
                         />
@@ -207,9 +214,10 @@ export default function App() {
 
                     <ResizableHandle />
 
+                    {/* Single side panel slot — renders explorer OR context based on activeSidePanel */}
                     <ResizablePanel
                       id="explorer-side"
-                      panelRef={fileExplorerPanelRef}
+                      panelRef={sidePanelRef}
                       defaultSize={explorerSizes[1]}
                       minSize="15%"
                       maxSize="40%"
@@ -218,13 +226,23 @@ export default function App() {
                       onResize={() => {}}
                     >
                       <div className={PANEL_CARD}>
-                        <FileExplorerPanel
-                          cwd={activeCwd}
-                          sessionId={activeSessionId}
-                          isOpen={fileExplorerOpen}
-                          onSelectFile={(absolutePath) => handleOpenFile(absolutePath, 1)}
-                          onClose={toggleFileExplorer}
-                        />
+                        {activeSidePanel === 'explorer' && (
+                          <FileExplorerPanel
+                            cwd={activeCwd}
+                            sessionId={activeSessionId}
+                            isOpen={fileExplorerOpen}
+                            onSelectFile={(absolutePath) => handleOpenFile(absolutePath, 1)}
+                            onClose={toggleFileExplorer}
+                          />
+                        )}
+                        {activeSidePanel === 'context' && (
+                          <ContextPanel
+                            sessionId={activeSessionId}
+                            cwd={activeCwd}
+                            pinnedAssets={sessions?.find((s) => s.id === activeSessionId)?.pinnedAssets}
+                            onPinnedChange={() => { void reloadSessions(); }}
+                          />
+                        )}
                       </div>
                     </ResizablePanel>
                   </ResizablePanelGroup>

@@ -4,23 +4,28 @@ import {
   readdirSync,
   rmSync,
   statSync,
-  writeFileSync,
 } from 'node:fs';
 import { join } from 'node:path';
-import { Paths } from '../storage/paths';
+import { Paths, projectConfigRoot } from '../storage/paths';
 import { parseExtensionConfig, parseExtensionGuide } from './parse';
-import { type LoadedExtension, variantOf } from './types';
+import { type ExtensionScope, type LoadedExtension, variantOf } from './types';
 
 const CONFIG_FILE = 'extension.json';
 const GUIDE_FILE = 'guide.md';
 const ICON_EXTS = ['.png', '.jpg', '.jpeg', '.webp', '.svg', '.gif'];
 
+/** User-tier extensions: ~/.minimalist-agent/extensions/ */
 export function getExtensionsDir(): string {
   return Paths.extensionsDir();
 }
 
 export function getExtensionDir(slug: string): string {
   return join(getExtensionsDir(), slug);
+}
+
+/** Project-tier extensions: <cwd>/.minimalist-agent/extensions/ */
+export function getProjectExtensionsDir(cwd: string): string {
+  return join(projectConfigRoot(cwd), 'extensions');
 }
 
 function findIconFile(extDir: string): string | undefined {
@@ -33,8 +38,8 @@ function findIconFile(extDir: string): string | undefined {
 
 /* ---------- single-extension loader ---------- */
 
-function loadFromDir(slug: string): LoadedExtension | null {
-  const extDir = getExtensionDir(slug);
+function loadExtensionFromDir(slug: string, dir: string, scope: ExtensionScope): LoadedExtension | null {
+  const extDir = join(dir, slug);
   const configPath = join(extDir, CONFIG_FILE);
   const guidePath = join(extDir, GUIDE_FILE);
 
@@ -61,7 +66,7 @@ function loadFromDir(slug: string): LoadedExtension | null {
 
   return {
     slug,
-    scope: 'global',
+    scope,
     path: extDir,
     config,
     guideFrontmatter: guide.frontmatter,
@@ -74,43 +79,79 @@ function loadFromDir(slug: string): LoadedExtension | null {
 
 /* ---------- cache ---------- */
 
-let cache: { items: LoadedExtension[]; ts: number } | null = null;
+// Keyed by cwd ('' = user-only). Same pattern as skills/agents.
+const cacheMap = new Map<string, { items: LoadedExtension[]; ts: number }>();
 const CACHE_TTL = 5_000;
 
-export function invalidateExtensionsCache(): void {
-  cache = null;
+export function invalidateExtensionsCache(cwd?: string): void {
+  if (cwd) {
+    cacheMap.delete('');
+    cacheMap.delete(cwd);
+  } else {
+    cacheMap.clear();
+  }
 }
 
-/* ---------- public API ---------- */
+/* ---------- directory-level loader ---------- */
 
-export function loadAllExtensions(): LoadedExtension[] {
-  const now = Date.now();
-  if (cache && now - cache.ts < CACHE_TTL) return cache.items;
-
-  const dir = getExtensionsDir();
-  if (!existsSync(dir)) {
-    cache = { items: [], ts: now };
-    return cache.items;
-  }
-
+function loadExtensionsFromDirectory(
+  dir: string,
+  scope: ExtensionScope,
+): LoadedExtension[] {
+  if (!existsSync(dir)) return [];
   const items: LoadedExtension[] = [];
   let entries: string[] = [];
   try {
     entries = readdirSync(dir);
   } catch {
-    /* ignore */
+    return [];
   }
   for (const name of entries) {
     if (name.startsWith('.')) continue;
-    const ext = loadFromDir(name);
+    const ext = loadExtensionFromDir(name, dir, scope);
     if (ext) items.push(ext);
   }
-  cache = { items, ts: now };
   return items;
 }
 
-export function loadExtensionBySlug(slug: string): LoadedExtension | null {
-  return loadFromDir(slug);
+/* ---------- public API ---------- */
+
+/**
+ * Load all extensions merged from all available tiers:
+ *   - user tier:    ~/.minimalist-agent/extensions/
+ *   - project tier: <cwd>/.minimalist-agent/extensions/  (when cwd provided)
+ *
+ * Project-tier extensions take precedence over user-tier for same slug.
+ * Project-tier extensions are always active (presence = enabled).
+ * Cached per unique (user + cwd) combination.
+ */
+export function loadAllExtensions(cwd?: string): LoadedExtension[] {
+  const cacheKey = cwd ?? '';
+  const now = Date.now();
+  const cached = cacheMap.get(cacheKey);
+  if (cached && now - cached.ts < CACHE_TTL) return cached.items;
+
+  const userItems = loadExtensionsFromDirectory(getExtensionsDir(), 'user');
+  const projectItems = cwd
+    ? loadExtensionsFromDirectory(getProjectExtensionsDir(cwd), 'project')
+    : [];
+
+  // Project overrides user for same slug.
+  const bySlug = new Map<string, LoadedExtension>();
+  for (const ext of userItems) bySlug.set(ext.slug, ext);
+  for (const ext of projectItems) bySlug.set(ext.slug, ext);
+
+  const items = Array.from(bySlug.values());
+  cacheMap.set(cacheKey, { items, ts: now });
+  return items;
+}
+
+export function loadExtensionBySlug(slug: string, cwd?: string): LoadedExtension | null {
+  if (cwd) {
+    const proj = loadExtensionFromDir(slug, getProjectExtensionsDir(cwd), 'project');
+    if (proj) return proj;
+  }
+  return loadExtensionFromDir(slug, getExtensionsDir(), 'user');
 }
 
 export function deleteExtension(slug: string): boolean {
@@ -122,30 +163,6 @@ export function deleteExtension(slug: string): boolean {
     return true;
   } catch {
     return false;
-  }
-}
-
-/**
- * Toggle the `enabled` field in extension.json. Returns the resulting state,
- * or null if the extension didn't exist / wasn't parseable.
- */
-export function setExtensionEnabled(
-  slug: string,
-  enabled: boolean,
-): boolean | null {
-  const ext = loadExtensionBySlug(slug);
-  if (!ext) return null;
-  const next = { ...ext.config, enabled };
-  try {
-    writeFileSync(
-      join(ext.path, CONFIG_FILE),
-      JSON.stringify(next, null, 2),
-      'utf-8',
-    );
-    invalidateExtensionsCache();
-    return enabled;
-  } catch {
-    return null;
   }
 }
 

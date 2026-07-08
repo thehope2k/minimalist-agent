@@ -1,27 +1,31 @@
 // Centralized resolution of every persistent path. All other modules go
 // through here so the userData root is set in exactly one place.
 //
-// Layout (under app.getPath('userData')):
+// Two root tiers:
 //
-//   <userData>/
+//   <userData>/  — machine-specific, sensitive data (Electron-managed)
 //   ├── connections.json           ← LLM connections (no secrets)
 //   ├── settings.json              ← AI defaults: model, thinking, extendedContext
 //   ├── credentials.enc            ← Encrypted api keys / OAuth tokens
-//   ├── backups/                   ← One subdir per migration run
-//   │     └── 2026-04-30T11-25-00/
-//   │           ├── connections.json
-//   │           └── settings.json
-//   ├── logs/                      ← rotating app logs (main.log + main.old.log)
-//   └── sessions/                  ← (future) per-session message logs
-//         └── {session-id}/
-//               ├── session.json
-//               └── messages.jsonl
+//   ├── backups/
+//   ├── logs/
+//   ├── sessions/
+//   └── claude-config/
+//
+//   ~/.minimalist-agent/  — user-owned portable config (versionable, dotfile-syncable)
+//   ├── agents/            ← global agent definitions  (migrated from userData/agents/)
+//   ├── skills/            ← global skill definitions  (migrated from userData/skills/)
+//   └── extensions/        ← global extensions         (migrated from userData/extensions/)
+//
+// Project-local config lives in .minimalist-agent/ inside the session CWD
+// and is resolved at runtime (not managed by Paths).
 //
 // MIGRATION_BACKUP_RETENTION limits how many backup folders we keep around.
 
 import { app } from 'electron';
 import { join } from 'node:path';
 import { mkdirSync } from 'node:fs';
+import { homedir } from 'node:os';
 
 let cachedRoot: string | null = null;
 
@@ -31,6 +35,33 @@ function root(): string {
   mkdirSync(cachedRoot, { recursive: true });
   return cachedRoot;
 }
+
+/**
+ * User-tier config root: ~/.minimalist-agent/
+ * Portable, versionable, dotfile-syncable.
+ * Stores agents, skills, extensions — NOT credentials or sessions.
+ */
+let cachedUserConfigRoot: string | null = null;
+
+function userConfigRoot(): string {
+  if (cachedUserConfigRoot) return cachedUserConfigRoot;
+  cachedUserConfigRoot = join(homedir(), '.minimalist-agent');
+  mkdirSync(cachedUserConfigRoot, { recursive: true });
+  return cachedUserConfigRoot;
+}
+
+/**
+ * Project-local config root within a given CWD: <cwd>/.minimalist-agent/
+ * Git-committable, team-shareable. Resolved at runtime per session CWD.
+ */
+export function projectConfigRoot(cwd: string): string {
+  return join(cwd, '.minimalist-agent');
+}
+
+/** Slug for the user config tier, used in pinned asset IDs. */
+export const USER_CONFIG_TIER = 'user' as const;
+/** Slug for the project config tier, used in pinned asset IDs. */
+export const PROJECT_CONFIG_TIER = 'project' as const;
 
 export const Paths = {
   root,
@@ -57,12 +88,12 @@ export const Paths = {
   tracesFile: () => join(root(), 'logs', 'traces.jsonl'),
   telemetry: () => join(root(), 'telemetry.json'),
   skillsDir: () => {
-    const dir = join(root(), 'skills');
+    const dir = join(userConfigRoot(), 'skills');
     mkdirSync(dir, { recursive: true });
     return dir;
   },
   extensionsDir: () => {
-    const dir = join(root(), 'extensions');
+    const dir = join(userConfigRoot(), 'extensions');
     mkdirSync(dir, { recursive: true });
     return dir;
   },
@@ -74,7 +105,7 @@ export const Paths = {
   skillsReferenceDoc: () => join(root(), 'docs', 'skills.md'),
   extensionsReferenceDoc: () => join(root(), 'docs', 'extensions.md'),
   agentsDir: () => {
-    const dir = join(root(), 'agents');
+    const dir = join(userConfigRoot(), 'agents');
     mkdirSync(dir, { recursive: true });
     return dir;
   },

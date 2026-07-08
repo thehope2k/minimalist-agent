@@ -103,7 +103,6 @@ export const ExtensionConfigSchema = z
     description: z
       .string()
       .min(1, "Add a 'description' field explaining the extension"),
-    enabled: z.boolean().optional(),
     version: z.string().optional(),
     icon: z.string().optional(),
     tags: z.array(z.string()).optional(),

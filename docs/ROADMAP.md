@@ -35,7 +35,7 @@ What's shipped, what's coming, and what's intentionally out of scope.
 | **Continue after max turns** | One-click resume when the agent hits `max_turns` |
 | **Thinking / reasoning** | Extended thinking with collapsible panels |
 | **Compaction** | Persistent inline divider at compaction boundaries with token delta; survives reload |
-| **Agent Definitions (AGENT.md system)** | Implemented end-to-end: global AGENT.md storage, Agents tab management UI, Build with AI flow, system-prompt discovery, Pi custom Agent tool, and nested sub-agent visibility in chat |
+| **Agent Definitions (AGENT.md system)** | Implemented end-to-end: user-tier AGENT.md storage (`~/.minimalist-agent/agents/`), project-tier (`<cwd>/.minimalist-agent/agents/`), Agents tab management UI, Build with AI flow, system-prompt discovery, Pi custom Agent tool, and nested sub-agent visibility in chat |
 
 ---
 
@@ -54,10 +54,12 @@ What's shipped, what's coming, and what's intentionally out of scope.
 
 | Capability | Detail |
 |---|---|
-| **Extensions** | MCP-backed, CLI-bound, and guide-only variants; drop a directory into `<userData>/extensions/` |
-| **MCP servers** | stdio + HTTP/SSE transports, consent gate, encrypted secrets — managed through the Extensions panel |
-| **Skills** | `SKILL.md` files invoked with `@slug`; global tier under `<userData>/skills/` |
-| **@-mention picker** | Extensions and Skills surfaced as first-class citizens in the mention picker alongside files |
+| **Extensions** | MCP-backed, CLI-bound, and guide-only variants. Two tiers: user-global (`~/.minimalist-agent/extensions/`) and project-local (`<cwd>/.minimalist-agent/extensions/`). Project-tier extensions are auto-active (presence = enabled, no consent gate for MCP). Env var refs (`${VAR}`) resolved from environment for project-tier. |
+| **MCP servers** | stdio + HTTP/SSE transports. User-tier: consent gate + encrypted secrets. Project-tier: auto-consented, `${VAR}` env refs from process.env. Managed through Extensions panel (user-tier) or `.minimalist-agent/extensions/` (project-tier). |
+| **Skills** | `SKILL.md` files invoked with `@slug`; two tiers: user-global (`~/.minimalist-agent/skills/`) and project-local (`<cwd>/.minimalist-agent/skills/`). Project tier takes precedence for same slug. |
+| **@-mention picker** | Skills, extensions, and files surfaced in the picker. Project-local skills and extensions show `· project` badge. |
+| **Project-local agents & skills** | Three-tier storage (machine / user / project). User tier at `~/.minimalist-agent/` is versionable and dotfile-syncable. Project tier at `<cwd>/.minimalist-agent/` is git-committable and team-shareable. One-time migration from `userData` on first launch. |
+| **Context Panel (`Cmd+Shift+B`)** | Session-scoped side panel showing available skills, agents, extensions. Pin any item to keep it in the model's per-turn awareness. Mutual exclusion with File Explorer — one side panel open at a time. Includes new-session discovery card when project-local assets exist. |
 
 ---
 

@@ -499,6 +499,11 @@ export interface SessionMeta {
   fileExplorer?: {
     expandedPaths: string[];
   };
+  /**
+   * Scoped asset slugs pinned to this session.
+   * Format: 'user:<slug>' | 'project:<slug>'
+   */
+  pinnedAssets?: string[];
 }
 
 export type SessionSummary = SessionMeta;
@@ -602,7 +607,7 @@ export interface SkillMetadata {
   icon?: string;
 }
 
-export type SkillSource = 'global';
+export type SkillSource = 'user' | 'project';
 
 export interface LoadedSkill {
   slug: string;
@@ -640,6 +645,8 @@ export interface LoadedAgent {
   content: string;
   iconPath?: string;
   path: string;
+  /** Tier the agent was loaded from. */
+  source: 'user' | 'project';
 }
 
 export type AgentFileNode =
@@ -702,7 +709,7 @@ export interface ExtensionConfig {
 }
 
 export type ExtensionVariant = 'guide-only' | 'cli-bound' | 'mcp-backed';
-export type ExtensionScope = 'global';
+export type ExtensionScope = 'user' | 'project';
 
 export interface LoadedExtension {
   slug: string;
@@ -1085,14 +1092,25 @@ export interface AppApi {
       slug: string,
     ) => Promise<{ ok: boolean; report: string }>;
   };
+  context: {
+    /** List all available skills + agents + extensions merged from project + user tiers. */
+    listAvailable: (cwd?: string, invalidate?: boolean) => Promise<{ skills: LoadedSkill[]; agents: LoadedAgent[]; extensions: LoadedExtension[] }>;
+    /** Pin a scoped asset to a session. scopedSlug: 'user:<slug>' | 'project:<slug>' */
+    pin: (sessionId: string, scopedSlug: string) => Promise<unknown>;
+    /** Unpin a scoped asset from a session. */
+    unpin: (sessionId: string, scopedSlug: string) => Promise<unknown>;
+    /** Estimate total token cost for an array of pinned asset slugs. */
+    estimateTokens: (pinnedAssets: string[], cwd?: string) => Promise<number>;
+    /** Check whether a CWD has project-local .minimalist-agent/ assets. */
+    hasProjectAssets: (cwd: string) => Promise<boolean>;
+  };
   extensions: {
     getDir: () => Promise<string>;
     getReferenceDocPath: () => Promise<string>;
-    list: () => Promise<LoadedExtension[]>;
+    list: (cwd?: string) => Promise<LoadedExtension[]>;
     get: (slug: string) => Promise<LoadedExtension | null>;
     listFiles: (dirPath: string) => Promise<ExtensionFileNode[]>;
     delete: (slug: string) => Promise<boolean>;
-    setEnabled: (slug: string, enabled: boolean) => Promise<boolean | null>;
     invalidateCache: () => Promise<void>;
     openInEditor: (dirPath: string) => Promise<string>;
     revealInFinder: (dirPath: string) => Promise<void>;

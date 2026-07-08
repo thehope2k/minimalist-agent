@@ -10,7 +10,7 @@ import {
 } from 'node:fs';
 import { createHash } from 'node:crypto';
 import type { LoadedExtension, McpConfig } from './types';
-import { isEnabled } from './types';
+import { resolveEnvValue } from './types';
 import { loadAllExtensions } from './storage';
 import { getSecret } from './secrets';
 import { Paths } from '../storage/paths';
@@ -60,6 +60,8 @@ function writeConsents(file: ConsentsFile): void {
 }
 
 export function hasConsent(ext: LoadedExtension): boolean {
+  // Project-tier extensions are auto-consented — presence in .minimalist-agent/ IS consent.
+  if (ext.scope === 'project') return true;
   if (!ext.config.mcp) return true;
   return readConsents().granted[consentKey(ext.slug, ext.config.mcp)] === true;
 }
@@ -88,7 +90,7 @@ export function listMissingSecrets(ext: LoadedExtension): string[] {
   const env = ext.config.env;
   if (!env) return [];
   const missing: string[] = [];
-  for (const [name, value] of Object.entries(env)) {
+  for (const [_name, value] of Object.entries(env)) {
     if (typeof value !== 'string') {
       const stored = getSecret(ext.slug, value.secret);
       if (!stored) missing.push(value.secret);
@@ -113,13 +115,9 @@ function resolveEnv(ext: LoadedExtension): Record<string, string> | null {
   if (!env) return undefined as unknown as Record<string, string> | null;
   const out: Record<string, string> = {};
   for (const [name, value] of Object.entries(env)) {
-    if (typeof value === 'string') {
-      out[name] = value;
-    } else {
-      const stored = getSecret(ext.slug, value.secret);
-      if (!stored) return null; // missing secret — can't spawn safely
-      out[name] = stored;
-    }
+    const resolved = resolveEnvValue(value, ext.scope, (key) => getSecret(ext.slug, key));
+    if (resolved === null) return null; // missing secret — can't spawn safely
+    if (resolved !== undefined) out[name] = resolved;
   }
   return out;
 }
@@ -156,11 +154,9 @@ function toSdkConfig(ext: LoadedExtension): SdkMcpServerConfig | null {
  * mcp-backed extensions whose secrets are set and whose user-consent has
  * been granted.
  */
-export function buildSdkMcpServers(): Record<string, SdkMcpServerConfig> {
-  const all = loadAllExtensions();
+export function buildSdkMcpServers(cwd?: string): Record<string, SdkMcpServerConfig> {
   const out: Record<string, SdkMcpServerConfig> = {};
-  for (const ext of all) {
-    if (!isEnabled(ext.config)) continue;
+  for (const ext of loadAllExtensions(cwd)) {
     if (!ext.config.mcp) continue;
     if (!hasConsent(ext)) continue;
     const cfg = toSdkConfig(ext);
@@ -227,10 +223,9 @@ function toResolvedConfig(ext: LoadedExtension): ResolvedMcpServerConfig | null 
  * output is a flat, JSON-serializable array with secrets decrypted — ready to
  * cross into the Pi subprocess via `MsgInit`.
  */
-export function buildResolvedMcpServers(): ResolvedMcpServerConfig[] {
+export function buildResolvedMcpServers(cwd?: string): ResolvedMcpServerConfig[] {
   const out: ResolvedMcpServerConfig[] = [];
-  for (const ext of loadAllExtensions()) {
-    if (!isEnabled(ext.config)) continue;
+  for (const ext of loadAllExtensions(cwd)) {
     if (!ext.config.mcp) continue;
     if (!hasConsent(ext)) continue;
     const cfg = toResolvedConfig(ext);
@@ -265,21 +260,19 @@ export function recordPiMcpStatus(
  * Same as `buildSdkMcpServers` but enumerates extensions that *would* be
  * included if their blockers were resolved — useful for diagnostics.
  */
-export function listMcpExtensionsStatus(): Array<{
+export function listMcpExtensionsStatus(cwd?: string): Array<{
   slug: string;
   ok: boolean;
-  reason?: 'disabled' | 'missing-secrets' | 'no-consent' | 'connect-failed';
+  reason?: 'missing-secrets' | 'no-consent' | 'connect-failed';
   toolCount?: number;
   error?: string;
 }> {
-  return loadAllExtensions()
+  return loadAllExtensions(cwd)
     .filter((e) => e.config.mcp)
     .map((e) => {
-      if (!isEnabled(e.config)) return { slug: e.slug, ok: false, reason: 'disabled' as const };
       if (!hasConsent(e)) return { slug: e.slug, ok: false, reason: 'no-consent' as const };
       if (listMissingSecrets(e).length > 0)
         return { slug: e.slug, ok: false, reason: 'missing-secrets' as const };
-      // Config is satisfied; fold in the live connection outcome if known.
       const runtime = runtimeMcpStatus.get(e.slug);
       if (runtime && !runtime.ok)
         return { slug: e.slug, ok: false, reason: 'connect-failed' as const, error: runtime.error };

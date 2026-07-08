@@ -31,7 +31,7 @@ export const MentionMenu = function MentionMenuImpl(
     handleRef?: React.RefObject<MentionMenuHandle | null>;
   },
 ) {
-  const { open, query, skills, extensions, cwd, onSelect, onClose, handleRef } =
+  const { open, query, skills, extensions, cwd, pinnedAssets, onSelect, onClose, handleRef } =
     props;
 
   const listRef = useRef<HTMLUListElement | null>(null);
@@ -87,6 +87,7 @@ export const MentionMenu = function MentionMenuImpl(
               skill={skill}
               active={idx === activeIdx}
               dataIdx={idx}
+              isPinned={pinnedAssets?.includes(`${skill.source}:${skill.slug}`)}
               onMouseEnter={() => setActiveIdx(idx)}
               onMouseDown={(e) => {
                 e.preventDefault();

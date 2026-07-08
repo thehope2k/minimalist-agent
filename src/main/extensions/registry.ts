@@ -4,16 +4,14 @@ import {
   loadAllExtensions,
   loadExtensionBySlug,
 } from './storage';
-import { isEnabled, type LoadedExtension } from './types';
+import { type LoadedExtension } from './types';
 
 /**
  * In-memory authority on extension state. Tiny by design — Skills works
  * without one, and we only add this much because future modules (MCP pool,
  * prompt injection, IPC change events) need a stable subscription point.
  *
- * No lifecycle FSM. An extension is either enabled (`config.enabled !== false`)
- * or disabled. Runtime errors (failed MCP spawn) live on the MCP pool, not
- * here.
+ * No lifecycle FSM. Presence in the folder = active.
  */
 export class ExtensionRegistry extends EventEmitter {
   private items = new Map<string, LoadedExtension>();
@@ -21,6 +19,8 @@ export class ExtensionRegistry extends EventEmitter {
 
   load(): void {
     invalidateExtensionsCache();
+    // Registry manages user-tier only (~/.minimalist-agent/extensions/).
+    // Project-tier extensions are loaded dynamically per session CWD.
     const all = loadAllExtensions();
     this.items.clear();
     for (const ext of all) this.items.set(ext.slug, ext);
@@ -55,11 +55,6 @@ export class ExtensionRegistry extends EventEmitter {
   get(slug: string): LoadedExtension | undefined {
     this.ensureLoaded();
     return this.items.get(slug);
-  }
-
-  /** Enabled = will appear in prompt + (later) get an MCP client spawned. */
-  listEnabled(): LoadedExtension[] {
-    return this.list().filter((e) => isEnabled(e.config));
   }
 
   onChanged(handler: (payload?: { slug: string }) => void): () => void {

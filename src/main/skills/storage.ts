@@ -2,15 +2,22 @@ import {existsSync, readdirSync, readFileSync, rmSync, statSync,} from 'node:fs'
 import {basename, join} from 'node:path';
 import type {LoadedSkill} from './types';
 import {parseSkillFile} from './parse';
-import {Paths} from '../storage/paths';
+import {Paths, projectConfigRoot} from '../storage/paths';
 
 /**
- * Skills directory — lives under the app's `userData` root, alongside
- * sessions/connections/credentials. Same convention as every other
- * persistent piece of state in the app.
+ * User-tier skills directory: ~/.minimalist-agent/skills/
+ * Portable, versionable. Managed from the Skills settings panel.
  */
 export function getSkillsDir(): string {
   return Paths.skillsDir();
+}
+
+/**
+ * Project-tier skills directory: <cwd>/.minimalist-agent/skills/
+ * Git-committable, team-shareable. Not managed from the UI.
+ */
+export function getProjectSkillsDir(cwd: string): string {
+  return join(projectConfigRoot(cwd), 'skills');
 }
 
 
@@ -29,8 +36,8 @@ function findIconFile(skillDir: string): string | undefined {
 
 /* ---------- single-skill loader ---------- */
 
-function loadSkillFromDir(slug: string): LoadedSkill | null {
-  const skillDir = join(getSkillsDir(), slug);
+function loadSkillFromDir(slug: string, dir: string, source: import('./types').SkillSource): LoadedSkill | null {
+  const skillDir = join(dir, slug);
   const skillFile = join(skillDir, 'SKILL.md');
 
   try {
@@ -56,50 +63,86 @@ function loadSkillFromDir(slug: string): LoadedSkill | null {
     content: parsed.body,
     iconPath: findIconFile(skillDir),
     path: skillDir,
-    source: 'global',
+    source,
   };
 }
 
 /* ---------- cache ---------- */
 
-let cache: { skills: LoadedSkill[]; ts: number } | null = null;
+// Keyed by canonical cache key: '' for user-only, cwd string when project included.
+const cacheMap = new Map<string, { skills: LoadedSkill[]; ts: number }>();
 const CACHE_TTL = 5 * 60_000;
 
-/** Drop the cache. Call on file events / settings changes. */
-export function invalidateSkillsCache(): void {
-  cache = null;
+/** Drop the cache for a specific cwd (or all entries). Call on file events / settings changes. */
+export function invalidateSkillsCache(cwd?: string): void {
+  if (cwd) {
+    cacheMap.delete('');
+    cacheMap.delete(cwd);
+  } else {
+    cacheMap.clear();
+  }
+}
+
+/* ---------- directory-level loader ---------- */
+
+function loadSkillsFromDirectory(
+  dir: string,
+  source: import('./types').SkillSource,
+): LoadedSkill[] {
+  if (!existsSync(dir)) return [];
+  const skills: LoadedSkill[] = [];
+  let entries: string[] = [];
+  try {
+    entries = readdirSync(dir);
+  } catch {
+    return [];
+  }
+  for (const name of entries) {
+    const skill = loadSkillFromDir(name, dir, source);
+    if (skill) skills.push(skill);
+  }
+  return skills;
 }
 
 /* ---------- public API ---------- */
 
-/** Load every skill under `~/.agents/skills/`. Cached for `CACHE_TTL`. */
-export function loadAllSkills(): LoadedSkill[] {
+/**
+ * Load all skills merged from all available tiers:
+ *   - user tier:    ~/.minimalist-agent/skills/
+ *   - project tier: <cwd>/.minimalist-agent/skills/  (when cwd is provided)
+ *
+ * Project-tier skills take precedence over user-tier for same slug.
+ * Cached per unique (user + cwd) combination with a 5-minute TTL.
+ */
+export function loadAllSkills(cwd?: string): LoadedSkill[] {
+  const cacheKey = cwd ?? '';
   const now = Date.now();
-  if (cache && now - cache.ts < CACHE_TTL) return cache.skills;
+  const cached = cacheMap.get(cacheKey);
+  if (cached && now - cached.ts < CACHE_TTL) return cached.skills;
 
-  if (!existsSync(getSkillsDir())) {
-    cache = { skills: [], ts: now };
-    return cache.skills;
-  }
+  const userSkills = loadSkillsFromDirectory(getSkillsDir(), 'user');
+  const projectSkills = cwd
+    ? loadSkillsFromDirectory(getProjectSkillsDir(cwd), 'project')
+    : [];
 
-  const skills: LoadedSkill[] = [];
-  let entries: string[] = [];
-  try {
-    entries = readdirSync(getSkillsDir());
-  } catch {
-    /* ignore */
-  }
-  for (const name of entries) {
-    const skill = loadSkillFromDir(name);
-    if (skill) skills.push(skill);
-  }
-  cache = { skills, ts: now };
+  // Merge: project overrides user for same slug (project wins).
+  const bySlug = new Map<string, LoadedSkill>();
+  for (const s of userSkills) bySlug.set(s.slug, s);
+  for (const s of projectSkills) bySlug.set(s.slug, s); // project overrides
+
+  const skills = Array.from(bySlug.values());
+  cacheMap.set(cacheKey, { skills, ts: now });
   return skills;
 }
 
-/** O(1) lookup by slug. */
-export function loadSkillBySlug(slug: string): LoadedSkill | null {
-  return loadSkillFromDir(slug);
+/** O(1) lookup by slug, checking project tier first then user tier. */
+export function loadSkillBySlug(slug: string, cwd?: string): LoadedSkill | null {
+  // Project tier takes precedence.
+  if (cwd) {
+    const proj = loadSkillFromDir(slug, getProjectSkillsDir(cwd), 'project');
+    if (proj) return proj;
+  }
+  return loadSkillFromDir(slug, getSkillsDir(), 'user');
 }
 
 /** Delete a skill directory. Returns true if it existed and was removed. */

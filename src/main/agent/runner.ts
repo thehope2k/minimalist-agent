@@ -47,6 +47,8 @@ export interface AgentChatRequest {
   askCollaboration?: CollaborationAsk;
   /** User's autonomy level (0-100) for intelligent collaboration. */
   autonomyLevel?: number;
+  /** Scoped pinned asset slugs for this session ('user:<slug>' | 'project:<slug>'). */
+  pinnedAssets?: string[];
   signal?: AbortSignal;
 }
 
@@ -81,6 +83,7 @@ export function runAgentChat(
       permissionMode: req.permissionMode,
       askCollaboration: req.askCollaboration,
       autonomyLevel: req.autonomyLevel,
+      pinnedAssets: req.pinnedAssets,
       signal: req.signal,
     });
   }
@@ -97,6 +100,7 @@ export function runAgentChat(
     permissionMode: req.permissionMode,
     askCollaboration: req.askCollaboration,
     autonomyLevel: req.autonomyLevel,
+    pinnedAssets: req.pinnedAssets,
     signal: req.signal,
   });
 }

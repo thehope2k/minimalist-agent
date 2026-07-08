@@ -9,7 +9,7 @@
 // global Bash env.
 
 import { loadAllExtensions } from './storage';
-import { isEnabled } from './types';
+import { resolveEnvValue } from './types';
 import { getSecret } from './secrets';
 
 /**
@@ -24,19 +24,16 @@ import { getSecret } from './secrets';
  * Last-write-wins on collision. If two extensions declare the same env
  * var name, the later one (alphabetical by slug) overrides.
  */
-export function resolveExtensionEnv(): Record<string, string> {
+export function resolveExtensionEnv(cwd?: string): Record<string, string> {
   const out: Record<string, string> = {};
-  for (const ext of loadAllExtensions()) {
-    if (!isEnabled(ext.config)) continue;
+  for (const ext of loadAllExtensions(cwd)) {
     if (!ext.config.env) continue;
     if (ext.config.mcp) continue; // mcp-backed env goes via mcpServers
     for (const [name, value] of Object.entries(ext.config.env)) {
-      if (typeof value === 'string') {
-        out[name] = value;
-      } else {
-        const v = getSecret(ext.slug, value.secret);
-        if (v) out[name] = v;
-      }
+      const resolved = resolveEnvValue(value, ext.scope, (key) => getSecret(ext.slug, key));
+      // null = missing secret (skip silently for CLI-bound, no spawn block needed)
+      // undefined = ${VAR} not set in environment (skip silently)
+      if (resolved != null) out[name] = resolved;
     }
   }
   return out;
@@ -55,10 +52,9 @@ export interface EnvBindingReport {
   secretSet?: boolean;
 }
 
-export function reportExtensionEnvBindings(): EnvBindingReport[] {
+export function reportExtensionEnvBindings(cwd?: string): EnvBindingReport[] {
   const out: EnvBindingReport[] = [];
-  for (const ext of loadAllExtensions()) {
-    if (!isEnabled(ext.config)) continue;
+  for (const ext of loadAllExtensions(cwd)) {
     if (!ext.config.env) continue;
     if (ext.config.mcp) continue;
     for (const [name, value] of Object.entries(ext.config.env)) {

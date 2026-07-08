@@ -18,6 +18,8 @@ export interface MentionMenuProps {
   extensions: LoadedExtension[];
   /** Working directory to search files under. Empty = no file results. */
   cwd?: string;
+  /** Scoped pinned slugs for current session — used to show pinned indicator. */
+  pinnedAssets?: string[];
   onSelect: (item: MentionItem) => void;
   onClose: () => void;
 }

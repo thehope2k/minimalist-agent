@@ -31,6 +31,7 @@ type Props = {
   onCwdChange: (cwd: string | undefined) => void;
   onOpenFile: (absolutePath: string, lineNumber: number) => void;
   onToggleFileExplorer: () => void;
+  onToggleContextPanel?: () => void;
   fileExplorerOpen: boolean;
   startSessionWithSubmission: (submit: SeedSubmit) => void;
 };
@@ -62,6 +63,7 @@ export function MainContent({
   onOpenFile,
   onToggleFileExplorer,
   fileExplorerOpen,
+  onToggleContextPanel,
   startSessionWithSubmission,
 }: Props) {
   return (
@@ -85,6 +87,7 @@ export function MainContent({
           onOpenFile={onOpenFile}
           onToggleFileExplorer={onToggleFileExplorer}
           fileExplorerOpen={fileExplorerOpen}
+          onToggleContextPanel={onToggleContextPanel}
         />
       </div>
 

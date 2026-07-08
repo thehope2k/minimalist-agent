@@ -81,19 +81,6 @@ export async function deleteExtension(slug: string): Promise<boolean> {
   return ok;
 }
 
-export async function setEnabled(
-  slug: string,
-  enabled: boolean,
-): Promise<boolean | null> {
-  const result = await window.api.extensions.setEnabled(slug, enabled);
-  if (result !== null) await reload();
-  return result;
-}
-
-export function listFiles(dirPath: string): Promise<ExtensionFileNode[]> {
-  return window.api.extensions.listFiles(dirPath);
-}
-
 export function openInEditor(dirPath: string): Promise<string> {
   return window.api.extensions.openInEditor(dirPath);
 }
@@ -123,6 +110,3 @@ export function displayIcon(ext: LoadedExtension): string | undefined {
   return ext.guideFrontmatter.icon || ext.config.icon;
 }
 
-export function isEnabled(ext: LoadedExtension): boolean {
-  return ext.config.enabled !== false;
-}

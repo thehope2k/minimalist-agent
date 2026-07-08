@@ -1189,6 +1189,7 @@ async function handleInit(msg: MsgInit): Promise<void> {
     content: a.content,
     path: a.path,
     iconPath: a.iconPath,
+    source: (a.source ?? 'user') as import('../agents/types').AgentSource,
   }));
 
   const authStorage = AuthStorage.inMemory();

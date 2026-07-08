@@ -9,6 +9,7 @@ type SessionListEntry = NonNullable<ReturnType<typeof import('@/hooks/useSession
  * Global keyboard shortcuts:
  * - Cmd+T: Toggle terminal
  * - Cmd+B: Toggle file explorer
+ * - Cmd+Shift+B: Toggle context panel
  * - Cmd+N: New session
  * - Cmd+S: Jump to sessions view
  * - Cmd+,: Jump to settings
@@ -20,6 +21,7 @@ export function useKeyboardShortcuts(
   setView: (v: View) => void,
   toggleTerminal: () => void,
   toggleFileExplorer: () => void,
+  toggleContextPanel: () => void,
   handleNewSession: () => void,
   terminalOpenRef: RefObject<boolean>,
   terminalPanelRef: RefObject<PanelImperativeHandle | null>,
@@ -63,6 +65,14 @@ export function useKeyboardShortcuts(
         if (view === 'settings' || view === 'skills' || view === 'agents' || view === 'extensions') return;
         e.preventDefault();
         toggleFileExplorer();
+        return;
+      }
+
+      // Cmd+Shift+B — toggle context panel (sessions/chat view only)
+      if (e.key === 'b' && e.shiftKey && !e.altKey) {
+        if (view === 'settings' || view === 'skills' || view === 'agents' || view === 'extensions') return;
+        e.preventDefault();
+        toggleContextPanel();
         return;
       }
 
@@ -122,5 +132,5 @@ export function useKeyboardShortcuts(
 
     window.addEventListener('keydown', handler, { capture: true });
     return () => window.removeEventListener('keydown', handler, { capture: true });
-  }, [toggleTerminal, toggleFileExplorer, view, setView, terminalOpenRef, terminalPanelRef]);
+  }, [toggleTerminal, toggleFileExplorer, toggleContextPanel, view, setView, terminalOpenRef, terminalPanelRef]);
 }

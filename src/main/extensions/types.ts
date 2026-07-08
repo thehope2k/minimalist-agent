@@ -14,10 +14,7 @@
  *   - `env` block present  → cli-bound (or augments mcp-backed)
  *   - neither              → guide-only
  *
- * No lifecycle FSM, no draft folder. Mirrors Skills' simplicity. The only
- * extra knob is `enabled` (default true) — relevant because MCP-backed
- * extensions spawn subprocesses we don't want running unless the user
- * actually wants them.
+ * No lifecycle FSM. Presence in the folder = active. Remove to deactivate.
  */
 
 /* ---------- frontmatter (guide.md) ---------- */
@@ -76,12 +73,9 @@ export interface ExtensionConfig {
   slug: string;
   name: string;
   description: string;
-  /** Defaults to true. Disabled extensions are skipped from prompt + MCP spawn. */
-  enabled?: boolean;
   version?: string;
   icon?: string;
   tags?: string[];
-
   env?: Record<string, EnvValue>;
   mcp?: McpConfig;
   permissions?: ExtensionPermissions;
@@ -98,16 +92,36 @@ export function variantOf(config: ExtensionConfig): ExtensionVariant {
   return 'guide-only';
 }
 
-export function isEnabled(config: ExtensionConfig): boolean {
-  return config.enabled !== false;
+/**
+ * Resolve a single env value for an extension.
+ * - Literal string: used as-is for user-tier; `${VAR}` refs resolved from
+ *   `process.env` for project-tier (silently skipped if unset).
+ * - SecretRef: resolved from the keychain (caller provides `getSecretFn`).
+ *   Returns null when the secret is required but missing (blocks MCP spawn).
+ */
+export function resolveEnvValue(
+  value: EnvValue,
+  scope: ExtensionScope,
+  getSecretFn: (secretKey: string) => string | null | undefined,
+): string | null | undefined {
+  if (typeof value === 'string') {
+    if (scope === 'project' && value.startsWith('${') && value.endsWith('}')) {
+      const varName = value.slice(2, -1);
+      return process.env[varName]; // undefined = skip silently
+    }
+    return value;
+  }
+  // SecretRef
+  return getSecretFn(value.secret) ?? null; // null = missing, blocks spawn
 }
 
 /* ---------- loaded record ---------- */
 
-export type ExtensionScope = 'global';
+export type ExtensionScope = 'user' | 'project';
 
 export interface LoadedExtension {
   slug: string;
+  /** Tier this extension was loaded from. */
   scope: ExtensionScope;
   path: string;
   config: ExtensionConfig;

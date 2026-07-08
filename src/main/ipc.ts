@@ -21,6 +21,8 @@ import {
   type StoredMessage,
   truncateMessagesFrom,
   updateSessionMeta,
+  pinAsset,
+  unpinAsset,
 } from './storage/sessions';
 import {clearLoginState, exchangeCode, prepareLoginUrl,} from './oauth/claude-flow';
 import {classifyExternalUrl, formatBlockedUrlError} from '../shared/url-safety';
@@ -113,7 +115,6 @@ import {
   loadAllExtensions,
   loadExtensionBySlug,
   scanExtensionDirectory,
-  setExtensionEnabled,
 } from './extensions/storage';
 import type {LoadedExtension} from './extensions/types';
 import {
@@ -140,10 +141,10 @@ import {type FileSearchEntry, searchFiles} from './files/search';
 import {buildFileTree, listDirectory} from './files/list-directory';
 import {isWithinAllowedRoots, resolveWithinAllowedRoots} from './files/path-guard';
 import {readFileSync, existsSync} from 'node:fs';
-import {dirname} from 'node:path';
+import {dirname, join} from 'node:path';
 import {writeFile} from 'node:fs/promises';
 import {publishExport, revokeExport, type PublishResult} from './export-transport/brewpage';
-import {invalidateContextFileCache} from './agent/system-prompt';
+import {invalidateContextFileCache, estimatePinnedTokens} from './agent/system-prompt';
 import {
   createProject,
   deleteProject,
@@ -524,9 +525,11 @@ export function registerIpc(): void {
       // Ensure session state is ready before the first turn.
       // This is a no-op on subsequent turns (init is idempotent when state already exists).
       let autonomyLevel = 50; // Default: balanced
+      let pinnedAssets: string[] | undefined;
       if (req.sessionId) {
         const sessionMeta = loadSession(req.sessionId)?.meta;
         autonomyLevel = sessionMeta?.autonomyLevel ?? 50;
+        pinnedAssets = sessionMeta?.pinnedAssets;
       }
 
       const { extendedContext } = getSettings();
@@ -547,6 +550,7 @@ export function registerIpc(): void {
         permissionMode: req.permissionMode,
         askCollaboration,
         autonomyLevel,
+        pinnedAssets,
         signal: ctrl.signal,
       })) {
         if (event.sender.isDestroyed()) break;
@@ -1160,7 +1164,7 @@ export function registerIpc(): void {
   );
   ipcMain.handle(
     'extensions:list',
-    (): LoadedExtension[] => loadAllExtensions(),
+    (_e, cwd?: string): LoadedExtension[] => loadAllExtensions(cwd),
   );
   ipcMain.handle(
     'extensions:get',
@@ -1177,14 +1181,6 @@ export function registerIpc(): void {
       const ok = deleteExtension(slug);
       if (ok) getExtensionRegistry().load();
       return ok;
-    },
-  );
-  ipcMain.handle(
-    'extensions:setEnabled',
-    (_e, slug: string, enabled: boolean): boolean | null => {
-      const result = setExtensionEnabled(slug, enabled);
-      if (result !== null) getExtensionRegistry().load();
-      return result;
     },
   );
   ipcMain.handle('extensions:invalidateCache', () => {
@@ -1607,4 +1603,60 @@ export function registerIpc(): void {
   );
 
   ipcMain.handle('terminal:listShells', (): string[] => allowedShells());
+
+  // ── Context Panel: project-local config + session pinned assets ──────────
+
+  /**
+   * List all available assets (skills + agents) for a session, merged from
+   * all tiers (project + user). Returns items tagged with their source tier.
+   */
+  ipcMain.handle(
+    'context:listAvailable',
+    (_e, cwd?: string, invalidate?: boolean): { skills: LoadedSkill[]; agents: LoadedAgent[]; extensions: LoadedExtension[] } => {
+      if (invalidate) {
+        invalidateSkillsCache(cwd);
+        invalidateAgentsCache(cwd);
+        invalidateExtensionsCache(cwd);
+      }
+      return {
+        skills: loadAllSkills(cwd),
+        agents: loadAllAgents(cwd),
+        extensions: loadAllExtensions(cwd),
+      };
+    },
+  );
+
+  /** Pin a scoped asset to a session. scopedSlug: 'user:<slug>' | 'project:<slug>' */
+  ipcMain.handle(
+    'context:pin',
+    (_e, sessionId: string, scopedSlug: string) => pinAsset(sessionId, scopedSlug),
+  );
+
+  /** Unpin a scoped asset from a session. */
+  ipcMain.handle(
+    'context:unpin',
+    (_e, sessionId: string, scopedSlug: string) => unpinAsset(sessionId, scopedSlug),
+  );
+
+  /**
+   * Estimate token cost of all pinned assets for a session.
+   * Returns total estimated tokens.
+   */
+  ipcMain.handle(
+    'context:estimateTokens',
+    (_e, pinnedAssets: string[], cwd?: string): number =>
+      estimatePinnedTokens(pinnedAssets, cwd),
+  );
+
+  /**
+   * Check whether a CWD has project-local assets (.minimalist-agent/agents/ or skills/).
+   * Used to decide whether to show the new-session discovery card.
+   */
+  ipcMain.handle('context:hasProjectAssets', (_e, cwd: string): boolean => {
+    const base = join(cwd, '.minimalist-agent');
+    return (
+      existsSync(join(base, 'agents')) ||
+      existsSync(join(base, 'skills'))
+    );
+  });
 }

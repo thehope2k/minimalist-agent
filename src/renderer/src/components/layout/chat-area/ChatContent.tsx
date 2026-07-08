@@ -6,6 +6,7 @@ import { MessageList } from '@/components/chat/MessageList';
 import { MessageInput } from '@/components/chat/MessageInput';
 import { EmptyState } from '@/components/chat/EmptyState';
 import { CollaborationPrompt } from '@/components/chat/CollaborationPrompt';
+import { ProjectConfigCard } from '@/components/chat/ProjectConfigCard';
 import type { ChatMessage } from '@/lib/chat';
 import type { Plan } from '@/lib/electron';
 import type { CompactionNotice } from '@/hooks/useChat';
@@ -42,6 +43,7 @@ type Props = {
   findOpen: boolean;
   onFindClose: () => void;
   findInputRef: React.RefObject<HTMLInputElement | null>;
+  onToggleContextPanel?: () => void;
 };
 
 export function ChatContent({
@@ -75,6 +77,7 @@ export function ChatContent({
   findOpen,
   onFindClose,
   findInputRef,
+  onToggleContextPanel,
 }: Props) {
   // Ref forwarded to ChatScroll so that useFindInChat can scope mark.js to
   // the message list DOM node rather than the whole chat panel.
@@ -123,6 +126,11 @@ export function ChatContent({
         onPrev={prev}
         onClose={handleFindClose}
         inputRef={findInputRef}
+      />
+      <ProjectConfigCard
+        cwd={cwd}
+        onOpenContextPanel={() => onToggleContextPanel?.()}
+        hasMessages={messages.length > 0}
       />
       <ChatScroll ref={chatScrollRef} sessionId={activeSessionId ?? sessionId} contentSignal={contentSignal}>
         {messages.length === 0 ? (

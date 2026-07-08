@@ -2,18 +2,24 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { usePanelRef } from 'react-resizable-panels';
 import type { PanelImperativeHandle } from 'react-resizable-panels';
 
+export type ActiveSidePanel = 'explorer' | 'context' | null;
+
 /**
- * Manages state for collapsible panels (sidebar, terminal, file explorer).
- * Provides refs and toggle functions.
+ * Manages state for collapsible panels (sidebar, terminal, side panel).
+ *
+ * The right side panel is a single slot — 'explorer' and 'context' are
+ * mutually exclusive content rendered inside it. This avoids having two
+ * panel refs fighting over the same layout region.
  */
 export function usePanelStates() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [terminalOpen, setTerminalOpen] = useState(false);
-  const [fileExplorerOpen, setFileExplorerOpen] = useState(false);
+  // Single side panel state: null = closed, 'explorer' | 'context' = open
+  const [activeSidePanel, setActiveSidePanel] = useState<ActiveSidePanel>(null);
 
   const listPanelRef = usePanelRef();
   const terminalPanelRef = usePanelRef();
-  const fileExplorerPanelRef = usePanelRef();
+  const sidePanelRef = usePanelRef();
 
   const terminalOpenRef = useRef(terminalOpen);
   terminalOpenRef.current = terminalOpen;
@@ -38,22 +44,48 @@ export function usePanelStates() {
   }, [terminalPanelRef]);
 
   const toggleFileExplorer = useCallback(() => {
-    const p: PanelImperativeHandle | null = fileExplorerPanelRef.current;
+    const p: PanelImperativeHandle | null = sidePanelRef.current;
     if (!p) return;
-    if (p.isCollapsed()) {
-      p.expand();
-      setFileExplorerOpen(true);
-    } else {
+    if (activeSidePanel === 'explorer') {
+      // Already showing explorer — close the panel
       p.collapse();
-      setFileExplorerOpen(false);
+      setActiveSidePanel(null);
+    } else if (activeSidePanel === 'context') {
+      // Context is open — switch content to explorer (panel stays open)
+      setActiveSidePanel('explorer');
+    } else {
+      // Nothing open — expand
+      p.expand();
+      setActiveSidePanel('explorer');
     }
-  }, [fileExplorerPanelRef]);
+  }, [sidePanelRef, activeSidePanel]);
 
-  // Ensure terminal and file explorer start collapsed on mount
+  const toggleContextPanel = useCallback(() => {
+    const p: PanelImperativeHandle | null = sidePanelRef.current;
+    if (!p) return;
+    if (activeSidePanel === 'context') {
+      // Already showing context — close the panel
+      p.collapse();
+      setActiveSidePanel(null);
+    } else if (activeSidePanel === 'explorer') {
+      // Explorer is open — switch content to context (panel stays open)
+      setActiveSidePanel('context');
+    } else {
+      // Nothing open — expand
+      p.expand();
+      setActiveSidePanel('context');
+    }
+  }, [sidePanelRef, activeSidePanel]);
+
+  // Ensure terminal and side panel start collapsed on mount
   useEffect(() => {
     terminalPanelRef.current?.collapse();
-    fileExplorerPanelRef.current?.collapse();
-  }, [terminalPanelRef, fileExplorerPanelRef]);
+    sidePanelRef.current?.collapse();
+  }, [terminalPanelRef, sidePanelRef]);
+
+  // Derived booleans for consumers that check open state
+  const fileExplorerOpen = activeSidePanel === 'explorer';
+  const contextPanelOpen = activeSidePanel === 'context';
 
   return {
     sidebarCollapsed,
@@ -61,13 +93,18 @@ export function usePanelStates() {
     terminalOpen,
     setTerminalOpen,
     terminalOpenRef,
+    activeSidePanel,
+    setActiveSidePanel,
     fileExplorerOpen,
-    setFileExplorerOpen,
+    contextPanelOpen,
     listPanelRef,
     terminalPanelRef,
-    fileExplorerPanelRef,
+    sidePanelRef,
+    // Keep these names for backward compat with keyboard shortcuts panel doc
+    fileExplorerPanelRef: sidePanelRef,
     toggleSidebar,
     toggleTerminal,
     toggleFileExplorer,
+    toggleContextPanel,
   };
 }

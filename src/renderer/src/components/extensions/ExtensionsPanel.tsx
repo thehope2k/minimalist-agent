@@ -4,7 +4,6 @@ import { useExtensions } from '@/hooks/useExtensions';
 import {
   displayDescription,
   displayName,
-  isEnabled,
   reload as reloadExtensions,
 } from '@/lib/extensions';
 import { cn } from '@/lib/utils';
@@ -107,8 +106,7 @@ export function ExtensionsPanel({
     void reloadExtensions();
     void loadMcpStatus();
     // Runtime connection outcomes arrive after a session connects its servers.
-    const off = window.api.extensions.onMcpStatus(() => void loadMcpStatus());
-    return off;
+    return window.api.extensions.onMcpStatus(() => void loadMcpStatus());
   }, []);
 
   const handleManualRefresh = async () => {
@@ -201,7 +199,6 @@ function ExtensionRow({
   onAfterDelete: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const enabled = isEnabled(ext);
   return (
     <div className="group/ext relative border-b border-border last:border-b-0">
       {active && (
@@ -212,7 +209,6 @@ function ExtensionRow({
         className={cn(
           'flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors',
           active ? 'bg-elevated' : 'hover:bg-elevated/60',
-          !enabled && 'opacity-60',
         )}
       >
         <ExtensionAvatar extension={ext} size="md" />
@@ -224,12 +220,7 @@ function ExtensionRow({
             <span className="rounded bg-elevated/80 px-1.5 py-px font-mono text-[10px] uppercase tracking-wide text-fg-subtle">
               {VARIANT_LABEL[ext.variant]}
             </span>
-            {!enabled && (
-              <span className="rounded bg-amber-500/15 px-1.5 py-px text-[10px] uppercase tracking-wide text-amber-300">
-                off
-              </span>
-            )}
-            {enabled && <McpStatusBadge status={mcpStatus} />}
+            <McpStatusBadge status={mcpStatus} />
           </div>
           <div className="mt-0.5 truncate text-xs text-fg-subtle">
             {displayDescription(ext)}
@@ -260,7 +251,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
     <div className="flex flex-col items-center gap-3 px-4 py-10 text-center">
       <Plug className="h-6 w-6 text-fg-subtle" strokeWidth={1.5} />
       <div className="text-sm font-medium text-fg">No extensions yet</div>
-      <p className="max-w-[260px] text-xs text-fg-subtle">
+      <p className="max-w-65 text-xs text-fg-subtle">
         Extensions add capabilities — a CLI you want the agent to use, an MCP
         server, or just a usage guide. Describe what you want, and the agent
         will set it up for you.

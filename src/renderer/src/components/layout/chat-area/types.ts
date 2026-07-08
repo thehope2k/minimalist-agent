@@ -1,5 +1,3 @@
-import type { PermissionMode } from '@/lib/electron';
-
 export type SeedSubmit = {
   /** What the user sees in the chat transcript. */
   displayText: string;
@@ -30,16 +28,7 @@ export type ChatAreaProps = {
   onOpenFile?: (absolutePath: string, lineNumber: number) => void;
   /** Toggle file explorer panel (for header button). */
   onToggleFileExplorer?: () => void;
+  onToggleContextPanel?: () => void;
   /** File explorer panel open state (for active styling). */
   fileExplorerOpen?: boolean;
-};
-
-export type SessionMeta = {
-  cwd: string | undefined;
-  title: string;
-  permissionMode: PermissionMode;
-  autonomyLevel: number;
-  projectDefaultConnectionSlug: string;
-  sessionConnectionSlug: string;
-  sessionModel: string;
 };

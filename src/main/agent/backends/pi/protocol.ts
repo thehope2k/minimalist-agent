@@ -136,6 +136,7 @@ export interface MsgInit {
     content: string; // system prompt
     path: string;
     iconPath?: string;
+    source?: 'user' | 'project';
   }>;
   /**
    * Resolved MCP server configs for enabled+consented mcp-backed extensions.

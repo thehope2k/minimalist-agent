@@ -2,14 +2,22 @@ import {existsSync, readdirSync, readFileSync, rmSync, statSync} from 'node:fs';
 import {basename, join} from 'node:path';
 import type {LoadedAgent} from './types';
 import {parseAgentFile} from './parse';
-import {Paths} from '../storage/paths';
+import {Paths, projectConfigRoot} from '../storage/paths';
 import {invalidateAgentsPromptCache} from '../agent/system-prompt';
 
 /* ---------- directory resolution ---------- */
 
-/** Agents directory — lives under the app's `userData` root, alongside skills/extensions. */
+/** User-tier agents directory: ~/.minimalist-agent/agents/ */
 export function getAgentsDir(): string {
   return Paths.agentsDir();
+}
+
+/**
+ * Project-tier agents directory: <cwd>/.minimalist-agent/agents/
+ * Git-committable, team-shareable.
+ */
+export function getProjectAgentsDir(cwd: string): string {
+  return join(projectConfigRoot(cwd), 'agents');
 }
 
 /* ---------- icon discovery ---------- */
@@ -27,7 +35,7 @@ function findIconFile(agentDir: string): string | undefined {
 
 /* ---------- single-agent loader ---------- */
 
-function loadAgentFromDir(slug: string, dir: string): LoadedAgent | null {
+function loadAgentFromDir(slug: string, dir: string, source: import('./types').AgentSource): LoadedAgent | null {
   const agentDir = join(dir, slug);
   const agentFile = join(agentDir, 'AGENT.md');
 
@@ -54,61 +62,86 @@ function loadAgentFromDir(slug: string, dir: string): LoadedAgent | null {
     content: parsed.body,
     iconPath: findIconFile(agentDir),
     path: agentDir,
+    source,
   };
 }
 
 /* ---------- cache ---------- */
 
-interface CacheEntry {
-  agents: LoadedAgent[];
-  ts: number;
-}
-
-let cache: CacheEntry | null = null;
+// Keyed by canonical cache key: '' for user-only, cwd string when project included.
+const cacheMap = new Map<string, { agents: LoadedAgent[]; ts: number }>();
 const CACHE_TTL = 5 * 60_000; // 5 minutes
 
 /** Drop the cache. Call on file events / settings changes. */
-export function invalidateAgentsCache(): void {
-  cache = null;
+export function invalidateAgentsCache(cwd?: string): void {
+  if (cwd) {
+    cacheMap.delete('');
+    cacheMap.delete(cwd);
+  } else {
+    cacheMap.clear();
+  }
   invalidateAgentsPromptCache(); // Also invalidate system prompt cache
 }
 
-/* ---------- public API ---------- */
+/* ---------- directory-level loader ---------- */
 
-/**
- * Load every agent under `~/.agents/agents/`.
- * Cached for `CACHE_TTL`.
- */
-export function loadAllAgents(): LoadedAgent[] {
-  const now = Date.now();
-  if (cache && now - cache.ts < CACHE_TTL) return cache.agents;
-
-  const dir = getAgentsDir();
-  if (!existsSync(dir)) {
-    const result = { agents: [], ts: now };
-    cache = result;
-    return result.agents;
-  }
-
+function loadAgentsFromDirectory(
+  dir: string,
+  source: import('./types').AgentSource,
+): LoadedAgent[] {
+  if (!existsSync(dir)) return [];
   const agents: LoadedAgent[] = [];
   let entries: string[] = [];
   try {
     entries = readdirSync(dir);
   } catch {
-    /* ignore */
+    return [];
   }
   for (const name of entries) {
-    const agent = loadAgentFromDir(name, dir);
+    const agent = loadAgentFromDir(name, dir, source);
     if (agent) agents.push(agent);
   }
-
-  cache = {agents, ts: now};
   return agents;
 }
 
-/** O(1) lookup by slug. */
-export function loadAgentBySlug(slug: string): LoadedAgent | null {
-  return loadAgentFromDir(slug, getAgentsDir());
+/* ---------- public API ---------- */
+
+/**
+ * Load all agents merged from all available tiers:
+ *   - user tier:    ~/.minimalist-agent/agents/
+ *   - project tier: <cwd>/.minimalist-agent/agents/  (when cwd is provided)
+ *
+ * Project-tier agents take precedence over user-tier for same slug.
+ * Cached per unique (user + cwd) combination with a 5-minute TTL.
+ */
+export function loadAllAgents(cwd?: string): LoadedAgent[] {
+  const cacheKey = cwd ?? '';
+  const now = Date.now();
+  const cached = cacheMap.get(cacheKey);
+  if (cached && now - cached.ts < CACHE_TTL) return cached.agents;
+
+  const userAgents = loadAgentsFromDirectory(getAgentsDir(), 'user');
+  const projectAgents = cwd
+    ? loadAgentsFromDirectory(getProjectAgentsDir(cwd), 'project')
+    : [];
+
+  // Merge: project overrides user for same slug.
+  const bySlug = new Map<string, LoadedAgent>();
+  for (const a of userAgents) bySlug.set(a.slug, a);
+  for (const a of projectAgents) bySlug.set(a.slug, a); // project overrides
+
+  const agents = Array.from(bySlug.values());
+  cacheMap.set(cacheKey, { agents, ts: now });
+  return agents;
+}
+
+/** O(1) lookup by slug, checking project tier first then user tier. */
+export function loadAgentBySlug(slug: string, cwd?: string): LoadedAgent | null {
+  if (cwd) {
+    const proj = loadAgentFromDir(slug, getProjectAgentsDir(cwd), 'project');
+    if (proj) return proj;
+  }
+  return loadAgentFromDir(slug, getAgentsDir(), 'user');
 }
 
 /** Delete an agent directory. Returns true if it existed and was removed. */

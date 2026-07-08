@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FileSearchEntry, LoadedExtension, LoadedSkill } from '@/lib/electron';
 import { scoreEntry, searchFiles } from '@/lib/files';
-import { isEnabled } from '@/lib/extensions';
 import { scoreSkill, scoreExtension } from './scoring';
 import type { MentionItem } from './types';
 import { FILES_LIMIT, FILE_SEARCH_DEBOUNCE_MS } from './types';
@@ -44,7 +43,6 @@ export function useFilteredItems({
   const filteredExtensions = useMemo(() => {
     const q = query.trim().toLowerCase();
     return extensions
-      .filter(isEnabled)
       .map((e) => ({ extension: e, score: scoreExtension(e, q) }))
       .filter((x) => x.score > 0)
       .sort((a, b) => b.score - a.score)

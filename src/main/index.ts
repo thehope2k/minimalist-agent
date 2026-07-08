@@ -223,6 +223,11 @@ app.whenReady().then(async () => {
   initLogging(Paths.logsDir());
   installSkillsReferenceDoc();
   installExtensionsReferenceDoc();
+
+  // Migrate user-owned config (agents, skills, extensions) from userData
+  // to ~/.minimalist-agent/ on first launch after this version.
+  const { runUserConfigMigration } = await import('./storage/migrate-user-config');
+  runUserConfigMigration();
   
   // Check git/worktree support for parallel agent isolation
   const worktreeSupported = await isWorktreeSupported();

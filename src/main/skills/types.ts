@@ -16,11 +16,8 @@ export interface SkillMetadata {
   icon?: string;
 }
 
-/** Plugin name (the `.agents` directory under home). */
-export const AGENTS_PLUGIN_NAME = '.agents';
-
-/** Which directory tier a skill was loaded from. Single tier today. */
-export type SkillSource = 'global';
+/** Which directory tier a skill was loaded from. */
+export type SkillSource = 'user' | 'project';
 
 /** A loaded skill — frontmatter + body + on-disk paths. */
 export interface LoadedSkill {

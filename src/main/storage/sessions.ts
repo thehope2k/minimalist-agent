@@ -148,6 +148,13 @@ export interface SessionMeta {
    * Defaults to 50 (balanced) when absent. Added in v8.
    */
   autonomyLevel?: number;
+  /**
+   * Slugs of skills/agents pinned for this session.
+   * Each entry is a scoped slug string: 'user:<slug>' or 'project:<slug>'.
+   * Pinned items are injected into the system prompt on every turn.
+   * Added in v10.
+   */
+  pinnedAssets?: string[];
 }
 
 export type SessionSummary = SessionMeta;
@@ -163,7 +170,7 @@ const META_DEFAULT_FACTORY = (): SessionMeta => ({
 function metaSchema(id: string): FileSchema<SessionMeta> {
   return {
     path: join(Paths.sessionsDir(), id, 'session.json'),
-    currentVersion: 9,
+    currentVersion: 10,
     defaultValue: META_DEFAULT_FACTORY(),
     // Index 0 → v0 (legacy/unset). Index 1 → v1 (no usage field).
     // Index 2 → v2 (no permissionMode field). Index 3 → v3 (no projectId).
@@ -193,6 +200,8 @@ function metaSchema(id: string): FileSchema<SessionMeta> {
         }
         return session;
       },
+      // v9 → v10: adds pinnedAssets (optional field, no-op migration).
+      (prev) => ({ ...(prev as SessionMeta) }),
     ],
   };
 }
@@ -426,6 +435,34 @@ export function updateSessionMeta(
 
 export function deleteSession(id: string): void {
   rmSync(join(Paths.sessionsDir(), id), { recursive: true, force: true });
+}
+
+/**
+ * Pin a scoped asset to a session's persistent context.
+ * `scopedSlug` format: 'user:<slug>' | 'project:<slug>'
+ * No-op if already pinned.
+ */
+export function pinAsset(sessionId: string, scopedSlug: string): SessionMeta {
+  const meta = load(metaSchema(sessionId));
+  meta.id = sessionId;
+  const pins = meta.pinnedAssets ?? [];
+  if (!pins.includes(scopedSlug)) {
+    meta.pinnedAssets = [...pins, scopedSlug];
+    save(metaSchema(sessionId), meta);
+  }
+  return meta;
+}
+
+/**
+ * Unpin a scoped asset from a session's persistent context.
+ * No-op if not pinned.
+ */
+export function unpinAsset(sessionId: string, scopedSlug: string): SessionMeta {
+  const meta = load(metaSchema(sessionId));
+  meta.id = sessionId;
+  meta.pinnedAssets = (meta.pinnedAssets ?? []).filter((s) => s !== scopedSlug);
+  save(metaSchema(sessionId), meta);
+  return meta;
 }
 
 /**

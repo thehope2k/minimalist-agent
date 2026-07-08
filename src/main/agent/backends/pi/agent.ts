@@ -38,7 +38,7 @@ import {buildPromptPrefix, buildSystemPromptAppend,} from '../../system-prompt';
 import {extractSkillPaths, formatSkillDirective} from '../../../skills/directive';
 import type {PermissionMode} from '../../permissions';
 import type {CopilotOAuthAuth, LocalApiAuth} from '../types';
-import type {CollaborationAsk} from '../../../shared/collaboration-types';
+import type {CollaborationAsk} from '../../../../shared/collaboration-types';
 import type {EngagementRequest} from '../../../../shared/collaboration-types';
 import {getActivePlan as getCachedPlan, updatePlanCache} from '../../plan-cache';
 import {resolveAuthForSlug} from '../../../auth/resolve';
@@ -95,6 +95,8 @@ export interface PiChatRequest {
   askCollaboration?: CollaborationAsk;
   /** User's autonomy level (0-100) for intelligent collaboration. */
   autonomyLevel?: number;
+  /** Scoped pinned asset slugs for this session ('user:<slug>' | 'project:<slug>'). */
+  pinnedAssets?: string[];
   signal?: AbortSignal;
 }
 
@@ -227,7 +229,7 @@ function ensureSubprocess(
       ...process.env,
       // Cli-bound extension env (resolved against the secret store).
       // Inherited by every Bash invocation inside pi-server via process.env.
-      ...resolveExtensionEnv(),
+      ...resolveExtensionEnv(req.cwd),
       ELECTRON_RUN_AS_NODE: '1',
       MINIMALIST_AGENT_VERSION: app.getVersion(),
       // Verbosity for the subprocess sub-logger (writes to stderr; the parent
@@ -393,7 +395,7 @@ function ensureSubprocess(
       path: a.path,
       iconPath: a.iconPath,
     })),
-    mcpServers: buildResolvedMcpServers(),
+    mcpServers: buildResolvedMcpServers(req.cwd),
   };
   send(handle, init);
 
@@ -829,6 +831,7 @@ export async function* runPiChat(
   const prefix = buildPromptPrefix({
     cwd: req.cwd,
     scratchDir: join(req.chatSessionPath, 'scratch'),
+    pinnedAssets: req.pinnedAssets,
   });
 
   // Resolve `@slug` / `@path` mentions exactly as the Anthropic backend does.

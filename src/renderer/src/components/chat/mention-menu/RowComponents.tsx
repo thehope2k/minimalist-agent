@@ -31,6 +31,7 @@ interface SkillRowProps {
   skill: LoadedSkill;
   active: boolean;
   dataIdx: number;
+  isPinned?: boolean;
   onMouseEnter: () => void;
   onMouseDown: (e: React.MouseEvent) => void;
 }
@@ -39,6 +40,7 @@ export function SkillRow({
   skill,
   active,
   dataIdx,
+  isPinned,
   onMouseEnter,
   onMouseDown,
 }: SkillRowProps) {
@@ -56,6 +58,14 @@ export function SkillRow({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="truncate text-fg">{skill.metadata.name}</span>
+          {isPinned && (
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" title="Pinned to session" />
+          )}
+          {skill.source === 'project' && (
+            <span className="shrink-0 rounded px-1 py-0.5 text-[9px] font-medium uppercase tracking-wide text-fg-subtle ring-1 ring-border">
+              project
+            </span>
+          )}
           <span className="ml-auto shrink-0 font-mono text-[10px] text-fg-subtle">
             {skill.slug}
           </span>

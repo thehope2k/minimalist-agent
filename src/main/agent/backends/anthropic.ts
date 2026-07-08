@@ -38,7 +38,7 @@ import {
   loadAllAgents,
 } from '../../agents/storage';
 import type { AnthropicApiKeyAuth, AnthropicOAuthAuth } from './types';
-import type { CollaborationAsk } from '../../shared/collaboration-types';
+import type { CollaborationAsk } from '../../../shared/collaboration-types';
 import { createLogger } from '../../logger';
 
 const log = createLogger('anthropic');
@@ -66,6 +66,8 @@ export interface AnthropicChatRequest {
   turnId?: string;
   /** DB-level session identifier forwarded to the system prompt builder. */
   chatSessionId?: string;
+  /** Scoped pinned asset slugs for this session ('user:<slug>' | 'project:<slug>'). */
+  pinnedAssets?: string[];
 }
 
 /**
@@ -374,14 +376,14 @@ export async function* runAnthropicChat(
     // Load agent definitions (AGENT.md files) for this workspace
     agents: buildSdkAgentDefinitions(),
 
-    mcpServers: buildSdkMcpServers(),
+    mcpServers: buildSdkMcpServers(req.cwd),
 
     // Merge auth env (process.env + ANTHROPIC_API_KEY/OAuth/CLAUDE_CONFIG_DIR
     // from getDefaultOptions) with cli-bound extension env. Previously this
     // was `env: resolveExtensionEnv()` alone, which silently wiped the
     // auth vars and made OAuth users fall through to the binary's keychain
     // lookup → "Not logged in" when no `claude /login` had been run.
-    env: { ...baseDefaults.env, ...resolveExtensionEnv() },
+    env: { ...baseDefaults.env, ...resolveExtensionEnv(req.cwd) },
 
     systemPrompt: {
       type: 'preset',
@@ -409,6 +411,7 @@ export async function* runAnthropicChat(
     scratchDir: req.chatSessionId
       ? join(Paths.sessionsDir(), req.chatSessionId, 'scratch')
       : undefined,
+    pinnedAssets: req.pinnedAssets,
   });
 
   // Resolve `@slug` mentions: replace with semantic markers and (if any)

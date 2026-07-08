@@ -4,11 +4,8 @@ import { cn } from '@/lib/utils';
 import {
   displayDescription,
   displayName,
-  isEnabled,
-  setEnabled,
 } from '@/lib/extensions';
 import { Markdown } from '../chat/parts/markdown/Markdown';
-import { Toggle } from '../ui';
 import { ExtensionAvatar } from './ExtensionAvatar';
 import { ExtensionMenu } from './ExtensionMenu';
 import { SecretsSection } from './SecretsSection';
@@ -51,7 +48,6 @@ function Body({
   extension: LoadedExtension;
   onClose?: () => void;
 }) {
-  const enabled = isEnabled(extension);
   const configJson = useMemo(
     () => JSON.stringify(extension.config, null, 2),
     [extension.config],
@@ -72,19 +68,6 @@ function Body({
           {displayName(extension)}
         </span>
         <div className="flex-1" />
-        <Toggle
-          value={enabled}
-          onChange={(v) => void setEnabled(extension.slug, v)}
-          label={enabled ? 'Disable extension' : 'Enable extension'}
-        />
-        <span
-          className={cn(
-            'text-xs font-medium',
-            enabled ? 'text-accent' : 'text-fg-subtle',
-          )}
-        >
-          {enabled ? 'Enabled' : 'Disabled'}
-        </span>
         <button
           type="button"
           onClick={copySlug}
