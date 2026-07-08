@@ -9,7 +9,7 @@
 
 import {query, type SDKMessage} from '@anthropic-ai/claude-agent-sdk';
 import {getDefaultOptions, locateClaudeCli} from './options';
-import type {AnthropicAuth, ResolvedAuth} from './claude';
+import type {AnthropicAuth, ResolvedAuth} from './runner';
 import {runPiMiniCompletion} from './backends/pi/agent';
 import {sessionPath} from '../storage/sessions';
 import {listConnections} from '../storage/connections';

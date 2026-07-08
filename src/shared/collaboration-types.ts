@@ -83,6 +83,14 @@ export interface ApprovalPayload {
 }
 
 /**
+ * Collaboration callback used by agent backends to surface engagement
+ * requests to the UI during a live turn.
+ */
+export type CollaborationAsk = (
+  request: EngagementRequest,
+) => Promise<EngagementResponse>;
+
+/**
  * User's response to an engagement request.
  */
 export interface EngagementResponse {

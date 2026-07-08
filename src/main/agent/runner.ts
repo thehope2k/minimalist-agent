@@ -1,8 +1,8 @@
 // Public agent entry point. Dispatches to a provider-specific backend
 // based on the resolved auth shape.
 //
-//   anthropic related → backends/anthropic.ts
-//   others                       → backends/pi/agent.ts
+//   anthropic_api_key / anthropic_oauth → backends/anthropic.ts
+//   copilot_oauth / local_api           → backends/pi/agent.ts
 
 import type { StoredAttachment } from '../storage/sessions';
 import { sessionPath } from '../storage/sessions';
@@ -12,18 +12,12 @@ import type { PiAuthProvider } from '../../shared/pi-types';
 import { runAnthropicChat, type AnthropicAuth } from './backends/anthropic';
 import { runPiChat } from './backends/pi/agent';
 import type { ResolvedAuth } from './backends/types';
-import type { EngagementRequest, EngagementResponse } from '../../shared/collaboration-types';
+import type { CollaborationAsk } from '../../shared/collaboration-types';
 
 export type { AgentChatEvent };
 export type { AnthropicAuth };
 export type { ResolvedAuth };
-
-/**
- * Collaboration callback for intelligent engagement.
- */
-export type CollaborationAsk = (
-  request: EngagementRequest,
-) => Promise<EngagementResponse>;
+export type { CollaborationAsk };
 
 export interface AgentChatRequest {
   /**
@@ -31,7 +25,6 @@ export interface AgentChatRequest {
    * discriminator picks the backend.
    */
   auth: ResolvedAuth;
-  /** Pi sub-provider — required when `auth.type === 'copilot_oauth'`. */
   /** Pi sub-provider — required when auth is copilot_oauth or local_api. */
   piAuthProvider?: PiAuthProvider;
   /**

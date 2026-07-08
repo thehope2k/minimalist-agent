@@ -38,7 +38,7 @@ import {buildPromptPrefix, buildSystemPromptAppend,} from '../../system-prompt';
 import {extractSkillPaths, formatSkillDirective} from '../../../skills/directive';
 import type {PermissionMode} from '../../permissions';
 import type {CopilotOAuthAuth, LocalApiAuth} from '../types';
-import type {CollaborationAsk} from '../../claude';
+import type {CollaborationAsk} from '../../../shared/collaboration-types';
 import type {EngagementRequest} from '../../../../shared/collaboration-types';
 import {getActivePlan as getCachedPlan, updatePlanCache} from '../../plan-cache';
 import {resolveAuthForSlug} from '../../../auth/resolve';

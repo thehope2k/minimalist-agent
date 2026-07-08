@@ -39,7 +39,7 @@ import {
   type ChatGptTokens,
   startLogin as startChatGptLogin,
 } from './oauth/chatgpt-flow';
-import {runAgentChat} from './agent/claude';
+import {runAgentChat} from './agent/runner';
 import {apply1MContextSuffix} from './agent/models';
 import {steerAnthropicTurn} from './agent/backends/anthropic';
 import {steerPiTurn, sendPlanApprovalResponse} from './agent/backends/pi/agent';

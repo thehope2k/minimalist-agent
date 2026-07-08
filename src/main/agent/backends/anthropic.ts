@@ -1,6 +1,6 @@
 // Anthropic backend — wraps `@anthropic-ai/claude-agent-sdk`.
-// Extracted from the original claude.ts so the file at that path can become
-// a thin dispatcher across providerTypes.
+// Handles all Anthropic-authenticated turns (api_key / oauth).
+// Dispatched to by agent/runner.ts when auth.type is anthropic_api_key or anthropic_oauth.
 
 import {
   query,
@@ -38,7 +38,7 @@ import {
   loadAllAgents,
 } from '../../agents/storage';
 import type { AnthropicApiKeyAuth, AnthropicOAuthAuth } from './types';
-import type { CollaborationAsk } from '../claude';
+import type { CollaborationAsk } from '../../shared/collaboration-types';
 import { createLogger } from '../../logger';
 
 const log = createLogger('anthropic');

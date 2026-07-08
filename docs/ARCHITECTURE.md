@@ -15,7 +15,7 @@ Preload (typed IPC bridge)
     │  ipcMain.handle / ipcRenderer.invoke
     ▼
 Main process
-    ├─ agent/claude.ts          ← dispatcher (Anthropic vs Pi backend)
+    ├─ agent/runner.ts          ← dispatcher (Anthropic vs Pi backend)
     ├─ agent/backends/
     │   ├─ anthropic.ts         ← @anthropic-ai/claude-agent-sdk
     │   └─ pi/agent.ts          ← Pi subprocess (GitHub Copilot / ChatGPT Plus)
