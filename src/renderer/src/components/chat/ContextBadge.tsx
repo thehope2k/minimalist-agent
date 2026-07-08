@@ -8,30 +8,35 @@ type Props = {
 };
 
 /**
- * Compact "context used" chip — shows the last assistant turn's full
- * input-token footprint (uncached delta + cache reads + cache creations)
- * vs the model's context window. Color shifts at 80% / 95%.
+ * Compact "context used" chip — shows the LIVE portion of context
+ * (input_tokens + cache_creation_input_tokens) vs the model's context window.
  *
- * Why the sum: Anthropic's API splits input tokens into three buckets
- * once prompt caching kicks in. `input_tokens` alone is just the new
- * delta — typically 15-50 tokens — and would understate context use as
- * the conversation grows. Summing all three gives the true position
- * within the context window.
+ * Why NOT cache_read: cache_read tokens are served from server-side prompt
+ * cache and don't exert real pressure on the context limit. Showing
+ * (input + cache_create) / window gives an honest "how close to trouble?"
+ * signal rather than an inflated total that includes already-compacted history.
+ *
+ * The full breakdown (live + cached + total + compaction count) is in the
+ * hover tooltip.
  */
 export function ContextBadge({ messages, contextWindow, className }: Props) {
   const usage = lastTurnUsage(messages);
   if (!usage || contextWindow <= 0) return null;
 
-  const used = usage.total;
-  const pct = Math.min(100, Math.round((used / contextWindow) * 100));
+  // Live = tokens the model actually had to process fresh this turn.
+  // This is the meaningful pressure metric — not the cached portion.
+  // Fall back to total when live is zero (e.g. backend doesn't report cache
+  // breakdown) so the badge always shows something useful.
+  const live = usage.input + usage.cacheCreate;
+  const displayed = live > 0 ? live : usage.total;
+  const pct = Math.min(100, Math.round((displayed / contextWindow) * 100));
 
-  // The agent auto-compacts older history once context passes
-  // contextWindow − reserveTokens. Mirrors the Pi SDK default
-  // (DEFAULT_COMPACTION_SETTINGS.reserveTokens) — keep in sync if it changes.
   const COMPACTION_RESERVE_TOKENS = 16384;
   const compactAt = Math.max(0, contextWindow - COMPACTION_RESERVE_TOKENS);
   const compactPct = Math.round((compactAt / contextWindow) * 100);
-  const willCompactSoon = used >= compactAt;
+  const willCompactSoon = displayed >= compactAt;
+
+  const compactionCount = countCompactions(messages);
 
   const tone =
     pct >= 95
@@ -40,13 +45,18 @@ export function ContextBadge({ messages, contextWindow, className }: Props) {
         ? 'border-amber-500/40 bg-amber-500/10 text-amber-300'
         : 'border-border bg-elevated/40 text-fg-subtle';
 
-  // Tooltip surfaces the cache split (so a small `new` count next to a large
-  // total makes sense) and the auto-compaction point derived above.
   const tooltip = [
-    `Total: ${used.toLocaleString()} / ${contextWindow.toLocaleString()} input tokens`,
-    `· new: ${usage.input.toLocaleString()}`,
-    `· cache read: ${usage.cacheRead.toLocaleString()}`,
-    `· cache create: ${usage.cacheCreate.toLocaleString()}`,
+    live > 0
+      ? `Live:   ${live.toLocaleString()} / ${contextWindow.toLocaleString()} tokens`
+      : `Total:  ${usage.total.toLocaleString()} / ${contextWindow.toLocaleString()} tokens`,
+    `· new tokens:      ${usage.input.toLocaleString()}`,
+    `· cache writes:    ${usage.cacheCreate.toLocaleString()}`,
+    `Cached: ${usage.cacheRead.toLocaleString()} (served from prompt cache)`,
+    live > 0 ? `Total:  ${usage.total.toLocaleString()}` : '',
+    '',
+    compactionCount > 0
+      ? `Compacted: ${compactionCount}× — older history summarised`
+      : 'Not yet compacted',
     '',
     willCompactSoon
       ? 'Auto-compaction imminent — older history compresses next turn.'
@@ -65,8 +75,14 @@ export function ContextBadge({ messages, contextWindow, className }: Props) {
       <span>{pct}%</span>
       <span className="opacity-60">·</span>
       <span>
-        {compact(used)} / {compact(contextWindow)}
+        {compact(displayed)} / {compact(contextWindow)}
       </span>
+      {compactionCount > 0 && (
+        <>
+          <span className="opacity-40">·</span>
+          <span className="opacity-70">{compactionCount}×</span>
+        </>
+      )}
     </span>
   );
 }
@@ -82,10 +98,6 @@ function lastTurnUsage(messages: ChatMessage[]): TurnUsage | null {
   for (let i = messages.length - 1; i >= 0; i--) {
     const m = messages[i];
     if (m.role !== 'assistant') continue;
-    // Prefer per-call usage from the latest API round (real prompt size
-    // at that moment). Fall back to the aggregate `usage` only when
-    // per-call data isn't available — older sessions that streamed
-    // before this event existed, or backends that don't emit it.
     const u = m.latestCallUsage ?? m.usage;
     if (!u) continue;
     const input = u.inputTokens ?? 0;
@@ -97,6 +109,12 @@ function lastTurnUsage(messages: ChatMessage[]): TurnUsage | null {
     }
   }
   return null;
+}
+
+function countCompactions(messages: ChatMessage[]): number {
+  return messages.filter(
+    (m) => m.role === 'assistant' && m.markerKind === 'compaction',
+  ).length;
 }
 
 function compact(n: number): string {

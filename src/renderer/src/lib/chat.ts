@@ -156,7 +156,7 @@ export function chatToStored(msg: ChatMessage): StoredMessage {
     error: msg.error,
     errorInfo: msg.errorInfo,
     stopReason: msg.stopReason,
-    usage: msg.usage,
+    usage: msg.latestCallUsage ?? msg.usage,
     durationMs: msg.durationMs,
     intentTag: msg.intentTag,
     attachments: msg.attachments,
