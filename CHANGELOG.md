@@ -5,6 +5,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.12.0] — 2026-07-08
+
+Adds project-scope tier for skills, agents, and extensions; new Context Panel (Cmd+Shift+B) to discover and pin assets per session.
+
+### Added
+
+**Project-scope tier for skills, agents, and extensions**
+
+- Skills, agents, and extensions can now live in `<project>/.minimalist-agent/` alongside the existing user tier (`~/.minimalist-agent/`); the project tier takes precedence over the user tier, making assets git-committable and team-shareable
+- Project-tier extensions are always active — no toggle needed; MCP servers in this tier are auto-consented, with env vars resolved from `process.env` (no keychain prompt)
+- On first launch, existing userData assets are automatically migrated to `~/.minimalist-agent/` (idempotent, guarded by a marker file) so nothing is lost
+
+**Context Panel (Cmd+Shift+B)**
+
+- New panel for discovering and pinning skills and agents from both the project tier and the user tier; accessible via the keyboard shortcut or the toolbar
+- Pinned assets persist across the session (stored in `session.json → pinnedAssets`) and are surfaced to the model automatically
+- Project-local config card in the chat header shows which project-scope assets are active for the current working directory
+
+---
+
 ## [1.11.0] — 2026-07-02
 
 New feature: find in chat. Press Cmd/Ctrl+F to search and highlight text across the active session's full message history.
