@@ -33,9 +33,10 @@ export function useFilteredItems({
       .map((s) => ({
         skill: s,
         score: scoreSkill(s, q),
+        tier: s.source === 'project' ? 0 : 1,
       }))
       .filter((x) => x.score > 0)
-      .sort((a, b) => b.score - a.score);
+      .sort((a, b) => b.score - a.score || a.tier - b.tier);
     return ranked.map((r) => r.skill);
   }, [skills, query]);
 
@@ -43,9 +44,9 @@ export function useFilteredItems({
   const filteredExtensions = useMemo(() => {
     const q = query.trim().toLowerCase();
     return extensions
-      .map((e) => ({ extension: e, score: scoreExtension(e, q) }))
+      .map((e) => ({ extension: e, score: scoreExtension(e, q), tier: e.scope === 'project' ? 0 : 1 }))
       .filter((x) => x.score > 0)
-      .sort((a, b) => b.score - a.score)
+      .sort((a, b) => b.score - a.score || a.tier - b.tier)
       .map((r) => r.extension);
   }, [extensions, query]);
 

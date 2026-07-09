@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { CwdContext } from '@/contexts/CwdContext';
 import { ChatScroll, type ChatScrollHandle } from '@/components/chat/ChatScroll';
 import { FindBar } from '@/components/chat/FindBar';
 import { useFindInChat } from '@/hooks/useFindInChat';
@@ -108,7 +109,8 @@ export function ChatContent({
     onFindClose();
   };
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <CwdContext.Provider value={cwd}>
+      <div className="flex h-full min-h-0 flex-col">
       {/* Find bar slides in between the header and the message list. The bar
           is always rendered (not conditionally mounted) so that the slide-out
           animation plays correctly — if we unmounted on close the bar would
@@ -176,6 +178,7 @@ export function ChatContent({
       </div>
 
       <CollaborationPrompt />
-    </div>
+      </div>
+    </CwdContext.Provider>
   );
 }

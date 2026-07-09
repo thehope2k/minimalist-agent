@@ -12,8 +12,7 @@
 
 import { Fragment, useMemo } from 'react';
 import { File as FileIcon, Folder as FolderIcon } from 'lucide-react';
-import { useSkills } from '@/hooks/useSkills';
-import { useExtensions } from '@/hooks/useExtensions';
+import { useSessionAssets } from '@/hooks/useSessionAssets';
 import { displayName as extensionDisplayName } from '@/lib/extensions';
 import { SkillAvatar } from '../skills/SkillAvatar';
 import { ExtensionAvatar } from '../extensions/ExtensionAvatar';
@@ -52,8 +51,7 @@ function tokenize(text: string): Run[] {
 }
 
 export function MentionText({ text }: { text: string }) {
-  const skills = useSkills() ?? [];
-  const extensions = useExtensions() ?? [];
+  const { skills, extensions } = useSessionAssets();
   const skillBySlug = useMemo(
     () => new Map(skills.map((s) => [s.slug, s])),
     [skills],

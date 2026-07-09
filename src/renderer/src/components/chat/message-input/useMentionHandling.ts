@@ -1,20 +1,18 @@
 import { useRef } from 'react';
-import { useSkills } from '@/hooks/useSkills';
-import { useExtensions } from '@/hooks/useExtensions';
+import { useSessionAssets } from '@/hooks/useSessionAssets';
 import { useInlineMention } from '@/hooks/useInlineMention';
 import type { MentionItem, MentionMenuHandle } from '../MentionMenu';
 
 /**
- * Mention handling (@skill, @extension, @file). Provides trigger, insert,
- * and keyboard navigation logic.
+ * Mention handling (@skill, @extension, @file) — trigger detection,
+ * item insertion, and keyboard navigation.
  */
 export function useMentionHandling(
   textareaRef: React.RefObject<HTMLTextAreaElement | null>,
   value: string,
   setValue: (text: string) => void,
 ) {
-  const skills = useSkills() ?? [];
-  const extensions = useExtensions() ?? [];
+  const { skills, extensions } = useSessionAssets();
   
   const {
     state: mention,
