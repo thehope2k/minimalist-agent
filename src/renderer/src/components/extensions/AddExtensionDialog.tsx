@@ -44,7 +44,6 @@ export function AddExtensionDialog({
 
   const [description, setDescription] = useState('');
   const [slug, setSlug] = useState('');
-  const [slugTouched, setSlugTouched] = useState(false);
   const [extDir, setExtDir] = useState<string | null>(null);
   const [refDocPath, setRefDocPath] = useState<string | null>(null);
   // Pick a placeholder once when the dialog opens; do NOT recompute on
@@ -56,7 +55,6 @@ export function AddExtensionDialog({
     if (!open) return;
     setDescription('');
     setSlug('');
-    setSlugTouched(false);
     setPlaceholder(
       PLACEHOLDERS[Math.floor(Math.random() * PLACEHOLDERS.length)],
     );
@@ -64,11 +62,6 @@ export function AddExtensionDialog({
     void getExtensionsReferenceDocPath().then(setRefDocPath);
     requestAnimationFrame(() => taRef.current?.focus());
   }, [open]);
-
-  useEffect(() => {
-    if (slugTouched) return;
-    setSlug(suggestSlug(description));
-  }, [description, slugTouched]);
 
   if (!open) return null;
 
@@ -82,8 +75,7 @@ export function AddExtensionDialog({
         : null;
   const canSubmit =
     description.trim().length > 0 &&
-    SLUG_RE.test(slug) &&
-    !slugTaken &&
+    (slug.length === 0 || (SLUG_RE.test(slug) && !slugTaken)) &&
     !!extDir &&
     !!refDocPath;
 
@@ -162,11 +154,8 @@ export function AddExtensionDialog({
             spellCheck={false}
             autoCapitalize="off"
             autoComplete="off"
-            onChange={(e) => {
-              setSlug(e.target.value);
-              setSlugTouched(true);
-            }}
-            placeholder="my-extension"
+            onChange={(e) => setSlug(e.target.value)}
+            placeholder="optional — agent will choose if blank"
             className={cn(
               'mt-1 block w-full rounded-md border bg-elevated/60 px-2.5 py-1.5 font-mono text-sm text-fg outline-none',
               slugError ? 'border-red-500/60' : 'border-border focus:border-accent/60',
@@ -174,11 +163,11 @@ export function AddExtensionDialog({
           />
           {slugError ? (
             <p className="mt-1 text-[11px] text-red-300">{slugError}</p>
-          ) : (
+          ) : slug.length > 0 ? (
             <p className="mt-1 truncate font-mono text-[11px] text-fg-subtle">
-              → {extDir ? `${extDir}/${slug || '<slug>'}/` : '…'}
+              → {extDir ? `${extDir}/${slug}/` : '…'}
             </p>
-          )}
+          ) : null}
         </div>
 
         <footer className="mt-4 flex items-center justify-end gap-2 border-t border-border/60 bg-elevated/30 px-4 py-3">
@@ -207,48 +196,19 @@ export function AddExtensionDialog({
   );
 }
 
-function suggestSlug(input: string): string {
-  const STOP_PREFIXES = [
-    'a ',
-    'an ',
-    'the ',
-    'connect to ',
-    'connect ',
-    'add ',
-    'set up ',
-    'integrate ',
-    'wrap ',
-    'use ',
-  ];
-  let s = input.toLowerCase().trim();
-  for (const p of STOP_PREFIXES) {
-    if (s.startsWith(p)) {
-      s = s.slice(p.length);
-      break;
-    }
-  }
-  s = s
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .replace(/-+/g, '-');
-  if (s.length > 25) {
-    const cut = s.lastIndexOf('-', 25);
-    s = (cut > 5 ? s.slice(0, cut) : s.slice(0, 25)).replace(/-+$/, '');
-  }
-  return s;
-}
-
 function buildScaffoldPrompt(
   description: string,
   slug: string,
   extensionsDir: string,
   refDocPath: string,
 ): string {
-  const target = `${extensionsDir}/${slug}`;
+  const slugInstructions = slug
+    ? `Once decided, create both \`${extensionsDir}/${slug}/extension.json\` and \`${extensionsDir}/${slug}/guide.md\` exactly at the slug above. Do NOT change the slug or location.`
+    : `Choose an appropriate slug (lowercase, hyphenated, ≤30 chars — e.g. \`linear\`) that clearly reflects the integration, then create both \`${extensionsDir}/<chosen-slug>/extension.json\` and \`${extensionsDir}/<chosen-slug>/guide.md\` at that location.`;
   return `<extension_create>
 <reference_doc>${refDocPath}</reference_doc>
-<target_dir>${target}</target_dir>
-<slug>${slug}</slug>
+<extensions_dir>${extensionsDir}</extensions_dir>
+${slug ? `<slug>${slug}</slug>` : ''}
 </extension_create>
 
 Read the reference doc at \`<reference_doc>\` first — it covers extension.json schema, guide.md format, the three variants (guide-only / cli-bound / mcp-backed), and examples.
@@ -261,7 +221,7 @@ Then:
    - **mcp-backed** when the service ships a real MCP server, OR has no good CLI and you want structured tool calls (Linear, Notion).
    Don't bias toward simplicity for its own sake — pick what fits.
 3. **If two variants are both reasonable and the trade-off is non-trivial** (e.g. an official MCP server exists *and* the CLI works fine, or the user's intent is ambiguous), pause and ask the user which to use before writing files. Frame it as a short choice with a one-line reason for each.
-4. Once decided, create both \`<target_dir>/extension.json\` and \`<target_dir>/guide.md\` exactly at the slug above. Do NOT change the slug or location.
+4. ${slugInstructions}
 5. After writing, validate by reading both files back.
 6. Briefly summarize what you built and what (if anything) the user needs to do next (e.g. provide an API key).
 

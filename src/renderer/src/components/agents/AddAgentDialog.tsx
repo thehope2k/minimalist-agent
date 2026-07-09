@@ -1,15 +1,15 @@
 // "+ New Agent" dialog. The user provides:
 //   - a free-text description of what the agent should do
-//   - a slug (name of the directory under ~/.agents/agents/)
+//   - a slug (name of the directory under ~/.minimalist-agent/agents/)
 //
 // Clicking "Build agent" assembles a scaffold prompt and routes it to a
-// fresh chat, where the model creates AGENT.md with Write tool.
+// fresh chat, where the model creates AGENT.md with Write tool. Slug is
+// optional — if left blank the agent picks a suitable one.
 
 import { useEffect, useRef, useState } from 'react';
-import { X, Sparkles } from 'lucide-react';
+import { ArrowUp, Bot, X } from 'lucide-react';
 import { getAgentsDir } from '@/lib/agents';
 import { cn } from '@/lib/utils';
-import { Button, Input, Textarea } from '@/components/ui';
 import type { SeedSubmit } from '@/App';
 
 const PLACEHOLDERS = [
@@ -33,7 +33,6 @@ export function AddAgentDialog({
 }) {
   const [description, setDescription] = useState('');
   const [slug, setSlug] = useState('');
-  const [slugTouched, setSlugTouched] = useState(false);
   const [agentsDir, setAgentsDir] = useState<string | null>(null);
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const [placeholder, setPlaceholder] = useState(PLACEHOLDERS[0]);
@@ -42,19 +41,12 @@ export function AddAgentDialog({
     if (!open) return;
     setDescription('');
     setSlug('');
-    setSlugTouched(false);
     setPlaceholder(
       PLACEHOLDERS[Math.floor(Math.random() * PLACEHOLDERS.length)],
     );
     void getAgentsDir().then(setAgentsDir);
     requestAnimationFrame(() => taRef.current?.focus());
   }, [open]);
-
-  // Auto-suggest a slug from the description until the user types one.
-  useEffect(() => {
-    if (slugTouched) return;
-    setSlug(suggestSlug(description));
-  }, [description, slugTouched]);
 
   if (!open) return null;
 
@@ -64,7 +56,7 @@ export function AddAgentDialog({
       : null;
   const canSubmit =
     description.trim().length > 0 &&
-    SLUG_RE.test(slug) &&
+    (slug.length === 0 || SLUG_RE.test(slug)) &&
     !!agentsDir;
 
   const handleSubmit = () => {
@@ -78,110 +70,109 @@ export function AddAgentDialog({
     onClose();
   };
 
+  const onTextareaKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      onClose();
+    } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
+
   return (
     <div
-      className={cn(
-        'fixed inset-0 z-50 flex items-center justify-center bg-black/50 transition-opacity',
-        open ? 'opacity-100' : 'pointer-events-none opacity-0',
-      )}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-app/70 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-lg rounded-lg border border-border bg-panel p-4 shadow-lg"
+        className="w-[min(560px,calc(100vw-32px))] overflow-hidden rounded-xl border border-border bg-panel shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <button
-          onClick={onClose}
-          className="absolute right-3 top-3 rounded p-1 hover:bg-elevated"
-          aria-label="Close"
-        >
-          <X className="h-4 w-4 text-fg-muted" strokeWidth={2} />
-        </button>
+        <header className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
+          <Bot className="h-4 w-4 text-accent" strokeWidth={1.75} />
+          <h2 className="flex-1 text-sm font-medium text-fg">New Agent</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md p-1 text-fg-subtle hover:bg-elevated hover:text-fg"
+            aria-label="Close"
+          >
+            <X className="h-4 w-4" strokeWidth={1.75} />
+          </button>
+        </header>
 
-        <h2 className="text-lg font-semibold text-fg">Build a New Agent</h2>
-        <p className="mt-1 text-sm text-fg-subtle">
-          Describe what the agent should do. The model will create the AGENT.md file.
-        </p>
-
-        <div className="mt-4 space-y-3">
-          {/* Description */}
-          <div>
-            <label className="block text-xs font-semibold uppercase text-fg-muted">
-              What should this agent do?
-            </label>
-            <Textarea
-              ref={taRef}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder={placeholder}
-              className="mt-1 text-sm"
-              rows={3}
-            />
-          </div>
-
-          {/* Slug */}
-          <div>
-            <label className="block text-xs font-semibold uppercase text-fg-muted">
-              Agent name (slug)
-            </label>
-            <Input
-              value={slug}
-              onChange={(e) => {
-                setSlug(e.target.value);
-                setSlugTouched(true);
-              }}
-              placeholder="e.g. code-reviewer"
-              className="mt-1 font-mono text-sm"
-              autoComplete="off"
-            />
-            {slugError && (
-              <p className="mt-1 text-xs text-red-400">{slugError}</p>
-            )}
-            {slug && !slugError && agentsDir && (
-              <p className="mt-1 text-xs text-fg-subtle">
-                📁 {agentsDir}/{slug}/AGENT.md
-              </p>
-            )}
-          </div>
+        <div className="px-4 pt-4">
+          <h3 className="text-base font-medium text-fg">
+            What should this agent do?
+          </h3>
+          <p className="mt-0.5 text-xs text-fg-subtle">
+            Describe it — the agent will scaffold the AGENT.md for you.
+          </p>
         </div>
 
-        {/* Actions */}
-        <div className="mt-6 flex gap-2">
-          <Button
-            variant="ghost"
+        <div className="px-4 pt-3">
+          <textarea
+            ref={taRef}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            onKeyDown={onTextareaKey}
+            placeholder={placeholder}
+            rows={4}
+            className="block w-full resize-none rounded-lg border border-border bg-elevated/60 px-3 py-2 text-sm text-fg placeholder:text-fg-subtle outline-none focus:border-accent/60"
+          />
+        </div>
+
+        <div className="px-4 pt-3">
+          <label className="block text-[11px] uppercase tracking-wide text-fg-subtle">
+            Slug
+          </label>
+          <input
+            type="text"
+            value={slug}
+            spellCheck={false}
+            autoCapitalize="off"
+            autoComplete="off"
+            onChange={(e) => setSlug(e.target.value)}
+            placeholder="optional — agent will choose if blank"
+            className={cn(
+              'mt-1 block w-full rounded-md border bg-elevated/60 px-2.5 py-1.5 font-mono text-sm text-fg outline-none',
+              slugError ? 'border-red-500/60' : 'border-border focus:border-accent/60',
+            )}
+          />
+          {slugError ? (
+            <p className="mt-1 text-[11px] text-red-300">{slugError}</p>
+          ) : slug.length > 0 ? (
+            <p className="mt-1 truncate font-mono text-[11px] text-fg-subtle">
+              → {agentsDir ? `${agentsDir}/${slug}/AGENT.md` : '…'}
+            </p>
+          ) : null}
+        </div>
+
+        <footer className="mt-4 flex items-center justify-end gap-2 border-t border-border/60 bg-elevated/30 px-4 py-3">
+          <button
+            type="button"
             onClick={onClose}
-            className="flex-1"
+            className="rounded-md px-3 py-1.5 text-sm text-fg-muted hover:bg-elevated hover:text-fg"
           >
             Cancel
-          </Button>
-          <Button
-            variant="primary"
+          </button>
+          <button
+            type="button"
             disabled={!canSubmit}
             onClick={handleSubmit}
-            icon={Sparkles}
-            className="flex-1"
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium',
+              'bg-accent text-accent-fg hover:bg-accent-hover',
+              'disabled:cursor-not-allowed disabled:bg-elevated disabled:text-fg-subtle',
+            )}
           >
-            Build Agent
-          </Button>
-        </div>
+            Build agent <ArrowUp className="h-3.5 w-3.5" strokeWidth={2.5} />
+          </button>
+        </footer>
       </div>
     </div>
   );
-}
-
-/**
- * Suggest a slug from free-text description.
- * e.g. "Read-only code analyzer" → "read-only-code-analyzer"
- */
-function suggestSlug(description: string): string {
-  return description
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '') // Remove non-alphanumeric except spaces and hyphens
-    .trim()
-    .replace(/\s+/g, '-') // Spaces to hyphens
-    .replace(/-+/g, '-') // Collapse multiple hyphens
-    .slice(0, 30) // Max 30 chars
-    .replace(/-$/, ''); // Remove trailing hyphen
 }
 
 /**
@@ -193,13 +184,17 @@ function buildAgentScaffoldPrompt(
   slug: string,
   agentsDir: string,
 ): string {
-  const target = `${agentsDir}/${slug}/AGENT.md`;
+  const chosenSlug = slug || '<chosen-slug>';
+  const target = `${agentsDir}/${chosenSlug}/AGENT.md`;
+  const slugInstructions = slug
+    ? `Slug must match the directory name: \`${slug}\``
+    : `Choose an appropriate slug (lowercase, hyphenated, ≤30 chars — e.g. \`code-reviewer\`) that clearly reflects what the agent does, and use it as the directory name.`;
   return `<agent_create>
-<target_file>${target}</target_file>
-<slug>${slug}</slug>
+<agents_dir>${agentsDir}</agents_dir>
+${slug ? `<slug>${slug}</slug>` : ''}
 </agent_create>
 
-Create the file at \`${target}\` with this exact structure:
+Create the AGENT.md file with this exact structure:
 
 \`\`\`markdown
 ---
@@ -221,7 +216,8 @@ System prompt body goes here. Be specific, set constraints, define output format
 Rules:
 - \`name\` and \`description\` are required; all other fields are optional
 - Omit \`model\` unless the user asked for one — the agent inherits the session model
-- Slug must match the directory name: \`${slug}\`
+- ${slugInstructions}
+- Place the file at \`${target}\`
 - After writing, read the file back to confirm it looks correct, then briefly summarize what you built
 
 User wants an agent that will: ${description}`;

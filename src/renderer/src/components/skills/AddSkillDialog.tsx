@@ -33,7 +33,6 @@ export function AddSkillDialog({
 }) {
   const [description, setDescription] = useState('');
   const [slug, setSlug] = useState('');
-  const [slugTouched, setSlugTouched] = useState(false);
   const [skillsDir, setSkillsDir] = useState<string | null>(null);
   const [refDocPath, setRefDocPath] = useState<string | null>(null);
   const taRef = useRef<HTMLTextAreaElement | null>(null);
@@ -45,7 +44,6 @@ export function AddSkillDialog({
     if (!open) return;
     setDescription('');
     setSlug('');
-    setSlugTouched(false);
     setPlaceholder(
       PLACEHOLDERS[Math.floor(Math.random() * PLACEHOLDERS.length)],
     );
@@ -53,12 +51,6 @@ export function AddSkillDialog({
     void getSkillsReferenceDocPath().then(setRefDocPath);
     requestAnimationFrame(() => taRef.current?.focus());
   }, [open]);
-
-  // Auto-suggest a slug from the description until the user types one.
-  useEffect(() => {
-    if (slugTouched) return;
-    setSlug(suggestSlug(description));
-  }, [description, slugTouched]);
 
   if (!open) return null;
 
@@ -68,7 +60,7 @@ export function AddSkillDialog({
       : null;
   const canSubmit =
     description.trim().length > 0 &&
-    SLUG_RE.test(slug) &&
+    (slug.length === 0 || SLUG_RE.test(slug)) &&
     !!skillsDir &&
     !!refDocPath;
 
@@ -148,11 +140,8 @@ export function AddSkillDialog({
             spellCheck={false}
             autoCapitalize="off"
             autoComplete="off"
-            onChange={(e) => {
-              setSlug(e.target.value);
-              setSlugTouched(true);
-            }}
-            placeholder="my-skill"
+            onChange={(e) => setSlug(e.target.value)}
+            placeholder="optional — agent will choose if blank"
             className={cn(
               'mt-1 block w-full rounded-md border bg-elevated/60 px-2.5 py-1.5 font-mono text-sm text-fg outline-none',
               slugError ? 'border-red-500/60' : 'border-border focus:border-accent/60',
@@ -160,11 +149,11 @@ export function AddSkillDialog({
           />
           {slugError ? (
             <p className="mt-1 text-[11px] text-red-300">{slugError}</p>
-          ) : (
+          ) : slug.length > 0 ? (
             <p className="mt-1 truncate font-mono text-[11px] text-fg-subtle">
-              → {skillsDir ? `${skillsDir}/${slug || '<slug>'}/SKILL.md` : '…'}
+              → {skillsDir ? `${skillsDir}/${slug}/SKILL.md` : '…'}
             </p>
-          )}
+          ) : null}
         </div>
 
         <footer className="mt-4 flex items-center justify-end gap-2 border-t border-border/60 bg-elevated/30 px-4 py-3">
@@ -194,41 +183,6 @@ export function AddSkillDialog({
 }
 
 /**
- * Slugify a description into a passable default. Conservative — drops
- * common stopwords from the front so the slug isn't too long.
- */
-function suggestSlug(input: string): string {
-  const STOP_PREFIXES = [
-    'a ',
-    'an ',
-    'the ',
-    'how to ',
-    'help me ',
-    'write ',
-    'generate ',
-    'explain ',
-    'review ',
-  ];
-  let s = input.toLowerCase().trim();
-  for (const p of STOP_PREFIXES) {
-    if (s.startsWith(p)) {
-      s = s.slice(p.length);
-      break;
-    }
-  }
-  s = s
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .replace(/-+/g, '-');
-  // Cap at ~25 chars to leave headroom under the 30-char limit.
-  if (s.length > 25) {
-    const cut = s.lastIndexOf('-', 25);
-    s = (cut > 5 ? s.slice(0, cut) : s.slice(0, 25)).replace(/-+$/, '');
-  }
-  return s;
-}
-
-/**
  * Build the scaffold prompt sent to the agent. Short and focused — the
  * comprehensive format reference lives in `<refDocPath>` and the agent
  * is instructed to Read it before writing.
@@ -239,14 +193,16 @@ function buildScaffoldPrompt(
   skillsDir: string,
   refDocPath: string,
 ): string {
-  const target = `${skillsDir}/${slug}/SKILL.md`;
+  const slugInstructions = slug
+    ? `Use the slug \`${slug}\` — create the skill at \`${skillsDir}/${slug}/SKILL.md\` exactly (do NOT change the slug or location).`
+    : `Choose an appropriate slug (lowercase, hyphenated, ≤30 chars — e.g. \`pr-review\`) that clearly reflects what the skill does, then create it at \`${skillsDir}/<chosen-slug>/SKILL.md\`.`;
   return `<skill_create>
 <reference_doc>${refDocPath}</reference_doc>
-<target_file>${target}</target_file>
-<slug>${slug}</slug>
+<skills_dir>${skillsDir}</skills_dir>
+${slug ? `<slug>${slug}</slug>` : ''}
 </skill_create>
 
-Read the reference doc at \`<reference_doc>\` first — it covers the SKILL.md format, frontmatter fields, slug rules, body conventions, and examples. Then create the new skill at \`<target_file>\` exactly (do NOT change the slug or location), validate it parses by reading it back, and briefly summarize what you built.
+Read the reference doc at \`<reference_doc>\` first — it covers the SKILL.md format, frontmatter fields, slug rules, body conventions, and examples. Then ${slugInstructions} Validate it parses by reading it back, and briefly summarize what you built.
 
 User wants a skill that will: ${description}`;
 }
