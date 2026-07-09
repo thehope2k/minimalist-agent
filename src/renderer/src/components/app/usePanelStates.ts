@@ -54,8 +54,9 @@ export function usePanelStates() {
       // Context is open — switch content to explorer (panel stays open)
       setActiveSidePanel('explorer');
     } else {
-      // Nothing open — expand
+      // Nothing open — expand to last size, but ensure a comfortable minimum
       p.expand();
+      if (p.getSize().asPercentage < 20) p.resize('30%');
       setActiveSidePanel('explorer');
     }
   }, [sidePanelRef, activeSidePanel]);
@@ -71,8 +72,9 @@ export function usePanelStates() {
       // Explorer is open — switch content to context (panel stays open)
       setActiveSidePanel('context');
     } else {
-      // Nothing open — expand
+      // Nothing open — expand to last size, but ensure a comfortable minimum
       p.expand();
+      if (p.getSize().asPercentage < 20) p.resize('30%');
       setActiveSidePanel('context');
     }
   }, [sidePanelRef, activeSidePanel]);

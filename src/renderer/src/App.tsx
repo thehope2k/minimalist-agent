@@ -109,7 +109,7 @@ export default function App() {
   const { defaultLayout: termGroupLayout, defaultSizesFromLayout: termSizes, onLayoutChange: onTermLayout } =
     useResizablePanels('terminal-v2', ['term-top', 'term-bottom'], [65, 35]);
   const { defaultLayout: explorerGroupLayout, defaultSizesFromLayout: explorerSizes, onLayoutChange: onExplorerLayoutChange } =
-    useResizablePanels('explorer-v2', ['explorer-main', 'explorer-side'], [100, 0]);
+    useResizablePanels('explorer-v2', ['explorer-main', 'explorer-side'], [70, 30]);
 
   return (
     <TooltipProvider>
