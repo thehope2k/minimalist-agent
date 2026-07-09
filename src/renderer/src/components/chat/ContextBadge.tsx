@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import type { ChatMessage } from '@/lib/chat';
+import { Tooltip } from '../ui';
 
 type Props = {
   messages: ChatMessage[];
@@ -45,28 +46,45 @@ export function ContextBadge({ messages, contextWindow, className }: Props) {
         ? 'border-amber-500/40 bg-amber-500/10 text-amber-300'
         : 'border-border bg-elevated/40 text-fg-subtle';
 
-  const tooltip = [
-    live > 0
-      ? `Live:   ${live.toLocaleString()} / ${contextWindow.toLocaleString()} tokens`
-      : `Total:  ${usage.total.toLocaleString()} / ${contextWindow.toLocaleString()} tokens`,
-    `· new tokens:      ${usage.input.toLocaleString()}`,
-    `· cache writes:    ${usage.cacheCreate.toLocaleString()}`,
-    `Cached: ${usage.cacheRead.toLocaleString()} (served from prompt cache)`,
-    live > 0 ? `Total:  ${usage.total.toLocaleString()}` : '',
-    '',
-    compactionCount > 0
-      ? `Compacted: ${compactionCount}× — older history summarised`
-      : 'Not yet compacted',
-    '',
-    willCompactSoon
-      ? 'Auto-compaction imminent — older history compresses next turn.'
-      : `Auto-compacts near the limit (~${compactPct}%, ${compactAt.toLocaleString()} tokens).`,
-  ].join('\n');
+  const tooltipContent = (
+    <div className="space-y-1.5 font-mono text-[11px]">
+      <div className="space-y-0.5">
+        <div className="font-semibold">
+          {live > 0
+            ? `Live: ${live.toLocaleString()} / ${contextWindow.toLocaleString()} tokens`
+            : `Total: ${usage.total.toLocaleString()} / ${contextWindow.toLocaleString()} tokens`}
+        </div>
+        <div className="pl-2 text-fg-muted">
+          <div>↳ new tokens: {usage.input.toLocaleString()}</div>
+          <div>↳ cache writes: {usage.cacheCreate.toLocaleString()}</div>
+        </div>
+      </div>
+      <div className="text-fg-muted whitespace-nowrap">
+        Cached: {usage.cacheRead.toLocaleString()}{' '}
+        <span className="opacity-70">(served from prompt cache)</span>
+      </div>
+      {live > 0 && (
+        <div className="text-fg-muted">Total: {usage.total.toLocaleString()}</div>
+      )}
+      <div className="border-t border-border pt-1.5">
+        {compactionCount > 0 ? (
+          <div className="text-fg-muted">Compacted {compactionCount}× — older history summarised</div>
+        ) : (
+          <div className="text-fg-subtle">Not yet compacted</div>
+        )}
+      </div>
+      <div className="text-fg-subtle text-[10px] whitespace-nowrap">
+        {willCompactSoon
+          ? '⚠ Auto-compaction imminent — older history compresses next turn.'
+          : `Auto-compacts near the limit (~${compactPct}%, ${compactAt.toLocaleString()} tokens).`}
+      </div>
+    </div>
+  );
 
   return (
-    <span
-      title={tooltip}
-      className={cn(
+    <Tooltip content={tooltipContent} side="top" className="max-w-none">
+      <span
+        className={cn(
         'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 font-mono text-[10px]',
         tone,
         className,
@@ -83,7 +101,8 @@ export function ContextBadge({ messages, contextWindow, className }: Props) {
           <span className="opacity-70">{compactionCount}×</span>
         </>
       )}
-    </span>
+      </span>
+    </Tooltip>
   );
 }
 
