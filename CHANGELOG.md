@@ -5,6 +5,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.13.0] — 2026-07-09
+
+Project-scope asset creation from the context panel; quality of life improvements to creation dialogs.
+
+### Added
+
+**Project-scope asset creation**
+
+- Context panel's project section now always shows when a session has a working directory, even when empty — making it the natural place to start building project-local assets
+- `+ New` dropdown in the project section header lets you create skills, agents, and extensions directly into `<cwd>/.minimalist-agent/` without leaving the session
+- New sessions spawned from project-scope creation open rooted at the project directory so the agent writes files to the right place automatically
+
+### Changed
+
+- Slug field in New Skill, New Agent, and New Extension dialogs is now optional — leave it blank and the agent picks an appropriate name based on the description
+- New Agent dialog visual style now matches New Skill and New Extension (consistent header, footer, field layout, and keyboard shortcuts)
+
+---
+
 ## [1.12.2] — 2026-07-09
 
 Quality of life improvements and bug fixes.
