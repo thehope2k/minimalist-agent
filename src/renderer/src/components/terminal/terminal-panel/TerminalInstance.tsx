@@ -76,13 +76,11 @@ export const TerminalInstance = forwardRef<TerminalInstanceHandle, TerminalInsta
         const [
           { Terminal },
           { FitAddon },
-          { CanvasAddon },
           { WebLinksAddon },
           { SearchAddon },
         ] = await Promise.all([
           import('@xterm/xterm'),
           import('@xterm/addon-fit'),
-          import('@xterm/addon-canvas'),
           import('@xterm/addon-web-links'),
           import('@xterm/addon-search'),
         ]);
@@ -101,14 +99,12 @@ export const TerminalInstance = forwardRef<TerminalInstanceHandle, TerminalInsta
         });
 
         const fitAddon    = new FitAddon();
-        const canvasAddon = new CanvasAddon();
         const linksAddon  = new WebLinksAddon((_event, uri) => {
           void window.api.app.openExternal(uri);
         });
         const searchAddon = new SearchAddon();
 
         term.loadAddon(fitAddon);
-        term.loadAddon(canvasAddon);
         term.loadAddon(linksAddon);
         term.loadAddon(searchAddon);
         term.open(containerRef.current);
