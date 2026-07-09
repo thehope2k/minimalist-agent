@@ -22,6 +22,11 @@ export function getExtensionsDir(): Promise<string> {
   return dirPromise;
 }
 
+/** Resolve the project-tier extensions directory for the given cwd. Never cached. */
+export function getProjectExtensionsDir(cwd: string): Promise<string> {
+  return window.api.extensions.getProjectDir(cwd);
+}
+
 let refDocCache: string | null = null;
 let refDocPromise: Promise<string> | null = null;
 

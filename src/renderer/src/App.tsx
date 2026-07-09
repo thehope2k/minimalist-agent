@@ -50,7 +50,6 @@ export default function App() {
     terminalOpenRef,
     activeSidePanel,
     fileExplorerOpen,
-    contextPanelOpen,
     listPanelRef,
     terminalPanelRef,
     sidePanelRef,
@@ -241,6 +240,7 @@ export default function App() {
                             cwd={activeCwd}
                             pinnedAssets={sessions?.find((s) => s.id === activeSessionId)?.pinnedAssets}
                             onPinnedChange={() => { void reloadSessions(); }}
+                            onStartChatWithSubmission={startSessionWithSubmission}
                           />
                         )}
                       </div>

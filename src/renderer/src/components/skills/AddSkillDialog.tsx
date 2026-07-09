@@ -26,10 +26,13 @@ export function AddSkillDialog({
   open,
   onClose,
   onSubmit,
+  projectDir,
 }: {
   open: boolean;
   onClose: () => void;
   onSubmit: (submit: SeedSubmit) => void;
+  /** When set, creates in this dir instead of the user-tier skills dir. */
+  projectDir?: string;
 }) {
   const [description, setDescription] = useState('');
   const [slug, setSlug] = useState('');
@@ -47,7 +50,7 @@ export function AddSkillDialog({
     setPlaceholder(
       PLACEHOLDERS[Math.floor(Math.random() * PLACEHOLDERS.length)],
     );
-    void getSkillsDir().then(setSkillsDir);
+    void (projectDir ? Promise.resolve(projectDir) : getSkillsDir()).then(setSkillsDir);
     void getSkillsReferenceDocPath().then(setRefDocPath);
     requestAnimationFrame(() => taRef.current?.focus());
   }, [open]);

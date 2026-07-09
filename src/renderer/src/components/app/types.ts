@@ -6,6 +6,8 @@ export interface SeedSubmit {
   agentText: string;
   /** Origin tag for the contextual chip above the user bubble. */
   intentTag: string;
+  /** Optional working directory for the new session. When set, the session opens rooted here. */
+  workingDirectory?: string;
 }
 
 export const PANEL_CARD =

@@ -1,6 +1,6 @@
-import type { LoadedAgent, AgentFileNode } from './electron';
+import type { LoadedAgent } from './electron';
 
-export type { LoadedAgent, AgentFileNode };
+export type { LoadedAgent };
 
 let cache: LoadedAgent[] | null = null;
 let bootPromise: Promise<LoadedAgent[]> | null = null;
@@ -18,6 +18,11 @@ export function getAgentsDir(): Promise<string> {
     });
   }
   return dirPromise;
+}
+
+/** Resolve the project-tier agents directory for the given cwd. Never cached. */
+export function getProjectAgentsDir(cwd: string): Promise<string> {
+  return window.api.agents.getProjectDir(cwd);
 }
 
 function notify(): void {
@@ -60,10 +65,6 @@ export async function deleteAgent(slug: string): Promise<boolean> {
   const ok = await window.api.agents.delete(slug);
   if (ok) await reload();
   return ok;
-}
-
-export function listFiles(dirPath: string): Promise<AgentFileNode[]> {
-  return window.api.agents.listFiles(dirPath);
 }
 
 export function openInEditor(dirPath: string): Promise<string> {

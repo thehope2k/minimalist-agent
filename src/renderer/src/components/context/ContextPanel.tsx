@@ -1,7 +1,15 @@
-import { Layers, RefreshCw } from 'lucide-react';
+import { Layers, Plus, RefreshCw } from 'lucide-react';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useContextPanel } from '@/hooks/useContextPanel';
+import { getProjectSkillsDir } from '@/lib/skills';
+import { getProjectAgentsDir } from '@/lib/agents';
+import { getProjectExtensionsDir } from '@/lib/extensions';
 import { PinnedSection, AvailableSection, ExtensionsSection } from './ContextPanelSections';
+import { AddSkillDialog } from '@/components/skills/AddSkillDialog';
+import { AddAgentDialog } from '@/components/agents/AddAgentDialog';
+import { AddExtensionDialog } from '@/components/extensions/AddExtensionDialog';
+import type { SeedSubmit } from '@/App';
 
 function basename(p: string): string {
   return p.replace(/\/+$/, '').split('/').pop() ?? p;
@@ -13,6 +21,7 @@ interface ContextPanelProps {
   pinnedAssets?: string[];
   /** Called after pin/unpin so the parent can reload session meta */
   onPinnedChange?: () => void;
+  onStartChatWithSubmission?: (submit: SeedSubmit) => void;
 }
 
 export function ContextPanel({
@@ -20,7 +29,26 @@ export function ContextPanel({
   cwd,
   pinnedAssets,
   onPinnedChange,
+  onStartChatWithSubmission,
 }: ContextPanelProps) {
+  const [newDialog, setNewDialog] = useState<'skill' | 'agent' | 'extension' | null>(null);
+  const [projectSkillsDir, setProjectSkillsDir] = useState<string | undefined>();
+  const [projectAgentsDir, setProjectAgentsDir] = useState<string | undefined>();
+  const [projectExtDir, setProjectExtDir] = useState<string | undefined>();
+
+  // Pre-resolve project dirs when cwd is known
+  const openNewDialog = async (type: 'skill' | 'agent' | 'extension') => {
+    if (!cwd) return;
+    if (type === 'skill' && !projectSkillsDir) {
+      setProjectSkillsDir(await getProjectSkillsDir(cwd));
+    } else if (type === 'agent' && !projectAgentsDir) {
+      setProjectAgentsDir(await getProjectAgentsDir(cwd));
+    } else if (type === 'extension' && !projectExtDir) {
+      setProjectExtDir(await getProjectExtensionsDir(cwd));
+    }
+    setNewDialog(type);
+  };
+
   const {
     loading,
     projectSkills,
@@ -83,15 +111,16 @@ export function ContextPanel({
         />
 
         {/* Available — project tier */}
-        {(projectSkills.length > 0 || projectAgents.length > 0) && (
+        {cwd && (
           <AvailableSection
-            title={cwd ? basename(cwd) : 'Project'}
+            title={basename(cwd)}
             skills={projectSkills}
             agents={projectAgents}
             isPinned={isPinned}
             onPin={handlePin}
             onUnpin={handleUnpin}
             cwd={cwd}
+            onNew={onStartChatWithSubmission ? openNewDialog : undefined}
           />
         )}
 
@@ -130,6 +159,30 @@ export function ContextPanel({
             </div>
           )}
       </div>
+
+      {/* Project-scoped creation dialogs */}
+      {onStartChatWithSubmission && (
+        <>
+          <AddSkillDialog
+            open={newDialog === 'skill'}
+            onClose={() => setNewDialog(null)}
+            onSubmit={(s) => { onStartChatWithSubmission({ ...s, workingDirectory: cwd }); setNewDialog(null); }}
+            projectDir={projectSkillsDir}
+          />
+          <AddAgentDialog
+            open={newDialog === 'agent'}
+            onClose={() => setNewDialog(null)}
+            onSubmit={(s) => { onStartChatWithSubmission({ ...s, workingDirectory: cwd }); setNewDialog(null); }}
+            projectDir={projectAgentsDir}
+          />
+          <AddExtensionDialog
+            open={newDialog === 'extension'}
+            onClose={() => setNewDialog(null)}
+            onSubmit={(s) => { onStartChatWithSubmission({ ...s, workingDirectory: cwd }); setNewDialog(null); }}
+            projectDir={projectExtDir}
+          />
+        </>
+      )}
     </div>
   );
 }

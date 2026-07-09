@@ -88,6 +88,7 @@ import {Paths} from './storage/paths';
 import {
   deleteSkill,
   getSkillsDir,
+  getProjectSkillsDir,
   invalidateSkillsCache,
   loadAllSkills,
   type LoadedSkill,
@@ -100,6 +101,7 @@ import {
   type AgentFileNode,
   deleteAgent,
   getAgentsDir,
+  getProjectAgentsDir,
   invalidateAgentsCache,
   loadAgentBySlug,
   loadAllAgents,
@@ -111,6 +113,7 @@ import {
   deleteExtension,
   type ExtensionFileNode,
   getExtensionsDir,
+  getProjectExtensionsDir,
   invalidateExtensionsCache,
   loadAllExtensions,
   loadExtensionBySlug,
@@ -1070,6 +1073,7 @@ export function registerIpc(): void {
   // ---- Skills -----------------------------------------------------------
 
   ipcMain.handle('skills:getDir', (): string => getSkillsDir());
+  ipcMain.handle('skills:getProjectDir', (_e, cwd: string): string => getProjectSkillsDir(cwd));
   ipcMain.handle(
     'skills:getReferenceDocPath',
     (): string => Paths.skillsReferenceDoc(),
@@ -1114,6 +1118,7 @@ export function registerIpc(): void {
   // ---- Agents ---------------------------------------------------------
 
   ipcMain.handle('agents:getDir', (): string => getAgentsDir());
+  ipcMain.handle('agents:getProjectDir', (_e, cwd: string): string => getProjectAgentsDir(cwd));
   ipcMain.handle(
     'agents:list',
     (): LoadedAgent[] => loadAllAgents(),
@@ -1158,6 +1163,7 @@ export function registerIpc(): void {
   // ---- Extensions -------------------------------------------------------
 
   ipcMain.handle('extensions:getDir', (): string => getExtensionsDir());
+  ipcMain.handle('extensions:getProjectDir', (_e, cwd: string): string => getProjectExtensionsDir(cwd));
   ipcMain.handle(
     'extensions:getReferenceDocPath',
     (): string => Paths.extensionsReferenceDoc(),

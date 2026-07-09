@@ -32,10 +32,13 @@ export function AddExtensionDialog({
   open,
   onClose,
   onSubmit,
+  projectDir,
 }: {
   open: boolean;
   onClose: () => void;
   onSubmit: (submit: SeedSubmit) => void;
+  /** When set, creates in this dir instead of the user-tier extensions dir. */
+  projectDir?: string;
 }) {
   const existingExtensions = useExtensions();
   const takenSlugs = new Set(
@@ -58,7 +61,7 @@ export function AddExtensionDialog({
     setPlaceholder(
       PLACEHOLDERS[Math.floor(Math.random() * PLACEHOLDERS.length)],
     );
-    void getExtensionsDir().then(setExtDir);
+    void (projectDir ? Promise.resolve(projectDir) : getExtensionsDir()).then(setExtDir);
     void getExtensionsReferenceDocPath().then(setRefDocPath);
     requestAnimationFrame(() => taRef.current?.focus());
   }, [open]);

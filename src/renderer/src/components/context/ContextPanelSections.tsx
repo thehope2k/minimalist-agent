@@ -1,4 +1,5 @@
-import { Pin, PinOff } from 'lucide-react';
+import { Pin, PinOff, Plus } from 'lucide-react';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import type { LoadedSkill, LoadedAgent, LoadedExtension } from '@/lib/electron';
 import { displayName as extensionDisplayName, displayDescription as extensionDisplayDescription } from '@/lib/extensions';
@@ -161,6 +162,8 @@ export interface AvailableSectionProps {
   onPin: (scopedSlug: string) => void;
   onUnpin: (scopedSlug: string) => void;
   cwd?: string;
+  /** When provided, shows a + New dropdown in the section header. */
+  onNew?: (type: 'skill' | 'agent' | 'extension') => void;
 }
 
 export function AvailableSection({
@@ -170,15 +173,54 @@ export function AvailableSection({
   isPinned,
   onPin,
   onUnpin,
+  onNew,
 }: AvailableSectionProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
   const hasItems = skills.length > 0 || agents.length > 0;
-  if (!hasItems) return null;
 
   return (
     <div className="border-b border-border pb-2 last:border-0">
-      <div className="px-3 py-2 text-[10px] font-medium uppercase tracking-wide text-fg-subtle">
-        {title}
+      <div className="flex items-center gap-1.5 px-3 py-2">
+        <span className="flex-1 text-[10px] font-medium uppercase tracking-wide text-fg-subtle">
+          {title}
+        </span>
+        {onNew && (
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setMenuOpen((o) => !o)}
+              className="inline-flex items-center gap-1 rounded-md border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[11px] font-medium text-accent hover:bg-accent/20"
+              title="New project asset"
+            >
+              <Plus className="h-3 w-3" strokeWidth={2.5} />
+              New
+            </button>
+            {menuOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+                <div className="absolute right-0 top-full z-50 mt-1 w-36 overflow-hidden rounded-lg border border-border bg-panel shadow-xl">
+                  {(['skill', 'agent', 'extension'] as const).map((type) => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => { setMenuOpen(false); onNew(type); }}
+                      className="flex w-full items-center px-3 py-1.5 text-left text-sm text-fg hover:bg-elevated capitalize"
+                    >
+                      New {type}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
+
+      {!hasItems && (
+        <p className="px-3 pb-2 text-xs text-fg-subtle">
+          No project assets yet.
+        </p>
+      )}
 
       {skills.map((skill) => {
         const pinned = isPinned(skill.source as 'user' | 'project', skill.slug);

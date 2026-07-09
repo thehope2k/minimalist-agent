@@ -3,9 +3,9 @@
 // snapshot reads are sync after a one-time bootstrap; mutations refresh
 // the cache.
 
-import type { LoadedSkill, SkillFileNode } from './electron';
+import type { LoadedSkill } from './electron';
 
-export type { LoadedSkill, SkillFileNode };
+export type { LoadedSkill };
 
 let cache: LoadedSkill[] | null = null;
 let bootPromise: Promise<LoadedSkill[]> | null = null;
@@ -27,6 +27,11 @@ export function getSkillsDir(): Promise<string> {
     });
   }
   return dirPromise;
+}
+
+/** Resolve the project-tier skills directory for the given cwd. Never cached — cwd can change. */
+export function getProjectSkillsDir(cwd: string): Promise<string> {
+  return window.api.skills.getProjectDir(cwd);
 }
 
 let refDocCache: string | null = null;
@@ -87,10 +92,6 @@ export async function deleteSkill(slug: string): Promise<boolean> {
   const ok = await window.api.skills.delete(slug);
   if (ok) await reload();
   return ok;
-}
-
-export function listFiles(dirPath: string): Promise<SkillFileNode[]> {
-  return window.api.skills.listFiles(dirPath);
 }
 
 export function openInEditor(dirPath: string): Promise<string> {

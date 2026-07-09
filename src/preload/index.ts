@@ -723,6 +723,7 @@ const api = {
   },
   skills: {
     getDir: (): Promise<string> => ipcRenderer.invoke('skills:getDir'),
+    getProjectDir: (cwd: string): Promise<string> => ipcRenderer.invoke('skills:getProjectDir', cwd),
     getReferenceDocPath: (): Promise<string> =>
       ipcRenderer.invoke('skills:getReferenceDocPath'),
     list: (): Promise<unknown[]> => ipcRenderer.invoke('skills:list'),
@@ -746,6 +747,7 @@ const api = {
   },
   agents: {
     getDir: (): Promise<string> => ipcRenderer.invoke('agents:getDir'),
+    getProjectDir: (cwd: string): Promise<string> => ipcRenderer.invoke('agents:getProjectDir', cwd),
     list: (): Promise<unknown[]> => ipcRenderer.invoke('agents:list'),
     get: (slug: string): Promise<unknown | null> =>
       ipcRenderer.invoke('agents:get', slug),
@@ -782,6 +784,7 @@ const api = {
   },
   extensions: {
     getDir: (): Promise<string> => ipcRenderer.invoke('extensions:getDir'),
+    getProjectDir: (cwd: string): Promise<string> => ipcRenderer.invoke('extensions:getProjectDir', cwd),
     getReferenceDocPath: (): Promise<string> =>
       ipcRenderer.invoke('extensions:getReferenceDocPath'),
     list: (cwd?: string): Promise<unknown[]> => ipcRenderer.invoke('extensions:list', cwd),

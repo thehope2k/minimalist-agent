@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import type { ProjectFilter, View } from '../layout/TopBar';
 import { PROJECT_FILTER_KEY, type SeedSubmit } from './types';
 import { useSessions } from '@/hooks/useSessions';
-import { clearNewSessionStateDraft } from '@/lib/new-session-draft';
+import { clearNewSessionStateDraft, patchNewSessionStateDraft } from '@/lib/new-session-draft';
 
 /**
  * Manages active session state, new session creation, seed submissions,
@@ -46,6 +46,9 @@ export function useSessionManagement(
   const startSessionWithSubmission = (submit: SeedSubmit) => {
     intentNewChatRef.current = true;
     clearNewSessionStateDraft();
+    if (submit.workingDirectory) {
+      patchNewSessionStateDraft({ cwd: submit.workingDirectory });
+    }
     setSeedSubmit(submit);
     setActiveSessionId(null);
     setView('all');

@@ -26,10 +26,13 @@ export function AddAgentDialog({
   open,
   onClose,
   onSubmit,
+  projectDir,
 }: {
   open: boolean;
   onClose: () => void;
   onSubmit: (submit: SeedSubmit) => void;
+  /** When set, creates in this dir instead of the user-tier agents dir. */
+  projectDir?: string;
 }) {
   const [description, setDescription] = useState('');
   const [slug, setSlug] = useState('');
@@ -44,7 +47,7 @@ export function AddAgentDialog({
     setPlaceholder(
       PLACEHOLDERS[Math.floor(Math.random() * PLACEHOLDERS.length)],
     );
-    void getAgentsDir().then(setAgentsDir);
+    void (projectDir ? Promise.resolve(projectDir) : getAgentsDir()).then(setAgentsDir);
     requestAnimationFrame(() => taRef.current?.focus());
   }, [open]);
 

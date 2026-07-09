@@ -37,7 +37,6 @@ required files:
   "slug": "linear",
   "name": "Linear",
   "description": "Issue tracking",
-  "enabled": true,                           // optional, default true
   "version": "0.1.0",
   "icon": "🟣",                               // optional
   "tags": ["pm", "issues"],
@@ -267,10 +266,4 @@ agent should ask the user.
 Click "+ New Extension" or ask the agent: "connect Linear" / "add an aws-iac
 extension". The agent will research the integration, draft \`extension.json\`
 and \`guide.md\`, write them to disk, and verify they work.
-
-## Disabling
-
-Toggle \`enabled\` in extension.json (or use the UI toggle). Disabled
-extensions are skipped from the prompt awareness block and won't have their
-MCP servers spawned.
 `;

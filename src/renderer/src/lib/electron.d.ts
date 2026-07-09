@@ -698,7 +698,6 @@ export interface ExtensionConfig {
   slug: string;
   name: string;
   description: string;
-  enabled?: boolean;
   version?: string;
   icon?: string;
   tags?: string[];
@@ -1056,6 +1055,8 @@ export interface AppApi {
   skills: {
     /** Absolute path of the on-disk skills directory (under userData). */
     getDir: () => Promise<string>;
+    /** Project-tier skills directory: <cwd>/.minimalist-agent/skills/ */
+    getProjectDir: (cwd: string) => Promise<string>;
     /** Path of the bundled skill-format reference doc (markdown). */
     getReferenceDocPath: () => Promise<string>;
     /** All installed skills. */
@@ -1080,6 +1081,8 @@ export interface AppApi {
   };
   agents: {
     getDir: () => Promise<string>;
+    /** Project-tier agents directory: <cwd>/.minimalist-agent/agents/ */
+    getProjectDir: (cwd: string) => Promise<string>;
     list: () => Promise<LoadedAgent[]>;
     get: (slug: string) => Promise<LoadedAgent | null>;
     listFiles: (dirPath: string) => Promise<AgentFileNode[]>;
@@ -1106,6 +1109,8 @@ export interface AppApi {
   };
   extensions: {
     getDir: () => Promise<string>;
+    /** Project-tier extensions directory: <cwd>/.minimalist-agent/extensions/ */
+    getProjectDir: (cwd: string) => Promise<string>;
     getReferenceDocPath: () => Promise<string>;
     list: (cwd?: string) => Promise<LoadedExtension[]>;
     get: (slug: string) => Promise<LoadedExtension | null>;
