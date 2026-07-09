@@ -82,7 +82,6 @@ export function useStagingState(
     setStagedPaths,
     stagedHunks,
     setStagedHunks,
-    pendingPartialPaths,
     setPendingPartialPaths,
     handleToggleFile,
     handleToggleRepo,

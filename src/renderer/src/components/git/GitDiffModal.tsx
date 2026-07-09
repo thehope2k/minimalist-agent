@@ -3,25 +3,18 @@
 // Layout: ExpandModal with a two-column body:
 //   left  ~256 px  GitFileList (file list with stage checkboxes, indeterminate for partial)
 //                  CommitPanel (message + commit button, pinned bottom)
-//   right flex-1   HunkPanel (per-hunk checkboxes, above Monaco)
-//                  GitDiffView (Monaco DiffEditor, readonly)
+//   right flex-1   GitDiffView (Monaco DiffEditor, readonly)
 //
 // Staging model:
 //   - All files checked by default; uncheck a file to exclude it entirely.
-//   - Each diff hunk has its own checkbox (via HunkPanel). Unchecked hunks
-//     are reverted to original content in the committed version only —
-//     the disk file is never touched.
-//   - File checkbox shows indeterminate (⊟) when only some hunks are staged.
-//   - File checkbox click: checked → unchecked; indeterminate/unchecked → all hunks staged.
-//   - On commit: for each staged file, reconstruct commit content from
-//     staged hunks via applySelectedHunks(); use git hash-object + update-index.
+//   - On commit: staged files are committed via git hash-object + update-index.
 
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { ExpandModal } from '@/components/ui';
 import { GitDiffView } from './GitDiffView';
 import { ConflictView } from './ConflictView';
 import { MergeStateBanner } from './MergeStateBanner';
-import { buildRestorePlan, hunkKey } from './git-review-state';
+import { hunkKey } from './git-review-state';
 import { GitHeader } from './git-flow/GitHeader';
 import { GitLeftPanel } from './git-flow/GitLeftPanel';
 import { useGitReviewPersistence } from './git-flow/useGitReviewPersistence';
@@ -64,7 +57,6 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
     setStagedPaths,
     stagedHunks,
     setStagedHunks,
-    pendingPartialPaths,
     setPendingPartialPaths,
     handleToggleFile,
     handleToggleRepo,
@@ -100,24 +92,6 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
   }, [refreshMergeState, loadStatus]);
 
   // ── Persistence ───────────────────────────────────────────────────────────
-  const applyRestoreSnapshot = useCallback((snapshot: any, repoList: typeof repos) => {
-    const allFilesList = repoList.flatMap((r) => r.files);
-    const plan = buildRestorePlan(snapshot, allFilesList);
-
-    pendingHunkRestoreRef.current = plan.pendingHunkKeys;
-    restoredPartialContentRef.current = plan.partialContents;
-    setPendingPartialPaths(new Set(plan.pendingHunkKeys.keys()));
-    setStagedPaths(plan.stagedPaths);
-    setStagedHunks(plan.stagedHunks);
-    setSelected((prev) => {
-      if (plan.selectedPath) {
-        const found = allFilesList.find((f) => f.absolutePath === plan.selectedPath);
-        if (found) return found;
-      }
-      return prev ?? allFilesList[0] ?? null;
-    });
-  }, [setStagedPaths, setStagedHunks, setPendingPartialPaths, setSelected]);
-
   const partialContentByPath = useMemo(() => {
     const map = new Map<string, string>();
     for (const [path, hs] of stagedHunks) {
@@ -131,7 +105,7 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
     return map;
   }, [stagedHunks]);
 
-  const { onNoCwd, prepareForRepos, clearPersisted } = useGitReviewPersistence({
+  const { clearPersisted } = useGitReviewPersistence({
     cwd,
     repos,
     statusLoading,
@@ -141,7 +115,6 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
     stagedHunks,
     lineChangesByPath: lineChangesCacheRef.current,
     partialContentByPath,
-    onApplySnapshot: applyRestoreSnapshot,
     pendingHunkKeysRef: pendingHunkRestoreRef,
   });
 
