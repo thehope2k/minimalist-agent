@@ -4,7 +4,7 @@
 // docs/SYSTEM-PROMPT.md — keep that doc in sync with this file.
 
 import type {Dirent} from 'node:fs';
-import {readdirSync, statSync} from 'node:fs';
+import {readFileSync, readdirSync, statSync} from 'node:fs';
 import {hostname, release} from 'node:os';
 import {join, sep} from 'node:path';
 import {formatPreferencesForPrompt, getCoAuthorPreference,} from '../storage/preferences';
@@ -30,7 +30,7 @@ const log = createLogger('system-prompt');
 const MAX_CONTEXT_FILES = 30;
 
 /** Maximum directory depth when walking for context files. */
-const MAX_WALK_DEPTH = 6;
+const MAX_WALK_DEPTH = 4;
 
 /**
  * Directories to exclude when searching for context files.
@@ -326,18 +326,38 @@ export function getProjectContextFilesPrompt(workingDirectory?: string): string 
   const contextFiles = findAllProjectContextFiles(workingDirectory);
   if (contextFiles.length === 0) return '';
 
-  // Format file list with (root) annotation for top-level files.
-  const fileList = contextFiles
-    .map((file) => {
-      const isRoot = !file.includes('/') && !file.includes(sep);
-      return `- ${file}${isRoot ? ' (root)' : ''}`;
-    })
-    .join('\n');
+  const isRoot = (f: string) => !f.includes('/') && !f.includes(sep);
+  const rootFiles = contextFiles.filter(isRoot);
+  const subFiles = contextFiles.filter((f) => !isRoot(f));
 
-  return `
-<project_context_files working_directory="${workingDirectory}">
-${fileList}
-</project_context_files>`;
+  const parts: string[] = [];
+
+  // Eagerly inject root-level context file content directly into the system prompt
+  for (const file of rootFiles) {
+    try {
+      const content = readFileSync(join(workingDirectory, file), 'utf8');
+      parts.push(
+        `<project_context>\n\nProject-specific instructions and guidelines:\n\n` +
+        `<project_instructions path="${join(workingDirectory, file)}">\n${content}\n</project_instructions>\n\n</project_context>`
+      );
+    } catch {
+      // File disappeared between discovery and read — fall back to pointer.
+      parts.push(
+        `<project_context_files working_directory="${workingDirectory}">\n- ${file} (root)\n</project_context_files>`
+      );
+    }
+  }
+
+  // Sub-package context files are listed as pointers — the model reads them
+  // on demand when working in those areas of a monorepo.
+  if (subFiles.length > 0) {
+    const fileList = subFiles.map((f) => `- ${f}`).join('\n');
+    parts.push(
+      `<project_context_files working_directory="${workingDirectory}">\n${fileList}\n</project_context_files>`
+    );
+  }
+
+  return parts.join('\n\n');
 }
 
 /* ===================================================================== *
@@ -446,9 +466,9 @@ When the runtime provides a directive listing files to read (skills, extensions,
 
 ## Project Context
 
-When \`<project_context_files>\` appears, it lists discovered context files (CLAUDE.md, AGENTS.md) in the working directory and subdirectories. Supports monorepos with per-package context.
+When \`<project_context>\` appears, it contains the root project context file (AGENTS.md / CLAUDE.md) injected directly — read it, it describes project conventions and architecture.
 
-Read context files using the Read tool — they contain architecture, conventions, and guidance.
+When \`<project_context_files>\` appears, it lists additional context files from sub-packages in a monorepo. Read them using the Read tool when working in those areas.
 
 ## Skills
 

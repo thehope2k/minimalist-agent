@@ -39,7 +39,7 @@ graph TD
     subgraph STATIC["Static system prompt (stable / cache-eligible) — getSystemPrompt()"]
         BODY[Assistant body<br/>getAssistantPrompt]
         PREFS[User preferences]
-        CTX[Project context files list]
+        CTX["Root context file content (eager)<br/>+ sub-package file pointers*"]
         ART[Artifact policy]
         COLLAB[Collaboration guidance]
         PLAN[Planning guidance]
@@ -73,15 +73,15 @@ are not measured at runtime. "Gating" = when the block is present.
 | Environment marker                                                                                                                                     | `getEnvironmentMarker()`                                         | always                         |      ~30 |
 | Assistant body (identity, capabilities, read-first, skills, extensions, mermaid, math, rich blocks, interaction guidelines, git co-author, web search) | `getAssistantPrompt()`                                           | always                         |   ~1,750 |
 | User preferences                                                                                                                                       | `formatPreferencesForPrompt()` (`storage/preferences.ts`)        | when prefs set                 | ~150–400 |
-| Project context files list                                                                                                                             | `getProjectContextFilesPrompt()`                                 | when AGENTS.md/CLAUDE.md found |  ~50–300 |
+| **Project context** — root file content injected eagerly (like Claude Code); sub-package files listed as read-on-demand pointers (monorepo). Walk depth capped at 4. | `getProjectContextFilesPrompt()`                                 | when AGENTS.md/CLAUDE.md found | ~200–2000 (root content) + ~30–150 (sub pointers) |
 | **Artifact policy** (where to write files)                                                                                                             | `getArtifactPolicy()`                                            | always                         |     ~190 |
 | Collaboration guidance                                                                                                                                 | `getCollaborationGuidance(autonomy)` (`collaboration-prompt.ts`) | always                         |   ~1,350 |
 | Planning guidance                                                                                                                                      | `getPlanningGuidance()` (`planning-prompt.ts`)                   | always                         |   ~2,450 |
 | Active plan context                                                                                                                                    | `formatActivePlanContext()` via `getActivePlan()`                | only when a plan is active     | ~100–400 |
 | Agents awareness (terse: slug + tools + description, one prose line)                                                                                   | `loadAllAgents()` block (cached, 5-min TTL)                      | when AGENT.md agents exist     | ~120–400 |
 
-**Static subtotal: ~6–7K tokens** when collaboration + planning + agents are all
-present (the common case). Collaboration + planning alone are **~60%** of it.
+**Static subtotal: ~6–9K tokens** when collaboration + planning + agents are all
+present (the common case). Collaboration + planning alone are **~60%** of the baseline. The project context block now varies more widely — a terse AGENTS.md adds ~200 tokens; a detailed one can add ~2K.
 
 ### Per-turn prefix — `buildPromptPrefix()`
 
@@ -168,7 +168,7 @@ Consequence: **optimize for fewer, sharper instructions, not for token count.**
 Soft ceilings — crossing them should force a conscious trade, not an automatic
 "no":
 
-- **Static prompt: ~8K tokens.** We're at ~6–7K. Adding a new always-on block
+- **Static prompt: ~8K tokens** (baseline without project context). Root context file content is additive on top — a typical AGENTS.md adds 200–500 tokens, a large one up to ~2K. Adding a new always-on block
   > 300 tokens should replace or shrink an existing one.
 - **Per-turn prefix: ~300 tokens** excluding the extensions block (which scales
   with user-enabled extensions and is the user's choice) and the pinned context
