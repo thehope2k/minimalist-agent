@@ -228,6 +228,8 @@ export function ChatArea({
         onOpenGit={() => setGitModalOpen(true)}
         onToggleFileExplorer={onToggleFileExplorer}
         fileExplorerOpen={fileExplorerOpen}
+        onToggleContextPanel={onToggleContextPanel}
+        cwd={cwd}
       />
 
       <div className="flex-1 min-h-0">
@@ -274,7 +276,6 @@ export function ChatArea({
           findOpen={findOpen}
           onFindClose={() => setFindOpen(false)}
           findInputRef={findInputRef}
-          onToggleContextPanel={onToggleContextPanel}
         />
       </div>
 
