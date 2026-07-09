@@ -5,6 +5,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.12.2] — 2026-07-09
+
+Quality of life improvements and bug fixes.
+
+### Changed
+
+- Hunk-level partial staging removed from the git diff view; the staging banner is restored to its previous position
+- Project-assets indicator moved from the chat banner to the header icon for a cleaner layout
+
+### Fixed
+
+- Skill and extension @mention resolution is now scoped to the active project, preventing cross-project asset leakage
+- File explorer side panel enforces a minimum 30% width when expanded, preventing accidental collapse to an unusable size
+- Context badge tooltip now uses the structured Tooltip component instead of a plain HTML `title` attribute
+
+---
+
 ## [1.12.1] — 2026-07-08
 
 Bug fix: context badge now shows live context pressure instead of an inflated token total that included cached history.
