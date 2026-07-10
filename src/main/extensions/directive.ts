@@ -10,11 +10,22 @@ export function formatExtensionsAwareness(cwd?: string): string {
 
   if (all.length === 0) return '';
 
-  const guideConvention = join(getExtensionsDir(), '<slug>', 'guide.md');
+  // Build a scope-aware guide path hint so the agent looks in the right
+  // directory for project-tier extensions vs user-tier extensions.
+  const userExts = all.filter((e) => e.scope === 'user');
+  const projectExts = all.filter((e) => e.scope === 'project');
+  const guideHints: string[] = [];
+  if (userExts.length > 0) {
+    guideHints.push(`global: ${join(getExtensionsDir(), '<slug>', 'guide.md')}`);
+  }
+  if (projectExts.length > 0 && cwd) {
+    guideHints.push(`project: ${join(cwd, '.minimalist-agent', 'extensions', '<slug>', 'guide.md')}`);
+  }
+  const guideHint = guideHints.join('; ');
 
   const lines: string[] = [];
   lines.push(
-    `Installed extension capabilities (CLIs / MCP servers / usage guides), referenced by slug. Before using one for the first time this session, read its guide: ${guideConvention}. Mentioning \`@slug\` auto-surfaces its guide.`,
+    `Installed extension capabilities (CLIs / MCP servers / usage guides), referenced by slug. Before using one for the first time this session, read its guide (${guideHint}). Mentioning \`@slug\` auto-surfaces its guide.`,
   );
   lines.push(`Enabled: ${all.map((e) => e.slug).join(', ')}`);
 

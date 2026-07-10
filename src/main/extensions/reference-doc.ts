@@ -4,7 +4,7 @@
  * content changes; the install pass overwrites stale copies.
  */
 
-export const EXTENSIONS_REFERENCE_VERSION = '0.1.5';
+export const EXTENSIONS_REFERENCE_VERSION = '0.2.0';
 
 export const EXTENSIONS_REFERENCE_MD = `# Extensions
 
@@ -19,8 +19,11 @@ have to pick one up front — the variant is whatever \`extension.json\` declare
 
 ## Folder layout
 
-Each extension is a folder under \`<userData>/extensions/<slug>/\` with two
-required files:
+Extensions live in two scopes:
+- **Global:** \`~/.minimalist-agent/extensions/<slug>/\` — personal, available across all projects
+- **Project:** \`<cwd>/.minimalist-agent/extensions/<slug>/\` — always active and auto-consented; env vars use \`\${VAR}\` syntax resolved from \`process.env\` (not the encrypted keychain)
+
+Each extension folder requires two files:
 
 \`\`\`
 <slug>/
@@ -150,7 +153,8 @@ When in doubt, treat it as a credential or ask user.
 
 ### Why inlining is wrong
 
-The JSON file lives plaintext on disk under \`<userData>/extensions/<slug>/\`.
+The JSON file lives plaintext on disk under \`~/.minimalist-agent/extensions/<slug>/\`
+(global tier) or \`<cwd>/.minimalist-agent/extensions/<slug>/\` (project tier).
 That means it's exposed to:
 
 - Backup tools (Time Machine, iCloud, Dropbox sync)

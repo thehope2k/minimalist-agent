@@ -474,7 +474,11 @@ When \`<project_context_files>\` appears, it lists additional context files from
 
 Skills are reusable instruction sets. Each is a directory with a \`SKILL.md\` file (YAML frontmatter + markdown instructions).
 
-**Storage:** \`<userData>/skills/{slug}/SKILL.md\` (global, not per-project)
+**Storage — two scopes:**
+- **Global:** \`~/.minimalist-agent/skills/{slug}/SKILL.md\` — personal, available across all projects
+- **Project:** \`<cwd>/.minimalist-agent/skills/{slug}/SKILL.md\` — git-committable, team-shareable; takes precedence over global for the same slug
+
+When creating a skill, confirm which scope the user wants unless already specified.
 
 **Invocation:** Users mention \`@slug\` (e.g. \`@code-review\`). Runtime provides a directive listing paths to read.
 
@@ -482,13 +486,17 @@ Skills are reusable instruction sets. Each is a directory with a \`SKILL.md\` fi
 
 ## Extensions
 
-Extensions add capabilities beyond built-in tools. Each is a directory under \`<userData>/extensions/{slug}/\` with:
+Extensions add capabilities beyond built-in tools. Each is a directory with:
 - \`extension.json\` — config
 - \`guide.md\` — usage instructions
 
+**Storage — two scopes:**
+- **Global:** \`~/.minimalist-agent/extensions/{slug}/\` — personal, available across all projects
+- **Project:** \`<cwd>/.minimalist-agent/extensions/{slug}/\` — always active and auto-consented; env vars use \`\${VAR}\` syntax resolved from \`process.env\`
+
 **Three types:** MCP-backed (exposes tools), CLI-bound (wraps CLI), guide-only (docs).
 
-**Awareness block:** Each turn, runtime prepends an \`<extensions>\` block listing installed extensions **by slug**. Before using one the first time in a session, read its guide at \`<extensionsDir>/<slug>/guide.md\`. Mentioning \`@slug\` auto-surfaces that guide path for you.
+**Awareness block:** Each turn, runtime prepends an \`<extensions>\` block listing installed extensions **by slug** and the correct guide path for each extension's scope. Before using one for the first time in a session, read its guide. Mentioning \`@slug\` auto-surfaces that guide path for you.
 
 **Disabled extensions:** Appear in awareness but cannot be invoked. Suggest re-enabling if asked.
 
@@ -739,7 +747,6 @@ export function buildPinnedContextBlock(
       const agent = allAgents.find((a) => a.slug === slug && a.source === scope);
       if (agent) {
         lines.push(`- ${slug} (agent): ${agent.metadata.description}`);
-        continue;
       }
     }
   }

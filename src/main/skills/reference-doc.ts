@@ -1,4 +1,4 @@
-export const SKILLS_REFERENCE_VERSION = '1.0.0';
+export const SKILLS_REFERENCE_VERSION = '1.1.0';
 
 export const SKILLS_REFERENCE_MD = `# Skills Reference
 
@@ -11,7 +11,9 @@ tasks. They use the **same SKILL.md format as the Claude Code SDK**, so a skill
 written for any Claude-powered tool works here as-is.
 
 **Key facts:**
-- Skills live as folders under \`<userData>/skills/<slug>/\`.
+- Skills live in two scopes:
+  - **Global:** \`~/.minimalist-agent/skills/<slug>/SKILL.md\` — personal, available across all projects
+  - **Project:** \`<cwd>/.minimalist-agent/skills/<slug>/SKILL.md\` — git-committable, team-shareable; project scope takes precedence over global for the same slug
 - Each folder must contain a \`SKILL.md\` file with YAML frontmatter and a
   markdown body.
 - Skills are invoked via the \`[skill:<slug>]\` mention in chat (or by
@@ -19,8 +21,7 @@ written for any Claude-powered tool works here as-is.
 - When invoked, the agent is instructed to read the SKILL.md file before
   doing anything else, and follow the body's instructions.
 
-There is no automatic glob-based triggering, no per-project tier, and no
-precedence rules. One global location, one mention to invoke.
+When creating a skill, confirm with the user whether it should be global (personal, cross-project) or project-scoped (git-committable, team-shareable) unless the context already makes it clear.
 
 ## SKILL.md Format
 
@@ -105,12 +106,15 @@ skill. Treat it like a small system prompt scoped to one task.
 
 ## Creating a Skill
 
-1. Create the folder: \`<userData>/skills/<slug>/\`.
-2. Write \`SKILL.md\` with valid frontmatter and a non-empty body.
-3. Optionally add an icon file (\`icon.svg\`, \`icon.png\`, \`icon.jpg\`,
+1. Decide the scope: **global** (\`~/.minimalist-agent/skills/<slug>/\`) for
+   personal cross-project use, or **project** (\`<cwd>/.minimalist-agent/skills/<slug>/\`)
+   for project-specific, git-committable skills.
+2. Create the folder at the chosen path.
+3. Write \`SKILL.md\` with valid frontmatter and a non-empty body.
+4. Optionally add an icon file (\`icon.svg\`, \`icon.png\`, \`icon.jpg\`,
    \`icon.jpeg\`, \`icon.webp\`, \`icon.gif\`) — or set \`icon: "🛠️"\` in
    the frontmatter for an emoji.
-4. The Skills panel auto-refreshes after a chat turn ends; otherwise click
+5. The Skills panel auto-refreshes after a chat turn ends; otherwise click
    the refresh icon in the panel header.
 
 ## Example: Commit Skill
@@ -161,7 +165,8 @@ Validation checks:
 ## Troubleshooting
 
 **Skill doesn't appear in the panel.**
-- Check the folder is at exactly \`<userData>/skills/<slug>/SKILL.md\`.
+- Check the folder is at exactly \`~/.minimalist-agent/skills/<slug>/SKILL.md\`
+  (global) or \`<cwd>/.minimalist-agent/skills/<slug>/SKILL.md\` (project).
 - Ensure the slug folder name matches the slug rules.
 - Click the refresh icon in the Skills panel header.
 
