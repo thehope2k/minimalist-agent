@@ -92,6 +92,42 @@ entries are pruned on read (the host deletes them server-side at TTL anyway).
 
 ---
 
+## Per-Response Actions
+
+Every completed assistant message has a lightweight action bar in the footer
+(hover to reveal): **Copy**, **Save .html**, and **Share**. These operate on
+the *response conclusion* — the text after the last tool call in the turn —
+rather than the full session.
+
+### Copy
+
+Writes both `text/html` (rendered) and `text/plain` (raw markdown) to the
+clipboard in one `ClipboardItem`. Apps that understand HTML (Teams, Slack,
+Notion, Apple Notes) receive the rendered version and display it with full
+formatting; plain-text editors receive the markdown fallback. Falls back to
+`writeText` if the `ClipboardItem` API is unavailable.
+
+### Save .html
+
+Renders the response conclusion to a styled standalone HTML file and opens
+the native Save dialog. Same pipeline as the full session export — `renderMarkdown`
+→ `buildResponseHtml` — but scoped to the single response, with no redaction
+(no user messages or file paths are included).
+
+### Share
+
+Same as Save but uploads to BrewPage and returns a short link. Inherits the
+same TTL, revoke, and size constraints as the full session share. Recorded in
+`localStorage` under `session-shared-links` so you can revoke it later.
+
+### Architecture
+
+- `components/chat/message-list/ShareResponseButton.tsx` — the footer action bar
+- `lib/session-export/render-markdown.ts` — shared markdown → HTML renderer
+- `lib/session-export/response-export.ts` — `extractConclusion`, `buildResponseHtml`
+
+---
+
 ## Using It
 
 1. Open a session and click the **Export** icon in the chat header rail.

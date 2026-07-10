@@ -94,8 +94,10 @@ present (the common case). Collaboration + planning alone are **~60%** of the ba
 | **Pinned context** ("read these files" directive for skills/agents the user has pinned to the session — same pattern as `@mention`/`formatSkillDirective`, but persistent every turn)         | `buildPinnedContextBlock()` (`agent/system-prompt.ts`)    | when `session.pinnedAssets` is non-empty | ~10 tok per item (flat, path + label only) |
 
 The extensions block grows with state (one *slug* per enabled extension) but is
-now near-flat — it lists slugs only, not per-item descriptions or guide paths.
-The capability *content* is pulled in on demand: the model reads `<extensionsDir>/<slug>/guide.md`
+now near-flat — it lists slugs only, plus a scope-aware guide path hint (one
+line per scope present: global `~/.minimalist-agent/extensions/<slug>/guide.md`
+and/or project `<cwd>/.minimalist-agent/extensions/<slug>/guide.md`).
+The capability *content* is pulled in on demand: the model reads the guide
 when it decides to use an extension, and an `@slug` mention auto-injects that
 guide path via the mention directive (`skills/directive.ts`). This mirrors the
 Skills lazy model and keeps per-turn attention focused on the task, not on every

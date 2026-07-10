@@ -15,6 +15,7 @@ import { TextPart } from '../parts/TextPart';
 import { ThinkingPart } from '../parts/ThinkingPart';
 import { ToolPart } from '../parts/ToolPart';
 import { TurnSummaryCard } from '../parts/TurnSummaryCard';
+import { ShareResponseButton } from './ShareResponseButton';
 import { compactNumber, emptyTurnLabel, labelForIntent, partKey } from './utils';
 import { createLogger } from '@/lib/logger';
 
@@ -107,42 +108,45 @@ export function Bubble({
       )}
 
       {!isUser && !m.isStreaming && (
-        <div className="mt-1 flex items-center gap-1.5">
-          {showStopBadge && (
-            <span className="rounded-sm bg-amber-500/15 px-1 py-px text-[10px] font-medium text-amber-300">
-              {m.stopReason}
-            </span>
-          )}
-          {(m.stopReason === 'max_turns' || m.errorInfo?.code === 'max_turns_exceeded') &&
-            onContinue && (
-              <Button
-                variant="outline" size="sm" icon={ChevronsRight} onClick={onContinue}
-                className="h-5 border-accent/40 bg-accent/10 px-1.5 text-[10px] text-accent hover:bg-accent/20 hover:text-accent"
-              >
-                Continue
-              </Button>
+        <div className="mt-1 flex w-full items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            {showStopBadge && (
+              <span className="rounded-sm bg-amber-500/15 px-1 py-px text-[10px] font-medium text-amber-300">
+                {m.stopReason}
+              </span>
             )}
-          {(m.model || m.usage?.outputTokens !== undefined || m.stopReason || m.durationMs !== undefined) && (
-            <span className={cn(
-              'inline-flex items-center gap-1.5 rounded-md border border-border/40 bg-panel/40',
-              'px-1.5 py-0.5 font-mono text-[10px] text-fg-subtle',
-              'opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100',
-            )}>
-              {m.model && <span className="text-fg-muted">{m.model}</span>}
-              {m.model && m.usage?.outputTokens !== undefined && <span className="opacity-50">·</span>}
-              {m.usage?.outputTokens !== undefined && (
-                <span title="input ↑ / output ↓ tokens">
-                  {compactNumber(m.usage.inputTokens ?? 0)}↑ {compactNumber(m.usage.outputTokens)}↓
-                </span>
+            {(m.stopReason === 'max_turns' || m.errorInfo?.code === 'max_turns_exceeded') &&
+              onContinue && (
+                <Button
+                  variant="outline" size="sm" icon={ChevronsRight} onClick={onContinue}
+                  className="h-5 border-accent/40 bg-accent/10 px-1.5 text-[10px] text-accent hover:bg-accent/20 hover:text-accent"
+                >
+                  Continue
+                </Button>
               )}
-              {m.stopReason && !showStopBadge && (
-                <><span className="opacity-50">·</span><span title="SDK stop_reason">{m.stopReason}</span></>
-              )}
-              {m.durationMs !== undefined && (
-                <><span className="opacity-50">·</span><span title="Turn duration">{formatDuration(m.durationMs)}</span></>
-              )}
-            </span>
-          )}
+            {(m.model || m.usage?.outputTokens !== undefined || m.stopReason || m.durationMs !== undefined) && (
+              <span className={cn(
+                'inline-flex items-center gap-1.5 rounded-md border border-border/40 bg-panel/40',
+                'px-1.5 py-0.5 font-mono text-[10px] text-fg-subtle',
+                'opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100',
+              )}>
+                {m.model && <span className="text-fg-muted">{m.model}</span>}
+                {m.model && m.usage?.outputTokens !== undefined && <span className="opacity-50">·</span>}
+                {m.usage?.outputTokens !== undefined && (
+                  <span title="input ↑ / output ↓ tokens">
+                    {compactNumber(m.usage.inputTokens ?? 0)}↑ {compactNumber(m.usage.outputTokens)}↓
+                  </span>
+                )}
+                {m.stopReason && !showStopBadge && (
+                  <><span className="opacity-50">·</span><span title="SDK stop_reason">{m.stopReason}</span></>
+                )}
+                {m.durationMs !== undefined && (
+                  <><span className="opacity-50">·</span><span title="Turn duration">{formatDuration(m.durationMs)}</span></>
+                )}
+              </span>
+            )}
+          </div>
+          <ShareResponseButton parts={m.parts} sessionId={sessionId} />
         </div>
       )}
     </div>

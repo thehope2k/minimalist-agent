@@ -9,19 +9,20 @@
 
 import type { AgentUsage } from '../electron';
 
-export type ExportMode = 'summary' | 'full';
+export type ExportMode = 'summary' | 'full' | 'response';
 
-/** User-facing names for the two modes. 'summary' = the conversation +
- *  outcomes; 'full' = the complete log incl. thinking/tool output. */
+/** User-facing names for the export modes. */
 export const MODE_LABELS: Record<ExportMode, string> = {
   summary: 'Conversation',
   full: 'Full Log',
+  response: 'Response',
 };
 
-/** Filename-safe slugs for the two modes. */
+/** Filename-safe slugs for export modes. */
 export const MODE_SLUGS: Record<ExportMode, string> = {
   summary: 'conversation',
   full: 'full-log',
+  response: 'response',
 };
 
 export interface ExportOptions {
