@@ -5,6 +5,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.14.0] — 2026-07-11
+
+Adds per-response sharing actions; project context files now eagerly loaded; agent scope awareness fixed.
+
+### Added
+
+**Per-response sharing**
+
+- Copy / Save / Share action bar in the assistant message footer (hover to reveal): **Copy** writes both `text/html` and `text/plain` so pasting into Teams, Slack, or Notion renders with full formatting instead of raw markdown; **Save** exports just the response as a standalone HTML file; **Share** publishes it as an ephemeral BrewPage link
+- Action buttons are now right-aligned in the footer, mirroring the user message copy button
+
+**Project context**
+
+- Root `AGENTS.md` / `CLAUDE.md` content is now injected directly into the system prompt (eager) rather than listed as a pointer, so the agent sees project conventions reliably even after compaction
+
+### Fixed
+
+- Agent now uses correct paths for skills and extensions — user-global `~/.minimalist-agent/` and project `<cwd>/.minimalist-agent/` with project scope taking precedence. Previously the system prompt referenced a wrong `<userData>` path and incorrectly described skills as global-only. The bundled `skills.md` and `extensions.md` reference docs are updated accordingly.
+- Extensions awareness block in the per-turn prefix now emits scope-aware guide path hints (separate lines for global vs project extensions) instead of a single hardcoded user-tier path
+
+---
+
 ## [1.13.0] — 2026-07-09
 
 Project-scope asset creation from the context panel; quality of life improvements to creation dialogs.
