@@ -5,6 +5,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.15.0] — 2026-07-11
+
+Adds meethtml.com as a second HTML share backend; bug fixes.
+
+### Added
+
+**Dual share backends**
+
+- **meethtml.com** is now available alongside BrewPage as a share target — both for per-response actions (footer buttons) and full session export (header menu). BrewPage links expire in 15 days; meethtml links expire in 24 hours. Both are unlisted, no signup required, and support revoke via owner token.
+- Session export menu now shows four share options: Conversation and Full Log for each backend
+
+### Fixed
+
+- Agent slug validation now checks against actually-available agents at runtime, preventing silent failures when an agent definition is missing or mis-slugged
+
+---
+
 ## [1.14.0] — 2026-07-11
 
 Adds per-response sharing actions; project context files now eagerly loaded; agent scope awareness fixed.
