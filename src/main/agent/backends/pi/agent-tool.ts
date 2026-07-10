@@ -563,7 +563,7 @@ function formatAgentResult(agent: LoadedAgent, output: string[], error?: string,
 /* ============================================================ */
 
 const agentToolSchema = Type.Object({
-  agent: Type.String({ description: 'Agent slug (e.g., "researcher", "test-validator"). Must match an installed agent.' }),
+  agent: Type.String({ description: 'Agent slug — must exactly match a slug listed in the <agents> block of your system prompt. Do NOT invent or guess slugs; only use ones explicitly listed there.' }),
   task: Type.String({ description: 'Clear description of what the agent should do. Be specific about requirements and constraints.' }),
 });
 
@@ -605,16 +605,21 @@ export function createPiAgentTool(ctx: AgentToolContext): ToolDefinition<typeof 
         // Validate agent exists
         const agent = ctx.availableAgents.find(a => a.slug === agentSlug);
         if (!agent) {
+          const validSlugs = ctx.availableAgents.map(a => a.slug);
+          const slugList = validSlugs.length > 0
+            ? `Valid slugs: ${validSlugs.join(', ')}`
+            : 'No agents are currently installed.';
           return {
-            isError: false,
+            isError: true,
             content: [
               {
                 type: 'text',
                 text: [
                   `❌ Agent "${agentSlug}" not found.`,
                   '',
-                  'Available agents are listed in your system prompt under <agents>.',
-                  'Make sure the slug is correct and the agent is installed.',
+                  slugList,
+                  '',
+                  'Only use slugs from the <agents> list in your system prompt. Do NOT invent slugs.',
                 ].join('\n'),
               },
             ],
