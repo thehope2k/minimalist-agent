@@ -8,7 +8,7 @@ import { renderMarkdown } from '@/lib/session-export/render-markdown';
 import { extractConclusion, buildResponseHtml } from '@/lib/session-export/response-export';
 import { ShareResultDialog } from '../session-export/ShareResultDialog';
 
-type ExportAction = 'save' | 'share';
+type ExportAction = 'save' | 'share-brewpage' | 'share-meethtml';
 type ActionState = 'idle' | 'working' | 'done' | 'error';
 
 export function ShareResponseButton({
@@ -65,7 +65,8 @@ export function ShareResponseButton({
       if (action === 'save') {
         await saveSessionExport(html, suggestedName);
       } else {
-        const result = await shareSessionExport(html, suggestedName);
+        const backend = action === 'share-meethtml' ? 'meethtml' : 'brewpage';
+        const result = await shareSessionExport(html, suggestedName, undefined, backend);
         setShared(recordSharedLink(sessionId ?? '', 'response', result));
       }
       setExportState('done');
@@ -94,7 +95,7 @@ export function ShareResponseButton({
 
         <span className="opacity-0 group-hover:opacity-100 text-fg-subtle/30 select-none text-[10px]">·</span>
 
-        {/* Export cluster — Save to file and Share via BrewPage */}
+        {/* Export cluster — Save to file, Share via BrewPage, Share via meethtml */}
         <HoverButton
           icon={Download}
           label={exportAction === 'save' && exportState === 'done' ? 'Saved' : 'Save .html'}
@@ -107,13 +108,23 @@ export function ShareResponseButton({
         />
         <HoverButton
           icon={Link2}
-          label={exportAction === 'share' && exportState === 'done' ? 'Shared' : 'Share'}
-          done={exportAction === 'share' && exportState === 'done'}
-          error={exportAction === 'share' && exportState === 'error'}
-          working={exportAction === 'share' && exportWorking}
+          label={exportAction === 'share-brewpage' && exportState === 'done' ? 'Shared' : 'BrewPage'}
+          done={exportAction === 'share-brewpage' && exportState === 'done'}
+          error={exportAction === 'share-brewpage' && exportState === 'error'}
+          working={exportAction === 'share-brewpage' && exportWorking}
           disabled={exportWorking}
-          onClick={() => void runExport('share')}
-          title="Share response via BrewPage (unlisted link, expires in 15 days)"
+          onClick={() => void runExport('share-brewpage')}
+          title="Share via BrewPage (unlisted link, expires in 15 days)"
+        />
+        <HoverButton
+          icon={Link2}
+          label={exportAction === 'share-meethtml' && exportState === 'done' ? 'Shared' : 'meethtml'}
+          done={exportAction === 'share-meethtml' && exportState === 'done'}
+          error={exportAction === 'share-meethtml' && exportState === 'error'}
+          working={exportAction === 'share-meethtml' && exportWorking}
+          disabled={exportWorking}
+          onClick={() => void runExport('share-meethtml')}
+          title="Share via meethtml.com (unlisted link, expires in 24 hours)"
         />
 
         {exportState === 'error' && exportError && (

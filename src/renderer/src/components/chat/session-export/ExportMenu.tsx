@@ -19,10 +19,12 @@ import { ShareResultDialog } from './ShareResultDialog';
 
 type State = 'idle' | 'working' | 'error';
 
-// Transport label shown in parens on share items. When more transports are
-// added (e.g. tmpfiles), the mode name stays constant and only this differs:
-//   Conversation (BrewPage) / Conversation (tmpfiles).
-const SHARE_TRANSPORT = 'BrewPage';
+// Transport labels shown in parens on share items.
+const TRANSPORTS = {
+  brewpage: 'BrewPage',
+  meethtml: 'meethtml',
+} as const;
+type Backend = keyof typeof TRANSPORTS;
 
 /** Download/share actions in the chat header rail: one click per mode straight
  *  to a native Save dialog, or to an ephemeral share link. */
@@ -49,13 +51,13 @@ export function ExportMenu({ sessionId }: { sessionId: string | null }) {
     }
   }
 
-  async function share(mode: ExportMode) {
+  async function share(mode: ExportMode, backend: Backend) {
     if (!sessionId || state === 'working') return;
     setState('working');
     try {
       const out = await generate(mode);
       if (!out) return;
-      const result = await shareSessionExport(out.html, out.suggestedName);
+      const result = await shareSessionExport(out.html, out.suggestedName, undefined, backend);
       setShared(recordSharedLink(sessionId, mode, result));
       setState('idle');
     } catch {
@@ -90,15 +92,17 @@ export function ExportMenu({ sessionId }: { sessionId: string | null }) {
       <Menu
         trigger={trigger}
         menuWidth={224}
-        footer="Paths & secrets stripped. Shared links are unlisted and expire in 15 days."
+        footer="Paths & secrets stripped. BrewPage links expire in 15 days; meethtml links expire in 24 hours."
         items={[
           { header: 'Save to file' },
           { label: `${MODE_LABELS.summary} (.html)`, icon: FileText, onSelect: () => void save('summary') },
           { label: `${MODE_LABELS.full} (.html)`, icon: FileStack, onSelect: () => void save('full') },
           'separator',
           { header: 'Share link' },
-          { label: `${MODE_LABELS.summary} (${SHARE_TRANSPORT})`, icon: Link2, onSelect: () => void share('summary') },
-          { label: `${MODE_LABELS.full} (${SHARE_TRANSPORT})`, icon: Link2, onSelect: () => void share('full') },
+          { label: `${MODE_LABELS.summary} (${TRANSPORTS.brewpage})`, icon: Link2, onSelect: () => void share('summary', 'brewpage') },
+          { label: `${MODE_LABELS.full} (${TRANSPORTS.brewpage})`, icon: Link2, onSelect: () => void share('full', 'brewpage') },
+          { label: `${MODE_LABELS.summary} (${TRANSPORTS.meethtml})`, icon: Link2, onSelect: () => void share('summary', 'meethtml') },
+          { label: `${MODE_LABELS.full} (${TRANSPORTS.meethtml})`, icon: Link2, onSelect: () => void share('full', 'meethtml') },
         ]}
       />
       {shared && (

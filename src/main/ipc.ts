@@ -147,6 +147,7 @@ import {readFileSync, existsSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {writeFile} from 'node:fs/promises';
 import {publishExport, revokeExport, type PublishResult} from './export-transport/brewpage';
+import {publishExportFallback, revokeExportFallback} from './export-transport/meethtml';
 import {invalidateContextFileCache, estimatePinnedTokens} from './agent/system-prompt';
 import {
   createProject,
@@ -984,20 +985,20 @@ export function registerIpc(): void {
     },
   );
 
-  // Publish an HTML export to the ephemeral host (BrewPage). Returns the share
-  // link + ownerToken (for later revoke). Privacy: published to an unlisted
-  // namespace, auto-expires at TTL; redaction already happened in the renderer.
+  // Publish an HTML export — BrewPage or meethtml.com depending on `backend`.
+  // Privacy posture is the same on both: unlisted/anonymous URL, auto-expires,
+  // redaction already happened in the renderer.
   ipcMain.handle(
     'sessions:shareExport',
     async (
       _e,
-      args: { html: string; filename: string; ttlDays?: number },
-    ): Promise<PublishResult> =>
-      publishExport({
-        html: args.html,
-        filename: args.filename,
-        ttlDays: args.ttlDays,
-      }),
+      args: { html: string; filename: string; ttlDays?: number; backend?: 'brewpage' | 'meethtml' },
+    ): Promise<PublishResult> => {
+      if (args.backend === 'meethtml') {
+        return publishExportFallback({ html: args.html, filename: args.filename, ttlDays: args.ttlDays });
+      }
+      return publishExport({ html: args.html, filename: args.filename, ttlDays: args.ttlDays });
+    },
   );
 
   ipcMain.handle(
@@ -1005,7 +1006,10 @@ export function registerIpc(): void {
     async (
       _e,
       args: { namespace: string; id: string; ownerToken: string },
-    ): Promise<void> => revokeExport(args),
+    ): Promise<void> =>
+      args.namespace === 'meethtml'
+        ? revokeExportFallback(args)
+        : revokeExport(args),
   );
 
   // ---- Filesystem dialogs ------------------------------------------------

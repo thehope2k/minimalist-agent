@@ -220,8 +220,9 @@ export async function shareSessionExport(
   html: string,
   filename: string,
   ttlDays?: number,
+  backend?: 'brewpage' | 'meethtml',
 ): Promise<import('./electron').SharedExportResult> {
-  return window.api.sessions.shareExport(html, filename, ttlDays);
+  return window.api.sessions.shareExport(html, filename, ttlDays, backend);
 }
 
 /** Revoke a previously shared export link. */

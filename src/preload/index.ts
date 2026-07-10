@@ -678,8 +678,9 @@ const api = {
       html: string,
       filename: string,
       ttlDays?: number,
+      backend?: 'brewpage' | 'meethtml',
     ): Promise<SharedExportResult> =>
-      ipcRenderer.invoke('sessions:shareExport', { html, filename, ttlDays }),
+      ipcRenderer.invoke('sessions:shareExport', { html, filename, ttlDays, backend }),
     revokeExport: (
       namespace: string,
       id: string,

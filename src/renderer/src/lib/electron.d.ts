@@ -997,6 +997,7 @@ export interface AppApi {
       html: string,
       filename: string,
       ttlDays?: number,
+      backend?: 'brewpage' | 'meethtml',
     ) => Promise<SharedExportResult>;
     revokeExport: (
       namespace: string,

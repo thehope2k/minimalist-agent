@@ -16,7 +16,7 @@ What's shipped, what's coming, and what's intentionally out of scope.
 | **ChatGPT Plus / Codex** | Browser OAuth via `auth.openai.com` (auto-redirect back, no code to copy); live model discovery via Pi SDK `openai-codex` catalog; runs on Pi runtime with full permission modes and tool streaming |
 | **Local model (Ollama)** | Connects to `http://localhost:11434` (configurable for remote hosts); live model discovery via Ollama `/api/tags` with probe/retry UI; model list shows name + size; no auth required |
 | **OpenAI-compatible providers** | Curated presets for StepFun, DeepSeek, Moonshot, Together AI, Groq, OpenRouter, xAI plus a custom endpoint escape hatch; live model discovery via `/v1/models`; encrypted API key storage |
-| **Session export & sharing** | Export sessions to HTML (summary or full); save to disk via native dialog or publish ephemeral share links with configurable TTL; revoke links; automatic redaction of paths and secrets on share. Per-response **Copy / Save / Share** actions in the message footer: Copy writes both `text/html` + `text/plain` so pasting into Teams/Slack/Notion renders with formatting. |
+| **Session export & sharing** | Export sessions to HTML (summary or full); save to disk via native dialog or publish ephemeral share links via **BrewPage** (15-day TTL) or **meethtml.com** (24h TTL); revoke links; automatic redaction of paths and secrets on share. Per-response **Copy / Save / BrewPage / meethtml** actions in the message footer: Copy writes both `text/html` + `text/plain` so pasting into Teams/Slack/Notion renders with full formatting (identical to the share page output). |
 | **Extended context (1M)** | Opt-in 1M-token window for supported models (Anthropic Tier 4+) |
 | **Encrypted credentials** | API keys and OAuth tokens stored via Electron `safeStorage` (OS keychain) |
 
@@ -43,7 +43,7 @@ What's shipped, what's coming, and what's intentionally out of scope.
 
 | Capability | Detail |
 |---|---|
-| **Sessions** | Full persistence (`messages.jsonl` + `session.json`); resume across restarts; SDK session ID preserved for resumable turns; HTML export (summary/full) with local save or ephemeral share links (TTL, revoke, redaction) |
+| **Sessions** | Full persistence (`messages.jsonl` + `session.json`); resume across restarts; SDK session ID preserved for resumable turns; HTML export (summary/full) with local save or ephemeral share links via BrewPage (15-day TTL) or meethtml.com (24h TTL), with revoke and redaction |
 | **Projects** | Group sessions by folder with name + color; per-project defaults for connection, model, permission mode; sidebar filter and color dots |
 | **User Preferences** | Name, timezone, location, language, free-text notes — injected into every system prompt |
 | **Project context** | Auto-discovers `CLAUDE.md` / `AGENTS.md` / `copilot-instructions.md` recursively; injected into every turn; configurable names |
