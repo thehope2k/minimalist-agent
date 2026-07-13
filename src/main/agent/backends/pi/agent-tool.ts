@@ -98,6 +98,8 @@ interface SpawnedAgentHandle {
   finished: boolean;
   /** Timestamp when spawned. */
   startedAt: number;
+  /** Timestamp when task execution began (post-init). */
+  taskStartedAt?: number;
   /** Worktree info (if created). */
   worktree?: WorktreeResult;
 }
@@ -183,7 +185,7 @@ setInterval(() => {
   const maxRuntime = MAX_AGENT_RUNTIME_MINUTES * 60 * 1000;
   
   for (const handle of activeHandles.values()) {
-    if (now - handle.startedAt > maxRuntime && !handle.finished) {
+    if (now - (handle.taskStartedAt ?? handle.startedAt) > maxRuntime && !handle.finished) {
       log.warn(`Killing stale agent ${handle.execId} (exceeded ${MAX_AGENT_RUNTIME_MINUTES}min runtime)`);
       handle.error = `Exceeded maximum runtime of ${MAX_AGENT_RUNTIME_MINUTES} minutes`;
       killHandle(handle);
@@ -665,6 +667,7 @@ export function createPiAgentTool(ctx: AgentToolContext): ToolDefinition<typeof 
         log.debug(`Agent initialized (${handle.execId}). Starting task...`);
 
         await initializeAgent(handle, agent, ctx);
+        handle.taskStartedAt = Date.now();
 
         emitSubagentUpdate(onUpdate, {
           kind: 'subagent',
