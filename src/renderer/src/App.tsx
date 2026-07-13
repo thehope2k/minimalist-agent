@@ -241,6 +241,7 @@ export default function App() {
                             pinnedAssets={sessions?.find((s) => s.id === activeSessionId)?.pinnedAssets}
                             onPinnedChange={() => { void reloadSessions(); }}
                             onStartChatWithSubmission={startSessionWithSubmission}
+                            onClose={toggleContextPanel}
                           />
                         )}
                       </div>

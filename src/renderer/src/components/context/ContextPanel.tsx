@@ -1,4 +1,4 @@
-import { Layers, Plus, RefreshCw } from 'lucide-react';
+import { Layers, Plus, RefreshCw, X } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useContextPanel } from '@/hooks/useContextPanel';
@@ -22,6 +22,7 @@ interface ContextPanelProps {
   /** Called after pin/unpin so the parent can reload session meta */
   onPinnedChange?: () => void;
   onStartChatWithSubmission?: (submit: SeedSubmit) => void;
+  onClose?: () => void;
 }
 
 export function ContextPanel({
@@ -30,6 +31,7 @@ export function ContextPanel({
   pinnedAssets,
   onPinnedChange,
   onStartChatWithSubmission,
+  onClose,
 }: ContextPanelProps) {
   const [newDialog, setNewDialog] = useState<'skill' | 'agent' | 'extension' | null>(null);
   const [projectSkillsDir, setProjectSkillsDir] = useState<string | undefined>();
@@ -97,6 +99,16 @@ export function ContextPanel({
             strokeWidth={1.75}
           />
         </button>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="ml-1 rounded p-0.5 text-fg-subtle hover:bg-elevated hover:text-fg"
+            aria-label="Close context panel"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
       </header>
 
       {/* Body */}
