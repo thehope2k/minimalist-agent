@@ -5,6 +5,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.16.0] — 2026-07-13
+
+Adds automatic session cleanup on startup; bug fixes.
+
+### Added
+
+- Archived and empty sessions are now automatically purged on startup, keeping the session list clean without any manual housekeeping
+- Context panel now has a close button
+
+### Fixed
+
+- Agent runtime timeout is now measured from when the task actually starts rather than when the request was created, preventing premature timeouts on queued tasks
+
+---
+
 ## [1.15.0] — 2026-07-11
 
 Adds meethtml.com as a second HTML share backend; bug fixes.
