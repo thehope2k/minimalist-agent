@@ -30,6 +30,11 @@ export interface AiSettings {
    * Defaults to ['agents.md', 'claude.md', 'copilot-instructions.md'].
    */
   contextFileNames?: string[];
+  /**
+   * Days after which archived sessions are auto-deleted on startup.
+   * `null` disables auto-cleanup. Defaults to DEFAULT_SESSION_RETENTION_DAYS.
+   */
+  sessionRetentionDays?: number | null;
 }
 
 export const DEFAULT_CONTEXT_FILE_NAMES: readonly string[] = [
@@ -42,6 +47,7 @@ export const DEFAULT_PERMISSION_MODE: PermissionMode = 'auto';
 
 /** Default autonomy level (0-100) when in auto mode. */
 export const DEFAULT_AUTONOMY_LEVEL = 50;
+export const DEFAULT_SESSION_RETENTION_DAYS = 90;
 
 const DEFAULTS: AiSettings = {
   defaultThinking: 'medium',
@@ -50,13 +56,14 @@ const DEFAULTS: AiSettings = {
   maxTurns: DEFAULT_MAX_TURNS,
   defaultPermissionMode: DEFAULT_PERMISSION_MODE,
   defaultAutonomyLevel: DEFAULT_AUTONOMY_LEVEL,
+  sessionRetentionDays: DEFAULT_SESSION_RETENTION_DAYS,
 };
 
 const RECENT_MAX = 10;
 
 const SCHEMA: FileSchema<AiSettings> = {
   path: Paths.settings(),
-  currentVersion: 2,
+  currentVersion: 3,
   defaultValue: DEFAULTS,
   migrations: [
     // v0 → v1: no-op (initial version)
@@ -69,6 +76,8 @@ const SCHEMA: FileSchema<AiSettings> = {
       }
       return settings;
     },
+    // v2 → v3: adds sessionRetentionDays (optional field, no-op migration)
+    (prev) => prev as AiSettings,
   ],
 };
 

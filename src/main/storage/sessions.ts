@@ -14,6 +14,7 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from 'node:fs';
 import { join } from 'node:path';
@@ -557,6 +558,69 @@ export function truncateMessagesFrom(
   const kept = lines.slice(0, cut);
   writeFileSync(mp, kept.length ? kept.join('\n') + '\n' : '', 'utf-8');
   return kept.length;
+}
+
+/** Number of days after which archived sessions are automatically pruned. */
+export function pruneArchivedSessions(days: number): number {
+  const dir = Paths.sessionsDir();
+  if (!existsSync(dir)) return 0;
+
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  const ids = readdirSync(dir, { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .map((e) => e.name);
+
+  let pruned = 0;
+  for (const id of ids) {
+    const metaFile = join(dir, id, 'session.json');
+    if (!existsSync(metaFile)) continue;
+    try {
+      const meta = load(metaSchema(id));
+      if (!meta.archived) continue;
+      if (meta.lastMessageAt > cutoff) continue;
+      deleteSession(id);
+      pruned++;
+    } catch {
+      // skip corrupt sessions
+    }
+  }
+  return pruned;
+}
+
+/**
+ * Delete sessions that were opened but never used: still carry the default
+ * title AND have an empty messages file. Byte size is a poor proxy for
+ * "unused" — even a short Q&A can be small. Title + message count is precise.
+ */
+export function pruneEmptySessions(): number {
+  const dir = Paths.sessionsDir();
+  if (!existsSync(dir)) return 0;
+
+  const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const ids = readdirSync(dir, { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .map((e) => e.name);
+
+  let pruned = 0;
+  for (const id of ids) {
+    const metaFile = join(dir, id, 'session.json');
+    if (!existsSync(metaFile)) continue;
+    try {
+      const meta = load(metaSchema(id));
+      if (meta.lastMessageAt > cutoff) continue;
+      if (meta.title !== 'New session') continue;
+
+      const msgFile = messagesPath(id);
+      const msgSize = existsSync(msgFile) ? statSync(msgFile).size : 0;
+      if (msgSize > 0) continue;
+
+      deleteSession(id);
+      pruned++;
+    } catch {
+      // skip corrupt sessions
+    }
+  }
+  return pruned;
 }
 
 /** Absolute path to the session's on-disk folder. */

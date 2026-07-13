@@ -364,6 +364,8 @@ export interface AiSettings {
    * Defaults to ['agents.md', 'claude.md', 'copilot-instructions.md'].
    */
   contextFileNames?: string[];
+  /** Days after which archived sessions are auto-deleted. `null` disables. */
+  sessionRetentionDays?: number | null;
 }
 
 export type OtelExporterType = 'file' | 'otlp' | 'console';

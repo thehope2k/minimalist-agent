@@ -154,6 +154,12 @@ export async function setMaxTurns(value: number | undefined): Promise<void> {
   await reload();
 }
 
+export async function setSessionRetentionDays(days: number | null): Promise<void> {
+  const next = { ...snapshot().settings, sessionRetentionDays: days };
+  await window.api.settings.save(next);
+  await reload();
+}
+
 export async function setContextFileNames(names: string[]): Promise<void> {
   const next = { ...snapshot().settings, contextFileNames: names };
   await window.api.settings.save(next);

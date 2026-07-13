@@ -11,6 +11,7 @@ import { installExtensionsReferenceDoc } from './extensions/install-reference';
 import { getAppIcon } from './app-icon';
 import { checkOnLaunch } from './auto-update';
 import { classifyExternalUrl, formatBlockedUrlError } from '../shared/url-safety';
+import { getSettings, DEFAULT_SESSION_RETENTION_DAYS } from './storage/settings';
 
 import { isWorktreeSupported } from './agent/backends/pi/worktree-manager';
 
@@ -20,6 +21,12 @@ const log = createLogger('app');
 const urlLog = createLogger('url-safety');
 
 app.setName('Minimalist Agent');
+
+// Cap Electron's HTTP and compiled-JS caches before Chromium initialises.
+// Must be set before app.whenReady() — commandLine switches are consumed at
+// Chromium startup. 100 MB is generous for a native tool that isn't a browser.
+// Without this the cache has been observed growing past 1 GB of stale assets.
+app.commandLine.appendSwitch('disk-cache-size', String(100 * 1024 * 1024));
 
 // ── PATH fix for macOS bundled app ───────────────────────────────────────────
 // When launched from the Dock or Finder, macOS strips PATH down to
@@ -221,6 +228,7 @@ function createWindow(icon?: Electron.NativeImage | null) {
 
 app.whenReady().then(async () => {
   initLogging(Paths.logsDir());
+
   installSkillsReferenceDoc();
   installExtensionsReferenceDoc();
 
@@ -228,7 +236,17 @@ app.whenReady().then(async () => {
   // to ~/.minimalist-agent/ on first launch after this version.
   const { runUserConfigMigration } = await import('./storage/migrate-user-config');
   runUserConfigMigration();
-  
+
+  // Prune stale sessions in the background — archived ones older than 90 days
+  // and empty stubs older than 7 days. Non-blocking; failures are silent.
+  void import('./storage/sessions').then(({ pruneArchivedSessions, pruneEmptySessions }) => {
+    const { sessionRetentionDays } = getSettings();
+    const retentionDays = sessionRetentionDays ?? DEFAULT_SESSION_RETENTION_DAYS;
+    const archived = retentionDays !== null ? pruneArchivedSessions(retentionDays) : 0;
+    const empty = retentionDays !== null ? pruneEmptySessions() : 0;
+    if (archived + empty > 0) log.info(`Session prune: removed ${archived} archived, ${empty} empty`);
+  });
+
   // Check git/worktree support for parallel agent isolation
   const worktreeSupported = await isWorktreeSupported();
   if (worktreeSupported) {

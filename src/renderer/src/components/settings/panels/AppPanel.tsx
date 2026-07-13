@@ -1,21 +1,53 @@
 import { useEffect, useState } from 'react';
-import { Button } from '@/components/ui';
+import { Button, Select } from '@/components/ui';
 import {
   getAppSettings,
   setNotificationsEnabled,
 } from '@/lib/app-settings';
+import { setSessionRetentionDays } from '@/lib/connections';
+import { useAiData } from '@/hooks/useAiData';
 import {
   SettingsCard,
+  SettingsDivider,
   SettingsRow,
   SettingsSection,
   SettingsToggle,
 } from '../SettingsPrimitives';
+
+const RETENTION_OPTIONS = [
+  { value: '7',   label: '7 days',   description: 'One week' },
+  { value: '30',  label: '30 days',  description: 'One month' },
+  { value: '60',  label: '60 days',  description: 'Two months' },
+  { value: '90',  label: '90 days',  description: 'Three months' },
+  { value: '180', label: '180 days', description: 'Six months' },
+  { value: '365', label: '1 year',   description: 'Twelve months' },
+  { value: '730', label: '2 years',  description: 'Twenty-four months' },
+] as const;
+
+type RetentionValue = (typeof RETENTION_OPTIONS)[number]['value'];
+
+const FALLBACK_RETENTION: RetentionValue = '90';
 
 export function AppPanel() {
   const [, force] = useState(0);
   const refresh = () => force((n) => n + 1);
 
   const settings = getAppSettings();
+  const aiData = useAiData();
+
+  const savedDays = aiData?.settings.sessionRetentionDays;
+  const autoCleanEnabled = savedDays !== null && savedDays !== undefined;
+
+  const toRetentionValue = (days: number | null | undefined): RetentionValue =>
+    RETENTION_OPTIONS.find((o) => o.value === String(days))?.value ?? FALLBACK_RETENTION;
+
+  const [lastRetention, setLastRetention] = useState<RetentionValue>(
+    toRetentionValue(savedDays),
+  );
+
+  useEffect(() => {
+    if (typeof savedDays === 'number') setLastRetention(toRetentionValue(savedDays));
+  }, [savedDays]);
 
   // Keep-awake state lives in main; mirror it here for UI.
   const [keepAwake, setKeepAwakeState] = useState(false);
@@ -55,6 +87,34 @@ export function AppPanel() {
 
   return (
     <div className="mx-auto max-w-190 px-8 py-10">
+      <SettingsSection title="Storage">
+        <SettingsCard>
+          <SettingsToggle
+            label="Auto-clean archived sessions"
+            description="Automatically delete archived sessions after a set period. Also removes sessions that were opened but never used."
+            checked={autoCleanEnabled}
+            onCheckedChange={(v) => {
+              void setSessionRetentionDays(v ? Number(lastRetention) : null);
+            }}
+          />
+          <SettingsDivider />
+          <SettingsRow
+            label="Retention period"
+            description="Archived sessions older than this are deleted on startup."
+            control={
+              <Select<RetentionValue>
+                variant="compact"
+                disabled={!autoCleanEnabled}
+                value={lastRetention}
+                onChange={(v) => void setSessionRetentionDays(Number(v))}
+                options={[...RETENTION_OPTIONS]}
+                menuWidth={200}
+              />
+            }
+          />
+        </SettingsCard>
+      </SettingsSection>
+
       <SettingsSection title="Notifications">
         <SettingsCard>
           <SettingsToggle

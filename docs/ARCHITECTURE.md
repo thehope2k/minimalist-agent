@@ -196,7 +196,7 @@ Three storage tiers. Priority (highest wins): **project > user > machine**.
 
 ```
 <userData>/                     ← machine-specific, Electron-managed
-  settings.json                 ← AI defaults (model, thinking, maxTurns, permission mode, autonomy level)
+  settings.json                 ← AI defaults (model, thinking, maxTurns, permission mode, autonomy level, sessionRetentionDays)
   preferences.json              ← User preferences (name, timezone, location, notes)
   connections.json              ← Connection metadata (slugs, models, auth types)
   credentials.enc               ← Encrypted API keys + OAuth tokens
@@ -239,7 +239,9 @@ Three storage tiers. Priority (highest wins): **project > user > machine**.
 
 **Migration:** On first launch, `storage/migrate-user-config.ts` copies
 `<userData>/agents|skills|extensions` → `~/.minimalist-agent/` (idempotent,
-guarded by a marker file, only written on full success).
+guarded by a marker file, only written on full success). Source dirs in
+`<userData>` are removed after the marker is written — they are never scanned
+post-migration.
 
 ---
 

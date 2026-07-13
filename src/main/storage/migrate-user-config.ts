@@ -3,12 +3,12 @@
 //
 // Safe by design:
 //   - Idempotent: guarded by a marker file in userData.
-//   - Non-destructive: source directories in userData are NOT deleted.
-//     The originals remain until cleaned up by the user or a future migration.
-//   - Only writes the marker when ALL directories succeed, so a partial
-//     failure (permissions, disk full) is retried on the next launch.
+//   - Copies first, writes marker only when ALL dirs succeed, then removes
+//     source dirs. A partial failure retries on next launch.
+//   - Source dirs are deleted after marker is written — the loaders no longer
+//     scan userData for these assets, so keeping them is pure dead weight.
 
-import { existsSync, mkdirSync, readdirSync, copyFileSync, statSync, writeFileSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, copyFileSync, statSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { app } from 'electron';
 import { homedir } from 'node:os';
@@ -102,16 +102,21 @@ export function runUserConfigMigration(): void {
     log.info(`User config migration complete: ${totalCopied} files migrated`, { results });
   } catch (err) {
     log.warn('Failed to write migration marker', err);
+    return; // Don't delete source dirs if marker write failed.
   }
-}
 
-/** Read migration result for diagnostics (returns null if not yet run). */
-export function getMigrationStatus(): { migratedAt: string; results: string[]; totalCopied: number } | null {
-  const marker = markerPath();
-  if (!existsSync(marker)) return null;
-  try {
-    return JSON.parse(readFileSync(marker, 'utf-8'));
-  } catch {
-    return null;
+  // Marker written — source dirs in userData are now dead (loaders only
+  // read ~/.minimalist-agent/). Remove them to avoid stale ghost copies.
+  for (const dir of DIRS_TO_MIGRATE) {
+    const src = join(userData, dir);
+    if (!existsSync(src)) continue;
+    try {
+      rmSync(src, { recursive: true });
+      log.info(`Removed migrated source dir: userData/${dir}`);
+    } catch (err) {
+      // Non-fatal — marker is already written so this block never re-runs;
+      // the dead dir will linger until removed manually.
+      log.warn(`Could not remove migrated source dir userData/${dir}`, err);
+    }
   }
 }
