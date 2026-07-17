@@ -91,7 +91,7 @@ present (the common case). Collaboration + planning alone are **~60%** of the ba
 | Working directory                                                                                                                                                                             | `getWorkingDirectoryContext()`                            | when cwd set                             |                                        ~60 |
 | **Scratch directory**                                                                                                                                                                         | `getScratchDirContext()`                                  | when session path known                  |                                        ~30 |
 | Extensions awareness (terse: flat slug list + scope-aware guide path hint — one hint per scope present; plus a gated "MCP not active" line when an enabled mcp-backed extension is blocked by consent/secret/connect failure) | `formatExtensionsAwareness()` (`extensions/directive.ts`) | when extensions installed                |                                    ~50–200 |
-| **Pinned context** ("read these files" directive for skills/agents the user has pinned to the session — same pattern as `@mention`/`formatSkillDirective`, but persistent every turn)         | `buildPinnedContextBlock()` (`agent/system-prompt.ts`)    | when `session.pinnedAssets` is non-empty | ~10 tok per item (flat, path + label only) |
+| **Pinned context** (skills the user has pinned to the session — same pattern as `@mention`/`formatSkillDirective`, but persistent every turn)         | `buildPinnedContextBlock()` (`agent/system-prompt.ts`)    | when `session.pinnedAssets` is non-empty | ~10 tok per item (flat, path + label only) |
 
 The extensions block grows with state (one *slug* per enabled extension) but is
 now near-flat — it lists slugs only, plus a scope-aware guide path hint (one
@@ -211,7 +211,7 @@ AGENTS.md or a skill, not the system prompt.
 4. **Static or per-turn?** Per-turn prefix. Pinned assets are session-specific state that changes when the user
    pins/unpins — putting it in the static block would silently kill caching and be wrong.
 5. **Gated?** Yes — block is absent when `pinnedAssets` is empty or undefined.
-6. **Honest?** Yes. The model is given content for skills/agents the user has deliberately loaded. No phantom
+6. **Honest?** Yes. The model is given content for skills the user has deliberately loaded. No phantom
    capabilities described.
 7. **Doc updated?** ✔ (this section).
 

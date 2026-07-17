@@ -271,16 +271,16 @@ Collapsible side panel (`Cmd+Shift+B`) showing what's available and pinned for t
 
 **Sections:**
 
-| Section             | Content                                                       | Action      |
-|---------------------|---------------------------------------------------------------|-------------|
-| Active this session | Pinned skills + agents                                        | Unpin       |
-| `<project-name>`    | Project-local skills + agents from `<cwd>/.minimalist-agent/` | Pin / Unpin |
-| Global              | User-tier skills + agents from `~/.minimalist-agent/`         | Pin / Unpin |
-| Extensions          | All enabled extensions (read-only)                            | —           |
+| Section             | Content                                                    | Action      |
+|---------------------|------------------------------------------------------------|---------|
+| Active this session | Pinned skills                                              | Unpin       |
+| `<project-name>`    | Project-local skills from `<cwd>/.minimalist-agent/`       | Pin / Unpin |
+| Global              | User-tier skills from `~/.minimalist-agent/`               | Pin / Unpin |
+| Extensions          | All enabled extensions (read-only)                         | —           |
 
-**Pin mechanic:** Pinning adds the item's name + description to the per-turn
+**Pin mechanic:** Pinning adds the skill's name + description to the per-turn
 `<pinned_context>` block in the system prompt — a lightweight awareness note
-(~15 tokens per item) so the model knows the resource exists and can apply it
+(~15 tokens per item) so the model knows the skill exists and can apply it
 when relevant. Not full-content injection. Pinned state persists in
 `session.json → pinnedAssets: string[]` (format: `'user:slug'` or `'project:slug'`).
 

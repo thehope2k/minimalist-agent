@@ -1,10 +1,9 @@
 import { Pin, PinOff, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import type { LoadedSkill, LoadedAgent, LoadedExtension } from '@/lib/electron';
+import type { LoadedSkill, LoadedExtension } from '@/lib/electron';
 import { displayName as extensionDisplayName, displayDescription as extensionDisplayDescription } from '@/lib/extensions';
 import { SkillAvatar } from '@/components/skills/SkillAvatar';
-import { AgentAvatar } from '@/components/agents/AgentAvatar';
 import { ExtensionAvatar } from '@/components/extensions/ExtensionAvatar';
 
 /* ---------- Shared row ---------- */
@@ -50,7 +49,6 @@ function ItemRow({
 
 interface PinnedSectionProps {
   pinnedSkills: LoadedSkill[];
-  pinnedAgents: LoadedAgent[];
   tokenEstimate: number;
   tokenWarning: boolean;
   onUnpin: (scopedSlug: string) => void;
@@ -58,12 +56,11 @@ interface PinnedSectionProps {
 
 export function PinnedSection({
   pinnedSkills,
-  pinnedAgents,
   tokenEstimate,
   tokenWarning,
   onUnpin,
 }: PinnedSectionProps) {
-  const hasItems = pinnedSkills.length > 0 || pinnedAgents.length > 0;
+  const hasItems = pinnedSkills.length > 0;
 
   return (
     <div className="border-b border-border pb-2">
@@ -91,7 +88,7 @@ export function PinnedSection({
 
       {!hasItems && (
         <p className="px-3 pb-2 text-xs text-fg-subtle">
-          Nothing pinned yet. Pin skills or agents below to keep them in context every turn.
+          Nothing pinned yet. Pin a skill below to keep it in context every turn.
         </p>
       )}
 
@@ -122,32 +119,6 @@ export function PinnedSection({
         />
       ))}
 
-      {pinnedAgents.map((agent) => (
-        <ItemRow
-          key={`agent:${agent.slug}`}
-          avatar={<AgentAvatar agent={agent} size="sm" />}
-          name={agent.metadata.name}
-          slug={agent.slug}
-          description={agent.metadata.description}
-          badge={
-            agent.source === 'project' ? (
-              <span className="shrink-0 text-[9px] font-medium uppercase tracking-wide text-fg-subtle">
-                project
-              </span>
-            ) : undefined
-          }
-          action={
-            <button
-              type="button"
-              onClick={() => onUnpin(`${agent.source}:${agent.slug}`)}
-              className="shrink-0 rounded p-1 text-fg-subtle opacity-0 hover:bg-elevated hover:text-fg group-hover:opacity-100"
-              title={`Unpin ${agent.slug}`}
-            >
-              <PinOff className="h-3 w-3" strokeWidth={1.75} />
-            </button>
-          }
-        />
-      ))}
     </div>
   );
 }
@@ -157,26 +128,24 @@ export function PinnedSection({
 export interface AvailableSectionProps {
   title: string;
   skills: LoadedSkill[];
-  agents: LoadedAgent[];
   isPinned: (scope: 'user' | 'project', slug: string) => boolean;
   onPin: (scopedSlug: string) => void;
   onUnpin: (scopedSlug: string) => void;
   cwd?: string;
   /** When provided, shows a + New dropdown in the section header. */
-  onNew?: (type: 'skill' | 'agent' | 'extension') => void;
+  onNew?: (type: 'skill' | 'extension') => void;
 }
 
 export function AvailableSection({
   title,
   skills,
-  agents,
   isPinned,
   onPin,
   onUnpin,
   onNew,
 }: AvailableSectionProps) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const hasItems = skills.length > 0 || agents.length > 0;
+  const hasItems = skills.length > 0;
 
   return (
     <div className="border-b border-border pb-2 last:border-0">
@@ -199,7 +168,7 @@ export function AvailableSection({
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
                 <div className="absolute right-0 top-full z-50 mt-1 w-36 overflow-hidden rounded-lg border border-border bg-panel shadow-xl">
-                  {(['skill', 'agent', 'extension'] as const).map((type) => (
+                  {(['skill', 'extension'] as const).map((type) => (
                     <button
                       key={type}
                       type="button"
@@ -218,7 +187,7 @@ export function AvailableSection({
 
       {!hasItems && (
         <p className="px-3 pb-2 text-xs text-fg-subtle">
-          No project assets yet.
+          No skills yet.
         </p>
       )}
 
@@ -252,35 +221,6 @@ export function AvailableSection({
         );
       })}
 
-      {agents.map((agent) => {
-        const pinned = isPinned(agent.source as 'user' | 'project', agent.slug);
-        return (
-          <ItemRow
-            key={`agent:${agent.slug}`}
-            avatar={<AgentAvatar agent={agent} size="sm" />}
-            name={agent.metadata.name}
-            slug={agent.slug}
-            description={agent.metadata.description}
-            badge={
-              pinned ? (
-                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" title="Pinned" />
-              ) : undefined
-            }
-            action={
-              <button
-                type="button"
-                onClick={pinned ? () => onUnpin(`${agent.source}:${agent.slug}`) : () => onPin(`${agent.source}:${agent.slug}`)}
-                className="shrink-0 rounded p-1 text-fg-subtle opacity-0 hover:bg-elevated hover:text-fg group-hover:opacity-100"
-                title={pinned ? `Unpin ${agent.slug}` : `Pin ${agent.slug}`}
-              >
-                {pinned
-                  ? <PinOff className="h-3 w-3" strokeWidth={1.75} />
-                  : <Pin className="h-3 w-3" strokeWidth={1.75} />}
-              </button>
-            }
-          />
-        );
-      })}
     </div>
   );
 }

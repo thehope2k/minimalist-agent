@@ -3,11 +3,9 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useContextPanel } from '@/hooks/useContextPanel';
 import { getProjectSkillsDir } from '@/lib/skills';
-import { getProjectAgentsDir } from '@/lib/agents';
 import { getProjectExtensionsDir } from '@/lib/extensions';
 import { PinnedSection, AvailableSection, ExtensionsSection } from './ContextPanelSections';
 import { AddSkillDialog } from '@/components/skills/AddSkillDialog';
-import { AddAgentDialog } from '@/components/agents/AddAgentDialog';
 import { AddExtensionDialog } from '@/components/extensions/AddExtensionDialog';
 import type { SeedSubmit } from '@/App';
 
@@ -33,18 +31,14 @@ export function ContextPanel({
   onStartChatWithSubmission,
   onClose,
 }: ContextPanelProps) {
-  const [newDialog, setNewDialog] = useState<'skill' | 'agent' | 'extension' | null>(null);
+  const [newDialog, setNewDialog] = useState<'skill' | 'extension' | null>(null);
   const [projectSkillsDir, setProjectSkillsDir] = useState<string | undefined>();
-  const [projectAgentsDir, setProjectAgentsDir] = useState<string | undefined>();
   const [projectExtDir, setProjectExtDir] = useState<string | undefined>();
 
-  // Pre-resolve project dirs when cwd is known
-  const openNewDialog = async (type: 'skill' | 'agent' | 'extension') => {
+  const openNewDialog = async (type: 'skill' | 'extension') => {
     if (!cwd) return;
     if (type === 'skill' && !projectSkillsDir) {
       setProjectSkillsDir(await getProjectSkillsDir(cwd));
-    } else if (type === 'agent' && !projectAgentsDir) {
-      setProjectAgentsDir(await getProjectAgentsDir(cwd));
     } else if (type === 'extension' && !projectExtDir) {
       setProjectExtDir(await getProjectExtensionsDir(cwd));
     }
@@ -55,10 +49,7 @@ export function ContextPanel({
     loading,
     projectSkills,
     userSkills,
-    projectAgents,
-    userAgents,
     pinnedSkills,
-    pinnedAgents,
     projectExtensions,
     userExtensions,
     tokenEstimate,
@@ -116,7 +107,6 @@ export function ContextPanel({
         {/* Pinned / Active */}
         <PinnedSection
           pinnedSkills={pinnedSkills}
-          pinnedAgents={pinnedAgents}
           tokenEstimate={tokenEstimate}
           tokenWarning={tokenWarning}
           onUnpin={handleUnpin}
@@ -127,7 +117,6 @@ export function ContextPanel({
           <AvailableSection
             title={basename(cwd)}
             skills={projectSkills}
-            agents={projectAgents}
             isPinned={isPinned}
             onPin={handlePin}
             onUnpin={handleUnpin}
@@ -140,7 +129,6 @@ export function ContextPanel({
         <AvailableSection
           title="Global"
           skills={userSkills}
-          agents={userAgents}
           isPinned={isPinned}
           onPin={handlePin}
           onUnpin={handleUnpin}
@@ -156,17 +144,13 @@ export function ContextPanel({
         {/* Empty state */}
         {!loading &&
           projectSkills.length === 0 &&
-          projectAgents.length === 0 &&
-          userSkills.length === 0 &&
-          userAgents.length === 0 && (
+          userSkills.length === 0 && (
             <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
               <Layers className="h-5 w-5 text-fg-subtle" strokeWidth={1.5} />
-              <p className="text-sm text-fg-muted">No skills or agents yet</p>
+              <p className="text-sm text-fg-muted">No skills yet</p>
               <p className="max-w-60 text-xs text-fg-subtle">
                 Add skills to{' '}
-                <code className="font-mono">~/.minimalist-agent/skills/</code> or drop an{' '}
-                <code className="font-mono">agents/</code> folder in{' '}
-                <code className="font-mono">.minimalist-agent/</code> in your project.
+                <code className="font-mono">~/.minimalist-agent/skills/</code>.
               </p>
             </div>
           )}
@@ -180,12 +164,6 @@ export function ContextPanel({
             onClose={() => setNewDialog(null)}
             onSubmit={(s) => { onStartChatWithSubmission({ ...s, workingDirectory: cwd }); setNewDialog(null); }}
             projectDir={projectSkillsDir}
-          />
-          <AddAgentDialog
-            open={newDialog === 'agent'}
-            onClose={() => setNewDialog(null)}
-            onSubmit={(s) => { onStartChatWithSubmission({ ...s, workingDirectory: cwd }); setNewDialog(null); }}
-            projectDir={projectAgentsDir}
           />
           <AddExtensionDialog
             open={newDialog === 'extension'}
