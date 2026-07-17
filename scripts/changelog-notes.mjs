@@ -58,6 +58,23 @@ const body = lines
   .replace(/^\n+/, '')
   .replace(/\n+$/, '');
 
+// macOS builds are unsigned, so every release gets a Gatekeeper workaround
+// footer (mirrors the README "macOS — Gatekeeper" section).
+const MACOS_FOOTER = `---
+
+### macOS — Gatekeeper
+
+The macOS build is unsigned. On first launch macOS will block it.
+To open: **right-click the app → Open → Open** (you only need to do this once).
+
+Alternatively:
+
+\`\`\`bash
+xattr -d com.apple.quarantine /Applications/Minimalist\\ Agent.app
+\`\`\``;
+
+const bodyWithFooter = `${body}\n\n${MACOS_FOOTER}`;
+
 // Summary = first non-empty paragraph of the body (before the first "###").
 const summary = body
   .split('\n')
@@ -75,13 +92,13 @@ if (title.length > TITLE_MAX) {
 if (field === 'title') {
   process.stdout.write(title);
 } else if (field === 'notes') {
-  process.stdout.write(body);
+  process.stdout.write(bodyWithFooter);
 } else {
   // GITHUB_OUTPUT-friendly: single-line title, heredoc-delimited notes.
   const out = [
     `title=${title}`,
     `notes<<__CHANGELOG_NOTES__`,
-    body,
+    bodyWithFooter,
     `__CHANGELOG_NOTES__`,
   ].join('\n');
   process.stdout.write(out + '\n');
