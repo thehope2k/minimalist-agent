@@ -135,9 +135,10 @@ with a per-directory TTL cache invalidated on file-system events.
 - `auth/resolve.ts` is called at the start of every turn; it refreshes
   expiring tokens (5-minute buffer) and serialises concurrent refreshes
   for the same connection with a per-slug mutex.
-- Claude OAuth tokens are refreshed with `claude-flow.ts:refreshToken()`.
-- Copilot tokens are refreshed with `copilot-flow.ts` using the stored
-  long-lived GitHub OAuth token.
+- Claude OAuth tokens are refreshed with `oauth/claude-flow.ts:refreshTokens()`.
+- ChatGPT Plus/Codex tokens are refreshed with `oauth/chatgpt-flow.ts:refreshChatGptTokens()`.
+- Copilot tokens are refreshed with `oauth/copilot-flow.ts:refreshCopilotTokens()`
+  using the stored long-lived GitHub OAuth token.
 
 ---
 
@@ -259,6 +260,33 @@ Collapsible file tree panel (Cmd+B) for browsing project structure. Read-only, g
 **Performance:** Virtual scrolling via `@tanstack/react-virtual` (activates at >200 items)
 
 See [FILE_EXPLORER.md](./FILE_EXPLORER.md) for full documentation.
+
+---
+
+## Voice dictation
+
+On-device speech-to-text (Cmd+Shift+M) for the composer, via `sherpa-onnx-node`
+(Silero VAD + Moonshine tiny-en, int8, CPU).
+
+**Module boundaries:**
+
+- `src/main/voice/model.ts` — first-use model download + SHA256 verification, cached
+  under `userData/voice-models/`
+- `src/main/voice/vad.ts` / `recognizer.ts` — single-flight VAD and recognizer
+  instances shared process-wide (one active dictation surface today)
+- `src/main/voice/session.ts` — one dictation session: accept waveform → drain
+  completed segments → transcribe each
+- `src/renderer/.../useVoiceDictation.ts` — `AudioWorkletNode` capture, streaming
+  16kHz downsample (`pcm.ts`), ordered chunk send chain, cursor-aware insertion
+
+**IPC:** `voice:getModelStatus`, `voice:downloadModel` (+ `voice:downloadProgress`
+push), `voice:startSession`, `voice:pushChunk`, `voice:endSession`
+
+**Permissions:** mic access gated by `installMediaPermissions()` (`src/main/index.ts`)
+to the app-shell origin only; macOS entitlements + `NSMicrophoneUsageDescription`
+in `electron-builder.yml`.
+
+See [VOICE.md](./VOICE.md) for full documentation.
 
 ---
 

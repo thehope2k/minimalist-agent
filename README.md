@@ -59,6 +59,7 @@ it's the design. If something doesn't earn its keep, it doesn't make the cut.
 
 ### Developer Tools
 
+- **Voice dictation (`Cmd+Shift+M`)** — on-device speech-to-text in the composer (`sherpa-onnx` + Moonshine, CPU inference); streaming transcription inserted at cursor; model downloads once on first use, fully offline after that; audio never leaves the machine
 - **Terminal (`Cmd+T`)** — full in-app terminal (`xterm.js` + `node-pty`); real PTY, multiple tabs, in-terminal search, copy-on-select, URL click-to-open, 2 MB scrollback; three bundled fonts
 - **File Explorer (`Cmd+B`)** — collapsible file tree panel with virtual scrolling for high performance with large directories; gitignore-aware, keyboard navigation, context menu (Copy Path / Reveal in Finder); persistent state across sessions
 - **Git diff review (`Cmd+G`)** — full-screen Monaco DiffEditor; file list with M/N/D/R status; per-repo branch labels; collapsible file sections; hunk-level staging; commit panel with amend support; multi-repo workspace

@@ -24,6 +24,15 @@ API keys and OAuth tokens are stored encrypted via Electron's `safeStorage`
 API, which delegates to the OS keychain (Keychain on macOS, Secret Service on
 Linux, DPAPI on Windows). They are never written to disk in plaintext.
 
+## Device permissions
+
+Microphone access (voice dictation) is not left to Electron's permissive
+default. It's explicitly scoped to the app's own window, so no other content
+the app might ever load could request it. Voice audio is processed entirely
+on-device and never leaves the machine — the only network access this
+feature ever makes is a one-time model download on first use. See
+[docs/VOICE.md](docs/VOICE.md).
+
 ## Scope
 
 | In scope                           | Out of scope                                                        |
