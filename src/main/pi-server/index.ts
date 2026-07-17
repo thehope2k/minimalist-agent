@@ -332,13 +332,7 @@ function wrapWithPermissionGate(
       const decision = await requestPermission(toolCallId, base.name, params);
 
       if (decision.action === 'block') {
-        // IMPORTANT: Pi's agent-loop only flags `isError: true` on the
-        // tool_execution_end event when execute() *throws*. Returning
-        // `{ isError: true, content: [...] }` is silently treated as
-        // success — the UI then draws a green check on a tool call that
-        // never actually ran (e.g. plan-mode-blocked Edit). Throwing
-        // routes us through the agent-loop's error path so isError flows
-        // through to tool_execution_end → tool_result → DiffPart.
+        // Pi only marks tool_result isError when execute() throws — returning isError:true is silently ignored.
         throw new Error(decision.reason ?? 'Tool execution denied.');
       }
 

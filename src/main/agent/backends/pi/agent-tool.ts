@@ -115,7 +115,7 @@ const activeHandles = new Map<string, SpawnedAgentHandle>();
 const MAX_CONCURRENT_AGENTS = 5;
 
 /** Maximum runtime per agent (minutes). */
-const MAX_AGENT_RUNTIME_MINUTES = 5;
+const MAX_AGENT_RUNTIME_MINUTES = 8;
 
 /** Track if we've done orphaned cleanup this session (lazy, once per app run). */
 let orphanedCleanupDone = false;
@@ -727,22 +727,8 @@ export function createPiAgentTool(ctx: AgentToolContext): ToolDefinition<typeof 
           at: Date.now(),
         });
 
-        return {
-          isError: true,
-          content: [
-            {
-              type: 'text',
-              text: [
-                `❌ Failed to execute agent:`,
-                '',
-                errorMsg,
-                '',
-                'Check that the agent is properly configured and the task is clear.',
-                handle ? `[exec: ${handle.execId}]` : '',
-              ].filter(Boolean).join('\n'),
-            },
-          ],
-        } as never;
+        // Pi only marks tool_result isError when execute() throws — returning isError:true is silently ignored.
+        throw new Error(handle ? `${errorMsg} [exec: ${handle.execId}]` : errorMsg);
       }
     },
   });
