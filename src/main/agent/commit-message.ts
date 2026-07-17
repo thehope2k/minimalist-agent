@@ -8,6 +8,9 @@ import type { AnthropicAuth, ResolvedAuth } from './runner';
 import { runPiMiniCompletion } from './backends/pi/agent';
 import { sessionPath } from '../storage/sessions';
 import { listConnections } from '../storage/connections';
+import { createLogger } from '../logger';
+
+const log = createLogger('commit-message');
 
 const ANTHROPIC_HAIKU  = 'claude-haiku-4-5-20251001';
 const PI_DEFAULT_MINI  = 'claude-haiku-4.5';
@@ -90,7 +93,10 @@ function validateCommitMessage(raw: string): string | null {
 export async function generateCommitMessage(
   args: GenerateCommitMessageArgs,
 ): Promise<string | null> {
-  if (!args.diffContext.trim()) return null;
+  if (!args.diffContext.trim()) {
+    log.warn('empty diff context');
+    return null;
+  }
 
   let userPrompt: string;
   if (args.userContext) {
@@ -108,11 +114,17 @@ ${args.diffContext}`;
 
   // Custom endpoints (local / OpenAI-compatible) reuse the session model.
   if (args.auth.type === 'local_api') {
-    if (!args.connectionSlug || !args.chatSessionId) return null;
+    if (!args.connectionSlug || !args.chatSessionId) {
+      log.warn(`[local_api] missing connectionSlug or chatSessionId`);
+      return null;
+    }
     const model =
       args.model ??
       listConnections().find((c) => c.slug === args.connectionSlug)?.defaultModel;
-    if (!model) return null;
+    if (!model) {
+      log.warn(`[local_api] no model resolved for connection ${args.connectionSlug}`);
+      return null;
+    }
     try {
       const result = await runPiMiniCompletion({
         connectionSlug: args.connectionSlug,
@@ -125,15 +137,22 @@ ${args.diffContext}`;
         userPrompt,
         maxTokens: COMMIT_MAX_TOKENS,
       });
-      if (result.error || !result.text) return null;
+      if (result.error || !result.text) {
+        log.warn(`[local_api] mini_completion error: ${result.error ?? 'empty response'}`);
+        return null;
+      }
       return validateCommitMessage(result.text);
-    } catch {
+    } catch (e) {
+      log.warn(`[local_api] threw: ${e instanceof Error ? e.message : String(e)}`);
       return null;
     }
   }
 
   if (args.auth.type === 'copilot_oauth') {
-    if (!args.connectionSlug || !args.chatSessionId) return null;
+    if (!args.connectionSlug || !args.chatSessionId) {
+      log.warn(`[copilot_oauth] missing connectionSlug or chatSessionId`);
+      return null;
+    }
     try {
       const result = await runPiMiniCompletion({
         connectionSlug: args.connectionSlug,
@@ -147,15 +166,26 @@ ${args.diffContext}`;
         userPrompt,
         maxTokens: COMMIT_MAX_TOKENS,
       });
-      if (result.error || !result.text) return null;
+      if (result.error || !result.text) {
+        log.warn(`[copilot_oauth] mini_completion error: ${result.error ?? 'empty response'}`);
+        return null;
+      }
       return validateCommitMessage(result.text);
-    } catch {
+    } catch (e) {
+      log.warn(`[copilot_oauth] threw: ${e instanceof Error ? e.message : String(e)}`);
       return null;
     }
   }
 
-  if (!locateClaudeCli()) return null;
-  if (args.auth.type !== 'anthropic_api_key' && args.auth.type !== 'anthropic_oauth') return null;
+  if (!locateClaudeCli()) {
+    log.warn('claude CLI not found');
+    return null;
+  }
+  const authType: string = args.auth.type;
+  if (authType !== 'anthropic_api_key' && authType !== 'anthropic_oauth') {
+    log.warn(`unsupported auth type: ${authType}`);
+    return null;
+  }
 
   const anthropicAuth: AnthropicAuth = args.auth;
   const options = {
@@ -187,7 +217,8 @@ ${args.diffContext}`;
       }
     }
     return validateCommitMessage(collected);
-  } catch {
+  } catch (e) {
+    log.warn(`[anthropic] threw: ${e instanceof Error ? e.message : String(e)}`);
     return null;
   }
 }
