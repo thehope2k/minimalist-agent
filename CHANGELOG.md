@@ -5,6 +5,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.17.0] — 2026-07-17
+
+Adds on-device voice dictation and per-session thinking-level control; quality of life improvements and bug fixes.
+
+### Added
+
+**Voice dictation**
+
+- New mic button on the message composer streams audio through an on-device speech recognizer and inserts the transcript directly — no cloud service involved
+
+**Per-session thinking level**
+
+- The Settings > AI "Default Thinking" selector now actually controls reasoning effort per session instead of always defaulting to medium
+
+**Skill/extension detail view**
+
+- Skills and extensions in the context panel can now be opened in an expandable detail modal, and are deleted by their actual path instead of by slug
+
+### Fixed
+
+- Mini-completion requests (used for titles, commit messages, etc.) run as a hidden agent turn instead of a one-shot call, fixing unreliable completions under HTTP/2 misdirected requests
+- Fixed the expandable detail modal closing unexpectedly when clicks on child elements propagated to the backdrop
+
+---
+
 ## [1.16.1] — 2026-07-17
 
 Bug fixes and quality-of-life improvements.
