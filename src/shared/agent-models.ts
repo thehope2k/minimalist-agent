@@ -34,6 +34,9 @@ export const KNOWN_MODEL_IDS = [
   'gpt-5.4-mini',
   'gpt-5.4-nano',
   'gpt-5.5',
+  'gpt-5.6-luna',
+  'gpt-5.6-sol',
+  'gpt-5.6-terra',
   
   // Anthropic Claude 4.5-4.7 series
   'claude-haiku-4.5',
