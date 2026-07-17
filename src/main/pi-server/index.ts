@@ -245,11 +245,12 @@ let activePromptPromise: Promise<void> | null = null;
 /*  Thinking-level mapping                                       */
 /* ============================================================ */
 
-/** Our protocol's level → Pi's accepted set ('minimal'..'xhigh').
- *  'off' has no Pi equivalent → 'minimal'. 'max' clamps to 'xhigh'. */
+/** Our protocol's level → Pi's accepted set ('minimal'..'max').
+ *  'off' has no Pi equivalent → 'minimal'. All other levels pass through
+ *  1:1; Pi SDK clamps per model internally (e.g. GPT-5.6 accepts 'max'
+ *  natively; older models degrade to their ceiling). */
 function mapThinkingLevel(level: PiThinkingLevel): ThinkingLevel {
   if (level === 'off') return 'minimal';
-  if (level === 'max') return 'xhigh';
   return level;
 }
 
