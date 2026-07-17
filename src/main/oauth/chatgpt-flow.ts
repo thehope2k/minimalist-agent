@@ -9,7 +9,7 @@
 //   accessToken  = OpenAI API key derived from the id_token exchange
 //   refreshToken = standard OAuth refresh token (long-lived)
 
-import type { OAuthCredentials } from '@earendil-works/pi-ai/oauth';
+import { openaiCodexProvider } from '@earendil-works/pi-ai/providers/openai-codex';
 import { createLogger } from '../logger';
 
 const log = createLogger('chatgpt-oauth');
@@ -45,14 +45,16 @@ export function startLogin(
 
   const abort = new AbortController();
   const promise = (async (): Promise<ChatGptTokens> => {
-    const { loginOpenAICodex } = await import('@earendil-works/pi-ai/oauth');
-    const creds: OAuthCredentials = await loginOpenAICodex({
-      onAuth: (info: { url: string; instructions?: string }) => {
-        onBrowserOpen(info.url);
-      },
-      onPrompt: async () => '',
-      onProgress: (msg: string) => {
-        log.debug('', msg);
+    const oauth = openaiCodexProvider().auth.oauth!;
+    const creds = await oauth.login({
+      signal: abort.signal,
+      prompt: async () => '',
+      notify: (event) => {
+        if (event.type === 'auth_url') {
+          onBrowserOpen(event.url);
+        } else if (event.type === 'progress') {
+          log.debug('', event.message);
+        }
       },
     });
     return {
@@ -83,8 +85,8 @@ export function cancelLogin(): void {
 export async function refreshChatGptTokens(
   refreshToken: string,
 ): Promise<ChatGptTokens> {
-  const { refreshOpenAICodexToken } = await import('@earendil-works/pi-ai/oauth');
-  const creds = await refreshOpenAICodexToken(refreshToken);
+  const oauth = openaiCodexProvider().auth.oauth!;
+  const creds = await oauth.refresh({ type: 'oauth', access: '', refresh: refreshToken, expires: 0 });
   return {
     accessToken: creds.access,
     refreshToken: (creds.refresh as string) || refreshToken,

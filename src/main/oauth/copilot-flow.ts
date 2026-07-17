@@ -7,7 +7,7 @@
 //   accessToken  = Copilot API token (used for chat completions)
 //   refreshToken = GitHub OAuth token (used to refresh the Copilot token)
 
-import type { OAuthCredentials } from '@earendil-works/pi-ai/oauth';
+import { githubCopilotProvider } from '@earendil-works/pi-ai/providers/github-copilot';
 import { createLogger } from '../logger';
 
 const log = createLogger('copilot-oauth');
@@ -48,23 +48,18 @@ export function startLogin(
 
   const abort = new AbortController();
   const promise = (async (): Promise<CopilotTokens> => {
-    const { loginGitHubCopilot } = await import('@earendil-works/pi-ai/oauth');
-    const creds: OAuthCredentials = await loginGitHubCopilot({
-      // pi-ai >= 0.75.5 hands us the parsed device code directly instead of
-      // formatted instructions text — no more regex scraping.
-      onDeviceCode: (info) => {
-        onDeviceCode({
-          userCode: info.userCode,
-          verificationUri: info.verificationUri,
-        });
-      },
-      // Pi prompts for a GitHub Enterprise domain — empty = github.com.
-      onPrompt: async () => '',
-      onProgress: (msg) => {
-        // Useful for debugging without bloating UI surface area.
-        log.debug('', msg);
-      },
+    const oauth = githubCopilotProvider().auth.oauth!;
+    const creds = await oauth.login({
       signal: abort.signal,
+      // Empty string = use github.com (not GitHub Enterprise).
+      prompt: async () => '',
+      notify: (event) => {
+        if (event.type === 'device_code') {
+          onDeviceCode({ userCode: event.userCode, verificationUri: event.verificationUri });
+        } else if (event.type === 'progress') {
+          log.debug('', event.message);
+        }
+      },
     });
     return {
       accessToken: creds.access,
@@ -95,10 +90,8 @@ export function cancelLogin(): void {
 export async function refreshCopilotTokens(
   githubRefreshToken: string,
 ): Promise<CopilotTokens> {
-  const { refreshGitHubCopilotToken } = await import(
-    '@earendil-works/pi-ai/oauth'
-  );
-  const creds = await refreshGitHubCopilotToken(githubRefreshToken);
+  const oauth = githubCopilotProvider().auth.oauth!;
+  const creds = await oauth.refresh({ type: 'oauth', access: '', refresh: githubRefreshToken, expires: 0 });
   return {
     accessToken: creds.access,
     // Copilot refresh returns the same long-lived GitHub token (or a new

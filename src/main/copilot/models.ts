@@ -5,7 +5,7 @@
 // allowed to use. The token's `proxy-ep` claim picks the right
 // regional endpoint.
 
-import { refreshGitHubCopilotToken } from '@earendil-works/pi-ai/oauth';
+import { githubCopilotProvider } from '@earendil-works/pi-ai/providers/github-copilot';
 import type { ModelDef } from '../storage/connections';
 import { createLogger } from '../logger';
 
@@ -171,7 +171,8 @@ export async function fetchCopilotModels(
   githubRefreshToken: string,
 ): Promise<ModelDef[]> {
   // Step 1: GitHub OAuth → Copilot API token.
-  const creds = await refreshGitHubCopilotToken(githubRefreshToken);
+  const oauth = githubCopilotProvider().auth.oauth!;
+  const creds = await oauth.refresh({ type: 'oauth', access: '', refresh: githubRefreshToken, expires: 0 });
   const apiToken = creds.access;
 
   // Step 2: derive regional API base from the token.

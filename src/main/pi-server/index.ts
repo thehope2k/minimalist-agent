@@ -21,10 +21,10 @@
 import { createInterface } from 'node:readline';
 import {
   createAgentSession,
-  AuthStorage,
   DefaultResourceLoader,
   SessionManager,
   ModelRegistry,
+  ModelRuntime,
   createBashToolDefinition,
   createEditToolDefinition,
   createFindToolDefinition,
@@ -39,12 +39,38 @@ import {
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { getBuiltinModel, builtinModels } from '@earendil-works/pi-ai/providers/all';
-import type { Api, Model, ThinkingLevel } from '@earendil-works/pi-ai';
-import { getOAuthProvider } from '@earendil-works/pi-ai/oauth';
+import type { Api, ApiKeyCredential, Credential, CredentialInfo, CredentialStore, Model, OAuthCredential, ThinkingLevel } from '@earendil-works/pi-ai';
 
 /** Shared models instance for `completeSimple` calls (title gen, llm_query).
  *  Built-in provider catalog; auth is passed inline via `StreamOptions.apiKey`. */
 const piModels = builtinModels();
+
+/* In-memory CredentialStore — one instance per pi-server subprocess.        */
+/* Credentials are seeded on init and updated via token_update messages.      */
+class InMemoryCredentialStore implements CredentialStore {
+  private data = new Map<string, Credential>();
+
+  async read(id: string): Promise<Credential | undefined> {
+    return this.data.get(id);
+  }
+
+  async list(): Promise<readonly CredentialInfo[]> {
+    return Array.from(this.data.entries()).map(([providerId, c]) => ({ providerId, type: c.type }));
+  }
+
+  async modify(
+    id: string,
+    fn: (current: Credential | undefined) => Promise<Credential | undefined>,
+  ): Promise<Credential | undefined> {
+    const next = await fn(this.data.get(id));
+    if (next !== undefined) this.data.set(id, next);
+    return next;
+  }
+
+  async delete(id: string): Promise<void> {
+    this.data.delete(id);
+  }
+}
 import { adaptPiEvent } from './event-adapter';
 import { createPiWebFetchTool, createPiWebSearchTool } from './web-tools';
 import { connectMcpServers, closeMcpClients } from './mcp-tools';
@@ -160,7 +186,9 @@ function isLocalhostUrl(url: string): boolean {
 
 interface State {
   init?: MsgInit;
-  authStorage?: AuthStorage;
+  credentialStore?: InMemoryCredentialStore;
+  modelRuntime?: ModelRuntime;
+  modelRegistry?: ModelRegistry;
   session?: AgentSession;
   resourceLoader?: DefaultResourceLoader;
   /** Available agents passed from main process. */
@@ -273,22 +301,22 @@ function applyVisionInput<M extends { input?: readonly ('text' | 'image')[] }>(
 /* ============================================================ */
 
 async function writeAuthCredential(
-  authStorage: AuthStorage,
+  store: CredentialStore,
   provider: string,
   cred: MsgInit['piAuth']['credential'] | MsgTokenUpdate['credential'],
 ): Promise<void> {
   if (cred.type === 'oauth') {
-    await authStorage.set(provider, {
+    await store.modify(provider, async () => ({
       type: 'oauth',
       access: cred.access,
       refresh: cred.refresh,
       expires: cred.expires ?? Date.now() + 30 * 60 * 1000,
-    } as never);
+    } as OAuthCredential));
   } else {
-    await authStorage.set(provider, {
+    await store.modify(provider, async () => ({
       type: 'api_key',
       key: cred.key,
-    } as never);
+    } as Credential));
   }
 }
 
@@ -1187,15 +1215,18 @@ async function handleInit(msg: MsgInit): Promise<void> {
     source: (a.source ?? 'user') as import('../agents/types').AgentSource,
   }));
 
-  const authStorage = AuthStorage.inMemory();
+  const credentialStore = new InMemoryCredentialStore();
   if (msg.piAuth) {
-    await writeAuthCredential(authStorage, msg.piAuthProvider, msg.piAuth.credential);
+    await writeAuthCredential(credentialStore, msg.piAuthProvider, msg.piAuth.credential);
   }
-  state.authStorage = authStorage;
+  state.credentialStore = credentialStore;
 
   const hasCustomEndpoint = !!msg.baseUrl?.trim() && !!msg.customEndpoint;
 
-  const modelRegistry = ModelRegistry.inMemory(authStorage);
+  const modelRuntime = await ModelRuntime.create({ credentials: credentialStore });
+  state.modelRuntime = modelRuntime;
+  const modelRegistry = new ModelRegistry(modelRuntime);
+  state.modelRegistry = modelRegistry;
   let model: Model<Api>;
   if (hasCustomEndpoint) {
     const modelId = msg.model;
@@ -1250,24 +1281,6 @@ async function handleInit(msg: MsgInit): Promise<void> {
         `Check your connection settings or agent configuration.`
       );
     }
-
-    // CRITICAL for github-copilot: the OAuth access token carries a
-    // `proxy-ep=` claim that pins requests to the user's regional API
-    // host. Without applying it the request hits a default endpoint that
-    // doesn't serve the model → 421 Misdirected Request.
-    const provider = getOAuthProvider(msg.piAuthProvider);
-    if (provider?.modifyModels && msg.piAuth?.credential.type === 'oauth') {
-      const cred = msg.piAuth.credential;
-      const [adjusted] = provider.modifyModels(
-        [model] as never,
-        {
-          access: cred.access,
-          refresh: cred.refresh,
-          expires: cred.expires ?? Date.now() + 30 * 60 * 1000,
-        } as never,
-      );
-      if (adjusted) model = adjusted as typeof model;
-    }
   }
   // Honour the app's live image capability: when the active model can't accept
   // images (e.g. enterprise Copilot policy), drop 'image' from the model's
@@ -1290,19 +1303,14 @@ async function handleInit(msg: MsgInit): Promise<void> {
     piAuthProvider: msg.piAuthProvider,
     sessionModel: msg.model,  // Pass parent model for session-default resolution
     getAuth: async () => {
-      if (!state.authStorage) {
-        throw new Error('Auth storage not initialized');
-      }
-      const apiKey = await state.authStorage.getApiKey(msg.piAuthProvider);
-      const cred = state.authStorage.get(msg.piAuthProvider);
+      if (!state.credentialStore) throw new Error('Credential store not initialized');
+      const cred = await state.credentialStore.read(msg.piAuthProvider);
       if (cred?.type === 'oauth') {
-        return {
-          access: cred.access,
-          refresh: cred.refresh,
-          expires: cred.expires,
-        };
+        const oc = cred as OAuthCredential;
+        return { access: oc.access, refresh: oc.refresh, expires: oc.expires };
       }
-      return { access: apiKey || '' };
+      const auth = await state.modelRuntime?.getAuth(msg.piAuthProvider);
+      return { access: auth?.auth.apiKey || '' };
     },
     ...(hasCustomEndpoint ? {
       baseUrl: msg.baseUrl,
@@ -1338,8 +1346,7 @@ async function handleInit(msg: MsgInit): Promise<void> {
     // Local models are slow enough without extended thinking.
     // Force minimal for custom endpoints; honour the user's setting otherwise.
     thinkingLevel: hasCustomEndpoint ? 'minimal' : mapThinkingLevel(msg.thinkingLevel),
-    authStorage,
-    modelRegistry,
+    modelRuntime: state.modelRuntime,
     sessionManager,
     resourceLoader,
     noTools: 'builtin',
@@ -1830,35 +1837,10 @@ async function handleMiniCompletion(msg: MsgMiniCompletion): Promise<void> {
       );
       return;
     }
-    
-    // CRITICAL for github-copilot: a freshly-resolved model is not yet
-    // pinned to the user's regional API host (the `proxy-ep=` claim in the
-    // OAuth token). Without modifyModels we hit the default endpoint and
-    // get 421 Misdirected Request. state.model was already adjusted at
-    // init; only need to re-apply when we resolved a different one.
-    if (msg.model) {
-      const provider = getOAuthProvider(state.init.piAuthProvider);
-      const cred = state.authStorage?.get(state.init.piAuthProvider);
-      if (provider?.modifyModels && cred?.type === 'oauth') {
-        const [adjusted] = provider.modifyModels(
-          [model] as never,
-          {
-            access: cred.access,
-            refresh: cred.refresh,
-            expires: cred.expires ?? Date.now() + 30 * 60 * 1000,
-          } as never,
-        );
-        if (adjusted) model = adjusted as typeof model;
-      }
-    }
-    // completeSimple does NOT consult authStorage on its own — we have to
-    // hand it the resolved key. authStorage.getApiKey refreshes the OAuth
-    // token transparently if it's expired.
-    const apiKey = state.authStorage
-      ? await state.authStorage.getApiKey(state.init.piAuthProvider)
-      : undefined;
+
+    const auth = state.modelRuntime ? await state.modelRuntime.getAuth(model) : undefined;
     const options: Record<string, unknown> = {};
-    if (apiKey) options.apiKey = apiKey;
+    if (auth?.auth.apiKey) options.apiKey = auth.auth.apiKey;
     if (msg.maxTokens !== undefined) options.maxTokens = msg.maxTokens;
     const result = await tracedCompletion(
       {
@@ -2035,14 +2017,7 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
             return;
           }
           
-          // Apply modifyModels for providers that pin a regional endpoint
-          // (e.g. github-copilot proxy-ep claim).
-          const provider = getOAuthProvider(state.init.piAuthProvider);
-          const cred = state.authStorage?.get(state.init.piAuthProvider);
-          if (provider?.modifyModels && cred?.type === 'oauth') {
-            const [adjusted] = provider.modifyModels([newModel] as never, cred as never);
-            if (adjusted) newModel = adjusted as typeof newModel;
-          }
+          // ModelRuntime resolves regional endpoint per-request.
           // Re-apply the image-input gate for the newly selected model so a
           // mid-conversation switch to a non-vision model downgrades existing
           // image history instead of erroring.
@@ -2070,88 +2045,12 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
       return;
 
     case 'token_update':
-      if (state.authStorage && state.init) {
+      if (state.credentialStore && state.init) {
         await writeAuthCredential(
-          state.authStorage,
+          state.credentialStore,
           state.init.piAuthProvider,
           msg.credential,
         );
-        // Refresh the model's baseUrl from the new access token's
-        // proxy-ep claim; expired tokens may rotate to a different host.
-        if (state.model && msg.credential.type === 'oauth') {
-          const provider = getOAuthProvider(state.init.piAuthProvider);
-          if (provider?.modifyModels) {
-            const cred = msg.credential;
-            const [adjusted] = provider.modifyModels(
-              [state.model] as never,
-              {
-                access: cred.access,
-                refresh: cred.refresh,
-                expires: cred.expires ?? Date.now() + 30 * 60 * 1000,
-              } as never,
-            );
-            if (adjusted && adjusted.baseUrl !== state.model.baseUrl) {
-              // CRITICAL FIX for 421 Misdirected Request:
-              // When proxy-ep changes (token refresh, regional rotation), we MUST
-              // recreate the session so its HTTP client uses the new baseUrl.
-              // The session initializes an HTTP client on creation and caches it;
-              // updating state.model.baseUrl alone doesn't update the live client.
-              const oldBaseUrl = state.model.baseUrl;
-              state.model = applyVisionInput(
-                adjusted as typeof state.model,
-                state.visionSupported,
-              );
-              
-              log.debug(`Token refresh changed baseUrl: ${oldBaseUrl} → ${state.model.baseUrl}`);
-              log.debug(`Recreating session to apply new regional endpoint...`);
-              
-              // Destroy old session
-              if (state.session) {
-                try { state.unsubscribe?.(); } catch { /* */ }
-              }
-              
-              // Recreate session with updated model
-              const sessionManager = SessionManager.continueRecent(state.init.cwd, state.init.sessionPath);
-              const { session } = await createAgentSession({
-                cwd: state.init.cwd,
-                model: state.model,
-                thinkingLevel: mapThinkingLevel(state.init.thinkingLevel),
-                authStorage: state.authStorage,
-                modelRegistry: ModelRegistry.inMemory(state.authStorage),
-                sessionManager,
-                resourceLoader: state.resourceLoader!,
-                noTools: 'builtin',
-                customTools: buildWrappedTools(state.init.cwd, {
-                  sessionId: state.init.sessionId,
-                  sessionPath: state.init.sessionPath,
-                  piServerPath: PI_SERVER_PATH,
-                  availableAgents: state.availableAgents,
-                  piAuthProvider: state.init.piAuthProvider,
-                  sessionModel: state.init.model,
-                  getAuth: async () => {
-                    const apiKey = await state.authStorage!.getApiKey(state.init!.piAuthProvider);
-                    const cred = state.authStorage!.get(state.init!.piAuthProvider);
-                    if (cred?.type === 'oauth') {
-                      return {
-                        access: cred.access,
-                        refresh: cred.refresh,
-                        expires: cred.expires,
-                      };
-                    }
-                    return { access: apiKey || '' };
-                  },
-                  permissionMode: state.permissionMode,
-                }) as never,
-              });
-              state.session = session;
-              state.unsubscribe = session.subscribe(forwardEvent);
-              
-              log.debug(`Session recreated with new baseUrl`);
-            } else if (adjusted) {
-              state.model = adjusted as typeof state.model;
-            }
-          }
-        }
       }
       return;
 
