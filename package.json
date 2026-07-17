@@ -55,6 +55,9 @@
     "minimatch": "^10.2.5",
     "node-pty": "^1.0.0",
     "sharp": "^0.35.2",
+    "sherpa-onnx-node": "^1.13.4",
+    "tar": "^7.5.20",
+    "unbzip2-stream": "^1.4.3",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -73,6 +76,8 @@
     "@types/node": "^26.0.0",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
+    "@types/tar": "^6.1.13",
+    "@types/unbzip2-stream": "^1.4.3",
     "@uiw/react-json-view": "^2.0.0-alpha.43",
     "@vitejs/plugin-react": "^5.2.0",
     "@xterm/addon-fit": "^0.11.0",

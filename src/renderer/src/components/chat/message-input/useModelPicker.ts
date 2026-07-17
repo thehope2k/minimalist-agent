@@ -17,8 +17,6 @@ export function useModelPicker(
 ) {
   const data = useAiData();
   const [pickerOverride, setPickerOverride] = useState<ModelPick | null>(null);
-  const pickerOverrideRef = useRef(pickerOverride);
-  pickerOverrideRef.current = pickerOverride;
 
   const lastSyncedSessionIdRef = useRef<string | null | undefined>(undefined);
 
@@ -78,7 +76,6 @@ export function useModelPicker(
     connection,
     model,
     pickerOverride,
-    pickerOverrideRef,
     setPickerOverride,
   };
 }

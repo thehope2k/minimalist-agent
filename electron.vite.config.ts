@@ -27,6 +27,7 @@ export default defineConfig({
         external: [
           'sharp',
           'node-pty',
+          'sherpa-onnx-node',
           'electron',
           /^@earendil-works\//,
           /^@mariozechner\//,
@@ -71,6 +72,10 @@ export default defineConfig({
     root: r('src/renderer'),
     build: {
       outDir: r('out/renderer'),
+      // Keep script-like assets (e.g. the voice AudioWorklet processor) as
+      // real same-origin files instead of inlined data: URIs — the app's
+      // production CSP only allows `script-src 'self'`, not `data:`.
+      assetsInlineLimit: 0,
       rollupOptions: {
         input: r('src/renderer/index.html'),
       },

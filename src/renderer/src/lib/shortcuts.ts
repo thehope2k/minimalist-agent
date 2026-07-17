@@ -81,6 +81,11 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
         label: 'Confirm selected @mention',
         condition: '@mention menu is open (also Tab)',
       },
+      {
+        macKeys: ['⌘', '⇧', 'M'],
+        winKeys: ['Ctrl', 'Shift', 'M'],
+        label: 'Start / stop voice dictation',
+      },
     ],
   },
   {

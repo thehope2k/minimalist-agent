@@ -947,6 +947,28 @@ const api = {
       return () => ipcRenderer.removeListener('terminal:titleChange', h);
     },
   },
+  voice: {
+    getModelStatus: (): Promise<'ready' | 'not-downloaded'> =>
+      ipcRenderer.invoke('voice:getModelStatus'),
+
+    downloadModel: (): Promise<'ready' | 'not-downloaded'> =>
+      ipcRenderer.invoke('voice:downloadModel'),
+
+    startSession: (): Promise<void> => ipcRenderer.invoke('voice:startSession'),
+
+    pushChunk: (samples: Float32Array): Promise<string[]> =>
+      ipcRenderer.invoke('voice:pushChunk', samples),
+
+    endSession: (): Promise<string[]> => ipcRenderer.invoke('voice:endSession'),
+
+    onDownloadProgress: (
+      cb: (progress: { downloadedBytes: number; totalBytes: number | null }) => void,
+    ): (() => void) => {
+      const h = (_e: unknown, p: { downloadedBytes: number; totalBytes: number | null }) => cb(p);
+      ipcRenderer.on('voice:downloadProgress', h);
+      return () => ipcRenderer.removeListener('voice:downloadProgress', h);
+    },
+  },
 };
 
 contextBridge.exposeInMainWorld('api', api);

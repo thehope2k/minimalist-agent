@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { MessageToolbar } from './message-input/MessageToolbar';
 import { StatusFooter } from './message-input/StatusFooter';
@@ -10,6 +10,7 @@ import { useMentionHandling } from './message-input/useMentionHandling';
 import { useAttachments } from './message-input/useAttachments';
 import { useModelPicker } from './message-input/useModelPicker';
 import { usePendingMessage } from './message-input/usePendingMessage';
+import { useVoiceDictation } from './message-input/useVoiceDictation';
 import type { MessageInputProps, SendArgs } from './message-input/types';
 
 export type { SendArgs };
@@ -52,7 +53,6 @@ export function MessageInput({
     connection,
     model,
     pickerOverride,
-    pickerOverrideRef,
     setPickerOverride,
   } = useModelPicker(
     sessionId,
@@ -115,6 +115,41 @@ export function MessageInput({
 
   // Pending message injection (e.g. from phase action buttons)
   usePendingMessage(pendingMessage, onPendingMessageConsumed, setValue, textareaRef);
+
+  // Voice dictation — on-device transcription inserted at cursor
+  const voice = useVoiceDictation(textareaRef, value, setValue);
+  const handleToggleVoice = () => {
+    if (voice.recording) {
+      void voice.stopRecording();
+    } else {
+      void voice.startRecording();
+    }
+  };
+
+  // Cmd/Ctrl+Shift+M — global voice-dictation toggle. Guard conditions match
+  // the mic button's disabled state exactly. Registered once; refs (not a
+  // dependency array) keep the handler reading current values without
+  // re-subscribing the window listener on every render.
+  const voiceShortcutBlocked =
+    isStreaming ||
+    voice.modelStatus === 'downloading' ||
+    voice.transcribing ||
+    voice.starting;
+  const voiceShortcutBlockedRef = useRef(voiceShortcutBlocked);
+  voiceShortcutBlockedRef.current = voiceShortcutBlocked;
+  const handleToggleVoiceRef = useRef(handleToggleVoice);
+  handleToggleVoiceRef.current = handleToggleVoice;
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || !e.shiftKey || e.key.toLowerCase() !== 'm') return;
+      if (voiceShortcutBlockedRef.current) return;
+      e.preventDefault();
+      handleToggleVoiceRef.current();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   // Send / steer logic
   const canSend =
@@ -260,6 +295,21 @@ export function MessageInput({
             </div>
           )}
 
+          {voice.error && (
+            <div className="border-b border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs text-red-300">
+              {voice.error}
+            </div>
+          )}
+
+          {voice.modelStatus === 'downloading' && (
+            <div className="border-b border-border bg-elevated/60 px-3 py-1.5 text-xs text-fg-muted">
+              Downloading on-device voice model…
+              {voice.downloadProgress?.totalBytes
+                ? ` ${Math.round((voice.downloadProgress.downloadedBytes / voice.downloadProgress.totalBytes) * 100)}%`
+                : ''}
+            </div>
+          )}
+
           <MessageTextarea
             textareaRef={textareaRef}
             value={value}
@@ -307,6 +357,11 @@ export function MessageInput({
             onSend={handleSend}
             onAbort={onAbort}
             onSteer={() => void handleSteer()}
+            voiceRecording={voice.recording}
+            voiceStarting={voice.starting}
+            voiceTranscribing={voice.transcribing}
+            voiceModelStatus={voice.modelStatus}
+            onToggleVoice={handleToggleVoice}
           />
         </div>
       </div>

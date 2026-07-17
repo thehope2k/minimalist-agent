@@ -170,6 +170,22 @@ function installCsp(): void {
   });
 }
 
+/**
+ * Explicit allow-list for media (microphone) permission requests — voice
+ * dictation is the only feature that needs it. Same governance intent as
+ * installCsp()/openExternalFromRenderer(): don't rely on Electron's
+ * permissive default, only allow it for our own app shell's origin.
+ */
+function installMediaPermissions(): void {
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    callback(permission === 'media' && isAppShellUrl(webContents.getURL()));
+  });
+
+  session.defaultSession.setPermissionCheckHandler((webContents, permission) => {
+    return permission === 'media' && !!webContents && isAppShellUrl(webContents.getURL());
+  });
+}
+
 function createWindow(icon?: Electron.NativeImage | null) {
   const win = new BrowserWindow({
     width: 1440,
@@ -262,6 +278,7 @@ app.whenReady().then(async () => {
     m.revalidateStaleConnections(),
   );
   installCsp();
+  installMediaPermissions();
   const icon = await getAppIcon();
   if (process.platform === 'darwin' && app.dock && icon) {
     app.dock.setIcon(icon);

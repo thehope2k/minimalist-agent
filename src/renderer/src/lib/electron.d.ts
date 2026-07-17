@@ -1236,6 +1236,17 @@ export interface AppApi {
     /** Returns an unsubscribe function. */
     onTitleChange: (cb: (tabId: string, title: string) => void) => () => void;
   };
+  voice: {
+    getModelStatus: () => Promise<'ready' | 'not-downloaded'>;
+    downloadModel: () => Promise<'ready' | 'not-downloaded'>;
+    startSession: () => Promise<void>;
+    pushChunk: (samples: Float32Array) => Promise<string[]>;
+    endSession: () => Promise<string[]>;
+    /** Returns an unsubscribe function. */
+    onDownloadProgress: (
+      cb: (progress: { downloadedBytes: number; totalBytes: number | null }) => void,
+    ) => () => void;
+  };
 }
 
 /** Synchronous environment values exposed by the preload bridge. */

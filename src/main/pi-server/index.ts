@@ -1873,6 +1873,12 @@ async function handleMiniCompletion(msg: MsgMiniCompletion): Promise<void> {
       type: 'mini_completion_result',
       requestId: msg.requestId,
       text,
+      ...(text
+        ? {}
+        : {
+            stopReason: (result as { stopReason?: string }).stopReason,
+            stopErrorMessage: (result as { errorMessage?: string }).errorMessage,
+          }),
     };
     send(out);
   } catch (e) {

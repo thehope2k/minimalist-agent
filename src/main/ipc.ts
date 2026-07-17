@@ -28,6 +28,14 @@ import {clearLoginState, exchangeCode, prepareLoginUrl,} from './oauth/claude-fl
 import {classifyExternalUrl, formatBlockedUrlError} from '../shared/url-safety';
 import {recordRendererLog, revealLogFile, readRecentLogs, createLogger} from './logger';
 import type {RendererLogRecord} from '../shared/log';
+import {
+  ensureVoiceModel,
+  getVoiceModelStatus,
+  startVoiceSession,
+  pushVoiceChunk,
+  endVoiceSession,
+  type ModelDownloadProgress,
+} from './voice';
 
 const log = createLogger('ipc');
 import {
@@ -1653,4 +1661,25 @@ export function registerIpc(): void {
       existsSync(join(base, 'skills'))
     );
   });
+
+  // ---- Voice dictation (on-device, sherpa-onnx + Moonshine) ---------------
+
+  ipcMain.handle('voice:getModelStatus', () => getVoiceModelStatus());
+
+  ipcMain.handle('voice:downloadModel', async (event) => {
+    await ensureVoiceModel((progress: ModelDownloadProgress) => {
+      if (event.sender.isDestroyed()) return;
+      event.sender.send('voice:downloadProgress', progress);
+    });
+    return getVoiceModelStatus();
+  });
+
+  ipcMain.handle('voice:startSession', () => startVoiceSession());
+
+  ipcMain.handle(
+    'voice:pushChunk',
+    async (_e, samples: Float32Array): Promise<string[]> => pushVoiceChunk(samples),
+  );
+
+  ipcMain.handle('voice:endSession', async (): Promise<string[]> => endVoiceSession());
 }

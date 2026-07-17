@@ -936,7 +936,7 @@ export async function* runPiChat(
 
 export async function runPiMiniCompletion(
   req: PiMiniCompletionRequest,
-): Promise<{ text?: string; error?: string }> {
+): Promise<{ text?: string; error?: string; stopReason?: string; stopErrorMessage?: string }> {
   const piReq: PiChatRequest = {
     connectionSlug: req.connectionSlug,
     auth: req.auth,
@@ -971,7 +971,12 @@ export async function runPiMiniCompletion(
     };
     send(handle, m);
   });
-  return { text: result.text, error: result.error };
+  return {
+    text: result.text,
+    error: result.error,
+    stopReason: result.stopReason,
+    stopErrorMessage: result.stopErrorMessage,
+  };
 }
 
 /* ============================================================ */

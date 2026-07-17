@@ -1,4 +1,4 @@
-import { ArrowUp, AtSign, Paperclip, Square } from 'lucide-react';
+import { ArrowUp, AtSign, Mic, Paperclip, Square } from 'lucide-react';
 import { IconButton } from '@/components/ui';
 import { FolderPicker } from '../FolderPicker';
 import { ConnectionModelPicker } from '../ConnectionModelPicker';
@@ -6,6 +6,7 @@ import { CopilotQuotaPill } from '@/components/settings/CopilotQuotaBar';
 import { MOD as SHORTCUT_MOD_SYMBOL } from '@/lib/shortcuts';
 import type { ConnectionMeta } from '@/lib/electron';
 import type { useAiData } from '@/hooks/useAiData';
+import type { VoiceModelStatus } from './useVoiceDictation';
 
 type Props = {
   isStreaming: boolean;
@@ -26,6 +27,11 @@ type Props = {
   onSend: () => void;
   onAbort: () => void;
   onSteer: () => void;
+  voiceRecording: boolean;
+  voiceStarting: boolean;
+  voiceTranscribing: boolean;
+  voiceModelStatus: VoiceModelStatus;
+  onToggleVoice: () => void;
 };
 
 export function InputActions({
@@ -46,10 +52,53 @@ export function InputActions({
   onSend,
   onAbort,
   onSteer,
+  voiceRecording,
+  voiceStarting,
+  voiceTranscribing,
+  voiceModelStatus,
+  onToggleVoice,
 }: Props) {
+  const voiceTitle = voiceRecording
+    ? `Stop recording (${SHORTCUT_MOD_SYMBOL}+Shift+M)`
+    : voiceModelStatus === 'downloading'
+      ? 'Downloading voice model…'
+      : voiceTranscribing
+        ? 'Transcribing…'
+        : `Dictate (on-device, no cost) — ${SHORTCUT_MOD_SYMBOL}+Shift+M`;
+
+  const voiceLabel = voiceRecording
+    ? 'Listening\u2026'
+    : voiceTranscribing
+      ? 'Transcribing\u2026'
+      : null;
+
   return (
     <div className="flex items-center justify-between border-t border-border px-2.5 pb-2 pt-1.5">
       <div className="flex items-center gap-0.5">
+        <div className="relative">
+          <IconButton
+            icon={Mic}
+            label="Dictate"
+            onClick={onToggleVoice}
+            disabled={
+              isStreaming ||
+              voiceModelStatus === 'downloading' ||
+              voiceTranscribing ||
+              voiceStarting
+            }
+            title={voiceTitle}
+            className={voiceRecording ? 'text-red-400' : undefined}
+          />
+          {voiceRecording && (
+            <span className="pointer-events-none absolute right-0.5 top-0.5 flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+            </span>
+          )}
+        </div>
+        {voiceLabel && (
+          <span className="text-xs text-fg-muted">{voiceLabel}</span>
+        )}
         <IconButton
           icon={Paperclip}
           label="Attach file"

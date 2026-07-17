@@ -300,6 +300,10 @@ export interface MsgMiniCompletionResult {
   requestId: string;
   text?: string;
   error?: string;
+  /** Set when text is empty — e.g. 'length' (hit maxTokens) or 'toolUse'. */
+  stopReason?: string;
+  /** The underlying failure when stopReason is 'error'/'aborted'. */
+  stopErrorMessage?: string;
 }
 
 export interface MsgLlmQueryResult {
