@@ -5,7 +5,7 @@ import {
   rmSync,
   statSync,
 } from 'node:fs';
-import { join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { Paths, projectConfigRoot } from '../storage/paths';
 import { parseExtensionConfig, parseExtensionGuide } from './parse';
 import { type ExtensionScope, type LoadedExtension, variantOf } from './types';
@@ -17,10 +17,6 @@ const ICON_EXTS = ['.png', '.jpg', '.jpeg', '.webp', '.svg', '.gif'];
 /** User-tier extensions: ~/.minimalist-agent/extensions/ */
 export function getExtensionsDir(): string {
   return Paths.extensionsDir();
-}
-
-export function getExtensionDir(slug: string): string {
-  return join(getExtensionsDir(), slug);
 }
 
 /** Project-tier extensions: <cwd>/.minimalist-agent/extensions/ */
@@ -154,11 +150,11 @@ export function loadExtensionBySlug(slug: string, cwd?: string): LoadedExtension
   return loadExtensionFromDir(slug, getExtensionsDir(), 'user');
 }
 
-export function deleteExtension(slug: string): boolean {
-  const dir = getExtensionDir(slug);
-  if (!existsSync(dir)) return false;
+export function deleteExtension(dirPath: string): boolean {
+  if (basename(dirname(dirPath)) !== 'extensions') return false;
+  if (!existsSync(dirPath)) return false;
   try {
-    rmSync(dir, { recursive: true });
+    rmSync(dirPath, { recursive: true });
     invalidateExtensionsCache();
     return true;
   } catch {

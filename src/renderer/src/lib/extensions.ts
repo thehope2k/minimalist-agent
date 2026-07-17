@@ -80,8 +80,8 @@ export async function reload(): Promise<void> {
 
 /* ---------- mutations ---------- */
 
-export async function deleteExtension(slug: string): Promise<boolean> {
-  const ok = await window.api.extensions.delete(slug);
+export async function deleteExtension(dirPath: string): Promise<boolean> {
+  const ok = await window.api.extensions.delete(dirPath);
   if (ok) await reload();
   return ok;
 }

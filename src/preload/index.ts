@@ -732,8 +732,8 @@ const api = {
       ipcRenderer.invoke('skills:get', slug),
     listFiles: (dirPath: string): Promise<unknown[]> =>
       ipcRenderer.invoke('skills:listFiles', dirPath),
-    delete: (slug: string): Promise<boolean> =>
-      ipcRenderer.invoke('skills:delete', slug),
+    delete: (dirPath: string): Promise<boolean> =>
+      ipcRenderer.invoke('skills:delete', dirPath),
     invalidateCache: (): Promise<void> =>
       ipcRenderer.invoke('skills:invalidateCache'),
     openInEditor: (dirPath: string): Promise<string> =>
@@ -793,8 +793,8 @@ const api = {
       ipcRenderer.invoke('extensions:get', slug),
     listFiles: (dirPath: string): Promise<unknown[]> =>
       ipcRenderer.invoke('extensions:listFiles', dirPath),
-    delete: (slug: string): Promise<boolean> =>
-      ipcRenderer.invoke('extensions:delete', slug),
+    delete: (dirPath: string): Promise<boolean> =>
+      ipcRenderer.invoke('extensions:delete', dirPath),
     invalidateCache: (): Promise<void> =>
       ipcRenderer.invoke('extensions:invalidateCache'),
     openInEditor: (dirPath: string): Promise<string> =>

@@ -8,10 +8,6 @@ import { ExtensionAvatar } from '@/components/extensions/ExtensionAvatar';
 
 /* ---------- Shared row ---------- */
 
-/**
- * Single row shape used across all three sections.
- * name + @slug + description — consistent everywhere.
- */
 function ItemRow({
   avatar,
   name,
@@ -19,6 +15,7 @@ function ItemRow({
   description,
   badge,
   action,
+  onOpen,
 }: {
   avatar: React.ReactNode;
   name: string;
@@ -26,20 +23,26 @@ function ItemRow({
   description?: string;
   badge?: React.ReactNode;
   action?: React.ReactNode;
+  onOpen?: () => void;
 }) {
   return (
     <div className="group flex items-center gap-2 px-3 py-1.5">
-      {avatar}
-      <span
-        className="min-w-0 flex-1 truncate text-sm text-fg"
+      <button
+        type="button"
+        onClick={onOpen}
+        disabled={!onOpen}
         title={description}
+        className="flex min-w-0 flex-1 items-center gap-2 rounded text-left hover:bg-elevated/60 disabled:cursor-default disabled:hover:bg-transparent cursor-pointer"
       >
-        {name}
-      </span>
-      {badge}
-      {slug && (
-        <span className="shrink-0 font-mono text-[10px] text-fg-subtle">@{slug}</span>
-      )}
+        {avatar}
+        <span className="min-w-0 flex-1 truncate text-sm text-fg">
+          {name}
+        </span>
+        {badge}
+        {slug && (
+          <span className="shrink-0 font-mono text-[10px] text-fg-subtle">@{slug}</span>
+        )}
+      </button>
       {action}
     </div>
   );
@@ -52,6 +55,7 @@ interface PinnedSectionProps {
   tokenEstimate: number;
   tokenWarning: boolean;
   onUnpin: (scopedSlug: string) => void;
+  onOpenSkill: (skill: LoadedSkill) => void;
 }
 
 export function PinnedSection({
@@ -59,6 +63,7 @@ export function PinnedSection({
   tokenEstimate,
   tokenWarning,
   onUnpin,
+  onOpenSkill,
 }: PinnedSectionProps) {
   const hasItems = pinnedSkills.length > 0;
 
@@ -99,6 +104,7 @@ export function PinnedSection({
           name={skill.metadata.name}
           slug={skill.slug}
           description={skill.metadata.description}
+          onOpen={() => onOpenSkill(skill)}
           badge={
             skill.source === 'project' ? (
               <span className="shrink-0 text-[9px] font-medium uppercase tracking-wide text-fg-subtle">
@@ -131,6 +137,7 @@ export interface AvailableSectionProps {
   isPinned: (scope: 'user' | 'project', slug: string) => boolean;
   onPin: (scopedSlug: string) => void;
   onUnpin: (scopedSlug: string) => void;
+  onOpenSkill: (skill: LoadedSkill) => void;
   cwd?: string;
   /** When provided, shows a + New dropdown in the section header. */
   onNew?: (type: 'skill' | 'extension') => void;
@@ -142,6 +149,7 @@ export function AvailableSection({
   isPinned,
   onPin,
   onUnpin,
+  onOpenSkill,
   onNew,
 }: AvailableSectionProps) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -200,6 +208,7 @@ export function AvailableSection({
             name={skill.metadata.name}
             slug={skill.slug}
             description={skill.metadata.description}
+            onOpen={() => onOpenSkill(skill)}
             badge={
               pinned ? (
                 <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" title="Pinned" />
@@ -230,9 +239,10 @@ export function AvailableSection({
 interface ExtensionsSectionProps {
   title?: string;
   extensions: LoadedExtension[];
+  onOpenExtension: (extension: LoadedExtension) => void;
 }
 
-export function ExtensionsSection({ title = 'Extensions', extensions }: ExtensionsSectionProps) {
+export function ExtensionsSection({ title = 'Extensions', extensions, onOpenExtension }: ExtensionsSectionProps) {
   if (extensions.length === 0) return null;
 
   return (
@@ -250,6 +260,7 @@ export function ExtensionsSection({ title = 'Extensions', extensions }: Extensio
           name={extensionDisplayName(ext)}
           slug={ext.slug}
           description={extensionDisplayDescription(ext)}
+          onOpen={() => onOpenExtension(ext)}
         />
       ))}
     </div>

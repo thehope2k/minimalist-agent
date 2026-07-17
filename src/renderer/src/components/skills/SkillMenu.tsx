@@ -46,7 +46,7 @@ export function SkillMenu({
     ) {
       return;
     }
-    const ok = await deleteSkillRpc(skill.slug);
+    const ok = await deleteSkillRpc(skill.path);
     if (ok) onAfterDelete?.();
     else window.alert('Failed to delete skill.');
   };

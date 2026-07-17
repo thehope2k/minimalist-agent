@@ -1,5 +1,5 @@
 import {existsSync, readdirSync, readFileSync, rmSync, statSync,} from 'node:fs';
-import {basename, join} from 'node:path';
+import {basename, dirname, join} from 'node:path';
 import type {LoadedSkill} from './types';
 import {parseSkillFile} from './parse';
 import {Paths, projectConfigRoot} from '../storage/paths';
@@ -146,11 +146,11 @@ export function loadSkillBySlug(slug: string, cwd?: string): LoadedSkill | null 
 }
 
 /** Delete a skill directory. Returns true if it existed and was removed. */
-export function deleteSkill(slug: string): boolean {
-  const skillDir = join(getSkillsDir(), slug);
-  if (!existsSync(skillDir)) return false;
+export function deleteSkill(dirPath: string): boolean {
+  if (basename(dirname(dirPath)) !== 'skills') return false;
+  if (!existsSync(dirPath)) return false;
   try {
-    rmSync(skillDir, { recursive: true });
+    rmSync(dirPath, { recursive: true });
     invalidateSkillsCache();
     return true;
   } catch {

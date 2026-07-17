@@ -28,6 +28,10 @@ export interface ExpandModalProps {
   className?: string;
 }
 
+function isBackdropTarget(e: React.SyntheticEvent): boolean {
+  return e.target === e.currentTarget;
+}
+
 export function ExpandModal({ title, onClose, children, className }: ExpandModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -52,13 +56,9 @@ export function ExpandModal({ title, onClose, children, className }: ExpandModal
   return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm titlebar-no-drag"
-      onClick={onClose}
-      // Prevent Electron's -webkit-app-region hit-testing from routing
-      // mousedown events to titlebar-no-drag buttons (e.g. nav tabs) that
-      // sit below the backdrop in the z-order. Without this the backdrop
-      // gets a click event AND the nav button below it also fires, causing
-      // unintended navigation while a modal is open.
-      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => isBackdropTarget(e) && onClose()}
+      // Electron routes backdrop mousedowns to -webkit-app-region elements below the window too; stop it there only.
+      onMouseDown={(e) => isBackdropTarget(e) && e.stopPropagation()}
     >
       <div
         ref={dialogRef}
@@ -69,7 +69,6 @@ export function ExpandModal({ title, onClose, children, className }: ExpandModal
           'relative flex max-h-[90vh] w-[min(90vw,1200px)] flex-col overflow-hidden rounded-xl border border-border bg-panel shadow-2xl focus:outline-none',
           className,
         )}
-        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex shrink-0 items-center gap-2 border-b border-border/60 px-4 py-2">

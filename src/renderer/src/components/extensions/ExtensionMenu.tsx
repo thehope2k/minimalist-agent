@@ -45,7 +45,7 @@ export function ExtensionMenu({
     ) {
       return;
     }
-    const ok = await deleteExtensionRpc(extension.slug);
+    const ok = await deleteExtensionRpc(extension.path);
     if (ok) onAfterDelete?.();
     else window.alert('Failed to delete extension.');
   };

@@ -1077,7 +1077,7 @@ export function registerIpc(): void {
   );
   ipcMain.handle(
     'skills:delete',
-    (_e, slug: string): boolean => deleteSkill(slug),
+    (_e, dirPath: string): boolean => deleteSkill(dirPath),
   );
   ipcMain.handle('skills:invalidateCache', () => invalidateSkillsCache());
   ipcMain.handle('skills:openInEditor', async (_e, dirPath: string) => {
@@ -1171,8 +1171,8 @@ export function registerIpc(): void {
   );
   ipcMain.handle(
     'extensions:delete',
-    (_e, slug: string): boolean => {
-      const ok = deleteExtension(slug);
+    (_e, dirPath: string): boolean => {
+      const ok = deleteExtension(dirPath);
       if (ok) getExtensionRegistry().load();
       return ok;
     },

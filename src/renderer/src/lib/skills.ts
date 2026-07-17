@@ -88,8 +88,8 @@ export async function reload(): Promise<void> {
 
 /* ---------- mutations ---------- */
 
-export async function deleteSkill(slug: string): Promise<boolean> {
-  const ok = await window.api.skills.delete(slug);
+export async function deleteSkill(dirPath: string): Promise<boolean> {
+  const ok = await window.api.skills.delete(dirPath);
   if (ok) await reload();
   return ok;
 }

@@ -1,4 +1,4 @@
-import { Layers, Plus, RefreshCw, X } from 'lucide-react';
+import { Layers, RefreshCw, X } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useContextPanel } from '@/hooks/useContextPanel';
@@ -7,11 +7,20 @@ import { getProjectExtensionsDir } from '@/lib/extensions';
 import { PinnedSection, AvailableSection, ExtensionsSection } from './ContextPanelSections';
 import { AddSkillDialog } from '@/components/skills/AddSkillDialog';
 import { AddExtensionDialog } from '@/components/extensions/AddExtensionDialog';
+import { ExpandModal } from '@/components/ui';
+import { SkillInfoPage } from '@/components/skills/SkillInfoPage';
+import { ExtensionInfoPage } from '@/components/extensions/ExtensionInfoPage';
+import type { LoadedSkill, LoadedExtension } from '@/lib/electron';
 import type { SeedSubmit } from '@/App';
 
 function basename(p: string): string {
   return p.replace(/\/+$/, '').split('/').pop() ?? p;
 }
+
+type DetailTarget =
+  | { kind: 'skill'; item: LoadedSkill }
+  | { kind: 'extension'; item: LoadedExtension }
+  | null;
 
 interface ContextPanelProps {
   sessionId: string | null;
@@ -34,6 +43,7 @@ export function ContextPanel({
   const [newDialog, setNewDialog] = useState<'skill' | 'extension' | null>(null);
   const [projectSkillsDir, setProjectSkillsDir] = useState<string | undefined>();
   const [projectExtDir, setProjectExtDir] = useState<string | undefined>();
+  const [detail, setDetail] = useState<DetailTarget>(null);
 
   const openNewDialog = async (type: 'skill' | 'extension') => {
     if (!cwd) return;
@@ -110,6 +120,7 @@ export function ContextPanel({
           tokenEstimate={tokenEstimate}
           tokenWarning={tokenWarning}
           onUnpin={handleUnpin}
+          onOpenSkill={(skill) => setDetail({ kind: 'skill', item: skill })}
         />
 
         {/* Available — project tier */}
@@ -120,6 +131,7 @@ export function ContextPanel({
             isPinned={isPinned}
             onPin={handlePin}
             onUnpin={handleUnpin}
+            onOpenSkill={(skill) => setDetail({ kind: 'skill', item: skill })}
             cwd={cwd}
             onNew={onStartChatWithSubmission ? openNewDialog : undefined}
           />
@@ -132,14 +144,23 @@ export function ContextPanel({
           isPinned={isPinned}
           onPin={handlePin}
           onUnpin={handleUnpin}
+          onOpenSkill={(skill) => setDetail({ kind: 'skill', item: skill })}
           cwd={cwd}
         />
 
         {/* Extensions — project then user, read-only */}
         {projectExtensions.length > 0 && (
-          <ExtensionsSection title={cwd ? basename(cwd) : 'Project'} extensions={projectExtensions} />
+          <ExtensionsSection
+            title={cwd ? basename(cwd) : 'Project'}
+            extensions={projectExtensions}
+            onOpenExtension={(ext) => setDetail({ kind: 'extension', item: ext })}
+          />
         )}
-        <ExtensionsSection title="Global" extensions={userExtensions} />
+        <ExtensionsSection
+          title="Global"
+          extensions={userExtensions}
+          onOpenExtension={(ext) => setDetail({ kind: 'extension', item: ext })}
+        />
 
         {/* Empty state */}
         {!loading &&
@@ -172,6 +193,28 @@ export function ContextPanel({
             projectDir={projectExtDir}
           />
         </>
+      )}
+
+      {detail?.kind === 'skill' && (
+        <ExpandModal title="" onClose={() => setDetail(null)} className="w-[95vw] h-[90vh]">
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <SkillInfoPage
+              skill={detail.item}
+              onClose={() => setDetail(null)}
+              onStartChatWithSubmission={onStartChatWithSubmission}
+            />
+          </div>
+        </ExpandModal>
+      )}
+      {detail?.kind === 'extension' && (
+        <ExpandModal title="" onClose={() => setDetail(null)} className="w-[95vw] h-[90vh]">
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <ExtensionInfoPage
+              extension={detail.item}
+              onClose={() => setDetail(null)}
+            />
+          </div>
+        </ExpandModal>
       )}
     </div>
   );

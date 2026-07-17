@@ -1068,8 +1068,8 @@ export interface AppApi {
     get: (slug: string) => Promise<LoadedSkill | null>;
     /** Recursive directory listing for the skill info page file tree. */
     listFiles: (dirPath: string) => Promise<SkillFileNode[]>;
-    /** Delete the skill directory. */
-    delete: (slug: string) => Promise<boolean>;
+    /** Delete the skill directory (absolute path). */
+    delete: (dirPath: string) => Promise<boolean>;
     /** Drop the loader cache (call after edits in an external editor). */
     invalidateCache: () => Promise<void>;
     /** OS-default open (e.g. VS Code if associated). */
@@ -1118,7 +1118,7 @@ export interface AppApi {
     list: (cwd?: string) => Promise<LoadedExtension[]>;
     get: (slug: string) => Promise<LoadedExtension | null>;
     listFiles: (dirPath: string) => Promise<ExtensionFileNode[]>;
-    delete: (slug: string) => Promise<boolean>;
+    delete: (dirPath: string) => Promise<boolean>;
     invalidateCache: () => Promise<void>;
     openInEditor: (dirPath: string) => Promise<string>;
     revealInFinder: (dirPath: string) => Promise<void>;
