@@ -21,7 +21,7 @@ import { join } from 'node:path';
 import { Paths } from './paths';
 import { type FileSchema, load, save } from './json-store';
 import { invalidateContextFileCache } from '../agent/system-prompt';
-import type { PermissionMode } from './settings';
+import type { PermissionMode, ThinkingLevel } from './settings';
 import { findProjectForPath } from './projects';
 import { createLogger } from '../logger';
 
@@ -156,6 +156,11 @@ export interface SessionMeta {
    * Added in v10.
    */
   pinnedAssets?: string[];
+  /**
+   * Per-session thinking-level override. When unset, the session inherits
+   * the global `defaultThinking` from AI settings at send time. Added in v11.
+   */
+  thinkingLevel?: ThinkingLevel;
 }
 
 export type SessionSummary = SessionMeta;
@@ -171,7 +176,7 @@ const META_DEFAULT_FACTORY = (): SessionMeta => ({
 function metaSchema(id: string): FileSchema<SessionMeta> {
   return {
     path: join(Paths.sessionsDir(), id, 'session.json'),
-    currentVersion: 10,
+    currentVersion: 11,
     defaultValue: META_DEFAULT_FACTORY(),
     // Index 0 → v0 (legacy/unset). Index 1 → v1 (no usage field).
     // Index 2 → v2 (no permissionMode field). Index 3 → v3 (no projectId).
@@ -202,6 +207,8 @@ function metaSchema(id: string): FileSchema<SessionMeta> {
         return session;
       },
       // v9 → v10: adds pinnedAssets (optional field, no-op migration).
+      (prev) => ({ ...(prev as SessionMeta) }),
+      // v10 → v11: adds thinkingLevel (optional field, no-op migration).
       (prev) => ({ ...(prev as SessionMeta) }),
     ],
   };

@@ -62,6 +62,7 @@ import type {
   MsgPrompt,
   MsgSessionIdUpdate,
   MsgSetModel,
+  MsgSetThinkingLevel,
   MsgTokenUpdate,
   PiAuthProvider,
   PiPromptImage,
@@ -176,6 +177,8 @@ interface SubprocessHandle {
   refreshing?: boolean;
   /** Model ID currently active in the subprocess. */
   currentModel?: string;
+  /** Thinking level currently active in the subprocess. */
+  currentThinkingLevel?: PiThinkingLevel;
   /** Collaboration callback to show engagement dialogs. */
   askCollaboration?: CollaborationAsk;
 }
@@ -219,9 +222,28 @@ function ensureSubprocess(
       send(existing, upd);
       existing.currentModel = req.model;
     }
+    // If the thinking level changed (session override or default toggled),
+    // notify the running subprocess instead of respawning.
+    const nextThinkingLevel = req.thinkingLevel ?? 'medium';
+    if (nextThinkingLevel !== existing.currentThinkingLevel) {
+      const upd: MsgSetThinkingLevel = {
+        type: 'set_thinking_level',
+        level: nextThinkingLevel,
+      };
+      send(existing, upd);
+      existing.currentThinkingLevel = nextThinkingLevel;
+    }
     return existing;
   }
 
+  const handle = spawnSubprocess(req, systemPrompt);
+  handles.set(key, handle);
+  return handle;
+}
+
+/** Spawns a subprocess without registering it in the shared `handles` map — use for calls that must not touch a session's live connection. */
+function spawnSubprocess(req: PiChatRequest, systemPrompt: string): SubprocessHandle {
+  const key = req.chatSessionPath;
   const piServer = resolvePiServerPath(app.getAppPath());
   const child = spawn(process.execPath, [piServer], {
     stdio: ['pipe', 'pipe', 'pipe'],
@@ -289,6 +311,7 @@ function ensureSubprocess(
     connectionSlug: req.connectionSlug,
     piAuthProvider: req.piAuthProvider,
     currentModel: req.model,
+    currentThinkingLevel: req.thinkingLevel ?? 'medium',
     askCollaboration: req.askCollaboration,
   };
 
@@ -324,15 +347,17 @@ function ensureSubprocess(
       });
     }
     pendingLlm.clear();
-    handles.delete(key);
+    // Only clear the registry entry if it still points at this handle —
+    // an unregistered isolated handle must never delete a live session's entry.
+    if (handles.get(key) === handle) {
+      handles.delete(key);
+    }
     if (code !== 0 && code !== null) {
       log.error(
         `exited with code ${code}\n${stderrBuffer.join('')}`,
       );
     }
   });
-
-  handles.set(key, handle);
 
   const isLocal = req.auth.type === 'local_api';
   const localAuth = isLocal ? (req.auth as LocalApiAuth) : undefined;
@@ -948,35 +973,58 @@ export async function runPiMiniCompletion(
     prompt: '',
     cwd: req.cwd,
   };
+
+  // A different target model must not switch the session's live subprocess
+  // mid-flight — use an isolated subprocess instead.
+  const existing = handles.get(req.chatSessionPath);
+  const wouldHijackLiveModel =
+    !!existing && !existing.child.killed && !!req.model && req.model !== existing.currentModel;
+
   let handle: SubprocessHandle;
   try {
-    handle = ensureSubprocess(piReq, '');
+    handle = wouldHijackLiveModel ? spawnSubprocess(piReq, '') : ensureSubprocess(piReq, '');
     await handle.ready;
   } catch (e) {
     return { error: e instanceof Error ? e.message : String(e) };
   }
 
-  const requestId = `mini_${Date.now().toString(36)}_${Math.random()
-    .toString(36)
-    .slice(2, 8)}`;
-  const result = await new Promise<MsgMiniCompletionResult>((resolve) => {
-    handle.pendingMini.set(requestId, { resolve });
-    const m: MsgMiniCompletion = {
-      type: 'mini_completion',
-      requestId,
-      systemPrompt: req.systemPrompt,
-      userPrompt: req.userPrompt,
-      model: req.model,
-      maxTokens: req.maxTokens,
+  try {
+    const requestId = `mini_${Date.now().toString(36)}_${Math.random()
+      .toString(36)
+      .slice(2, 8)}`;
+    const result = await new Promise<MsgMiniCompletionResult>((resolve) => {
+      handle.pendingMini.set(requestId, { resolve });
+      const m: MsgMiniCompletion = {
+        type: 'mini_completion',
+        requestId,
+        systemPrompt: req.systemPrompt,
+        userPrompt: req.userPrompt,
+        model: req.model,
+        maxTokens: req.maxTokens,
+      };
+      send(handle, m);
+    });
+    return {
+      text: result.text,
+      error: result.error,
+      stopReason: result.stopReason,
+      stopErrorMessage: result.stopErrorMessage,
     };
-    send(handle, m);
-  });
-  return {
-    text: result.text,
-    error: result.error,
-    stopReason: result.stopReason,
-    stopErrorMessage: result.stopErrorMessage,
-  };
+  } finally {
+    if (wouldHijackLiveModel) killSubprocess(handle);
+  }
+}
+
+/** Tears down a single subprocess: request shutdown, force-kill if it doesn't exit in time. */
+const SIGKILL_FALLBACK_DELAY_MS = 1000;
+
+function killSubprocess(handle: SubprocessHandle): void {
+  try { send(handle, { type: 'shutdown' }); } catch { /* */ }
+  setTimeout(() => {
+    if (!handle.child.killed) {
+      try { handle.child.kill('SIGKILL'); } catch { /* */ }
+    }
+  }, SIGKILL_FALLBACK_DELAY_MS);
 }
 
 /* ============================================================ */
@@ -1011,12 +1059,7 @@ export function steerPiTurn(args: {
 
 export function shutdownAllPiSubprocesses(): void {
   for (const handle of handles.values()) {
-    try { send(handle, { type: 'shutdown' }); } catch { /* */ }
-    setTimeout(() => {
-      if (!handle.child.killed) {
-        try { handle.child.kill('SIGKILL'); } catch { /* */ }
-      }
-    }, 1000);
+    killSubprocess(handle);
   }
   handles.clear();
 }

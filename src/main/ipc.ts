@@ -60,6 +60,7 @@ import {
   type AiSettings,
   getSettings,
   type PermissionMode,
+  type ThinkingLevel,
   pushRecentFolder,
   removeRecentFolder,
   saveSettings,
@@ -522,14 +523,17 @@ export function registerIpc(): void {
       // This is a no-op on subsequent turns (init is idempotent when state already exists).
       let autonomyLevel = 50; // Default: balanced
       let pinnedAssets: string[] | undefined;
+      let sessionThinkingLevel: ThinkingLevel | undefined;
       if (req.sessionId) {
         const sessionMeta = loadSession(req.sessionId)?.meta;
         autonomyLevel = sessionMeta?.autonomyLevel ?? 50;
         pinnedAssets = sessionMeta?.pinnedAssets;
+        sessionThinkingLevel = sessionMeta?.thinkingLevel;
       }
 
-      const { extendedContext } = getSettings();
+      const { extendedContext, defaultThinking } = getSettings();
       const effectiveModel = apply1MContextSuffix(req.model, extendedContext);
+      const thinkingLevel = sessionThinkingLevel ?? defaultThinking;
 
       for await (const chunk of runAgentChat({
         auth,
@@ -544,6 +548,7 @@ export function registerIpc(): void {
         resumeSessionId: req.resumeSessionId,
         maxTurns: req.maxTurns,
         permissionMode: req.permissionMode,
+        thinkingLevel,
         askCollaboration,
         autonomyLevel,
         pinnedAssets,

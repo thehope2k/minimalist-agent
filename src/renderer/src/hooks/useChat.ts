@@ -9,6 +9,7 @@ import type {
   ConnectionMeta,
   DraftAttachment,
   PermissionMode,
+  ThinkingLevel,
   StoredAttachment,
   StoredMessage,
   Plan,
@@ -37,6 +38,12 @@ interface SendArgs {
    * (otherwise it falls back to the project/global default).
    */
   autonomyLevel?: number;
+  /**
+   * Thinking-level override for this turn. Persisted to session meta so
+   * the per-session picker survives the fresh-chat null → newId transition
+   * (otherwise it falls back to AiSettings.defaultThinking).
+   */
+  thinkingLevel?: ThinkingLevel;
   /** Draft attachments — persisted to the session before send. */
   attachments?: DraftAttachment[];
   /**
@@ -986,6 +993,7 @@ export function useChat(
       maxTurns,
       permissionMode,
       autonomyLevel,
+      thinkingLevel,
       attachments: drafts,
       agentText,
       intentTag,
@@ -1016,6 +1024,7 @@ export function useChat(
       await updateSessionMeta(sid, {
         permissionMode,
         ...(autonomyLevel !== undefined ? { autonomyLevel } : {}),
+        ...(thinkingLevel !== undefined ? { thinkingLevel } : {}),
         connectionSlug: connection.slug,
         model,
         ...(cwd ? { workingDirectory: cwd } : {}),

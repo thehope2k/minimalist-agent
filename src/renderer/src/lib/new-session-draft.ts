@@ -8,15 +8,16 @@
 // INVARIANT: the on-leave snapshot of this draft is contributed by TWO hooks
 // that both fire on the same `sessionId` change. Keep them in sync when adding
 // a field:
-//   • useSessionSync.ts      → permissionMode, autonomyLevel, cwd
+//   • useSessionSync.ts      → permissionMode, autonomyLevel, thinkingLevel, cwd
 //   • useDraftPersistence.ts → connectionSlug, modelId
 // It is cleared only by clearNewSessionStateDraft() (the "+ New" action).
 
-import type { PermissionMode } from './electron';
+import type { PermissionMode, ThinkingLevel } from './electron';
 
 interface NewSessionStateDraft {
   permissionMode?: PermissionMode;
   autonomyLevel?: number;
+  thinkingLevel?: ThinkingLevel;
   cwd?: string;
   connectionSlug?: string;
   modelId?: string;

@@ -10,7 +10,7 @@ import { CollaborationPrompt } from '@/components/chat/CollaborationPrompt';
 import type { ChatMessage } from '@/lib/chat';
 import type { Plan } from '@/lib/electron';
 import type { CompactionNotice } from '@/hooks/useChat';
-import type { PermissionMode } from '@/lib/electron';
+import type { PermissionMode, ThinkingLevel } from '@/lib/electron';
 
 type Props = {
   sessionId: string | null;
@@ -25,6 +25,8 @@ type Props = {
   setPermissionMode: (mode: PermissionMode) => void;
   autonomyLevel: number;
   setAutonomyLevel: (level: number) => void;
+  thinkingLevel: ThinkingLevel;
+  setThinkingLevel: (level: ThinkingLevel) => void;
   title: string;
   lastCompaction: CompactionNotice | null;
   projectDefaultConnectionSlug: string;
@@ -58,6 +60,8 @@ export function ChatContent({
   setPermissionMode,
   autonomyLevel,
   setAutonomyLevel,
+  thinkingLevel,
+  setThinkingLevel,
   title,
   lastCompaction,
   projectDefaultConnectionSlug,
@@ -160,6 +164,8 @@ export function ChatContent({
             onChangePermissionMode={setPermissionMode}
             autonomyLevel={autonomyLevel}
             onChangeAutonomyLevel={setAutonomyLevel}
+            thinkingLevel={thinkingLevel}
+            onChangeThinkingLevel={setThinkingLevel}
             onSend={onSend}
             onAbort={onAbort}
             onSteer={onSteer}

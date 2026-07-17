@@ -506,6 +506,8 @@ export interface SessionMeta {
    * Format: 'user:<slug>' | 'project:<slug>'
    */
   pinnedAssets?: string[];
+  /** Per-session thinking-level override. Falls back to AiSettings.defaultThinking. */
+  thinkingLevel?: ThinkingLevel;
 }
 
 export type SessionSummary = SessionMeta;

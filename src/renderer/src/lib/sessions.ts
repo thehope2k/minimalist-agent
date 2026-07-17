@@ -7,6 +7,7 @@ import type {
   SessionMeta,
   SessionSummary,
   StoredMessage,
+  ThinkingLevel,
 } from './electron';
 import { snapshot as connectionsSnapshot } from './connections';
 import { buildTitleSample } from './title';
@@ -136,6 +137,14 @@ export async function setSessionAutonomyLevel(
   level: number,
 ): Promise<void> {
   await updateSessionMeta(id, { autonomyLevel: level });
+}
+
+/** Convenience wrapper for the thinking-level pill in MessageInput. */
+export async function setSessionThinkingLevel(
+  id: string,
+  level: ThinkingLevel,
+): Promise<void> {
+  await updateSessionMeta(id, { thinkingLevel: level });
 }
 
 export async function deleteSession(id: string): Promise<void> {

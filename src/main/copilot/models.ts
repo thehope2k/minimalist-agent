@@ -6,6 +6,7 @@
 // regional endpoint.
 
 import { githubCopilotProvider } from '@earendil-works/pi-ai/providers/github-copilot';
+import { GITHUB_COPILOT_MODELS } from '@earendil-works/pi-ai/providers/github-copilot.models';
 import type { ModelDef } from '../storage/connections';
 import { createLogger } from '../logger';
 
@@ -120,6 +121,8 @@ function modelDefFrom(raw: RawCopilotModel): ModelDef | null {
   const supportsVision = !!raw.capabilities?.supports?.vision;
   const supportsToolCalls = raw.capabilities?.supports?.tool_calls ?? false;
   const supportsStreaming = true; // Assume streaming support for all models
+  const supportsReasoning =
+    (GITHUB_COPILOT_MODELS as Record<string, { reasoning?: boolean }>)[raw.id]?.reasoning ?? false;
   const category = raw.model_picker_category;
   const recommendedFor = getRecommendations(raw);
 
@@ -132,6 +135,7 @@ function modelDefFrom(raw: RawCopilotModel): ModelDef | null {
     supportsVision,
     supportsToolCalls,
     supportsStreaming,
+    supportsReasoning,
     category,
     recommendedFor,
   };

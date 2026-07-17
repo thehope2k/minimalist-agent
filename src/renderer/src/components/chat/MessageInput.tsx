@@ -29,6 +29,8 @@ export function MessageInput({
   onChangePermissionMode,
   autonomyLevel,
   onChangeAutonomyLevel,
+  thinkingLevel,
+  onChangeThinkingLevel,
   onSend,
   onAbort,
   onSteer,
@@ -176,6 +178,7 @@ export function MessageInput({
       maxTurns: data?.settings.maxTurns,
       permissionMode,
       autonomyLevel,
+      thinkingLevel,
       attachments: outgoing,
     });
     setValue('');
@@ -256,6 +259,8 @@ export function MessageInput({
           onChangePermissionMode={onChangePermissionMode}
           autonomyLevel={autonomyLevel}
           onChangeAutonomyLevel={onChangeAutonomyLevel}
+          thinkingLevel={thinkingLevel}
+          onChangeThinkingLevel={onChangeThinkingLevel}
           isStreaming={isStreaming}
           sessionId={sessionId}
           title={title}

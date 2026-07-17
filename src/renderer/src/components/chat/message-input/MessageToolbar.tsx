@@ -1,7 +1,8 @@
 import { PermissionModeButton } from '../PermissionModeButton';
+import { ThinkingLevelButton } from '../ThinkingLevelButton';
 import { SessionInfoButton } from '../SessionInfoButton';
 import { ContextBadge } from '../ContextBadge';
-import type { PermissionMode, ConnectionMeta } from '@/lib/electron';
+import type { PermissionMode, ThinkingLevel, ConnectionMeta } from '@/lib/electron';
 import type { ChatMessage } from '@/lib/chat';
 
 type Props = {
@@ -9,6 +10,8 @@ type Props = {
   onChangePermissionMode: (mode: PermissionMode) => void;
   autonomyLevel: number;
   onChangeAutonomyLevel: (level: number) => void;
+  thinkingLevel: ThinkingLevel;
+  onChangeThinkingLevel: (level: ThinkingLevel) => void;
   isStreaming: boolean;
   sessionId: string | null;
   title: string;
@@ -22,6 +25,8 @@ export function MessageToolbar({
   onChangePermissionMode,
   autonomyLevel,
   onChangeAutonomyLevel,
+  thinkingLevel,
+  onChangeThinkingLevel,
   isStreaming,
   sessionId,
   title,
@@ -29,6 +34,10 @@ export function MessageToolbar({
   connection,
   model,
 }: Props) {
+  const supportsReasoning =
+    !!connection && !!model &&
+    (connection.models.find((m) => m.id === model)?.supportsReasoning ?? false);
+
   return (
     <div className="mb-2 flex items-center gap-2 px-1">
       <PermissionModeButton
@@ -38,6 +47,13 @@ export function MessageToolbar({
         onAutonomyChange={onChangeAutonomyLevel}
         disabled={isStreaming}
       />
+      {supportsReasoning && (
+        <ThinkingLevelButton
+          level={thinkingLevel}
+          onLevelChange={onChangeThinkingLevel}
+          disabled={isStreaming}
+        />
+      )}
       <div className="flex-1" />
       {model && connection && (
         <ContextBadge

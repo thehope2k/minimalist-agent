@@ -39,7 +39,7 @@ import {
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { getBuiltinModel, builtinModels } from '@earendil-works/pi-ai/providers/all';
-import type { Api, ApiKeyCredential, Credential, CredentialInfo, CredentialStore, Model, OAuthCredential, ThinkingLevel } from '@earendil-works/pi-ai';
+import type { Api, Credential, CredentialInfo, CredentialStore, Model, OAuthCredential, ThinkingLevel } from '@earendil-works/pi-ai';
 
 /** Shared models instance for `completeSimple` calls (title gen, llm_query).
  *  Built-in provider catalog; auth is passed inline via `StreamOptions.apiKey`. */
@@ -202,6 +202,8 @@ interface State {
   model?: Model<Api>;
   /** Active model's image-input capability, per app metadata (MsgInit/MsgSetModel). */
   visionSupported?: boolean;
+  /** True when the session targets a user-configured custom endpoint (local/OpenAI-compatible). Set once in handleInit; thinking level is pinned to 'minimal' for these. */
+  hasCustomEndpoint?: boolean;
   permissionMode: PiPermissionMode;
   autonomyLevel: number;
   currentTurnId?: string;
@@ -223,7 +225,7 @@ interface State {
   planManager?: PlanManager;
   /** Adapted MCP tools from connected mcp-backed extensions, appended to every
    *  session build (init + model-switch recreate). */
-  mcpTools: ToolDefinition<any, any, any>[];
+  mcpTools: ToolDefinition<any, any>[];
   /** Live MCP clients, closed on shutdown. */
   mcpClients: import('@modelcontextprotocol/sdk/client/index.js').Client[];
   currentPhaseId?: string; // Track active phase for error attribution
@@ -339,8 +341,8 @@ const READ_ONLY_TOOL_NAMES = new Set([
  * from the round-trip in `auto` mode (the gate adds latency for nothing).
  */
 function wrapWithPermissionGate(
-  base: ToolDefinition<any, any, any>,
-): ToolDefinition<any, any, any> {
+  base: ToolDefinition<any, any>,
+): ToolDefinition<any, any> {
   const originalExecute = base.execute.bind(base);
   return {
     ...base,
@@ -378,8 +380,8 @@ function wrapWithPermissionGate(
  * this is effectively free.
  */
 function instrumentTool(
-  base: ToolDefinition<any, any, any>,
-): ToolDefinition<any, any, any> {
+  base: ToolDefinition<any, any>,
+): ToolDefinition<any, any> {
   const originalExecute = base.execute.bind(base);
   // Agent delegation + collaboration/planning tools are MA-internal; the file/
   // web/bash tools are the model-callable "function" tools.
@@ -655,7 +657,7 @@ const schema = {
   }),
 };
 
-function createCollaborationTools(sessionId: string): ToolDefinition<any, any, any>[] {
+function createCollaborationTools(sessionId: string): ToolDefinition<any, any>[] {
   return [
     {
       name: 'RequestDecision',
@@ -793,7 +795,7 @@ function createCollaborationTools(sessionId: string): ToolDefinition<any, any, a
 /**
  * Create planning workflow tools.
  */
-function createPlanningTools(sessionId: string): ToolDefinition<any, any, any>[] {
+function createPlanningTools(sessionId: string): ToolDefinition<any, any>[] {
   return [
     {
       name: 'CreatePlan',
@@ -1150,8 +1152,8 @@ function buildWrappedTools(
     customEndpoint?: { api: 'openai-completions' | 'anthropic-messages'; supportsImages?: boolean; contextWindow?: number; maxTokens?: number; reasoning?: boolean; thinkingFormat?: 'qwen' };
     permissionMode: 'plan' | 'auto';
   },
-): ToolDefinition<any, any, any>[] {
-  const tools: ToolDefinition<any, any, any>[] = [
+): ToolDefinition<any, any>[] {
+  const tools: ToolDefinition<any, any>[] = [
     wrapWithPermissionGate(createReadToolDefinition(cwd)),
     wrapWithPermissionGate(createBashToolDefinition(cwd)),
     wrapWithPermissionGate(createEditToolDefinition(cwd)),
@@ -1222,6 +1224,7 @@ async function handleInit(msg: MsgInit): Promise<void> {
   state.credentialStore = credentialStore;
 
   const hasCustomEndpoint = !!msg.baseUrl?.trim() && !!msg.customEndpoint;
+  state.hasCustomEndpoint = hasCustomEndpoint;
 
   const modelRuntime = await ModelRuntime.create({ credentials: credentialStore });
   state.modelRuntime = modelRuntime;
@@ -1446,6 +1449,39 @@ interface AssistantMsg {
   stopReason?: string;
   errorMessage?: string;
   content?: unknown;
+}
+
+const MISDIRECTED_REQUEST_MAX_ATTEMPTS = 3;
+const MISDIRECTED_REQUEST_RETRY_DELAY_MS = 300;
+
+function isMisdirectedRequest(message: AssistantMsg): boolean {
+  return message.stopReason === 'error' && /\b421\b/.test(message.errorMessage ?? '');
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * HTTP/2's 421 Misdirected Request means "retry this on a different
+ * connection" — it's a transient, expected condition, not a hard failure.
+ * The Anthropic SDK's own retry logic doesn't treat 421 as retryable, so
+ * one-shot completions (mini_completion / llm_query) retry it here instead.
+ */
+async function completeSimpleRetryingMisdirected(
+  model: never,
+  context: never,
+  options?: never,
+): Promise<AssistantMsg> {
+  let result: AssistantMsg;
+  for (let attempt = 1; attempt <= MISDIRECTED_REQUEST_MAX_ATTEMPTS; attempt++) {
+    result = (await piModels.completeSimple(model, context, options)) as AssistantMsg;
+    if (!isMisdirectedRequest(result)) return result;
+    log.warn(`421 misdirected request, attempt ${attempt}/${MISDIRECTED_REQUEST_MAX_ATTEMPTS}`);
+    if (attempt === MISDIRECTED_REQUEST_MAX_ATTEMPTS) return result;
+    await delay(MISDIRECTED_REQUEST_RETRY_DELAY_MS * attempt);
+  }
+  return result!;
 }
 
 /**
@@ -1824,10 +1860,10 @@ async function handleMiniCompletion(msg: MsgMiniCompletion): Promise<void> {
     return;
   }
   try {
-    let model = msg.model
-      ? getBuiltinModel(state.init.piAuthProvider as 'github-copilot', msg.model as never)
-      : state.model!;
-    
+    let model = !msg.model || msg.model === state.model?.id
+      ? state.model!
+      : getBuiltinModel(state.init.piAuthProvider as 'github-copilot', msg.model as never);
+
     // Validate model resolved successfully
     if (msg.model && !model) {
       sendMiniError(
@@ -1842,6 +1878,7 @@ async function handleMiniCompletion(msg: MsgMiniCompletion): Promise<void> {
     const options: Record<string, unknown> = {};
     if (auth?.auth.apiKey) options.apiKey = auth.auth.apiKey;
     if (msg.maxTokens !== undefined) options.maxTokens = msg.maxTokens;
+
     const result = await tracedCompletion(
       {
         model: (model as { id?: string }).id ?? msg.model ?? state.model?.id ?? '',
@@ -1851,8 +1888,8 @@ async function handleMiniCompletion(msg: MsgMiniCompletion): Promise<void> {
         systemInstructions: msg.systemPrompt,
       },
       () =>
-        piModels.completeSimple(
-          model,
+        completeSimpleRetryingMisdirected(
+          model as never,
           {
             systemPrompt: msg.systemPrompt,
             messages: [
@@ -1864,7 +1901,7 @@ async function handleMiniCompletion(msg: MsgMiniCompletion): Promise<void> {
             tools: [],
           } as never,
           Object.keys(options).length > 0 ? (options as never) : undefined,
-        ) as Promise<AssistantMsg>,
+        ),
     );
 
     // Pull plain text out of the assistant message.
@@ -1915,9 +1952,9 @@ async function handleLlmQuery(msg: MsgLlmQuery): Promise<void> {
       model?: string;
       tools?: never[];
     };
-    const model = req.model
-      ? getBuiltinModel(state.init.piAuthProvider as 'github-copilot', req.model as never)
-      : state.model;
+    const model = !req.model || req.model === state.model.id
+      ? state.model
+      : getBuiltinModel(state.init.piAuthProvider as 'github-copilot', req.model as never);
     
     // Validate model resolved successfully
     if (req.model && !model) {
@@ -1938,7 +1975,7 @@ async function handleLlmQuery(msg: MsgLlmQuery): Promise<void> {
         systemInstructions: req.systemPrompt,
       },
       () =>
-        piModels.completeSimple(model, {
+        completeSimpleRetryingMisdirected(model as never, {
           systemPrompt: req.systemPrompt,
           messages: [
             {
@@ -1947,7 +1984,7 @@ async function handleLlmQuery(msg: MsgLlmQuery): Promise<void> {
             },
           ],
           tools: req.tools ?? [],
-        } as never) as Promise<AssistantMsg>,
+        } as never),
     );
     const out: MsgLlmQueryResult = {
       type: 'llm_query_result',
@@ -2041,9 +2078,21 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
       return;
 
     case 'set_thinking_level':
-      // Pi clamps internally; nothing we can push without recreating
-      // the session. Stored for future turns.
-      if (state.init) state.init.thinkingLevel = msg.level;
+      if (state.init) {
+        // Custom endpoints (local/OpenAI-compatible) are pinned to 'minimal'
+        // at init regardless of the requested level — keep that pin here too.
+        const level = state.hasCustomEndpoint ? 'minimal' : mapThinkingLevel(msg.level);
+        state.init.thinkingLevel = msg.level;
+        // Propagate to the live session; setThinkingLevel clamps internally
+        // per the model's supported levels, same as init does via mapThinkingLevel.
+        if (state.session) {
+          try {
+            state.session.setThinkingLevel(level);
+          } catch (e) {
+            log.error('set_thinking_level failed:', e);
+          }
+        }
+      }
       return;
 
     case 'set_permission_mode':

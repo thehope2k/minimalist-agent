@@ -77,7 +77,8 @@ function sameModelList(a: ModelDef[], b: ModelDef[]): boolean {
       x.name === y.name &&
       x.contextWindow === y.contextWindow &&
       x.category === y.category &&
-      !!x.supportsVision === !!y.supportsVision
+      !!x.supportsVision === !!y.supportsVision &&
+      !!x.supportsReasoning === !!y.supportsReasoning
     );
   });
 }

@@ -2,6 +2,7 @@ import type {
   ConnectionMeta,
   DraftAttachment,
   PermissionMode,
+  ThinkingLevel,
 } from '@/lib/electron';
 import type { ChatMessage } from '@/lib/chat';
 import type { CompactionNotice } from '@/hooks/useChat';
@@ -14,6 +15,7 @@ export type SendArgs = {
   maxTurns?: number;
   permissionMode: PermissionMode;
   autonomyLevel?: number;
+  thinkingLevel?: ThinkingLevel;
   attachments: DraftAttachment[];
 };
 
@@ -27,6 +29,8 @@ export type MessageInputProps = {
   onChangePermissionMode: (mode: PermissionMode) => void;
   autonomyLevel: number;
   onChangeAutonomyLevel: (level: number) => void;
+  thinkingLevel: ThinkingLevel;
+  onChangeThinkingLevel: (level: ThinkingLevel) => void;
   onSend: (args: SendArgs) => void;
   onAbort: () => void;
   /**

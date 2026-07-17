@@ -9,6 +9,7 @@ import { sessionPath } from '../storage/sessions';
 import type { AgentChatEvent } from './events';
 import type { PermissionMode } from './permissions';
 import type { PiAuthProvider } from '../../shared/pi-types';
+import type { PiThinkingLevel } from './backends/pi/protocol';
 import { runAnthropicChat, type AnthropicAuth } from './backends/anthropic';
 import { runPiChat } from './backends/pi/agent';
 import type { ResolvedAuth } from './backends/types';
@@ -43,6 +44,8 @@ export interface AgentChatRequest {
   resumeSessionId?: string;
   maxTurns?: number;
   permissionMode?: PermissionMode;
+  /** Effective thinking level for this turn (Pi backend only; ignored by Anthropic backend). */
+  thinkingLevel?: PiThinkingLevel;
   /** Collaboration callback for intelligent engagement tools. */
   askCollaboration?: CollaborationAsk;
   /** User's autonomy level (0-100) for intelligent collaboration. */
@@ -81,6 +84,7 @@ export function runAgentChat(
       attachments: req.attachments,
       cwd: req.cwd,
       permissionMode: req.permissionMode,
+      thinkingLevel: req.thinkingLevel,
       askCollaboration: req.askCollaboration,
       autonomyLevel: req.autonomyLevel,
       pinnedAssets: req.pinnedAssets,

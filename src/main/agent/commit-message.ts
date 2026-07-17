@@ -154,6 +154,10 @@ ${args.diffContext}`;
       return null;
     }
     try {
+      const model =
+        args.model ??
+        listConnections().find((c) => c.slug === args.connectionSlug)?.defaultModel ??
+        PI_DEFAULT_MINI;
       const result = await runPiMiniCompletion({
         connectionSlug: args.connectionSlug,
         auth: args.auth,
@@ -161,7 +165,7 @@ ${args.diffContext}`;
         chatSessionId: args.chatSessionId,
         chatSessionPath: sessionPath(args.chatSessionId),
         cwd: args.cwd,
-        model: args.model ?? PI_DEFAULT_MINI,
+        model,
         systemPrompt: SYSTEM_PROMPT,
         userPrompt,
         maxTokens: COMMIT_MAX_TOKENS,

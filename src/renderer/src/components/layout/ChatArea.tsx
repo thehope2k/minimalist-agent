@@ -2,7 +2,7 @@ import { useEffect, useCallback } from 'react';
 import { useChat } from '@/hooks/useChat';
 import { useAiData } from '@/hooks/useAiData';
 import { useProjects } from '@/hooks/useProjects';
-import { setSessionPermissionMode, setSessionAutonomyLevel } from '@/lib/sessions';
+import { setSessionPermissionMode, setSessionAutonomyLevel, setSessionThinkingLevel } from '@/lib/sessions';
 import { homedir } from '@/lib/path';
 import { ChatHeader } from './chat-area/ChatHeader';
 import { ChatContent } from './chat-area/ChatContent';
@@ -72,6 +72,8 @@ export function ChatArea({
     setPermissionMode,
     autonomyLevel,
     setAutonomyLevel,
+    thinkingLevel,
+    setThinkingLevel,
     projectDefaultConnectionSlug,
     sessionConnectionSlug,
     sessionModel,
@@ -256,6 +258,13 @@ export function ChatArea({
             autonomyLevelRef.current = level;
             if (activeSessionId) {
               void setSessionAutonomyLevel(activeSessionId, level);
+            }
+          }}
+          thinkingLevel={thinkingLevel}
+          setThinkingLevel={(level) => {
+            setThinkingLevel(level);
+            if (activeSessionId) {
+              void setSessionThinkingLevel(activeSessionId, level);
             }
           }}
           title={title}
