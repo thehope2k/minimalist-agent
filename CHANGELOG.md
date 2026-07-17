@@ -5,6 +5,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.16.1] — 2026-07-17
+
+Bug fixes and quality-of-life improvements.
+
+### Added
+
+- gpt-5.6 and gpt-5.6-mini added to the ChatGPT model picker
+
+### Changed
+
+- Sub-agent runtime cap raised from 5 to 8 minutes, giving complex research tasks more headroom
+- Agents removed from the context panel
+
+### Fixed
+
+- Sub-agent failures (timeout or error) now correctly show a red badge instead of green
+- Search mode levels now pass through to the model correctly instead of being clamped too early
+
+---
+
 ## [1.16.0] — 2026-07-13
 
 Adds automatic session cleanup on startup; bug fixes.
