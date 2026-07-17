@@ -171,8 +171,7 @@ ${args.diffContext}`;
         maxTokens: COMMIT_MAX_TOKENS,
       });
       if (result.error || !result.text) {
-        const detail = result.error ?? result.stopErrorMessage ?? `stopReason: ${result.stopReason ?? 'unknown'}`;
-        log.warn(`[copilot_oauth] mini_completion error: ${detail}`);
+        log.warn(`[copilot_oauth] mini_completion error: ${result.error ?? 'empty response'}`);
         return null;
       }
       return validateCommitMessage(result.text);

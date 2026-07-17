@@ -961,7 +961,7 @@ export async function* runPiChat(
 
 export async function runPiMiniCompletion(
   req: PiMiniCompletionRequest,
-): Promise<{ text?: string; error?: string; stopReason?: string; stopErrorMessage?: string }> {
+): Promise<{ text?: string; error?: string }> {
   const piReq: PiChatRequest = {
     connectionSlug: req.connectionSlug,
     auth: req.auth,
@@ -1007,8 +1007,6 @@ export async function runPiMiniCompletion(
     return {
       text: result.text,
       error: result.error,
-      stopReason: result.stopReason,
-      stopErrorMessage: result.stopErrorMessage,
     };
   } finally {
     if (wouldHijackLiveModel) killSubprocess(handle);

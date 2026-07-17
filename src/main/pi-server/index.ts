@@ -1451,39 +1451,6 @@ interface AssistantMsg {
   content?: unknown;
 }
 
-const MISDIRECTED_REQUEST_MAX_ATTEMPTS = 3;
-const MISDIRECTED_REQUEST_RETRY_DELAY_MS = 300;
-
-function isMisdirectedRequest(message: AssistantMsg): boolean {
-  return message.stopReason === 'error' && /\b421\b/.test(message.errorMessage ?? '');
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-/**
- * HTTP/2's 421 Misdirected Request means "retry this on a different
- * connection" — it's a transient, expected condition, not a hard failure.
- * The Anthropic SDK's own retry logic doesn't treat 421 as retryable, so
- * one-shot completions (mini_completion / llm_query) retry it here instead.
- */
-async function completeSimpleRetryingMisdirected(
-  model: never,
-  context: never,
-  options?: never,
-): Promise<AssistantMsg> {
-  let result: AssistantMsg;
-  for (let attempt = 1; attempt <= MISDIRECTED_REQUEST_MAX_ATTEMPTS; attempt++) {
-    result = (await piModels.completeSimple(model, context, options)) as AssistantMsg;
-    if (!isMisdirectedRequest(result)) return result;
-    log.warn(`421 misdirected request, attempt ${attempt}/${MISDIRECTED_REQUEST_MAX_ATTEMPTS}`);
-    if (attempt === MISDIRECTED_REQUEST_MAX_ATTEMPTS) return result;
-    await delay(MISDIRECTED_REQUEST_RETRY_DELAY_MS * attempt);
-  }
-  return result!;
-}
-
 /**
  * Map a finished provider response (usage, response ids, finish reason, status)
  * onto a `chat` span. Shared by the agent-loop model span and the standalone
@@ -1854,17 +1821,62 @@ async function handlePrompt(msg: MsgPrompt): Promise<void> {
 /*  mini_completion + llm_query                                   */
 /* ============================================================ */
 
+/**
+ * Runs one hidden agent turn in an in-memory session (never touches disk,
+ * never visible in chat history) with a task-specific system prompt in
+ * place of Pi's own agent identity. Returns the assistant's final text.
+ */
+async function runEphemeralPrompt(args: {
+  model: Model<Api>;
+  systemPrompt: string;
+  userPrompt: string;
+  cwd: string;
+}): Promise<string> {
+  const agentDir = join(homedir(), '.pi', 'agent');
+  const resourceLoader = new DefaultResourceLoader({
+    cwd: args.cwd,
+    agentDir,
+    systemPromptOverride: () => args.systemPrompt,
+  });
+  await resourceLoader.reload();
+
+  const { session } = await createAgentSession({
+    cwd: args.cwd,
+    model: args.model,
+    modelRuntime: state.modelRuntime,
+    sessionManager: SessionManager.inMemory(),
+    resourceLoader,
+  });
+
+  let finalText = '';
+  const unsubscribe = session.subscribe((event: AgentSessionEvent) => {
+    if (event.type !== 'agent_end') return;
+    const assistantMessages = event.messages.filter(
+      (m) => (m as { role?: string }).role === 'assistant',
+    );
+    const last = assistantMessages[assistantMessages.length - 1];
+    if (last) finalText = pickTextFromMessage(last);
+  });
+
+  try {
+    await session.prompt(args.userPrompt, {});
+  } finally {
+    unsubscribe();
+  }
+
+  return finalText;
+}
+
 async function handleMiniCompletion(msg: MsgMiniCompletion): Promise<void> {
   if (!state.init) {
     sendMiniError(msg.requestId, 'Subprocess not initialized.');
     return;
   }
   try {
-    let model = !msg.model || msg.model === state.model?.id
+    const model = !msg.model || msg.model === state.model?.id
       ? state.model!
       : getBuiltinModel(state.init.piAuthProvider as 'github-copilot', msg.model as never);
 
-    // Validate model resolved successfully
     if (msg.model && !model) {
       sendMiniError(
         msg.requestId,
@@ -1873,11 +1885,6 @@ async function handleMiniCompletion(msg: MsgMiniCompletion): Promise<void> {
       );
       return;
     }
-
-    const auth = state.modelRuntime ? await state.modelRuntime.getAuth(model) : undefined;
-    const options: Record<string, unknown> = {};
-    if (auth?.auth.apiKey) options.apiKey = auth.auth.apiKey;
-    if (msg.maxTokens !== undefined) options.maxTokens = msg.maxTokens;
 
     const result = await tracedCompletion(
       {
@@ -1888,34 +1895,18 @@ async function handleMiniCompletion(msg: MsgMiniCompletion): Promise<void> {
         systemInstructions: msg.systemPrompt,
       },
       () =>
-        completeSimpleRetryingMisdirected(
-          model as never,
-          {
-            systemPrompt: msg.systemPrompt,
-            messages: [
-              {
-                role: 'user',
-                content: [{ type: 'text', text: msg.userPrompt }],
-              },
-            ],
-            tools: [],
-          } as never,
-          Object.keys(options).length > 0 ? (options as never) : undefined,
-        ),
+        runEphemeralPrompt({
+          model: model as Model<Api>,
+          systemPrompt: msg.systemPrompt,
+          userPrompt: msg.userPrompt,
+          cwd: state.init!.cwd,
+        }).then((resultText) => ({ content: [{ type: 'text', text: resultText }] }) as never),
     );
 
-    // Pull plain text out of the assistant message.
-    const text = pickTextFromMessage(result);
     const out: MsgMiniCompletionResult = {
       type: 'mini_completion_result',
       requestId: msg.requestId,
-      text,
-      ...(text
-        ? {}
-        : {
-            stopReason: (result as { stopReason?: string }).stopReason,
-            stopErrorMessage: (result as { errorMessage?: string }).errorMessage,
-          }),
+      text: pickTextFromMessage(result),
     };
     send(out);
   } catch (e) {
@@ -1975,7 +1966,7 @@ async function handleLlmQuery(msg: MsgLlmQuery): Promise<void> {
         systemInstructions: req.systemPrompt,
       },
       () =>
-        completeSimpleRetryingMisdirected(model as never, {
+        piModels.completeSimple(model, {
           systemPrompt: req.systemPrompt,
           messages: [
             {
@@ -1984,7 +1975,7 @@ async function handleLlmQuery(msg: MsgLlmQuery): Promise<void> {
             },
           ],
           tools: req.tools ?? [],
-        } as never),
+        } as never) as Promise<AssistantMsg>,
     );
     const out: MsgLlmQueryResult = {
       type: 'llm_query_result',
