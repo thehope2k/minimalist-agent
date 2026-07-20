@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.17.1] — 2026-07-20
+
+Bug fixes.
+
+### Fixed
+
+- Copying text now works reliably — Chromium was blocking clipboard writes because the `clipboard-sanitized-write` permission wasn't in the app's allow-list; the copy button also now shows a "Failed" state instead of silently ignoring the error
+
+---
+
 ## [1.17.0] — 2026-07-17
 
 Adds on-device voice dictation and per-session thinking-level control; quality of life improvements and bug fixes.
