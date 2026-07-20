@@ -171,18 +171,23 @@ function installCsp(): void {
 }
 
 /**
- * Explicit allow-list for media (microphone) permission requests — voice
- * dictation is the only feature that needs it. Same governance intent as
+ * Explicit allow-list for permission requests: `media` (microphone, for
+ * voice dictation) and `clipboard-sanitized-write` (the permission Chromium
+ * checks for navigator.clipboard writes). Same governance intent as
  * installCsp()/openExternalFromRenderer(): don't rely on Electron's
  * permissive default, only allow it for our own app shell's origin.
  */
 function installMediaPermissions(): void {
+  const isAllowed = (permission: string, webContents: Electron.WebContents): boolean =>
+    (permission === 'media' || permission === 'clipboard-sanitized-write') &&
+    isAppShellUrl(webContents.getURL());
+
   session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
-    callback(permission === 'media' && isAppShellUrl(webContents.getURL()));
+    callback(isAllowed(permission, webContents));
   });
 
   session.defaultSession.setPermissionCheckHandler((webContents, permission) => {
-    return permission === 'media' && !!webContents && isAppShellUrl(webContents.getURL());
+    return !!webContents && isAllowed(permission, webContents);
   });
 }
 

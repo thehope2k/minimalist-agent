@@ -1,6 +1,10 @@
 import { useState } from 'react';
-import { Check, Copy } from 'lucide-react';
+import { Check, Copy, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('copy-button');
+const CONFIRMATION_DURATION_MS = 1200;
 
 interface CopyButtonProps {
   text: string;
@@ -16,7 +20,7 @@ interface CopyButtonProps {
  * wrapping element if they want the hover-fade behaviour.
  */
 export function CopyButton({ text, className }: CopyButtonProps) {
-  const [copied, setCopied] = useState(false);
+  const [state, setState] = useState<'idle' | 'copied' | 'error'>('idle');
   return (
     <button
       type="button"
@@ -28,15 +32,22 @@ export function CopyButton({ text, className }: CopyButtonProps) {
       onClick={async () => {
         try {
           await navigator.clipboard.writeText(text);
-          setCopied(true);
-          setTimeout(() => setCopied(false), 1200);
-        } catch {
-          /* clipboard may be denied — silently ignore */
+          setState('copied');
+        } catch (err) {
+          log.warn('clipboard write failed', err);
+          setState('error');
         }
+        setTimeout(() => setState('idle'), CONFIRMATION_DURATION_MS);
       }}
     >
-      {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-      {copied ? 'Copied' : 'Copy'}
+      {state === 'copied' ? (
+        <Check className="h-3 w-3" />
+      ) : state === 'error' ? (
+        <X className="h-3 w-3" />
+      ) : (
+        <Copy className="h-3 w-3" />
+      )}
+      {state === 'copied' ? 'Copied' : state === 'error' ? 'Failed' : 'Copy'}
     </button>
   );
 }
