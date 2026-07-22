@@ -146,12 +146,6 @@ export async function setDefaultThinking(level: ThinkingLevel): Promise<void> {
   await reload();
 }
 
-export async function setExtendedContext(value: boolean): Promise<void> {
-  const next = { ...snapshot().settings, extendedContext: value };
-  await window.api.settings.save(next);
-  await reload();
-}
-
 export async function setMaxTurns(value: number | undefined): Promise<void> {
   const next = { ...snapshot().settings, maxTurns: value };
   await window.api.settings.save(next);

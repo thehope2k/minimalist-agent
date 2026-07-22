@@ -26,13 +26,12 @@ it's the design. If something doesn't earn its keep, it doesn't make the cut.
 
 ### AI Connections
 
-- **Anthropic API key** — direct `sk-ant-` key; Opus 4.7 (1M ctx), Sonnet 4.6, Haiku 4.5
+- **Anthropic API key** — direct `sk-ant-` key;
 - **Claude Pro / Max OAuth** — browser PKCE flow, token auto-refresh
 - **GitHub Copilot** — device-flow OAuth; live model discovery (Claude, GPT-5, GPT-5.1, and more); Copilot quota display
 - **ChatGPT Plus / Codex** — browser OAuth; live model discovery via Pi SDK; full permission modes and tool streaming
 - **OpenAI-compatible providers** — StepFun, DeepSeek, Moonshot, Together AI, Groq, OpenRouter, xAI, or any custom endpoint; curated presets with live model discovery from `/v1/models`; encrypted API key storage
 - **Local model (Ollama)** — connect to any Ollama endpoint; live model discovery; no auth required
-- **Extended context** — opt-in 1M token window for supported models (Anthropic Tier 4+)
 
 ### Agent Runtime
 

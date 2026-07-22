@@ -11,7 +11,6 @@ import {
   setDefaultModel,
   setDefaultPermissionMode,
   setDefaultThinking,
-  setExtendedContext,
   setMaxTurns,
 } from '@/lib/connections';
 import { useAiData } from '@/hooks/useAiData';
@@ -269,17 +268,6 @@ export function AIPanel() {
           />
           <SettingsDivider />
           <ContextFileNamesRow current={settings.contextFileNames} />
-        </SettingsCard>
-      </SettingsSection>
-
-      <SettingsSection title="Performance" subtitle="Cost and caching options.">
-        <SettingsCard>
-          <SettingsToggle
-            label="Extended context (1M)"
-            description="Use 1M token context window for Opus 4.7. Disable to use 200K and conserve usage limits."
-            checked={!!settings.extendedContext}
-            onCheckedChange={(v) => void setExtendedContext(v)}
-          />
         </SettingsCard>
       </SettingsSection>
 

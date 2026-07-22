@@ -5,7 +5,7 @@
 //
 //   <userData>/  — machine-specific, sensitive data (Electron-managed)
 //   ├── connections.json           ← LLM connections (no secrets)
-//   ├── settings.json              ← AI defaults: model, thinking, extendedContext
+//   ├── settings.json              ← AI defaults: model, thinking, max turns
 //   ├── credentials.enc            ← Encrypted api keys / OAuth tokens
 //   ├── backups/
 //   ├── logs/
@@ -57,11 +57,6 @@ function userConfigRoot(): string {
 export function projectConfigRoot(cwd: string): string {
   return join(cwd, '.minimalist-agent');
 }
-
-/** Slug for the user config tier, used in pinned asset IDs. */
-export const USER_CONFIG_TIER = 'user' as const;
-/** Slug for the project config tier, used in pinned asset IDs. */
-export const PROJECT_CONFIG_TIER = 'project' as const;
 
 export const Paths = {
   root,

@@ -44,7 +44,7 @@ The Anthropic backend assembles:
 ```ts
 const options: Options = {
     ...getDefaultOptions({envOverrides: envForAnthropicAuth(req.auth)}),
-    model: effectiveModel,           // may include [1m] suffix when extendedContext
+    model: req.model,
     includePartialMessages: true,
     abortController,
     maxTurns: req.maxTurns ?? DEFAULT_MAX_TURNS,

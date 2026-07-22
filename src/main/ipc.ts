@@ -50,7 +50,6 @@ import {
   startLogin as startChatGptLogin,
 } from './oauth/chatgpt-flow';
 import {runAgentChat} from './agent/runner';
-import {apply1MContextSuffix} from './agent/models';
 import {steerAnthropicTurn} from './agent/backends/anthropic';
 import {steerPiTurn, sendPlanApprovalResponse, runPiManualCompact} from './agent/backends/pi/agent';
 import {generateTitle} from './agent/title';
@@ -534,8 +533,7 @@ export function registerIpc(): void {
         sessionThinkingLevel = sessionMeta?.thinkingLevel;
       }
 
-      const { extendedContext, defaultThinking } = getSettings();
-      const effectiveModel = apply1MContextSuffix(req.model, extendedContext);
+      const { defaultThinking } = getSettings();
       const thinkingLevel = sessionThinkingLevel ?? defaultThinking;
 
       for await (const chunk of runAgentChat({
@@ -544,7 +542,7 @@ export function registerIpc(): void {
         piAuthProvider: listConnections().find((c) => c.slug === req.connectionSlug)?.piAuthProvider,
         turnId: req.id,
         chatSessionId: req.sessionId,
-        model: effectiveModel,
+        model: req.model,
         prompt: req.prompt,
         attachments: req.attachments,
         cwd: req.cwd,

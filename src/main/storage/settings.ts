@@ -15,7 +15,6 @@ export type PermissionMode = 'plan' | 'auto';
 export interface AiSettings {
   defaultModel?: string;
   defaultThinking: ThinkingLevel;
-  extendedContext?: boolean;
   /** Recently-used working directories, most-recent first. Capped at MAX. */
   recentFolders?: string[];
   /** Bound for tool-use loops per message. Defaults to DEFAULT_MAX_TURNS. */
@@ -64,7 +63,6 @@ export const DEFAULT_SESSION_RETENTION_DAYS = 90;
 
 const DEFAULTS: AiSettings = {
   defaultThinking: 'medium',
-  extendedContext: false,
   recentFolders: [],
   maxTurns: DEFAULT_MAX_TURNS,
   defaultPermissionMode: DEFAULT_PERMISSION_MODE,

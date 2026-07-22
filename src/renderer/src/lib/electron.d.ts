@@ -351,7 +351,6 @@ export type ThinkingLevel = 'off' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 export interface AiSettings {
   defaultModel?: string;
   defaultThinking: ThinkingLevel;
-  extendedContext?: boolean;
   recentFolders?: string[];
   maxTurns?: number;
   /** Mode applied to brand-new chats; switch per-session above the composer. */

@@ -265,7 +265,6 @@ type Credential =
 interface AiSettings {
   defaultModel?: string;
   defaultThinking: 'off' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
-  extendedContext?: boolean;
   recentFolders?: string[];
   maxTurns?: number;
   defaultPermissionMode?: PermissionMode;
