@@ -58,20 +58,16 @@ class InMemoryCredentialStore implements CredentialStore {
     return Array.from(this.data.entries()).map(([providerId, c]) => ({ providerId, type: c.type }));
   }
 
+  set(id: string, credential: Credential): void {
+    this.data.set(id, credential);
+  }
+
   async modify(
     id: string,
     fn: (current: Credential | undefined) => Promise<Credential | undefined>,
   ): Promise<Credential | undefined> {
-    const attempt = () => fn(this.data.get(id));
-    let next: Credential | undefined;
-    try {
-      next = await attempt();
-    } catch (err) {
-      if (!isTransientOAuthRefreshError(err)) throw err;
-      log.warn('transient OAuth refresh failure for', id, '— retrying once:', errMessage(err));
-      await delay(OAUTH_REFRESH_RETRY_DELAY_MS);
-      next = await attempt();
-    }
+    const current = this.data.get(id);
+    const next = (await refreshViaMain()) ?? (await refreshWithLocalRetry(fn, current));
     if (next !== undefined) this.data.set(id, next);
     return next;
   }
@@ -82,6 +78,7 @@ class InMemoryCredentialStore implements CredentialStore {
 }
 
 const OAUTH_REFRESH_RETRY_DELAY_MS = 500;
+const DEFAULT_OAUTH_CREDENTIAL_TTL_MS = 30 * 60 * 1000;
 
 function errMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
@@ -94,11 +91,41 @@ function delay(ms: number): Promise<void> {
 function isTransientOAuthRefreshError(err: unknown): boolean {
   return /oauth refresh failed/i.test(errMessage(err));
 }
+
+function toOAuthCredential(cred: { access: string; refresh: string; expires?: number }): OAuthCredential {
+  return {
+    type: 'oauth',
+    access: cred.access,
+    refresh: cred.refresh,
+    expires: cred.expires ?? Date.now() + DEFAULT_OAUTH_CREDENTIAL_TTL_MS,
+  };
+}
+
+async function refreshViaMain(): Promise<OAuthCredential | undefined> {
+  const result = await requestAuthRefresh();
+  return result.credential ? toOAuthCredential(result.credential) : undefined;
+}
+
+async function refreshWithLocalRetry(
+  fn: (current: Credential | undefined) => Promise<Credential | undefined>,
+  current: Credential | undefined,
+): Promise<Credential | undefined> {
+  try {
+    return await fn(current);
+  } catch (err) {
+    if (!isTransientOAuthRefreshError(err)) throw err;
+    log.warn('transient OAuth refresh failure — retrying once:', errMessage(err));
+    await delay(OAUTH_REFRESH_RETRY_DELAY_MS);
+    return fn(current);
+  }
+}
 import { adaptPiEvent } from './event-adapter';
 import { createPiWebFetchTool, createPiWebSearchTool } from './web-tools';
 import { connectMcpServers, closeMcpClients } from './mcp-tools';
 import { createPiAgentTool } from '../agent/backends/pi/agent-tool';
 import type {
+  MsgAuthRefreshRequest,
+  MsgAuthRefreshResult,
   MsgAuthRequired,
   MsgEvent,
   MsgFatalError,
@@ -245,6 +272,7 @@ interface State {
     string,
     { resolve: (r: MsgCollaborationResponse) => void }
   >;
+  pendingAuthRefresh: Map<string, { resolve: (r: MsgAuthRefreshResult) => void }>;
   planManager?: PlanManager;
   /** Adapted MCP tools from connected mcp-backed extensions, appended to every
    *  session build (init + model-switch recreate). */
@@ -278,6 +306,7 @@ const state: State = {
   autonomyLevel: 50, // Default, will be overridden by init
   pendingPermission: new Map(),
   pendingCollaboration: new Map(),
+  pendingAuthRefresh: new Map(),
   appendArr: [],
   availableAgents: [],
   mcpTools: [],
@@ -326,22 +355,14 @@ function applyVisionInput<M extends { input?: readonly ('text' | 'image')[] }>(
 /* ============================================================ */
 
 async function writeAuthCredential(
-  store: CredentialStore,
+  store: InMemoryCredentialStore,
   provider: string,
   cred: MsgInit['piAuth']['credential'] | MsgTokenUpdate['credential'],
 ): Promise<void> {
   if (cred.type === 'oauth') {
-    await store.modify(provider, async () => ({
-      type: 'oauth',
-      access: cred.access,
-      refresh: cred.refresh,
-      expires: cred.expires ?? Date.now() + 30 * 60 * 1000,
-    } as OAuthCredential));
+    store.set(provider, toOAuthCredential(cred));
   } else {
-    await store.modify(provider, async () => ({
-      type: 'api_key',
-      key: cred.key,
-    } as Credential));
+    store.set(provider, { type: 'api_key', key: cred.key } as Credential);
   }
 }
 
@@ -449,6 +470,27 @@ function instrumentTool(
         { parentContext: state.turnContext },
       ),
   };
+}
+
+const AUTH_REFRESH_MAIN_TIMEOUT_MS = 10_000;
+
+function requestAuthRefresh(): Promise<MsgAuthRefreshResult> {
+  return new Promise((resolve) => {
+    const requestId = `authref_${Date.now().toString(36)}_${Math.random()
+      .toString(36)
+      .slice(2, 8)}`;
+    const settle = (result: MsgAuthRefreshResult) => {
+      if (!state.pendingAuthRefresh.delete(requestId)) return;
+      resolve(result);
+    };
+    state.pendingAuthRefresh.set(requestId, { resolve: settle });
+    setTimeout(
+      () => settle({ type: 'auth_refresh_result', requestId, error: 'main did not respond in time' }),
+      AUTH_REFRESH_MAIN_TIMEOUT_MS,
+    );
+    const req: MsgAuthRefreshRequest = { type: 'auth_refresh_request', requestId };
+    send(req);
+  });
 }
 
 function requestPermission(
@@ -2160,6 +2202,14 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
       const pending = state.pendingCollaboration.get(msg.requestId);
       if (!pending) return;
       state.pendingCollaboration.delete(msg.requestId);
+      pending.resolve(msg);
+      return;
+    }
+
+    case 'auth_refresh_result': {
+      const pending = state.pendingAuthRefresh.get(msg.requestId);
+      if (!pending) return;
+      state.pendingAuthRefresh.delete(msg.requestId);
       pending.resolve(msg);
       return;
     }

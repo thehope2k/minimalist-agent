@@ -253,6 +253,7 @@ export type SubprocessInbound =
   | MsgLlmQuery
   | MsgSteer
   | MsgPlanApprovalResponse
+  | MsgAuthRefreshResult
   | MsgShutdown;
 
 /* ============================================================ */
@@ -314,12 +315,18 @@ export interface MsgSessionIdUpdate {
   piSessionId: string;
 }
 
-/**
- * Subprocess-detected auth failure — main refreshes the token and pushes
- * `token_update`. The user prompt itself is NOT auto-retried (Pi has
- * already errored the turn); we surface a typed error so the UI can
- * offer a one-click retry.
- */
+export interface MsgAuthRefreshRequest {
+  type: 'auth_refresh_request';
+  requestId: string;
+}
+
+export interface MsgAuthRefreshResult {
+  type: 'auth_refresh_result';
+  requestId: string;
+  credential?: { access: string; refresh: string; expires?: number };
+  error?: string;
+}
+
 export interface MsgAuthRequired {
   type: 'auth_required';
   turnId?: string;
@@ -418,6 +425,7 @@ export type SubprocessOutbound =
   | MsgEvent
   | MsgPreToolUseRequest
   | MsgCollaborationRequest
+  | MsgAuthRefreshRequest
   | MsgPlanCreated
   | MsgPlanUpdated
   | MsgPhaseUpdated

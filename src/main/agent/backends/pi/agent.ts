@@ -50,6 +50,8 @@ import {writeJsonLine} from '../../../../shared/jsonl-stdin';
 
 const log = createLogger('pi');
 import type {
+  MsgAuthRefreshRequest,
+  MsgAuthRefreshResult,
   MsgAuthRequired,
   MsgCollaborationRequest,
   MsgEvent,
@@ -677,6 +679,37 @@ async function handleOutbound(
         });
       } catch (e) {
         log.error('failed to persist piSessionId:', e);
+      }
+      return;
+    }
+
+    case 'auth_refresh_request': {
+      const m = msg as MsgAuthRefreshRequest;
+      try {
+        const fresh = await resolveAuthForSlug(handle.connectionSlug);
+        const result: MsgAuthRefreshResult =
+          fresh.type === 'copilot_oauth'
+            ? {
+                type: 'auth_refresh_result',
+                requestId: m.requestId,
+                credential: {
+                  access: fresh.accessToken,
+                  refresh: fresh.refreshToken ?? '',
+                  expires: fresh.expiresAt,
+                },
+              }
+            : {
+                type: 'auth_refresh_result',
+                requestId: m.requestId,
+                error: `Connection "${handle.connectionSlug}" has no OAuth credential to refresh`,
+              };
+        send(handle, result);
+      } catch (e) {
+        send(handle, {
+          type: 'auth_refresh_result',
+          requestId: m.requestId,
+          error: e instanceof Error ? e.message : String(e),
+        });
       }
       return;
     }

@@ -24,6 +24,8 @@ import { invalidateContextFileCache } from '../agent/system-prompt';
 import type { PermissionMode, ThinkingLevel } from './settings';
 import { findProjectForPath } from './projects';
 import { createLogger } from '../logger';
+import { listConnections } from './connections';
+import { forkSdkSession } from './session-fork';
 
 const log = createLogger('sessions');
 
@@ -483,10 +485,10 @@ export function unpinAsset(sessionId: string, scopedSlug: string): SessionMeta {
  * Returns the new `SessionMeta`, or `null` when the parent or message id
  * can't be resolved.
  */
-export function branchSession(
+export async function branchSession(
   parentId: string,
   upToMessageId: string,
-): SessionMeta | null {
+): Promise<SessionMeta | null> {
   const parent = loadSession(parentId);
   if (!parent) return null;
 
@@ -528,6 +530,23 @@ export function branchSession(
     save(metaSchema(id), meta);
   } else {
     writeFileSync(messagesPath(id), '', 'utf-8');
+  }
+
+  const cutoffMs = parent.messages[cutIdx]!.createdAt;
+  const providerType = parent.meta.connectionSlug
+    ? listConnections().find((c) => c.slug === parent.meta.connectionSlug)?.providerType
+    : undefined;
+
+  const forkedSdkSessionId = await forkSdkSession({
+    providerType,
+    parentSessionDir: join(Paths.sessionsDir(), parentId),
+    parentSdkSessionId: parent.meta.sdkSessionId,
+    newSessionDir: join(Paths.sessionsDir(), id),
+    cutoffMs,
+  });
+  if (forkedSdkSessionId) {
+    meta.sdkSessionId = forkedSdkSessionId;
+    save(metaSchema(id), meta);
   }
 
   return meta;

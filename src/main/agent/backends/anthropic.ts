@@ -289,21 +289,22 @@ function writeAnthropicOAuthCredentials(accessToken: string): string {
 }
 
 /**
- * Check whether a Claude SDK session JSONL file exists under CLAUDE_CONFIG_DIR/projects/.
- * Returns false when the file is missing so callers can warn before a silent context reset.
+ * Locate a Claude SDK session's JSONL transcript file under
+ * CLAUDE_CONFIG_DIR/projects/. Returns undefined when no project directory
+ * has a matching file.
  */
-function findClaudeSession(sessionId: string): boolean {
+export function findClaudeSessionFile(sessionId: string): string | undefined {
   const projectsDir = join(Paths.claudeConfigDir(), 'projects');
-  if (!existsSync(projectsDir)) return false;
+  if (!existsSync(projectsDir)) return undefined;
   try {
     for (const projectDir of readdirSync(projectsDir)) {
       const candidate = join(projectsDir, projectDir, `${sessionId}.jsonl`);
-      if (existsSync(candidate)) return true;
+      if (existsSync(candidate)) return candidate;
     }
   } catch {
     // ignore unreadable dirs
   }
-  return false;
+  return undefined;
 }
 
 export function envForAnthropicAuth(auth: AnthropicAuth): Record<string, string> {
@@ -354,7 +355,7 @@ export async function* runAnthropicChat(
 
   // Warn when a stored resume ID has no matching session file — the SDK
   // silently falls back to a new session, so this surfaces the context loss.
-  if (req.resumeSessionId && !findClaudeSession(req.resumeSessionId)) {
+  if (req.resumeSessionId && !findClaudeSessionFile(req.resumeSessionId)) {
     log.warn(`resume session ${req.resumeSessionId} not found — starting fresh`);
   }
 
