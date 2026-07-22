@@ -62,7 +62,16 @@ class InMemoryCredentialStore implements CredentialStore {
     id: string,
     fn: (current: Credential | undefined) => Promise<Credential | undefined>,
   ): Promise<Credential | undefined> {
-    const next = await fn(this.data.get(id));
+    const attempt = () => fn(this.data.get(id));
+    let next: Credential | undefined;
+    try {
+      next = await attempt();
+    } catch (err) {
+      if (!isTransientOAuthRefreshError(err)) throw err;
+      log.warn('transient OAuth refresh failure for', id, '— retrying once:', errMessage(err));
+      await delay(OAUTH_REFRESH_RETRY_DELAY_MS);
+      next = await attempt();
+    }
     if (next !== undefined) this.data.set(id, next);
     return next;
   }
@@ -70,6 +79,20 @@ class InMemoryCredentialStore implements CredentialStore {
   async delete(id: string): Promise<void> {
     this.data.delete(id);
   }
+}
+
+const OAUTH_REFRESH_RETRY_DELAY_MS = 500;
+
+function errMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isTransientOAuthRefreshError(err: unknown): boolean {
+  return /oauth refresh failed/i.test(errMessage(err));
 }
 import { adaptPiEvent } from './event-adapter';
 import { createPiWebFetchTool, createPiWebSearchTool } from './web-tools';
@@ -1679,6 +1702,24 @@ function flushPendingTurnDone(): void {
 /*  prompt                                                        */
 /* ============================================================ */
 
+async function runSessionPrompt(msg: MsgPrompt, alreadyRetried = false): Promise<void> {
+  try {
+    await state.session!.prompt(msg.message, {
+      images: msg.images?.map((i) => ({
+        mimeType: i.mimeType,
+        data: i.data,
+      })) as never,
+    });
+  } catch (e) {
+    if (!alreadyRetried && isTransientOAuthRefreshError(e)) {
+      log.warn('turn failed on transient OAuth refresh — retrying once:', errMessage(e));
+      await delay(OAUTH_REFRESH_RETRY_DELAY_MS);
+      return runSessionPrompt(msg, true);
+    }
+    throw e;
+  }
+}
+
 async function handlePrompt(msg: MsgPrompt): Promise<void> {
   if (!state.session) fatal('Received prompt before init');
 
@@ -1736,12 +1777,7 @@ async function handlePrompt(msg: MsgPrompt): Promise<void> {
 
   const run = async (): Promise<void> => {
     try {
-      await state.session!.prompt(msg.message, {
-        images: msg.images?.map((i) => ({
-          mimeType: i.mimeType,
-          data: i.data,
-        })) as never,
-      });
+      await runSessionPrompt(msg);
       // The prompt (including any post-turn auto-compaction) has fully settled;
       // emit the deferred terminal so the compaction events that arrived after
       // agent_end have already reached the renderer ahead of turn_done.
