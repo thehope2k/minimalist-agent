@@ -382,7 +382,7 @@ function applyEvent(msg: ChatMessage, evt: ChatStreamEvent): ChatMessage {
  */
 export interface CompactionNotice {
   at: number;
-  status: 'success' | 'failed';
+  status: 'running' | 'success' | 'failed';
   trigger: 'manual' | 'auto' | 'threshold' | 'overflow';
   preTokens?: number;
   postTokens?: number;
@@ -735,6 +735,15 @@ export function useChat(
     if (!window.api?.chat) return;
 
     return window.api.chat.onEvent((evt: ChatStreamEvent) => {
+      // Must never fall through to applyEvent — can fire mid-turn.
+      if (evt.type === 'compaction_progress') {
+        setLastCompaction({
+          at: Date.now(),
+          status: 'running',
+          trigger: evt.trigger ?? 'manual',
+        });
+        return;
+      }
       // Compaction is between-turn metadata, not part of any message.
       if (evt.type === 'compaction') {
         setLastCompaction({

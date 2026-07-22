@@ -360,6 +360,18 @@ function applyVisionInput<M extends { input?: readonly ('text' | 'image')[] }>(
   return { ...model, input: model.input.filter((i) => i !== 'image') };
 }
 
+/** Overrides `model.baseUrl` with the credential's actual resolved endpoint —
+ *  compaction/branch-summary in pi-coding-agent bypass ModelRuntime's own
+ *  per-request override and would otherwise use the static catalog default. */
+async function withResolvedBaseUrl<M extends Model<Api>>(
+  model: M,
+  modelRuntime: ModelRuntime,
+): Promise<M> {
+  const resolution = await modelRuntime.getAuth(model).catch(() => undefined);
+  const baseUrl = resolution?.auth.baseUrl;
+  return baseUrl && baseUrl !== model.baseUrl ? { ...model, baseUrl } : model;
+}
+
 /* ============================================================ */
 /*  Auth storage seeding + refresh                               */
 /* ============================================================ */
@@ -1381,6 +1393,7 @@ async function handleInit(msg: MsgInit): Promise<void> {
         `Check your connection settings or agent configuration.`
       );
     }
+    model = await withResolvedBaseUrl(model, modelRuntime);
   }
   // Honour the app's live image capability: when the active model can't accept
   // images (e.g. enterprise Copilot policy), drop 'image' from the model's
@@ -1992,15 +2005,15 @@ function detectPlanPreservationInstructions(): string | undefined {
   );
 }
 
-function resolveSummarizerModel(): Model<Api> | undefined {
+async function resolveSummarizerModel(): Promise<Model<Api> | undefined> {
   const modelId = state.init?.compactionSettings?.summarizerModel;
-  if (!modelId || !state.init) return undefined;
+  if (!modelId || !state.init || !state.modelRuntime) return undefined;
   const resolved = getBuiltinModel(state.init.piAuthProvider as 'github-copilot', modelId as never);
   if (!resolved) {
     log.warn(`Configured summarizer model "${modelId}" could not be resolved — using the active chat model instead.`);
     return undefined;
   }
-  return resolved;
+  return withResolvedBaseUrl(resolved, state.modelRuntime);
 }
 
 async function handleManualCompact(msg: MsgManualCompact): Promise<void> {
@@ -2018,7 +2031,7 @@ async function handleManualCompact(msg: MsgManualCompact): Promise<void> {
     const planInstructions = detectPlanPreservationInstructions();
     const combinedInstructions = [msg.customInstructions, planInstructions].filter(Boolean).join('\n\n') || undefined;
 
-    const summarizerModel = resolveSummarizerModel();
+    const summarizerModel = await resolveSummarizerModel();
     const originalModel = state.model;
     if (summarizerModel) {
       try {
@@ -2223,16 +2236,17 @@ async function handleLlmQuery(msg: MsgLlmQuery): Promise<void> {
       send(out);
       return;
     }
+    const resolvedModel = state.modelRuntime ? await withResolvedBaseUrl(model, state.modelRuntime) : model;
     
     const result = await tracedCompletion(
       {
-        model: (model as { id?: string }).id ?? req.model ?? state.model?.id ?? '',
+        model: (resolvedModel as { id?: string }).id ?? req.model ?? state.model?.id ?? '',
         callKind: 'llm_query',
         inputMessages: [{ role: 'user', content: req.userPrompt }],
         systemInstructions: req.systemPrompt,
       },
       () =>
-        piModels.completeSimple(model, {
+        piModels.completeSimple(resolvedModel, {
           systemPrompt: req.systemPrompt,
           messages: [
             {
@@ -2321,7 +2335,7 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
             return;
           }
           
-          // ModelRuntime resolves regional endpoint per-request.
+          newModel = await withResolvedBaseUrl(newModel, state.modelRuntime!);
           // Re-apply the image-input gate for the newly selected model so a
           // mid-conversation switch to a non-vision model downgrades existing
           // image history instead of erroring.

@@ -642,7 +642,7 @@ export function createPiAgentTool(ctx: AgentToolContext): ToolDefinition<typeof 
 
         // Spawn and initialize subprocess
         handle = await spawnAgentSubprocess(agent, task, ctx, signal, (event, execId) => {
-          if (event.type === 'tool_progress' || event.type === 'compaction') return;
+          if (event.type === 'tool_progress' || event.type === 'compaction' || event.type === 'compaction_progress') return;
           emitSubagentUpdate(onUpdate, {
             kind: 'subagent',
             execId,

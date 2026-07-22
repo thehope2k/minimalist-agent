@@ -54,9 +54,8 @@ export const DEFAULT_CONTEXT_FILE_NAMES: readonly string[] = [
 export const DEFAULT_MAX_TURNS = 50;
 export const DEFAULT_PERMISSION_MODE: PermissionMode = 'auto';
 
-/** Mirrors the Pi SDK's own compaction defaults. */
 export const DEFAULT_COMPACTION_ENABLED = true;
-export const DEFAULT_COMPACTION_RESERVE_TOKENS = 16384;
+export const DEFAULT_COMPACTION_RESERVE_TOKENS = 100_000;
 export const DEFAULT_COMPACTION_KEEP_RECENT_TOKENS = 20000;
 
 /** Default autonomy level (0-100) when in auto mode. */

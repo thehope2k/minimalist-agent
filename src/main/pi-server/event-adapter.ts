@@ -417,19 +417,11 @@ export function adaptPiEvent(event: AgentSessionEvent): AgentChatEvent[] {
       return out;
     }
 
-    // Compaction: emitted on _end_ (matching the Claude SDK path) so the
-    // renderer shows the CompactionNotice toast and the CompactionDivider.
-    // _start_ shows a transient "compacting..." status line instead of the
-    // event itself. Aborted (user-cancelled) compactions produce no boundary.
+    // compaction_start fires mid-turn for threshold/overflow triggers, so a
+    // text_delta here would glue onto the assistant's in-progress message.
     case 'compaction_start': {
       const e = event as { reason: 'manual' | 'threshold' | 'overflow' };
-      const text =
-        e.reason === 'overflow'
-          ? '\n_…recovering from context overflow…_\n'
-          : e.reason === 'manual'
-            ? '\n_…compacting (manual)…_\n'
-            : '\n_…compacting older messages…_\n';
-      out.push({ type: 'text_delta', text });
+      out.push({ type: 'compaction_progress', phase: 'started', trigger: e.reason });
       return out;
     }
 
@@ -476,10 +468,7 @@ export function adaptPiEvent(event: AgentSessionEvent): AgentChatEvent[] {
       return out;
 
     case 'summarization_retry_scheduled':
-      out.push({
-        type: 'text_delta',
-        text: '\n_…retrying summarization after a transient error…_\n',
-      });
+      out.push({ type: 'compaction_progress', phase: 'retrying' });
       return out;
 
     default:

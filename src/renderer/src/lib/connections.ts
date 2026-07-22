@@ -3,7 +3,7 @@
 export const DEFAULT_MAX_TURNS = 50;
 /** Mirrors main's storage/settings.ts — duplicated since renderer can't
  *  import main-process modules. */
-export const DEFAULT_COMPACTION_RESERVE_TOKENS = 16384;
+export const DEFAULT_COMPACTION_RESERVE_TOKENS = 100_000;
 export const DEFAULT_COMPACTION_KEEP_RECENT_TOKENS = 20000;
 //
 // All persistence lives in `app.getPath('userData')`, accessed via the IPC

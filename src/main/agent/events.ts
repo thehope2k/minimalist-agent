@@ -98,14 +98,6 @@ export type AgentChatEvent =
       usage?: AgentUsage;
     }
   | {
-      /**
-       * Per-API-call usage on each `assistant` message in the turn. Unlike
-       * the aggregate `turn_done.usage` (which sums across rounds for cost
-       * accounting and can exceed the context window on tool-heavy turns),
-       * this represents one single API call — the real prompt size at that
-       * moment. Renderer overwrites on each event so the latest is the
-       * current "context fullness" reading.
-       */
       type: 'assistant_usage';
       usage: AgentUsage;
     }
@@ -121,6 +113,11 @@ export type AgentChatEvent =
       readFiles?: string[];
       modifiedFiles?: string[];
       errorMessage?: string;
+    }
+  | {
+      type: 'compaction_progress';
+      phase: 'started' | 'retrying';
+      trigger?: 'manual' | 'threshold' | 'overflow';
     }
   | { type: 'error'; error: AgentError; sessionId?: string };
 

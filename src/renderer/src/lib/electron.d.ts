@@ -262,6 +262,12 @@ export type ChatStreamEvent =
       usage: AgentUsage;
     }
   | ({ id: string; type: 'compaction' } & CompactionMeta)
+  | {
+      id: string;
+      type: 'compaction_progress';
+      phase: 'started' | 'retrying';
+      trigger?: 'manual' | 'threshold' | 'overflow';
+    }
   | { id: string; type: 'error'; error: AgentError; sessionId?: string };
 
 export interface CopilotQuota {

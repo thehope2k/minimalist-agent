@@ -111,6 +111,32 @@ reuses.
 - A fork must never fail because context-summarization failed — always
   fall back to a clean cutoff.
 
+## Known limitation: mid-turn token bursts can outrun compaction
+
+The SDK checks whether to compact after each completed round within a turn,
+not continuously. A single round's tool-call results (large file reads,
+several parallel tool calls resolving together) can add far more tokens than
+`reserveTokens` accounts for, appended *between* one check and the next
+request. If that burst is large enough, the very next request can jump past
+both the auto-compact threshold and the model's hard token cap in one hop —
+the request fails outright (`model_max_prompt_tokens_exceeded`) instead of
+triggering a graceful compaction, and the context badge's last-known-good
+number (accurate as of the last completed round) will look like it "didn't
+catch up" — it never had visibility into the burst.
+
+`reserveTokens`'s default was raised specifically to reduce how often this
+can happen (a bigger buffer means a bigger burst is needed to still overrun
+the cap), but it is a mitigation, not a fix — an unusually large burst can
+still outrun any fixed reserve. A structural fix would need one of:
+
+- Tracking cumulative tokens as tool results stream in in-process and
+  proactively aborting + compacting before a request that would exceed the
+  hard cap (real feature work, not yet built).
+- Bounding how much a single round's *combined* tool output can inject,
+  independent of per-tool truncation (today's truncation is per-call, e.g.
+  `web_fetch`'s ~60k-char cap — nothing caps the sum across several tool
+  calls in one round).
+
 ## Explicitly out of scope
 
 - Per-provider/per-model override of the compaction thresholds.
