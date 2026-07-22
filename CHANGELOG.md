@@ -5,6 +5,32 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.18.0] — 2026-07-23
+
+Adds manual compaction control with live progress, plus fixes for Copilot context limits and stuck agent turns.
+
+### Added
+
+**Manual compaction**
+
+- New manual "compact now" action that summarizes the conversation on demand, preserving in-progress multi-phase plans (CreatePlan/ReportPhaseProgress/RevisePlan state) so they survive the summary intact
+- Live progress indicator while compaction is running, instead of only showing a result after it finishes
+- Per-connection compaction settings (reserve/keep-recent tokens, optional dedicated summarizer model)
+- Raised the default token reserve so a mid-turn burst is less likely to hit the model's hard prompt cap
+- Compaction and branch-summary calls now use the correct regional endpoint for your credentials
+- Simplified compaction status UI — the in-progress toast no longer duplicates the persistent success/failure marker, and context usage now reflects the latest compaction estimate
+
+**Branching**
+
+- Branch menu now offers "Branch (clean)" / "Branch (summarized)", with a tooltip explaining the tradeoff (summarized costs an extra AI call) — summarized branches carry forward full context via a new optional mode on the underlying branch action
+
+### Fixed
+
+- Copilot models: use the SDK's model catalog for context window size instead of the live API value, which could understate it for some models
+- Agent turns no longer hang indefinitely if a subprocess stalls or an auth token refresh gets stuck — both now time out and surface a clear error, and Stop now cancels a stuck refresh too
+
+---
+
 ## [1.17.3] — 2026-07-22
 
 Bug fixes.
