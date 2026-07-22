@@ -5,6 +5,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.17.2] — 2026-07-22
+
+Quality of life improvements and bug fixes.
+
+### Changed
+
+- AI-generated commit messages are more reliable and better written — the generator no longer leaks its own reasoning into the message, chooses commit type more consistently, and keeps commit bodies focused on the solution instead of narrating the diff
+
+### Fixed
+
+- Branching a session now correctly forks the underlying transcript (Pi or Claude) instead of silently resetting context for the branched session
+- Reduced spurious session drops caused by transient OAuth token refresh failures by retrying once before giving up
+
+---
+
 ## [1.17.1] — 2026-07-20
 
 Bug fixes.
