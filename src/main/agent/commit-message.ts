@@ -12,51 +12,98 @@ import { createLogger } from '../logger';
 
 const log = createLogger('commit-message');
 
-const ANTHROPIC_HAIKU  = 'claude-haiku-4-5-20251001';
-const PI_DEFAULT_MINI  = 'claude-haiku-4.5';
+const ANTHROPIC_COMMIT_MODEL = 'claude-sonnet-4-6';
+const PI_COMMIT_MODEL       = 'claude-sonnet-4.6';
 const COMMIT_MAX_TOKENS = 1500;
 
-const SYSTEM_PROMPT = `You are a git commit message generator for professional software engineers.
+const SYSTEM_PROMPT = `You are a git commit message generator. Your entire reply is piped straight
+into "git commit -m" — there is no chat, no human reviewing your reasoning,
+no follow-up turn. Every character you output becomes part of the commit,
+including mistakes.
 
-FORMAT:
+=== OUTPUT CONTRACT ===
+Reply starts at character 1 with the commit type and ends after the last
+body line. Nothing may precede it (no analysis of the diff, no "Let me...",
+no restating the task) and nothing may follow it (no offers to revise,
+no questions, no sign-off).
+
+  BAD:
+    Based on the diff, two things changed: auth and caching. Let me write
+    a commit that covers both.
+
+    feat(auth,cache): add token refresh and response caching
+
+  GOOD:
+    feat(auth,cache): add token refresh and response caching
+
+=== FORMAT ===
   <type>(<scope>): <description>   ← max 72 chars, required
   <blank line>
   <body>                           ← optional, only for complex changes
 
 TYPES: feat, fix, refactor, docs, chore, style, test, perf, build, ci
 
+=== CHOOSING A TYPE ===
+Classify by what actually changed, not by the words used to describe it:
+  - New capability or user-visible behavior      → feat
+  - Broken/incorrect behavior corrected           → fix
+  - Faster or lighter, same behavior              → perf
+  - Internal restructuring, same behavior         → refactor
+  - Tooling, dependencies, build/CI config        → build / ci
+  - Docs, formatting-only, or test-only changes   → docs / style / test
+
+"Optimization" is perf. "Enhancement" or "improvement" is feat when a user
+or API consumer gains something new, refactor when nothing external changes.
+
 RULES:
 - First line: specific and technical — name the key concept, feature, or component.
-- Body: short prose; omit when the first line is self-explanatory.
-  For changesets touching 4+ files or covering multiple concerns, a concise body
-  IS expected — summarise what was added, changed, or fixed at a high level.
+- Body: short prose bullets; omit when the first line is self-explanatory.
+  For changesets touching 4+ files or covering multiple concerns, a concise
+  body IS expected — summarize what was added, changed, or fixed, at a level
+  a reviewer skimming "git log" would want.
+- Body altitude: describe the SOLUTION, not the diff. Say what changed at the
+  concept/component level ("what" and "why"), not line-by-line implementation
+  detail ("how") — a reviewer wants the shape of the change, not a narrated
+  diff. Only go into a specific technical detail when it IS the key point of
+  the commit (a tricky fix, a non-obvious workaround, a breaking behavior
+  change) — otherwise keep each bullet to one general idea.
 
-USER CONTEXT PRIORITY:
-  When the user provides context about the change's purpose (e.g., "fix login timeout",
-  "add dark mode support"), use it to:
-  1. ACCURATELY choose the commit type (fix/feat/refactor/etc.) — user intent overrides code inference
-  2. Identify the scope and affected component
-  3. Frame the description from the user's perspective
-  
-  Example: If user says "fix login bug" but the diff shows new features,
-  recognize it's actually fixing broken functionality → type = "fix", not "feat".
+    TOO DETAILED (diff-narration):
+      - changed timeout from 3000ms to 8000ms in retryConfig.ts line 42
+      - added a new field lastRefreshAt to the TokenState interface
+      - wrapped the fetch call in a try/catch that logs to log.warn
 
-MULTI-REPO RULE (when changes span multiple repositories):
-  Write ONE message at the product/feature/business level — what shared purpose
-  do ALL repos serve? Do NOT list repo names, do NOT add per-repo sections.
-  The message should be meaningful when committed to ANY of the repos individually.
-  Example: if frontend adds OAuth UI and backend adds OAuth endpoints, write
+    RIGHT ALTITUDE (solution-level, detail only where it matters):
+      - increase retry timeout to tolerate slow OAuth providers
+      - track token refresh timestamps to avoid redundant refreshes
+      - swallow transient network errors instead of crashing the sync loop
+- Plain text only: no markdown headers, no wrapping quotes, no code fences.
+
+=== USER CONTEXT PRIORITY ===
+When the user states the change's purpose (e.g. "fix login timeout", "add
+dark mode support"), that intent overrides code-only inference:
+  1. Choose the commit type from user intent, not just the diff shape.
+  2. Identify the scope and affected component from the diff.
+  3. Frame the description from the user's stated perspective.
+
+  Example: user says "fix login bug" but the diff adds new branches —
+  recognize it's fixing broken behavior → type = "fix", not "feat".
+
+=== MULTI-REPO RULE ===
+When changes span multiple repositories, write ONE message at the product/
+feature level — the shared purpose ALL repos serve. Do not list repo names
+or add per-repo sections; the message must read correctly committed to any
+one of the repos individually.
+
+  Example: frontend adds OAuth UI, backend adds OAuth endpoints →
   "feat(auth): implement OAuth login" — not "frontend: ..., backend: ...".
 
-AMEND RULE:
-  You are amending an existing commit. The previous message and its diff are shown
-  for context. If ADDITIONAL STAGED CHANGES are present, you MUST produce a new
-  message that covers BOTH the original commit AND the new changes as a single
-  coherent whole. Do not reproduce the old message unchanged — synthesize a
-  new message that describes the complete final state of the commit.
-  If there are no additional staged changes, keep the original message as-is.
-
-Reply with ONLY the commit message. No preamble, no explanations, no markdown, no quotes.`;
+=== AMEND RULE ===
+You are amending an existing commit; the previous message and its diff are
+shown for context. If ADDITIONAL STAGED CHANGES are present, produce a new
+message describing the complete final state of the commit — original intent
+plus the new changes as one coherent whole, not the old message unchanged.
+If there are no additional staged changes, keep the original message as-is.`;
 
 export interface GenerateCommitMessageArgs {
   auth: ResolvedAuth;
@@ -69,25 +116,50 @@ export interface GenerateCommitMessageArgs {
   cwd?: string;
 }
 
-/** Strip preambles, keep multi-line structure intact (unlike validateTitle). */
+/**
+ * Strip wrapping quotes/code-fences and known conversational filler, keeping
+ * multi-line body structure intact (unlike validateTitle, which flattens to
+ * one line). Runs a few passes since models sometimes stack fillers
+ * ("Sure, here's a commit message: feat: ...").
+ */
 function validateCommitMessage(raw: string): string | null {
   let s = raw.trim();
   if (!s) return null;
 
-  // Strip wrapping quotes.
-  if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
-    s = s.slice(1, -1).trim();
+  s = stripCodeFence(s);
+  s = stripWrappingQuotes(s);
+
+  for (let i = 0; i < 3; i++) {
+    const before = s;
+    s = stripLeadingFiller(s);
+    s = stripWrappingQuotes(s);
+    if (s === before) break;
   }
-  // Strip conversational preambles ("Here's a commit message:", "Sure!", etc.)
-  s = s.replace(
-    /^(here(?:'s| is)(?: a| the)?(?:\s+(?:suggested|conventional|commit))?\s+(?:commit\s+)?(?:message)?|sure|of course|certainly|ok(?:ay)?)\s*[:,\-—!.]?\s*/i,
-    '',
-  ).trim();
 
   // Hard cap: 1200 chars (generous for type + body).
   if (s.length > 1200) s = s.slice(0, 1200).trimEnd();
 
   return s || null;
+}
+
+function stripCodeFence(s: string): string {
+  const match = /^```[\w-]*\n([\s\S]*?)\n?```$/.exec(s.trim());
+  return match ? match[1].trim() : s;
+}
+
+function stripWrappingQuotes(s: string): string {
+  if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
+    return s.slice(1, -1).trim();
+  }
+  return s;
+}
+
+/** Known leading filler phrases models emit despite the OUTPUT CONTRACT. */
+const LEADING_FILLER_RE =
+  /^(here(?:'s| is)(?: a| the)?(?:\s+(?:suggested|conventional|commit))?\s+(?:commit\s+)?(?:message)?|sure|of course|certainly|ok(?:ay)?|based on (?:the |this )?(?:diff|changes?|staged changes)|looking at (?:the |this )?(?:diff|changes?)|let me (?:write|draft|create|generate)[^.\n]*)\s*[:,.\-—!]?\s*/i;
+
+function stripLeadingFiller(s: string): string {
+  return s.replace(LEADING_FILLER_RE, '').trim();
 }
 
 export async function generateCommitMessage(
@@ -157,7 +229,7 @@ ${args.diffContext}`;
       const model =
         args.model ??
         listConnections().find((c) => c.slug === args.connectionSlug)?.defaultModel ??
-        PI_DEFAULT_MINI;
+        PI_COMMIT_MODEL;
       const result = await runPiMiniCompletion({
         connectionSlug: args.connectionSlug,
         auth: args.auth,
@@ -194,7 +266,7 @@ ${args.diffContext}`;
   const anthropicAuth: AnthropicAuth = args.auth;
   const options = {
     ...getDefaultOptions({ envOverrides: envForAnthropicAuth(anthropicAuth) }),
-    model: args.model ?? ANTHROPIC_HAIKU,
+    model: args.model ?? ANTHROPIC_COMMIT_MODEL,
     maxTurns: 1,
     permissionMode: 'bypassPermissions' as const,
     tools: [],
