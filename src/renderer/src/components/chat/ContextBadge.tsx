@@ -138,7 +138,10 @@ function lastTurnUsage(messages: ChatMessage[]): TurnUsage | null {
 
 function countCompactions(messages: ChatMessage[]): number {
   return messages.filter(
-    (m) => m.role === 'assistant' && m.markerKind === 'compaction',
+    (m) =>
+      m.role === 'assistant' &&
+      m.markerKind === 'compaction' &&
+      m.compactionMeta?.status !== 'failed',
   ).length;
 }
 

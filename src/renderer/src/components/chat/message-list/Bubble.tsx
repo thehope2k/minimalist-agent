@@ -242,17 +242,17 @@ function UserMessageActions({ text, attachments, onBranch }: {
           }
           menuWidth={200}
           items={[
-            { label: 'Fork clean', icon: GitBranch, onSelect: () => void handleBranch(false) },
+            { label: 'Branch (clean)', icon: GitBranch, onSelect: () => void handleBranch(false) },
             {
-              label: 'Fork with context',
+              label: 'Branch (summarized)',
               icon: Sparkles,
               onSelect: () => void handleBranch(true),
             },
           ]}
           footer={
             <div className="px-2 pb-1.5 pt-1 text-[10px] leading-snug text-fg-subtle">
-              “With context” summarizes the abandoned messages into the new branch
-              instead of dropping them.
+              Clean drops the messages after this point. Summarized keeps a compressed
+              memory of them instead (uses an extra AI call, takes a few seconds).
             </div>
           }
         />

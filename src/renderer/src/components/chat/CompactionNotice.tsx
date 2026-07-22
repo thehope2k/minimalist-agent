@@ -24,7 +24,7 @@ export function CompactionNotice({ notice }: { notice: Notice | null }) {
     return (
       <div className="mx-auto mb-2 flex w-fit items-center gap-1.5 rounded-md border border-red-500/30 bg-red-500/10 px-2.5 py-1 text-xs text-red-400">
         <TriangleAlert className="h-3 w-3" strokeWidth={1.75} />
-        <span>Compaction failed{notice.errorMessage ? `: ${notice.errorMessage}` : ''}</span>
+        <span>{notice.errorMessage || 'Compaction failed'}</span>
       </div>
     );
   }
