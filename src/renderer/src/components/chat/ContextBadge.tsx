@@ -9,33 +9,39 @@ type Props = {
 };
 
 /**
- * Compact "context used" chip — shows the LIVE portion of context
- * (input_tokens + cache_creation_input_tokens) vs the model's context window.
+ * Compact "context used" chip — shows the model's CURRENT total context
+ * occupancy (input + output + cache_read + cache_create of the most recent
+ * completed round) vs its context window.
  *
- * Why NOT cache_read: cache_read tokens are served from server-side prompt
- * cache and don't exert real pressure on the context limit. Showing
- * (input + cache_create) / window gives an honest "how close to trouble?"
- * signal rather than an inflated total that includes already-compacted history.
+ * This deliberately mirrors the pi SDK's own compaction trigger
+ * (`calculateContextTokens` in @earendil-works/pi-coding-agent) token for
+ * token: input+output+cacheRead+cacheWrite from the last round is exactly
+ * what the SDK compares against `contextWindow - reserveTokens` to decide
+ * whether to auto-compact. Showing the same number here means the badge's
+ * percentage and "auto-compacts near ~X%" line are a reliable preview of
+ * the SDK's own decision, not a separate approximation — including staying
+ * in sync when compaction actually shrinks the last-round usage.
  *
- * The full breakdown (live + cached + total + compaction count) is in the
- * hover tooltip.
+ * cache_read tokens ARE counted (unlike an earlier version of this badge):
+ * they are still real tokens the model had to hold in context for this
+ * request, they just weren't billed as fresh input. The instantaneous
+ * "how much was new this round" pressure signal lives in the tooltip
+ * instead of the headline number.
  */
 export function ContextBadge({ messages, contextWindow, className }: Props) {
   const usage = lastTurnUsage(messages);
   if (!usage || contextWindow <= 0) return null;
 
-  // Live = tokens the model actually had to process fresh this turn.
-  // This is the meaningful pressure metric — not the cached portion.
-  // Fall back to total when live is zero (e.g. backend doesn't report cache
-  // breakdown) so the badge always shows something useful.
+  // Same formula as the SDK's calculateContextTokens(): the full size of
+  // what the next request will carry, as of the last completed round.
+  const contextTokens = usage.total;
   const live = usage.input + usage.cacheCreate;
-  const displayed = live > 0 ? live : usage.total;
-  const pct = Math.min(100, Math.round((displayed / contextWindow) * 100));
+  const pct = Math.min(100, Math.round((contextTokens / contextWindow) * 100));
 
   const COMPACTION_RESERVE_TOKENS = 16384;
   const compactAt = Math.max(0, contextWindow - COMPACTION_RESERVE_TOKENS);
   const compactPct = Math.round((compactAt / contextWindow) * 100);
-  const willCompactSoon = displayed >= compactAt;
+  const willCompactSoon = contextTokens >= compactAt;
 
   const compactionCount = countCompactions(messages);
 
@@ -50,22 +56,19 @@ export function ContextBadge({ messages, contextWindow, className }: Props) {
     <div className="space-y-1.5 font-mono text-[11px]">
       <div className="space-y-0.5">
         <div className="font-semibold">
-          {live > 0
-            ? `Live: ${live.toLocaleString()} / ${contextWindow.toLocaleString()} tokens`
-            : `Total: ${usage.total.toLocaleString()} / ${contextWindow.toLocaleString()} tokens`}
+          Context: {contextTokens.toLocaleString()} / {contextWindow.toLocaleString()} tokens
         </div>
         <div className="pl-2 text-fg-muted">
-          <div>↳ new tokens: {usage.input.toLocaleString()}</div>
-          <div>↳ cache writes: {usage.cacheCreate.toLocaleString()}</div>
+          <div>↳ input: {usage.input.toLocaleString()}</div>
+          <div>↳ output: {usage.output.toLocaleString()}</div>
+          <div>↳ cache read: {usage.cacheRead.toLocaleString()}</div>
+          <div>↳ cache write: {usage.cacheCreate.toLocaleString()}</div>
         </div>
       </div>
       <div className="text-fg-muted whitespace-nowrap">
-        Cached: {usage.cacheRead.toLocaleString()}{' '}
-        <span className="opacity-70">(served from prompt cache)</span>
+        New this round: {live.toLocaleString()}{' '}
+        <span className="opacity-70">(not served from cache)</span>
       </div>
-      {live > 0 && (
-        <div className="text-fg-muted">Total: {usage.total.toLocaleString()}</div>
-      )}
       <div className="border-t border-border pt-1.5">
         {compactionCount > 0 ? (
           <div className="text-fg-muted">Compacted {compactionCount}× — older history summarised</div>
@@ -93,7 +96,7 @@ export function ContextBadge({ messages, contextWindow, className }: Props) {
       <span>{pct}%</span>
       <span className="opacity-60">·</span>
       <span>
-        {compact(displayed)} / {compact(contextWindow)}
+        {compact(contextTokens)} / {compact(contextWindow)}
       </span>
       {compactionCount > 0 && (
         <>
@@ -108,6 +111,7 @@ export function ContextBadge({ messages, contextWindow, className }: Props) {
 
 interface TurnUsage {
   input: number;
+  output: number;
   cacheRead: number;
   cacheCreate: number;
   total: number;
@@ -120,11 +124,12 @@ function lastTurnUsage(messages: ChatMessage[]): TurnUsage | null {
     const u = m.latestCallUsage ?? m.usage;
     if (!u) continue;
     const input = u.inputTokens ?? 0;
+    const output = u.outputTokens ?? 0;
     const cacheRead = u.cacheReadInputTokens ?? 0;
     const cacheCreate = u.cacheCreationInputTokens ?? 0;
-    const total = input + cacheRead + cacheCreate;
+    const total = input + output + cacheRead + cacheCreate;
     if (total > 0) {
-      return { input, cacheRead, cacheCreate, total };
+      return { input, output, cacheRead, cacheCreate, total };
     }
   }
   return null;
