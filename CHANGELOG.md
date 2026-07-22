@@ -5,6 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.18.1] — 2026-07-23
+
+Settings UI cleanup and removal of a defunct extended-context toggle.
+
+### Changed
+
+- Reordered the AI settings panel: Connections now appears above New Chat Defaults (renamed from "Default"), and section headers support inline action buttons like "Add Connection"
+
+### Fixed
+
+- Removed the "Extended context (1M)" toggle, which relied on a beta header Anthropic retired — 1M context is now automatic and unconditional for supported models, so the setting no longer did anything
+
+---
+
 ## [1.18.0] — 2026-07-23
 
 Adds manual compaction control with live progress, plus fixes for Copilot context limits and stuck agent turns.
