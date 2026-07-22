@@ -117,7 +117,65 @@ export function AIPanel() {
   return (
     <div className="mx-auto max-w-190 px-8 py-10">
       <SettingsSection
-        title="Default"
+        title="Connections"
+        subtitle="Manage your AI provider connections."
+        action={
+          <Button
+            variant="outline"
+            icon={Plus}
+            onClick={() => setDialogOpen(true)}
+            className="bg-elevated/40"
+          >
+            Add Connection
+          </Button>
+        }
+      >
+        {!encryptionAvailable && connections.length > 0 && (
+          <div className="mb-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-200">
+            OS keychain encryption is unavailable on this machine — API keys and
+            OAuth tokens are stored as <b>plaintext</b> on disk (owner-readable
+            only). Avoid storing long-lived secrets here; prefer a host with a
+            working keychain.
+          </div>
+        )}
+        <div className="space-y-2">
+          {connections.length === 0 ? (
+            <SettingsCard>
+              <div className="px-4 py-6 text-center text-sm text-fg-subtle">
+                No connections yet. Add one to get started.
+              </div>
+            </SettingsCard>
+          ) : (
+            connections.map((c) => (
+              <ConnectionRow
+                key={c.slug}
+                conn={c}
+                isDefault={c.slug === (defaultSlug ?? defaultConn?.slug)}
+                onMakeDefault={() => {
+                  void setDefaultConnection(c.slug);
+                  const stillValid = c.models.some(
+                    (m) => m.id === data?.settings.defaultModel,
+                  );
+                  if (!stillValid) void setDefaultModel(c.defaultModel);
+                }}
+                onDelete={() => {
+                  if (confirm(`Delete connection "${c.name}"?`)) {
+                    void deleteConnection(c.slug);
+                  }
+                }}
+                onTest={() => void testConnection(c)}
+                onReauth={() => setReauthSlug(c.slug)}
+                onRefreshModels={
+                  isRefreshable(c) ? () => void refreshModels(c) : undefined
+                }
+              />
+            ))
+          )}
+        </div>
+      </SettingsSection>
+
+      <SettingsSection
+        title="New Chat Defaults"
         subtitle="Settings for new chats when no workspace override is set."
       >
         <SettingsCard>
@@ -174,60 +232,6 @@ export function AIPanel() {
             }
           />
         </SettingsCard>
-      </SettingsSection>
-
-      <SettingsSection title="Connections" subtitle="Manage your AI provider connections.">
-        {!encryptionAvailable && connections.length > 0 && (
-          <div className="mb-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-200">
-            OS keychain encryption is unavailable on this machine — API keys and
-            OAuth tokens are stored as <b>plaintext</b> on disk (owner-readable
-            only). Avoid storing long-lived secrets here; prefer a host with a
-            working keychain.
-          </div>
-        )}
-        <div className="space-y-2">
-          {connections.length === 0 ? (
-            <SettingsCard>
-              <div className="px-4 py-6 text-center text-sm text-fg-subtle">
-                No connections yet. Add one to get started.
-              </div>
-            </SettingsCard>
-          ) : (
-            connections.map((c) => (
-              <ConnectionRow
-                key={c.slug}
-                conn={c}
-                isDefault={c.slug === (defaultSlug ?? defaultConn?.slug)}
-                onMakeDefault={() => {
-                  void setDefaultConnection(c.slug);
-                  const stillValid = c.models.some(
-                    (m) => m.id === data?.settings.defaultModel,
-                  );
-                  if (!stillValid) void setDefaultModel(c.defaultModel);
-                }}
-                onDelete={() => {
-                  if (confirm(`Delete connection "${c.name}"?`)) {
-                    void deleteConnection(c.slug);
-                  }
-                }}
-                onTest={() => void testConnection(c)}
-                onReauth={() => setReauthSlug(c.slug)}
-                onRefreshModels={
-                  isRefreshable(c) ? () => void refreshModels(c) : undefined
-                }
-              />
-            ))
-          )}
-
-          <Button
-            variant="outline"
-            icon={Plus}
-            onClick={() => setDialogOpen(true)}
-            className="bg-elevated/40"
-          >
-            Add Connection
-          </Button>
-        </div>
       </SettingsSection>
 
       <SettingsSection title="Agent" subtitle="Tool-loop bound and prompt customization for new chats.">

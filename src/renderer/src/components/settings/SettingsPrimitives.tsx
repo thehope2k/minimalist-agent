@@ -3,17 +3,22 @@ import { Toggle } from '@/components/ui';
 export function SettingsSection({
   title,
   subtitle,
+  action,
   children,
 }: {
   title: string;
   subtitle?: string;
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <section className="mt-8 first:mt-0">
-      <div className="mb-3">
-        <h3 className="text-base font-semibold text-fg">{title}</h3>
-        {subtitle && <p className="text-sm text-fg-subtle">{subtitle}</p>}
+      <div className="mb-3 flex items-center justify-between gap-4">
+        <div>
+          <h3 className="text-base font-semibold text-fg">{title}</h3>
+          {subtitle && <p className="text-sm text-fg-subtle">{subtitle}</p>}
+        </div>
+        {action && <div className="shrink-0">{action}</div>}
       </div>
       {children}
     </section>

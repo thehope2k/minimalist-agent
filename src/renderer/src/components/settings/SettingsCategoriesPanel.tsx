@@ -10,11 +10,11 @@ import {
 import { cn } from '@/lib/utils';
 
 export const SETTINGS_CATEGORIES = [
-  { id: 'app',         label: 'App',         hint: 'Notifications and updates',     icon: Cog },
   { id: 'ai',          label: 'AI',          hint: 'Model, thinking, connections',  icon: Sparkles },
-  { id: 'projects',    label: 'Projects',    hint: 'Group sessions by project',     icon: Folders },
   { id: 'preferences', label: 'Preferences', hint: 'Name, timezone, language, notes',  icon: User },
+  { id: 'projects',    label: 'Projects',    hint: 'Group sessions by project',     icon: Folders },
   { id: 'terminal',    label: 'Terminal',    hint: 'Shell, font, scrollback',           icon: SquareTerminal },
+  { id: 'app',         label: 'App',         hint: 'Notifications and updates',     icon: Cog },
   { id: 'telemetry',   label: 'Telemetry',   hint: 'OpenTelemetry tracing',             icon: Activity },
   { id: 'shortcuts',    label: 'Shortcuts',   hint: 'Keyboard shortcut reference',       icon: Keyboard },
 ] as const;
