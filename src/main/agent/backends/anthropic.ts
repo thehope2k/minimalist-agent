@@ -479,7 +479,10 @@ export async function* runAnthropicChat(
     }) as AsyncIterable<SDKMessage>) {
       const { events, terminal } = adaptSdkMessage(msg, state);
       for (const e of events) yield e;
-      if (terminal) return;
+      if (terminal && steerable) {
+        steerable.finish();
+        if (req.turnId) inputsByTurnId.delete(req.turnId);
+      }
     }
     if (!state.streamedText && state.fallbackText) {
       yield { type: 'text_complete', text: state.fallbackText };

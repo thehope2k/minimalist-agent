@@ -80,6 +80,12 @@ export interface StoredMessage {
   stopReason?: string;
   /** Token counts reported by the SDK on this turn's `result` message. */
   usage?: MessageUsage;
+  /**
+   * Per-call usage from the latest API round inside the turn. Distinct from
+   * `usage` (the turn's aggregate across all rounds), which can exceed the
+   * context window on tool-heavy turns.
+   */
+  latestCallUsage?: MessageUsage;
   /** Total wall-clock duration of the turn in milliseconds. */
   durationMs?: number;
   createdAt: number;

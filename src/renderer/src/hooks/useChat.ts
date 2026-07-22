@@ -743,7 +743,13 @@ export function useChat(
         });
         
         const sid = turnIdToSession.current.get(evt.id);
-        if (!sid) return;
+        if (!sid) {
+          log.warn(
+            'Compaction event for unknown turn — marker dropped, toast still shown:',
+            { turnId: evt.id, trigger: evt.trigger, preTokens: evt.preTokens },
+          );
+          return;
+        }
 
         // Deduplicate: Pi SDK can emit multiple compaction_end events for
         // the same turn (on retries, errors, etc.). Create a unique key

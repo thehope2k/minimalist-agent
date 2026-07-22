@@ -71,7 +71,8 @@ export interface ChatMessage {
    * attaches `usage` to every assistant message it returns; we keep the
    * most recent so the context badge can report the real prompt size on
    * the *current* call (vs the aggregate sum which exceeds the window
-   * for tool-heavy turns). Live-only — not persisted.
+   * for tool-heavy turns). Persisted as its own field so it survives
+   * session reload — see `usage` for the round-trip counterpart.
    */
   latestCallUsage?: AgentUsage;
   /** Origin tag — drives a contextual chip above user bubbles. */
@@ -122,6 +123,7 @@ export function chatFromStored(stored: StoredMessage): ChatMessage {
     errorInfo: stored.errorInfo,
     stopReason: stored.stopReason,
     usage: stored.usage,
+    latestCallUsage: stored.latestCallUsage,
     durationMs: stored.durationMs,
     intentTag: stored.intentTag,
     attachments: stored.attachments,
@@ -156,7 +158,8 @@ export function chatToStored(msg: ChatMessage): StoredMessage {
     error: msg.error,
     errorInfo: msg.errorInfo,
     stopReason: msg.stopReason,
-    usage: msg.latestCallUsage ?? msg.usage,
+    usage: msg.usage,
+    latestCallUsage: msg.latestCallUsage,
     durationMs: msg.durationMs,
     intentTag: msg.intentTag,
     attachments: msg.attachments,
