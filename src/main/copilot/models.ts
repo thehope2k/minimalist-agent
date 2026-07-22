@@ -69,10 +69,9 @@ function dropReason(raw: RawCopilotModel): string {
   return 'unknown';
 }
 
-function getRecommendations(raw: RawCopilotModel): string[] {
+function getRecommendations(raw: RawCopilotModel, ctx: number): string[] {
   const recommendations: string[] = [];
-  
-  const ctx = raw.capabilities?.limits?.max_context_window_tokens ?? 128_000;
+
   if (ctx >= 200000) {
     recommendations.push('long-context');
   }
@@ -97,6 +96,15 @@ function getRecommendations(raw: RawCopilotModel): string[] {
   return recommendations;
 }
 
+/** Prefers the SDK's own model catalog contextWindow (what's actually
+ *  enforced) over Copilot's live /models value, which can understate it. */
+function resolveContextWindow(raw: RawCopilotModel): number {
+  const catalogWindow = (
+    GITHUB_COPILOT_MODELS as Record<string, { contextWindow?: number }>
+  )[raw.id]?.contextWindow;
+  return catalogWindow ?? raw.capabilities?.limits?.max_context_window_tokens ?? 128_000;
+}
+
 function modelDefFrom(raw: RawCopilotModel): ModelDef | null {
   if (!raw?.id) return null;
   // Only surface models the user's tier has enabled.
@@ -105,12 +113,10 @@ function modelDefFrom(raw: RawCopilotModel): ModelDef | null {
   // gating on `capabilities.type` (which excluded valid completion-style
   // chat models like Codex variants), drop the few known non-chat prefixes.
   if (NON_CHAT_PREFIXES.some((p) => raw.id.startsWith(p))) return null;
-  // NEW: Respect GitHub's curation — only models GitHub marks as user-facing.
   if (!raw.model_picker_enabled) return null;
-  // NEW: Skip preview/experimental models.
   if (raw.preview) return null;
 
-  const ctx = raw.capabilities?.limits?.max_context_window_tokens ?? 128_000;
+  const ctx = resolveContextWindow(raw);
   const family = raw.capabilities?.family ?? '';
   const description = describe(raw, family);
   
@@ -124,7 +130,7 @@ function modelDefFrom(raw: RawCopilotModel): ModelDef | null {
   const supportsReasoning =
     (GITHUB_COPILOT_MODELS as Record<string, { reasoning?: boolean }>)[raw.id]?.reasoning ?? false;
   const category = raw.model_picker_category;
-  const recommendedFor = getRecommendations(raw);
+  const recommendedFor = getRecommendations(raw, ctx);
 
   return {
     id: raw.id,
@@ -209,7 +215,6 @@ export async function fetchCopilotModels(
     | { models?: RawCopilotModel[] }
     | RawCopilotModel[];
   
-  // DEBUG: Log the raw API response
   log.debug('Raw API Response:', JSON.stringify(body, null, 2));
   
   const list: RawCopilotModel[] = Array.isArray(body)
@@ -246,23 +251,20 @@ export async function fetchCopilotModels(
   if (dropped.length) {
     log.debug('Dropped models:', dropped);
   }
-  // NEW: Sort by category (powerful → versatile → lightweight) then by name.
-  // Build a category map from raw data to apply consistent ordering.
+  const categoryOrder: Record<string, number> = { powerful: 0, versatile: 1, lightweight: 2 };
   const categoryMap = new Map<string, number>();
   for (const raw of list) {
     if (raw?.id && raw.model_picker_category) {
-      const order = raw.model_picker_category === 'powerful' ? 0 : raw.model_picker_category === 'versatile' ? 1 : 2;
-      categoryMap.set(raw.id, order);
+      categoryMap.set(raw.id, categoryOrder[raw.model_picker_category]);
     }
   }
   out.sort((a, b) => {
-    const catA = categoryMap.get(a.id) ?? 999;
-    const catB = categoryMap.get(b.id) ?? 999;
+    const catA = categoryMap.get(a.id) ?? Object.keys(categoryOrder).length;
+    const catB = categoryMap.get(b.id) ?? Object.keys(categoryOrder).length;
     if (catA !== catB) return catA - catB;
     return a.name.localeCompare(b.name);
   });
-  
-  // DEBUG: Log the final curated list
+
   log.debug('Final curated list (sorted):', JSON.stringify(out, null, 2));
   
   return out;
