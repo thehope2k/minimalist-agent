@@ -62,6 +62,7 @@ import type {
   MsgMcpStatus,
   MsgPreToolUseRequest,
   MsgPrompt,
+  MsgReady,
   MsgSessionIdUpdate,
   MsgSetModel,
   MsgSetThinkingLevel,
@@ -429,6 +430,16 @@ function spawnSubprocess(req: PiChatRequest, systemPrompt: string): SubprocessHa
   return handle;
 }
 
+/** Persists the Pi SDK's transcript-file id on session meta, stable for a
+ *  session's lifetime unless an extension forks/rotates it mid-conversation. */
+function persistPiSessionId(chatSessionId: string, piSessionId: string): void {
+  try {
+    updateSessionMeta(chatSessionId, { sdkSessionId: piSessionId });
+  } catch (e) {
+    log.error('failed to persist piSessionId:', e);
+  }
+}
+
 async function handleOutbound(
   msg: SubprocessOutbound,
   handle: SubprocessHandle,
@@ -436,9 +447,12 @@ async function handleOutbound(
   rejectReady: (e: Error) => void,
 ): Promise<void> {
   switch (msg.type) {
-    case 'ready':
+    case 'ready': {
+      const m = msg as MsgReady;
+      if (m.piSessionId) persistPiSessionId(handle.chatSessionId, m.piSessionId);
       resolveReady();
       return;
+    }
 
     case 'event': {
       const m = msg as MsgEvent;
@@ -672,14 +686,7 @@ async function handleOutbound(
 
     case 'session_id_update': {
       const m = msg as MsgSessionIdUpdate;
-      try {
-        // Persist on session meta so a fresh subprocess can resume.
-        updateSessionMeta(handle.chatSessionId, {
-          sdkSessionId: m.piSessionId,
-        });
-      } catch (e) {
-        log.error('failed to persist piSessionId:', e);
-      }
+      persistPiSessionId(handle.chatSessionId, m.piSessionId);
       return;
     }
 

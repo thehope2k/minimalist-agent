@@ -284,6 +284,9 @@ interface State {
   shuttingDown?: boolean;
   /** OTel span + context for the in-flight turn; child spans nest under it. */
   turnSpan?: Span;
+  /** Last `sdkSessionId` pushed to main via `session_id_update` — avoids
+   *  redundant sends when the underlying transcript file hasn't rotated. */
+  lastSentSdkSessionId?: string;
   turnContext?: Context;
   /** OTel span for the in-flight provider/model request (one per assistant
    *  message; a tool loop produces several per turn). */
@@ -1664,13 +1667,15 @@ function forwardEvent(piEvent: AgentSessionEvent): void {
     }
   }
 
-  if (t === 'session_info_changed') {
+  // Transcript-file id is stable per session unless an extension forks it
+  // mid-conversation; re-check after every settled turn to catch that.
+  if (t === 'turn_end' || t === 'agent_end') {
     const id = state.session?.sessionId;
-    if (id) {
+    if (id && id !== state.lastSentSdkSessionId) {
+      state.lastSentSdkSessionId = id;
       const u: MsgSessionIdUpdate = { type: 'session_id_update', piSessionId: id };
       send(u);
     }
-    return;
   }
 
   // Detect auth-required errors *before* the generic adapter so main can

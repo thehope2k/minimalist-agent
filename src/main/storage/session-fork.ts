@@ -59,7 +59,14 @@ function forkPiTranscript(input: ForkSdkSessionInput): void {
   try {
     const manager = SessionManager.open(transcriptFile, input.newSessionDir);
     const leafId = lastEntryIdBefore(manager.getEntries(), input.cutoffMs);
-    if (leafId) manager.createBranchedSession(leafId);
+    if (!leafId) {
+      log.warn(
+        `no entries before cutoff (${new Date(input.cutoffMs).toISOString()}) in ${transcriptFile} — ` +
+          'branch will start with an empty SDK transcript',
+      );
+      return;
+    }
+    manager.createBranchedSession(leafId);
   } catch (e) {
     log.error('failed to fork Pi transcript:', e);
   }
