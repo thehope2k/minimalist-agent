@@ -44,6 +44,11 @@ export type MessageInputProps = {
    * input clears optimistically and re-fills only on a non-ok result.
    */
   onSteer?: (message: string, attachments: DraftAttachment[]) => Promise<{ ok: boolean; reason?: string }>;
+  /** Manually trigger compaction outside of any turn (Pi backend only). */
+  onManualCompact?: (
+    connectionSlug: string,
+    customInstructions?: string,
+  ) => Promise<{ ok: boolean; reason?: string }>;
   /** Active session id (null until first send creates one). */
   sessionId: string | null;
   /** Current session title — shown in the Info popover. */

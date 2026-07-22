@@ -1,6 +1,10 @@
 // Renderer-side facade over the main-process connections / settings store.
 
 export const DEFAULT_MAX_TURNS = 50;
+/** Mirrors main's storage/settings.ts — duplicated since renderer can't
+ *  import main-process modules. */
+export const DEFAULT_COMPACTION_RESERVE_TOKENS = 16384;
+export const DEFAULT_COMPACTION_KEEP_RECENT_TOKENS = 20000;
 //
 // All persistence lives in `app.getPath('userData')`, accessed via the IPC
 // bridge in window.api. We cache loaded values per-process so consumers can
@@ -170,6 +174,17 @@ export async function setDefaultPermissionMode(
   mode: PermissionMode,
 ): Promise<void> {
   const next = { ...snapshot().settings, defaultPermissionMode: mode };
+  await window.api.settings.save(next);
+  await reload();
+}
+
+export async function setCompactionSettings(
+  value: NonNullable<AiSettings['compactionSettings']>,
+): Promise<void> {
+  const next = {
+    ...snapshot().settings,
+    compactionSettings: { ...snapshot().settings.compactionSettings, ...value },
+  };
   await window.api.settings.save(next);
   await reload();
 }

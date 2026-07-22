@@ -35,6 +35,15 @@ export interface AiSettings {
    * `null` disables auto-cleanup. Defaults to DEFAULT_SESSION_RETENTION_DAYS.
    */
   sessionRetentionDays?: number | null;
+  /** Context compaction tuning for the Pi backend. Undefined fields fall
+   *  back to the SDK's own defaults. */
+  compactionSettings?: {
+    enabled?: boolean;
+    reserveTokens?: number;
+    keepRecentTokens?: number;
+    /** Applies only to the manual "Compact now" trigger. */
+    summarizerModel?: string;
+  };
 }
 
 export const DEFAULT_CONTEXT_FILE_NAMES: readonly string[] = [
@@ -44,6 +53,11 @@ export const DEFAULT_CONTEXT_FILE_NAMES: readonly string[] = [
 ];
 export const DEFAULT_MAX_TURNS = 50;
 export const DEFAULT_PERMISSION_MODE: PermissionMode = 'auto';
+
+/** Mirrors the Pi SDK's own compaction defaults. */
+export const DEFAULT_COMPACTION_ENABLED = true;
+export const DEFAULT_COMPACTION_RESERVE_TOKENS = 16384;
+export const DEFAULT_COMPACTION_KEEP_RECENT_TOKENS = 20000;
 
 /** Default autonomy level (0-100) when in auto mode. */
 export const DEFAULT_AUTONOMY_LEVEL = 50;

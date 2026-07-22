@@ -1,6 +1,7 @@
 import type {
   AgentError,
   ChatRole,
+  CompactionMeta,
   StoredAttachment,
   StoredMessage,
   StoredMessagePart,
@@ -84,12 +85,7 @@ export interface ChatMessage {
    * 'compaction' (a between-turns boundary chip).
    */
   markerKind?: 'compaction';
-  compactionMeta?: {
-    trigger: 'manual' | 'auto';
-    preTokens: number;
-    postTokens?: number;
-    durationMs?: number;
-  };
+  compactionMeta?: CompactionMeta;
   /**
    * Original creation timestamp from StoredMessage — preserved so that the
    * zombie-correction path can write it back without bumping meta.lastMessageAt

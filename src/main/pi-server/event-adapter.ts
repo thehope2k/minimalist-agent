@@ -417,27 +417,52 @@ export function adaptPiEvent(event: AgentSessionEvent): AgentChatEvent[] {
       return out;
     }
 
-    // Compaction: emit a structured compaction event on _end_ (matching the
-    // Claude SDK path) so the renderer shows the CompactionNotice toast and
-    // the CompactionDivider in the message list. We ignore _start_ because
-    // we need the result metadata (tokensBefore) which only arrives at end.
-    // Aborted compactions produce no boundary.
-    case 'compaction_start':
+    // Compaction: emitted on _end_ (matching the Claude SDK path) so the
+    // renderer shows the CompactionNotice toast and the CompactionDivider.
+    // _start_ shows a transient "compacting..." status line instead of the
+    // event itself. Aborted (user-cancelled) compactions produce no boundary.
+    case 'compaction_start': {
+      const e = event as { reason: 'manual' | 'threshold' | 'overflow' };
+      const text =
+        e.reason === 'overflow'
+          ? '\n_…recovering from context overflow…_\n'
+          : e.reason === 'manual'
+            ? '\n_…compacting (manual)…_\n'
+            : '\n_…compacting older messages…_\n';
+      out.push({ type: 'text_delta', text });
       return out;
+    }
 
     case 'compaction_end': {
       const e = event as {
         reason: 'manual' | 'threshold' | 'overflow';
-        result?: { tokensBefore?: number };
+        result?: {
+          tokensBefore?: number;
+          estimatedTokensAfter?: number;
+          summary?: string;
+          details?: { readFiles?: string[]; modifiedFiles?: string[] };
+        };
         aborted: boolean;
+        errorMessage?: string;
       };
-      if (!e.aborted) {
+      if (e.aborted) return out;
+      if (e.result) {
         out.push({
           type: 'compaction',
-          trigger: e.reason === 'manual' ? 'manual' : 'auto',
-          preTokens: e.result?.tokensBefore ?? 0,
-          // postTokens not surfaced by the Pi SDK; the UI gracefully shows
-          // "Compacted older turns" without a savings figure in that case.
+          status: 'success',
+          trigger: e.reason,
+          preTokens: e.result.tokensBefore ?? 0,
+          postTokens: e.result.estimatedTokensAfter,
+          summary: e.result.summary,
+          readFiles: e.result.details?.readFiles,
+          modifiedFiles: e.result.details?.modifiedFiles,
+        });
+      } else {
+        out.push({
+          type: 'compaction',
+          status: 'failed',
+          trigger: e.reason,
+          errorMessage: e.errorMessage ?? 'Compaction failed for an unknown reason.',
         });
       }
       return out;
@@ -447,6 +472,13 @@ export function adaptPiEvent(event: AgentSessionEvent): AgentChatEvent[] {
       out.push({
         type: 'text_delta',
         text: '\n_…retrying after a transient error…_\n',
+      });
+      return out;
+
+    case 'summarization_retry_scheduled':
+      out.push({
+        type: 'text_delta',
+        text: '\n_…retrying summarization after a transient error…_\n',
       });
       return out;
 

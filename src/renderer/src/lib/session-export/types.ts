@@ -97,7 +97,13 @@ export interface ExportTurn {
 
 export type ExportRow =
   | { kind: 'turn'; turn: ExportTurn }
-  | { kind: 'compaction'; trigger?: 'manual' | 'auto' };
+  | {
+      kind: 'compaction';
+      status?: 'success' | 'failed';
+      trigger?: 'manual' | 'auto' | 'threshold' | 'overflow';
+      summary?: string;
+      errorMessage?: string;
+    };
 
 export interface ExportMeta {
   title: string;

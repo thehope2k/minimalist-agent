@@ -16,7 +16,7 @@ export function MessageList({
   onRetry?: () => void;
   isStreaming?: boolean;
   onContinue?: () => void;
-  onBranch?: (messageId: string) => void;
+  onBranch?: (messageId: string, withContext?: boolean) => void;
   sessionId?: string;
   getPlanForMessage?: (sessionId: string | null | undefined, messageId: string) => Plan | null;
 }) {
@@ -35,7 +35,7 @@ export function MessageList({
             isRetrying={m.id === retriableId && !!isStreaming}
             onContinue={onContinue}
             onBranch={m.role === 'user' && !m.isStreaming && onBranch
-              ? () => onBranch(m.id)
+              ? (withContext) => onBranch(m.id, withContext)
               : undefined
             }
             sessionId={sessionId}

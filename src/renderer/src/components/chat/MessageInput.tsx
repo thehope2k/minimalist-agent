@@ -34,6 +34,7 @@ export function MessageInput({
   onSend,
   onAbort,
   onSteer,
+  onManualCompact,
   streamingTurnId,
   sessionId,
   title,
@@ -267,6 +268,7 @@ export function MessageInput({
           messages={messages}
           connection={connection}
           model={model}
+          onManualCompact={onManualCompact}
         />
 
         <div

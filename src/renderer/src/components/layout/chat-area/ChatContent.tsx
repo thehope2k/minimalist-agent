@@ -38,9 +38,13 @@ type Props = {
   onSend: (args: any) => void;
   onAbort: () => void;
   onSteer: any;
+  onManualCompact?: (
+    connectionSlug: string,
+    customInstructions?: string,
+  ) => Promise<{ ok: boolean; reason?: string }>;
   onRetry: () => void;
   onContinue: () => void;
-  onBranch: (id: string) => void;
+  onBranch: (id: string, withContext?: boolean) => void;
   getPlanForMessage: (sessionId: string | null | undefined, messageId: string) => Plan | null;
   findOpen: boolean;
   onFindClose: () => void;
@@ -73,6 +77,7 @@ export function ChatContent({
   onSend,
   onAbort,
   onSteer,
+  onManualCompact,
   onRetry,
   onContinue,
   onBranch,
@@ -169,6 +174,7 @@ export function ChatContent({
             onSend={onSend}
             onAbort={onAbort}
             onSteer={onSteer}
+            onManualCompact={onManualCompact}
             sessionId={activeSessionId ?? sessionId}
             title={title}
             messages={messages}

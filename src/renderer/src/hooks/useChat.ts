@@ -382,9 +382,11 @@ function applyEvent(msg: ChatMessage, evt: ChatStreamEvent): ChatMessage {
  */
 export interface CompactionNotice {
   at: number;
-  trigger: 'manual' | 'auto';
-  preTokens: number;
+  status: 'success' | 'failed';
+  trigger: 'manual' | 'auto' | 'threshold' | 'overflow';
+  preTokens?: number;
   postTokens?: number;
+  errorMessage?: string;
 }
 
 export function useChat(
@@ -666,7 +668,7 @@ export function useChat(
           const idx = msgs.indexOf(msg);
           const prevMsg = idx > 0 ? msgs[idx - 1] : null;
           if (prevMsg && prevMsg.role === 'assistant') {
-            const key = `${sessionId}:${prevMsg.id}:${msg.compactionMeta.preTokens}`;
+            const key = `${sessionId}:${prevMsg.id}:${msg.compactionMeta.status ?? 'success'}:${msg.compactionMeta.preTokens}`;
             seenCompactionEvents.current.add(key);
           }
         }
@@ -737,26 +739,24 @@ export function useChat(
       if (evt.type === 'compaction') {
         setLastCompaction({
           at: Date.now(),
+          status: evt.status ?? 'success',
           trigger: evt.trigger,
           preTokens: evt.preTokens,
           postTokens: evt.postTokens,
+          errorMessage: evt.errorMessage,
         });
         
         const sid = turnIdToSession.current.get(evt.id);
         if (!sid) {
           log.warn(
             'Compaction event for unknown turn — marker dropped, toast still shown:',
-            { turnId: evt.id, trigger: evt.trigger, preTokens: evt.preTokens },
+            { turnId: evt.id, status: evt.status, trigger: evt.trigger, preTokens: evt.preTokens },
           );
           return;
         }
 
-        // Deduplicate: Pi SDK can emit multiple compaction_end events for
-        // the same turn (on retries, errors, etc.). Create a unique key
-        // from session + turn + preTokens to detect duplicates.
-        const eventKey = `${sid}:${evt.id}:${evt.preTokens}`;
+        const eventKey = `${sid}:${evt.id}:${evt.status}:${evt.preTokens}`;
         if (seenCompactionEvents.current.has(eventKey)) {
-          // Already created a marker for this compaction event.
           log.debug('Duplicate compaction event ignored:', eventKey);
           return;
         }
@@ -768,10 +768,15 @@ export function useChat(
           parts: [],
           markerKind: 'compaction',
           compactionMeta: {
+            status: evt.status,
             trigger: evt.trigger,
             preTokens: evt.preTokens,
             postTokens: evt.postTokens,
             durationMs: evt.durationMs,
+            summary: evt.summary,
+            readFiles: evt.readFiles,
+            modifiedFiles: evt.modifiedFiles,
+            errorMessage: evt.errorMessage,
           },
         };
 
@@ -1278,6 +1283,50 @@ export function useChat(
     [],
   );
 
+  /** Manually triggers compaction outside of any turn (Pi backend only). */
+  const triggerManualCompaction = useCallback(
+    async (
+      connectionSlug: string,
+      customInstructions?: string,
+    ): Promise<{ ok: boolean; reason?: string }> => {
+      const sid = activeSessionIdRef.current;
+      if (!sid) return { ok: false, reason: 'no active session' };
+      if (streamingBySession.current.has(sid)) {
+        return { ok: false, reason: 'turn in progress' };
+      }
+
+      const turnId = newId();
+      const placeholder: ChatMessage = {
+        id: turnId,
+        role: 'assistant',
+        parts: [],
+        isStreaming: true,
+        createdAt: Date.now(),
+      };
+      const prev = messagesBySession.current.get(sid) ?? [];
+      const next = [...prev, placeholder];
+      messagesBySession.current.set(sid, next);
+      streamingBySession.current.set(sid, { turnId });
+      turnIdToSession.current.set(turnId, sid);
+      syncStreamingIds();
+      if (sid === activeSessionIdRef.current) {
+        setMessages(next);
+        setIsStreaming(true);
+        setStreamingTurnId(turnId);
+      }
+
+      await window.api.chat.manualCompact({
+        turnId,
+        sessionId: sid,
+        connectionSlug,
+        customInstructions,
+      });
+
+      return { ok: true };
+    },
+    [],
+  );
+
   const abort = useCallback(async () => {
     const sid = activeSessionIdRef.current;
     if (!sid) return;
@@ -1490,6 +1539,8 @@ export function useChat(
     retry,
     /** Mid-turn steer; appends a visible "Injected" user bubble on success. */
     steer,
+    /** Manually trigger the SDK's compaction outside of any turn (Pi backend only). */
+    triggerManualCompaction,
     /** True iff the visible session has a failed turn we can replay. */
     canRetry,
     /** Most recent compaction event (or null) — UI auto-fades it. */

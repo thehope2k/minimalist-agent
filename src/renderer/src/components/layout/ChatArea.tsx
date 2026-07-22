@@ -45,6 +45,7 @@ export function ChatArea({
     abort,
     retry,
     steer,
+    triggerManualCompaction,
     activeSessionId,
     lastCompaction,
     activePlan,
@@ -278,9 +279,10 @@ export function ChatArea({
           onSend={(args) => send({ ...args, cwd: cwd ?? (homedir() || undefined) })}
           onAbort={abort}
           onSteer={steer}
+          onManualCompact={triggerManualCompaction}
           onRetry={handleRetry}
           onContinue={handleContinue}
-          onBranch={(id) => void handleBranch(id)}
+          onBranch={(id, withContext) => void handleBranch(id, withContext)}
           getPlanForMessage={getPlanForMessage}
           findOpen={findOpen}
           onFindClose={() => setFindOpen(false)}

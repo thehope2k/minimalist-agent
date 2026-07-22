@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Check, ChevronsRight, Copy, GitBranch } from 'lucide-react';
+import { Check, ChevronsRight, Copy, GitBranch, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '../../ui';
+import { Button, Menu } from '../../ui';
 import { readAttachmentBase64 } from '@/lib/attachments';
 import type { ChatMessage, MessagePart } from '@/lib/chat';
 import type { Plan, StoredAttachment } from '@/lib/electron';
@@ -34,7 +34,7 @@ export function Bubble({
   onRetry?: () => void;
   isRetrying?: boolean;
   onContinue?: () => void;
-  onBranch?: () => void;
+  onBranch?: (withContext?: boolean) => void;
   sessionId?: string;
   plan?: Plan | null;
 }) {
@@ -175,7 +175,7 @@ function PartView({ part }: { part: MessagePart }) {
 function UserMessageActions({ text, attachments, onBranch }: {
   text: string;
   attachments: StoredAttachment[];
-  onBranch?: () => void;
+  onBranch?: (withContext?: boolean) => void;
 }) {
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
   const [branchState, setBranchState] = useState<'idle' | 'branching'>('idle');
@@ -192,11 +192,11 @@ function UserMessageActions({ text, attachments, onBranch }: {
     }
   };
 
-  const handleBranch = async () => {
+  const handleBranch = async (withContext?: boolean) => {
     if (!onBranch || branchState === 'branching') return;
     setBranchState('branching');
     try {
-      await onBranch();
+      await onBranch(withContext);
     } finally {
       setBranchState('idle');
     }
@@ -223,21 +223,39 @@ function UserMessageActions({ text, attachments, onBranch }: {
         )}
       </button>
       {onBranch && (
-        <button
-          type="button"
-          onClick={() => void handleBranch()}
-          disabled={branchState === 'branching'}
-          className={cn(
-            'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-fg-subtle',
-            'transition-opacity duration-150 hover:bg-elevated hover:text-fg',
-            'opacity-0 group-hover:opacity-100 focus-visible:opacity-100',
-            branchState === 'branching' && 'opacity-60 cursor-wait',
-          )}
-          title="Branch conversation from here"
-        >
-          <GitBranch className="h-3 w-3" strokeWidth={1.75} />
-          <span>{branchState === 'branching' ? 'Branching…' : 'Branch'}</span>
-        </button>
+        <Menu
+          trigger={
+            <button
+              type="button"
+              disabled={branchState === 'branching'}
+              className={cn(
+                'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-fg-subtle',
+                'transition-opacity duration-150 hover:bg-elevated hover:text-fg',
+                'opacity-0 group-hover:opacity-100 focus-visible:opacity-100',
+                branchState === 'branching' && 'opacity-60 cursor-wait',
+              )}
+              title="Branch conversation from here"
+            >
+              <GitBranch className="h-3 w-3" strokeWidth={1.75} />
+              <span>{branchState === 'branching' ? 'Branching…' : 'Branch'}</span>
+            </button>
+          }
+          menuWidth={200}
+          items={[
+            { label: 'Fork clean', icon: GitBranch, onSelect: () => void handleBranch(false) },
+            {
+              label: 'Fork with context',
+              icon: Sparkles,
+              onSelect: () => void handleBranch(true),
+            },
+          ]}
+          footer={
+            <div className="px-2 pb-1.5 pt-1 text-[10px] leading-snug text-fg-subtle">
+              “With context” summarizes the abandoned messages into the new branch
+              instead of dropping them.
+            </div>
+          }
+        />
       )}
     </div>
   );

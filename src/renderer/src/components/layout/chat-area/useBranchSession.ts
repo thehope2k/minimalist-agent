@@ -29,7 +29,7 @@ export function useBranchSession(
   }, [sessionId]);
 
   const handleBranch = useCallback(
-    async (messageId: string) => {
+    async (messageId: string, withContext?: boolean) => {
       if (!sessionId) return;
       const msg = messages.find((m) => m.id === messageId);
       if (!msg || msg.role !== 'user') return;
@@ -42,7 +42,7 @@ export function useBranchSession(
         await Promise.all((msg.attachments ?? []).map((a) => storedToDraft(a)))
       ).filter((d): d is NonNullable<typeof d> => d !== null);
 
-      const meta = await branchSession(sessionId, messageId);
+      const meta = await branchSession(sessionId, messageId, { withContext });
       if (!meta) return;
       // Store the draft + attachments BEFORE navigation
       setAttachmentDraft(meta.id, drafts);

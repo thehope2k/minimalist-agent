@@ -112,10 +112,15 @@ export type AgentChatEvent =
   | {
       /** SDK finished compacting older messages between turns. */
       type: 'compaction';
-      trigger: 'manual' | 'auto';
-      preTokens: number;
+      status: 'success' | 'failed';
+      trigger: 'manual' | 'auto' | 'threshold' | 'overflow';
+      preTokens?: number;
       postTokens?: number;
       durationMs?: number;
+      summary?: string;
+      readFiles?: string[];
+      modifiedFiles?: string[];
+      errorMessage?: string;
     }
   | { type: 'error'; error: AgentError; sessionId?: string };
 
@@ -499,6 +504,7 @@ export function adaptSdkMessage(
       if (sys.subtype === 'compact_boundary' && sys.compact_metadata) {
         events.push({
           type: 'compaction',
+          status: 'success',
           trigger: sys.compact_metadata.trigger ?? 'auto',
           preTokens: sys.compact_metadata.pre_tokens ?? 0,
           postTokens: sys.compact_metadata.post_tokens,

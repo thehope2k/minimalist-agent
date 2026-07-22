@@ -144,6 +144,13 @@ export interface MsgInit {
    * client per entry and exposes their tools as `mcp__<slug>__<tool>`.
    */
   mcpServers?: PiMcpServerConfig[];
+  /** App-level compaction tuning (see AiSettings.compactionSettings). */
+  compactionSettings?: {
+    enabled?: boolean;
+    reserveTokens?: number;
+    keepRecentTokens?: number;
+    summarizerModel?: string;
+  };
 }
 
 export interface MsgPrompt {
@@ -235,6 +242,13 @@ export interface MsgSteer {
   images?: PiPromptImage[];
 }
 
+export interface MsgManualCompact {
+  type: 'manual_compact';
+  /** Synthetic turn id — routes events back through the per-turn EventQueue. */
+  turnId: string;
+  customInstructions?: string;
+}
+
 export interface MsgShutdown {
   type: 'shutdown';
 }
@@ -246,6 +260,7 @@ export type SubprocessInbound =
   | MsgTokenUpdate
   | MsgPreToolUseResponse
   | MsgCollaborationResponse
+  | MsgManualCompact
   | MsgSetModel
   | MsgSetThinkingLevel
   | MsgSetPermissionMode

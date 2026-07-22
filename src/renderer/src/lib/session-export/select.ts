@@ -48,7 +48,13 @@ export function buildExportModel(
 
   for (const msg of messages) {
     if (msg.markerKind === 'compaction') {
-      rows.push({ kind: 'compaction', trigger: msg.compactionMeta?.trigger });
+      rows.push({
+        kind: 'compaction',
+        status: msg.compactionMeta?.status,
+        trigger: msg.compactionMeta?.trigger,
+        summary: msg.compactionMeta?.summary,
+        errorMessage: msg.compactionMeta?.errorMessage,
+      });
       continue;
     }
 
@@ -136,15 +142,13 @@ function convertPart(
   const lower = p.name.toLowerCase();
 
   if (DIFF_TOOLS.has(lower)) {
-    const diff = toDiffPart(p);
-    return diff; // kept in BOTH modes — diffs are outcomes
+    return toDiffPart(p); // kept in BOTH modes — diffs are outcomes
   }
 
   if (mode === 'summary') return null; // generic tools + todos are mechanics
 
   if (lower === 'todowrite') {
-    const todo = toTodoPart(p.input);
-    return todo;
+    return toTodoPart(p.input);
   }
 
   return {

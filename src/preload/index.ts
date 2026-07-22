@@ -193,6 +193,19 @@ type ChatStreamEvent =
       type: 'assistant_usage';
       usage: AgentUsage;
     }
+  | {
+      id: string;
+      type: 'compaction';
+      status: 'success' | 'failed';
+      trigger: 'manual' | 'auto' | 'threshold' | 'overflow';
+      preTokens?: number;
+      postTokens?: number;
+      durationMs?: number;
+      summary?: string;
+      readFiles?: string[];
+      modifiedFiles?: string[];
+      errorMessage?: string;
+    }
   | { id: string; type: 'error'; error: AgentError };
 
 interface CopilotQuota {
@@ -256,6 +269,11 @@ interface AiSettings {
   recentFolders?: string[];
   maxTurns?: number;
   defaultPermissionMode?: PermissionMode;
+  compactionSettings?: {
+    enabled?: boolean;
+    reserveTokens?: number;
+    keepRecentTokens?: number;
+  };
 }
 
 interface TelemetrySettings {
@@ -310,10 +328,15 @@ interface StoredMessage {
   createdAt: number;
   markerKind?: 'compaction';
   compactionMeta?: {
-    trigger: 'manual' | 'auto';
-    preTokens: number;
+    status?: 'success' | 'failed';
+    trigger: 'manual' | 'auto' | 'threshold' | 'overflow';
+    preTokens?: number;
     postTokens?: number;
     durationMs?: number;
+    summary?: string;
+    readFiles?: string[];
+    modifiedFiles?: string[];
+    errorMessage?: string;
   };
 }
 
@@ -491,6 +514,12 @@ const api = {
       attachments?: object[],
     ): Promise<{ ok: boolean; reason?: string }> =>
       ipcRenderer.invoke('chat:steer', { turnId, message, attachments }),
+    manualCompact: (args: {
+      turnId: string;
+      sessionId: string;
+      connectionSlug: string;
+      customInstructions?: string;
+    }): Promise<void> => ipcRenderer.invoke('chat:manualCompact', args),
     generateTitle: (args: {
       connectionSlug: string;
       messages: Array<{ role: 'user' | 'assistant'; content: string }>;
@@ -661,8 +690,12 @@ const api = {
       ipcRenderer.invoke('sessions:updateMeta', id, patch),
     delete: (id: string): Promise<void> =>
       ipcRenderer.invoke('sessions:delete', id),
-    branch: (parentId: string, upToMessageId: string): Promise<unknown> =>
-      ipcRenderer.invoke('sessions:branch', parentId, upToMessageId),
+    branch: (
+      parentId: string,
+      upToMessageId: string,
+      options?: { withContext?: boolean },
+    ): Promise<unknown> =>
+      ipcRenderer.invoke('sessions:branch', parentId, upToMessageId, options),
     revealInFolder: (id: string): Promise<void> =>
       ipcRenderer.invoke('sessions:revealInFolder', id),
     listFiles: (id: string): Promise<unknown[]> =>

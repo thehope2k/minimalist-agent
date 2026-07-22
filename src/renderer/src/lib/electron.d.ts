@@ -261,14 +261,7 @@ export type ChatStreamEvent =
       type: 'assistant_usage';
       usage: AgentUsage;
     }
-  | {
-      id: string;
-      type: 'compaction';
-      trigger: 'manual' | 'auto';
-      preTokens: number;
-      postTokens?: number;
-      durationMs?: number;
-    }
+  | ({ id: string; type: 'compaction' } & CompactionMeta)
   | { id: string; type: 'error'; error: AgentError; sessionId?: string };
 
 export interface CopilotQuota {
@@ -366,6 +359,12 @@ export interface AiSettings {
   contextFileNames?: string[];
   /** Days after which archived sessions are auto-deleted. `null` disables. */
   sessionRetentionDays?: number | null;
+  compactionSettings?: {
+    enabled?: boolean;
+    reserveTokens?: number;
+    keepRecentTokens?: number;
+    summarizerModel?: string;
+  };
 }
 
 export type OtelExporterType = 'file' | 'otlp' | 'console';
@@ -476,12 +475,19 @@ export interface StoredMessage {
    */
   markerKind?: 'compaction';
   /** Populated for `markerKind === 'compaction'`. */
-  compactionMeta?: {
-    trigger: 'manual' | 'auto';
-    preTokens: number;
-    postTokens?: number;
-    durationMs?: number;
-  };
+  compactionMeta?: CompactionMeta;
+}
+
+export interface CompactionMeta {
+  status?: 'success' | 'failed';
+  trigger: 'manual' | 'auto' | 'threshold' | 'overflow';
+  preTokens?: number;
+  postTokens?: number;
+  durationMs?: number;
+  summary?: string;
+  readFiles?: string[];
+  modifiedFiles?: string[];
+  errorMessage?: string;
 }
 
 export interface SessionUsage {
@@ -912,6 +918,13 @@ export interface AppApi {
       message: string,
       attachments?: StoredAttachment[],
     ) => Promise<{ ok: boolean; reason?: string }>;
+    /** Manually triggers compaction outside a turn. Pi backend only. */
+    manualCompact: (args: {
+      turnId: string;
+      sessionId: string;
+      connectionSlug: string;
+      customInstructions?: string;
+    }) => Promise<void>;
     onEvent: (cb: (event: ChatStreamEvent) => void) => () => void;
     onCollaborationRequest: (
       cb: (req: EngagementRequest) => void,
@@ -999,7 +1012,11 @@ export interface AppApi {
     ) => Promise<SessionMeta>;
     truncateFrom: (id: string, firstDroppedId: string) => Promise<number>;
     delete: (id: string) => Promise<void>;
-    branch: (parentId: string, upToMessageId: string) => Promise<SessionMeta | null>;
+    branch: (
+      parentId: string,
+      upToMessageId: string,
+      options?: { withContext?: boolean },
+    ) => Promise<SessionMeta | null>;
     revealInFolder: (id: string) => Promise<void>;
     listFiles: (id: string) => Promise<SessionFileNode[]>;
     revealFile: (absPath: string) => Promise<void>;

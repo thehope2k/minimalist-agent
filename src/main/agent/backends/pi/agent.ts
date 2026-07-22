@@ -45,6 +45,7 @@ import {resolveAuthForSlug} from '../../../auth/resolve';
 import {listConnections} from '../../../storage/connections';
 import {telemetryEnv} from '../../../storage/telemetry';
 import {loadAllAgents} from '../../../agents/storage';
+import {getSettings} from '../../../storage/settings';
 import {createLogger} from '../../../logger';
 import {writeJsonLine} from '../../../../shared/jsonl-stdin';
 
@@ -57,6 +58,7 @@ import type {
   MsgEvent,
   MsgInit,
   MsgLlmQueryResult,
+  MsgManualCompact,
   MsgMiniCompletion,
   MsgMiniCompletionResult,
   MsgMcpStatus,
@@ -424,6 +426,7 @@ function spawnSubprocess(req: PiChatRequest, systemPrompt: string): SubprocessHa
       iconPath: a.iconPath,
     })),
     mcpServers: buildResolvedMcpServers(req.cwd),
+    compactionSettings: getSettings().compactionSettings,
   };
   send(handle, init);
 
@@ -992,6 +995,60 @@ export async function* runPiChat(
   } finally {
     if (req.signal) req.signal.removeEventListener('abort', onAbort);
     handle.permissionContext.delete(req.turnId);
+  }
+}
+
+/* ============================================================ */
+/*  Public API: manual compaction trigger                         */
+/* ============================================================ */
+
+/**
+ * Triggers manual compaction via the persistent Pi subprocess for this chat
+ * session, streaming compaction_start/compaction_end events through a
+ * synthetic per-turn `EventQueue`, like {@link runPiChat} does for a real
+ * turn. Requires a live subprocess for this session.
+ */
+export async function* runPiManualCompact(req: {
+  chatSessionPath: string;
+  turnId: string;
+  customInstructions?: string;
+}): AsyncGenerator<AgentChatEvent> {
+  const handle = handles.get(req.chatSessionPath);
+  if (!handle || handle.child.killed) {
+    yield {
+      type: 'error',
+      error: {
+        code: 'unknown_error',
+        title: 'No active session',
+        message: 'Start a chat turn before compacting — there is no running session to compact yet.',
+        canRetry: false,
+      },
+    };
+    return;
+  }
+
+  const queue = new EventQueue();
+  handle.queues.set(req.turnId, queue);
+
+  const msg: MsgManualCompact = {
+    type: 'manual_compact',
+    turnId: req.turnId,
+    customInstructions: req.customInstructions,
+  };
+  send(handle, msg);
+
+  try {
+    for (;;) {
+      const ev = await queue.next();
+      if (!ev) {
+        yield { type: 'turn_done' };
+        return;
+      }
+      yield ev;
+      if (ev.type === 'turn_done' || ev.type === 'error') return;
+    }
+  } finally {
+    handle.queues.delete(req.turnId);
   }
 }
 

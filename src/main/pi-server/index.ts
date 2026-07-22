@@ -23,6 +23,7 @@ import {
   createAgentSession,
   DefaultResourceLoader,
   SessionManager,
+  SettingsManager,
   ModelRegistry,
   ModelRuntime,
   createBashToolDefinition,
@@ -35,6 +36,7 @@ import {
   type AgentSession,
   type AgentSessionEvent,
   type ToolDefinition,
+  type InlineExtension,
 } from '@earendil-works/pi-coding-agent';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
@@ -132,6 +134,7 @@ import type {
   MsgInit,
   MsgLlmQuery,
   MsgLlmQueryResult,
+  MsgManualCompact,
   MsgMiniCompletion,
   MsgMiniCompletionResult,
   MsgPreToolUseRequest,
@@ -257,6 +260,8 @@ interface State {
   permissionMode: PiPermissionMode;
   autonomyLevel: number;
   currentTurnId?: string;
+  /** Effective compaction settings resolved at session construction. */
+  compactionSettings?: { enabled: boolean; reserveTokens: number; keepRecentTokens: number };
   /** The turn's terminal `turn_done`, buffered until session.prompt() settles.
    *  The pi SDK runs auto-compaction in its post-`agent_end` lifecycle, so the
    *  compaction events arrive after `agent_end`. We hold `turn_done` (which
@@ -291,6 +296,8 @@ interface State {
   /** OTel span for the in-flight provider/model request (one per assistant
    *  message; a tool loop produces several per turn). */
   modelSpan?: Span;
+  /** OTel span for an auto-triggered (threshold/overflow) compaction. */
+  autoCompactionSpan?: Span;
   /** Wall-clock start of the current model span, for time-to-first-token. */
   modelSpanStartMs?: number;
   modelFirstTokenSeen?: boolean;
@@ -1262,6 +1269,28 @@ function buildWrappedTools(
 /*  init                                                          */
 /* ============================================================ */
 
+function compactionObservabilityExtension(): InlineExtension {
+  return {
+    name: 'minimalist-agent-compaction-otel',
+    hidden: true,
+    factory: (pi) => {
+      pi.on('session_before_compact', (event) => {
+        if (event.reason === 'manual' || !isOtelEnabled()) return;
+        const { span } = startSpan('compaction', {
+          attributes: {
+            'gen_ai.operation.name': 'chat',
+            'gen_ai.provider.name': state.init?.piAuthProvider ?? '',
+            'gen_ai.conversation.id': state.init?.sessionId ?? '',
+            'gen_ai.request.model': state.model?.id ?? state.init?.model ?? '',
+            'minimalist_agent.compaction.reason': event.reason,
+          },
+        });
+        state.autoCompactionSpan = span;
+      });
+    },
+  };
+}
+
 async function handleInit(msg: MsgInit): Promise<void> {
   // Bring up tracing (no-op unless MA_OTEL_ENABLED) before any turn runs.
   await initOtel();
@@ -1407,6 +1436,7 @@ async function handleInit(msg: MsgInit): Promise<void> {
     cwd: msg.cwd,
     agentDir,
     appendSystemPrompt: state.appendArr,
+    extensionFactories: [compactionObservabilityExtension()],
   });
   await resourceLoader.reload();
   state.resourceLoader = resourceLoader;
@@ -1419,11 +1449,15 @@ async function handleInit(msg: MsgInit): Promise<void> {
     thinkingLevel: hasCustomEndpoint ? 'minimal' : mapThinkingLevel(msg.thinkingLevel),
     modelRuntime: state.modelRuntime,
     sessionManager,
+    settingsManager: SettingsManager.inMemory({
+      compaction: msg.compactionSettings,
+    }),
     resourceLoader,
     noTools: 'builtin',
     customTools: tools as never,
   });
   state.session = session;
+  state.compactionSettings = session.settingsManager.getCompactionSettings();
   state.unsubscribe = session.subscribe(forwardEvent);
 
   // Set up PlanManager event forwarding
@@ -1703,6 +1737,18 @@ function forwardEvent(piEvent: AgentSessionEvent): void {
     }
   }
 
+  // Aborted (user-cancelled) auto-compactions never produce a `compaction`
+  // chat event (see adaptPiEvent's compaction_end case), so the span opened
+  // in compactionObservabilityExtension would otherwise never be closed —
+  // catch that here directly off the raw SDK event.
+  if (t === 'compaction_end' && (piEvent as { aborted?: boolean }).aborted && state.autoCompactionSpan) {
+    const span = state.autoCompactionSpan;
+    state.autoCompactionSpan = undefined;
+    setAttrs(span, { 'minimalist_agent.compaction.aborted': true });
+    span.setStatus({ code: SpanStatusCode.OK });
+    try { span.end(); } catch { /* */ }
+  }
+
   const turnId = state.currentTurnId;
   const adapted = adaptPiEvent(piEvent);
   for (const ev of adapted) {
@@ -1716,6 +1762,20 @@ function forwardEvent(piEvent: AgentSessionEvent): void {
     }
     const out: MsgEvent = { type: 'event', turnId, event: ev };
     send(out);
+    if (ev.type === 'compaction' && state.autoCompactionSpan) {
+      const span = state.autoCompactionSpan;
+      state.autoCompactionSpan = undefined;
+      setAttrs(span, {
+        'minimalist_agent.compaction.tokens_before': ev.preTokens,
+        'minimalist_agent.compaction.tokens_after': ev.postTokens,
+      });
+      if (ev.status === 'failed') {
+        span.setStatus({ code: SpanStatusCode.ERROR, message: ev.errorMessage });
+      } else {
+        span.setStatus({ code: SpanStatusCode.OK });
+      }
+      try { span.end(); } catch { /* */ }
+    }
     if (ev.type === 'error') {
       // Close any dangling model span before the turn span is ended.
       if (state.modelSpan) {
@@ -1897,6 +1957,129 @@ async function handlePrompt(msg: MsgPrompt): Promise<void> {
     state.turnContext = undefined;
     state.turnAssistantText = undefined;
     state.turnInputAttrs = undefined;
+  }
+}
+
+/* ============================================================ */
+/*  manual_compact                                                 */
+/* ============================================================ */
+
+const PLAN_TRACKING_TOOL_NAMES = new Set(['CreatePlan', 'ReportPhaseProgress', 'RevisePlan']);
+
+function detectPlanPreservationInstructions(): string | undefined {
+  if (!state.session) return undefined;
+  let sawPlanTool = false;
+  for (const entry of state.session.sessionManager.getBranch()) {
+    if (entry.type !== 'message') continue;
+    const content = (entry.message as { content?: unknown }).content;
+    if (!Array.isArray(content)) continue;
+    for (const block of content) {
+      const name = (block as { type?: string; name?: string }).name;
+      if ((block as { type?: string }).type === 'tool_use' && name && PLAN_TRACKING_TOOL_NAMES.has(name)) {
+        sawPlanTool = true;
+        break;
+      }
+    }
+    if (sawPlanTool) break;
+  }
+  if (!sawPlanTool) return undefined;
+  return (
+    'This conversation includes CreatePlan/ReportPhaseProgress/RevisePlan tool ' +
+    'calls tracking a multi-phase execution plan. Preserve the exact current ' +
+    'plan state verbatim in your summary: every phase name, its status ' +
+    '(complete/running/pending/skipped), and the full text of any findings ' +
+    'already reported — do not paraphrase or drop phase details.'
+  );
+}
+
+function resolveSummarizerModel(): Model<Api> | undefined {
+  const modelId = state.init?.compactionSettings?.summarizerModel;
+  if (!modelId || !state.init) return undefined;
+  const resolved = getBuiltinModel(state.init.piAuthProvider as 'github-copilot', modelId as never);
+  if (!resolved) {
+    log.warn(`Configured summarizer model "${modelId}" could not be resolved — using the active chat model instead.`);
+    return undefined;
+  }
+  return resolved;
+}
+
+async function handleManualCompact(msg: MsgManualCompact): Promise<void> {
+  if (!state.session) return;
+
+  if (activePromptPromise) {
+    await activePromptPromise;
+  }
+
+  // Claim the same busy-slot `handlePrompt` uses, synchronously right after
+  // the guard above resolves (no `await` in between) so a `prompt` message
+  // racing in via the next stdin line can't slip through and run against the
+  // summarizer model swapped in below, or clobber `state.currentTurnId`.
+  const run = async (): Promise<void> => {
+    const planInstructions = detectPlanPreservationInstructions();
+    const combinedInstructions = [msg.customInstructions, planInstructions].filter(Boolean).join('\n\n') || undefined;
+
+    const summarizerModel = resolveSummarizerModel();
+    const originalModel = state.model;
+    if (summarizerModel) {
+      try {
+        await state.session!.setModel(summarizerModel as never);
+      } catch (e) {
+        log.warn('Failed to switch to summarizer model, using active chat model:', errMessage(e));
+      }
+    }
+
+    state.currentTurnId = msg.turnId;
+    try {
+      await withSpan(
+        'compaction',
+        async (span) => {
+          setAttrs(span, {
+            'gen_ai.operation.name': 'chat',
+            'gen_ai.provider.name': state.init?.piAuthProvider ?? '',
+            'gen_ai.conversation.id': state.init?.sessionId ?? '',
+            'gen_ai.request.model': summarizerModel?.id ?? originalModel?.id ?? state.init?.model ?? '',
+            'minimalist_agent.compaction.reason': 'manual',
+            'minimalist_agent.compaction.plan_preserved': !!planInstructions,
+          });
+          try {
+            await state.session!.compact(combinedInstructions);
+            const last = state.session!.sessionManager.getBranch().at(-1);
+            if (last?.type === 'compaction') {
+              setAttrs(span, {
+                'minimalist_agent.compaction.tokens_before': last.tokensBefore,
+                'gen_ai.usage.input_tokens': last.usage?.input,
+                'gen_ai.usage.output_tokens': last.usage?.output,
+              });
+            }
+            span.setStatus({ code: SpanStatusCode.OK });
+          } catch (e) {
+            recordException(span, e);
+            log.warn('manual compact() threw (compaction_end already reported failure):', errMessage(e));
+          }
+        },
+      );
+    } finally {
+      if (summarizerModel && originalModel) {
+        try {
+          await state.session!.setModel(originalModel as never);
+        } catch (e) {
+          log.warn('Failed to restore chat model after manual compaction:', errMessage(e));
+        }
+      }
+
+      if (state.currentTurnId === msg.turnId) {
+        const out: MsgEvent = { type: 'event', turnId: msg.turnId, event: { type: 'turn_done' } };
+        send(out);
+        state.currentTurnId = undefined;
+      }
+    }
+  };
+
+  activePromptPromise = run();
+  try {
+    await activePromptPromise;
+  } finally {
+    activePromptPromise = null;
   }
 }
 
@@ -2115,6 +2298,10 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
 
     case 'prompt':
       await handlePrompt(msg);
+      return;
+
+    case 'manual_compact':
+      await handleManualCompact(msg);
       return;
 
     case 'set_model':

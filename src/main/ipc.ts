@@ -52,7 +52,7 @@ import {
 import {runAgentChat} from './agent/runner';
 import {apply1MContextSuffix} from './agent/models';
 import {steerAnthropicTurn} from './agent/backends/anthropic';
-import {steerPiTurn, sendPlanApprovalResponse} from './agent/backends/pi/agent';
+import {steerPiTurn, sendPlanApprovalResponse, runPiManualCompact} from './agent/backends/pi/agent';
 import {generateTitle} from './agent/title';
 import {parseError} from './agent/errors';
 import {resolveAuthForSlug} from './auth/resolve';
@@ -609,6 +609,41 @@ export function registerIpc(): void {
   });
 
   ipcMain.handle(
+    'chat:manualCompact',
+    async (
+      event,
+      args: { turnId: string; sessionId: string; connectionSlug: string; customInstructions?: string },
+    ): Promise<void> => {
+      const conn = listConnections().find((c) => c.slug === args.connectionSlug);
+      if (conn?.providerType === 'anthropic') {
+        if (!event.sender.isDestroyed()) {
+          event.sender.send('chat:event', {
+            id: args.turnId,
+            type: 'error',
+            error: {
+              code: 'unknown_error',
+              title: 'Not supported',
+              message: 'Manual compaction is only available for Pi-backed connections (GitHub Copilot, local, OpenAI-compatible).',
+              canRetry: false,
+            },
+          });
+        }
+        return;
+      }
+
+      for await (const chunk of runPiManualCompact({
+        chatSessionPath: sessionPath(args.sessionId),
+        turnId: args.turnId,
+        customInstructions: args.customInstructions,
+      })) {
+        if (event.sender.isDestroyed()) break;
+        event.sender.send('chat:event', { id: args.turnId, ...chunk });
+        if (chunk.type === 'turn_done' || chunk.type === 'error') break;
+      }
+    },
+  );
+
+  ipcMain.handle(
     'chat:generateTitle',
     async (
       _e,
@@ -953,8 +988,8 @@ export function registerIpc(): void {
   ipcMain.handle('sessions:revealInFolder', (_e, id: string) => {
     shell.showItemInFolder(sessionPath(id));
   });
-  ipcMain.handle('sessions:branch', (_e, parentId: string, upToMessageId: string) =>
-    branchSession(parentId, upToMessageId),
+  ipcMain.handle('sessions:branch', (_e, parentId: string, upToMessageId: string, options?: { withContext?: boolean }) =>
+    branchSession(parentId, upToMessageId, options),
   );
   ipcMain.handle('sessions:listFiles', (_e, id: string) => listSessionFiles(id));
   ipcMain.handle('sessions:revealFile', (_e, absPath: string) => {

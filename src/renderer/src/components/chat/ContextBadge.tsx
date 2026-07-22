@@ -5,6 +5,8 @@ import { Tooltip } from '../ui';
 type Props = {
   messages: ChatMessage[];
   contextWindow: number;
+  /** Tokens reserved below the context window before compaction triggers. */
+  reserveTokens: number;
   className?: string;
 };
 
@@ -28,7 +30,7 @@ type Props = {
  * "how much was new this round" pressure signal lives in the tooltip
  * instead of the headline number.
  */
-export function ContextBadge({ messages, contextWindow, className }: Props) {
+export function ContextBadge({ messages, contextWindow, reserveTokens, className }: Props) {
   const usage = lastTurnUsage(messages);
   if (!usage || contextWindow <= 0) return null;
 
@@ -38,8 +40,7 @@ export function ContextBadge({ messages, contextWindow, className }: Props) {
   const live = usage.input + usage.cacheCreate;
   const pct = Math.min(100, Math.round((contextTokens / contextWindow) * 100));
 
-  const COMPACTION_RESERVE_TOKENS = 16384;
-  const compactAt = Math.max(0, contextWindow - COMPACTION_RESERVE_TOKENS);
+  const compactAt = Math.max(0, contextWindow - reserveTokens);
   const compactPct = Math.round((compactAt / contextWindow) * 100);
   const willCompactSoon = contextTokens >= compactAt;
 

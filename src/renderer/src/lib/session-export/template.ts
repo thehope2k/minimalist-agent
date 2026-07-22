@@ -183,7 +183,17 @@ export async function buildHtmlDocument(model: ExportModel): Promise<string> {
   const rows: string[] = [];
   for (const row of model.rows) {
     if (row.kind === 'compaction') {
-      rows.push(`<div class="me-compaction">history compacted</div>`);
+      if (row.status === 'failed') {
+        rows.push(
+          `<div class="me-compaction me-compaction-failed">compaction failed${row.errorMessage ? `: ${esc(row.errorMessage)}` : ''}</div>`,
+        );
+      } else if (row.summary) {
+        rows.push(
+          `<details class="me-compaction"><summary>history compacted</summary><div class="me-compaction-summary">${esc(row.summary)}</div></details>`,
+        );
+      } else {
+        rows.push(`<div class="me-compaction">history compacted</div>`);
+      }
     } else {
       rows.push(await renderTurn(row.turn, model.meta.mode));
     }

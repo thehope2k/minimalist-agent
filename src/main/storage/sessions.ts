@@ -26,6 +26,9 @@ import { findProjectForPath } from './projects';
 import { createLogger } from '../logger';
 import { listConnections } from './connections';
 import { forkSdkSession } from './session-fork';
+import { resolveAuthForSlug } from '../auth/resolve';
+import { getBuiltinModel } from '@earendil-works/pi-ai/providers/all';
+import type { Model, Api } from '@earendil-works/pi-ai';
 
 const log = createLogger('sessions');
 
@@ -99,10 +102,15 @@ export interface StoredMessage {
   markerKind?: 'compaction';
   /** Populated for `markerKind === 'compaction'`. */
   compactionMeta?: {
-    trigger: 'manual' | 'auto';
-    preTokens: number;
+    status?: 'success' | 'failed';
+    trigger: 'manual' | 'auto' | 'threshold' | 'overflow';
+    preTokens?: number;
     postTokens?: number;
     durationMs?: number;
+    summary?: string;
+    readFiles?: string[];
+    modifiedFiles?: string[];
+    errorMessage?: string;
   };
 }
 
@@ -481,6 +489,28 @@ export function unpinAsset(sessionId: string, scopedSlug: string): SessionMeta {
   return meta;
 }
 
+/** Resolves auth + model for the "Fork with context" branch-summarization
+ *  call. Scoped to GitHub Copilot connections; returns undefined (falls
+ *  back to a clean cutoff) on any resolution failure. */
+async function resolveForkSummarizer(
+  parentMeta: SessionMeta,
+): Promise<{ model: Model<Api>; apiKey: string | undefined; headers?: Record<string, string>; env?: Record<string, string> } | undefined> {
+  if (!parentMeta.connectionSlug || !parentMeta.model) return undefined;
+  const conn = listConnections().find((c) => c.slug === parentMeta.connectionSlug);
+  if (!conn || conn.providerType !== 'pi' || conn.piAuthProvider !== 'github-copilot') return undefined;
+
+  try {
+    const model = getBuiltinModel('github-copilot', parentMeta.model as never);
+    if (!model) return undefined;
+    const auth = await resolveAuthForSlug(parentMeta.connectionSlug);
+    if (auth.type !== 'copilot_oauth') return undefined;
+    return { model, apiKey: auth.accessToken };
+  } catch (e) {
+    log.warn('Failed to resolve fork-with-context summarizer, falling back to a clean cutoff:', e);
+    return undefined;
+  }
+}
+
 /**
  * Create a new session that branches off `parentId` at the given message.
  * All messages *before* `upToMessageId` are copied into the new session,
@@ -494,6 +524,7 @@ export function unpinAsset(sessionId: string, scopedSlug: string): SessionMeta {
 export async function branchSession(
   parentId: string,
   upToMessageId: string,
+  options?: { withContext?: boolean },
 ): Promise<SessionMeta | null> {
   const parent = loadSession(parentId);
   if (!parent) return null;
@@ -549,6 +580,7 @@ export async function branchSession(
     parentSdkSessionId: parent.meta.sdkSessionId,
     newSessionDir: join(Paths.sessionsDir(), id),
     cutoffMs,
+    summarizer: options?.withContext ? await resolveForkSummarizer(parent.meta) : undefined,
   });
   if (forkedSdkSessionId) {
     meta.sdkSessionId = forkedSdkSessionId;

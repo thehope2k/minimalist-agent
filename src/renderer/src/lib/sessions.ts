@@ -160,8 +160,9 @@ export async function deleteSession(id: string): Promise<void> {
 export async function branchSession(
   parentId: string,
   upToMessageId: string,
+  options?: { withContext?: boolean },
 ): Promise<SessionMeta | null> {
-  const meta = await window.api.sessions.branch(parentId, upToMessageId);
+  const meta = await window.api.sessions.branch(parentId, upToMessageId, options);
   if (meta) await reload();
   return meta;
 }

@@ -163,6 +163,21 @@ details.me-collapse .me-collapse-body {
   content: ""; display: inline-block; width: 60px; height: 1px;
   background: var(--me-border); vertical-align: middle; margin: 0 10px;
 }
+.me-compaction-failed {
+  color: var(--me-del); text-transform: none; letter-spacing: normal;
+}
+.me-compaction-failed::before, .me-compaction-failed::after {
+  background: rgba(248, 81, 73, .4);
+}
+details.me-compaction { cursor: pointer; }
+details.me-compaction > summary { list-style: none; }
+details.me-compaction > summary::-webkit-details-marker { display: none; }
+.me-compaction-summary {
+  text-align: left; text-transform: none; letter-spacing: normal;
+  margin-top: 8px; padding: 10px 12px; font-size: 12.5px; line-height: 1.5;
+  background: var(--me-panel); border: 1px solid var(--me-border-soft);
+  border-radius: 6px; white-space: pre-wrap;
+}
 .me-error-box {
   margin: .6em 0; padding: 8px 12px; border-radius: 6px;
   border: 1px solid rgba(248, 81, 73, .4); background: rgba(248, 81, 73, .08);
