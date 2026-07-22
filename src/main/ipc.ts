@@ -55,6 +55,7 @@ import {steerAnthropicTurn} from './agent/backends/anthropic';
 import {steerPiTurn, sendPlanApprovalResponse, runPiManualCompact} from './agent/backends/pi/agent';
 import {generateTitle} from './agent/title';
 import {parseError} from './agent/errors';
+import {raceAbort} from './utils/with-timeout';
 import {resolveAuthForSlug} from './auth/resolve';
 import {
   type AiSettings,
@@ -496,11 +497,13 @@ export function registerIpc(): void {
       // it's within 5min of expiry. Errors here are emitted as a structured
       // `chat:event` error rather than rejecting the IPC call so the UI
       // renders them inline like any other agent error.
+      // Raced against ctrl.signal so Stop also cancels a stuck refresh.
       let auth;
       try {
-        auth = await resolveAuthForSlug(req.connectionSlug);
+        auth = await raceAbort(resolveAuthForSlug(req.connectionSlug), ctrl.signal);
       } catch (e) {
-        if (!event.sender.isDestroyed()) {
+        const aborted = e instanceof Error && e.message === 'Aborted';
+        if (!aborted && !event.sender.isDestroyed()) {
           event.sender.send('chat:event', {
             id: req.id,
             type: 'error',

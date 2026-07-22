@@ -186,10 +186,51 @@ interface SubprocessHandle {
   currentThinkingLevel?: PiThinkingLevel;
   /** Collaboration callback to show engagement dialogs. */
   askCollaboration?: CollaborationAsk;
+  /** Timestamp of the last stdout line received from this subprocess. */
+  lastActivityAt: number;
 }
 
 /** Per-chat-session subprocess. */
 const handles = new Map<string, SubprocessHandle>();
+
+const TURN_IDLE_TIMEOUT_MS = Number(process.env.MA_TURN_IDLE_TIMEOUT_MS) || 5 * 60 * 1000;
+const WATCHDOG_SWEEP_MS = 15_000;
+
+function reapStuckHandle(key: string, handle: SubprocessHandle, idleMs: number): void {
+  log.error(
+    `Subprocess for session ${handle.chatSessionId} silent for ${Math.round(idleMs / 1000)}s ` +
+      `with ${handle.queues.size} turn(s) in flight — force-recovering.`,
+  );
+  for (const q of handle.queues.values()) {
+    q.push({
+      type: 'error',
+      error: {
+        code: 'network_error',
+        title: 'Turn timed out',
+        message:
+          'This turn stopped responding and was reset automatically after ' +
+          `${Math.round(TURN_IDLE_TIMEOUT_MS / 60_000)} minute(s) of silence — usually a stalled network ` +
+          'connection. Send your message again.',
+        canRetry: true,
+        originalError: `watchdog: no subprocess activity for ${Math.round(idleMs / 1000)}s`,
+      },
+    });
+    q.finish();
+  }
+  handle.queues.clear();
+  handle.permissionContext.clear();
+  killSubprocess(handle);
+  if (handles.get(key) === handle) handles.delete(key);
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, handle] of handles) {
+    if (handle.queues.size === 0) continue; // no active turn — idle is expected
+    const idleMs = now - handle.lastActivityAt;
+    if (idleMs > TURN_IDLE_TIMEOUT_MS) reapStuckHandle(key, handle, idleMs);
+  }
+}, WATCHDOG_SWEEP_MS).unref();
 
 /* ============================================================ */
 /*  Subprocess lifecycle                                         */
@@ -318,9 +359,11 @@ function spawnSubprocess(req: PiChatRequest, systemPrompt: string): SubprocessHa
     currentModel: req.model,
     currentThinkingLevel: req.thinkingLevel ?? 'medium',
     askCollaboration: req.askCollaboration,
+    lastActivityAt: Date.now(),
   };
 
   rl.on('line', (line) => {
+    handle.lastActivityAt = Date.now();
     if (!line.trim()) return;
     let msg: SubprocessOutbound;
     try {

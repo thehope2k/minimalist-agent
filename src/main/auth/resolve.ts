@@ -35,11 +35,34 @@ import {
 } from '../storage/connections';
 import type { ResolvedAuth } from '../agent/backends/types';
 import { createLogger } from '../logger';
+import { withTimeout } from '../utils/with-timeout';
 
 const log = createLogger('auth');
 
-/** Per-slug refresh mutex. */
 const refreshInFlight = new Map<string, Promise<OAuthCred>>();
+const REFRESH_TIMEOUT_MS = 20_000;
+
+/** Runs `perform()` behind a per-slug mutex, bounded to REFRESH_TIMEOUT_MS so
+ *  the mutex entry always clears even if the underlying network call never
+ *  settles on its own. */
+function guardedRefresh(
+  slug: string,
+  label: string,
+  perform: () => Promise<OAuthCred>,
+): Promise<OAuthCred> {
+  const existing = refreshInFlight.get(slug);
+  if (existing) return existing;
+
+  const promise = withTimeout(perform(), REFRESH_TIMEOUT_MS, label)
+    .catch((e) => {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (/timed out after/.test(msg)) log.warn(`${label} did not respond — releasing lock:`, msg);
+      throw e;
+    })
+    .finally(() => refreshInFlight.delete(slug));
+  refreshInFlight.set(slug, promise);
+  return promise;
+}
 
 function findConnection(slug: string): ConnectionMeta | undefined {
   return listConnections().find((c) => c.slug === slug);
@@ -119,14 +142,9 @@ async function ensureFreshAnthropicOAuth(
     );
   }
 
-  const existing = refreshInFlight.get(slug);
-  if (existing) return existing;
-
-  const promise = performAnthropicRefresh(slug, cred).finally(() => {
-    refreshInFlight.delete(slug);
-  });
-  refreshInFlight.set(slug, promise);
-  return promise;
+  return guardedRefresh(slug, `Claude OAuth refresh for ${slug}`, () =>
+    performAnthropicRefresh(slug, cred),
+  );
 }
 
 async function performAnthropicRefresh(
@@ -176,14 +194,9 @@ async function ensureFreshCopilotOAuth(
     );
   }
 
-  const existing = refreshInFlight.get(slug);
-  if (existing) return existing;
-
-  const promise = performCopilotRefresh(slug, cred).finally(() => {
-    refreshInFlight.delete(slug);
-  });
-  refreshInFlight.set(slug, promise);
-  return promise;
+  return guardedRefresh(slug, `Copilot token refresh for ${slug}`, () =>
+    performCopilotRefresh(slug, cred),
+  );
 }
 
 async function performCopilotRefresh(
@@ -229,14 +242,9 @@ async function ensureFreshChatGptOAuth(
     );
   }
 
-  const existing = refreshInFlight.get(slug);
-  if (existing) return existing;
-
-  const promise = performChatGptRefresh(slug, cred).finally(() => {
-    refreshInFlight.delete(slug);
-  });
-  refreshInFlight.set(slug, promise);
-  return promise;
+  return guardedRefresh(slug, `ChatGPT Plus token refresh for ${slug}`, () =>
+    performChatGptRefresh(slug, cred),
+  );
 }
 
 async function performChatGptRefresh(
