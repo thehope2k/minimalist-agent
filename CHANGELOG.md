@@ -5,6 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.17.3] — 2026-07-22
+
+Bug fixes.
+
+### Fixed
+
+- The context-usage badge now matches the SDK's own compaction formula (input + output + cache read + cache create), so its percentage and "about to compact" warning are a reliable preview of when auto-compaction will actually trigger
+- Session forking mid-conversation no longer leaves a stale SDK session id behind — extensions that fork or rotate the transcript are now picked up correctly
+- Per-round token usage now persists across session reload instead of resetting to a live-only view
+
+---
+
 ## [1.17.2] — 2026-07-22
 
 Quality of life improvements and bug fixes.
