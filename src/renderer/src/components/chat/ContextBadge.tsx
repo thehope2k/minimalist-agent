@@ -55,21 +55,15 @@ export function ContextBadge({ messages, contextWindow, reserveTokens, className
 
   const tooltipContent = (
     <div className="space-y-1.5 font-mono text-[11px]">
-      <div className="space-y-0.5">
-        <div className="font-semibold">
-          Context: {contextTokens.toLocaleString()} / {contextWindow.toLocaleString()} tokens
-        </div>
-        <div className="pl-2 text-fg-muted">
-          <div>↳ input: {usage.input.toLocaleString()}</div>
-          <div>↳ output: {usage.output.toLocaleString()}</div>
-          <div>↳ cache read: {usage.cacheRead.toLocaleString()}</div>
-          <div>↳ cache write: {usage.cacheCreate.toLocaleString()}</div>
-        </div>
+      <div className="font-semibold">
+        Context: {contextTokens.toLocaleString()} / {contextWindow.toLocaleString()} tokens
+        {usage.estimated && <span className="ml-1 font-normal text-fg-subtle">(post-compaction estimate)</span>}
       </div>
-      <div className="text-fg-muted whitespace-nowrap">
-        New this round: {live.toLocaleString()}{' '}
-        <span className="opacity-70">(not served from cache)</span>
-      </div>
+      {!usage.estimated && (
+        <div className="text-fg-muted whitespace-nowrap">
+          Added this round: {live.toLocaleString()} tokens
+        </div>
+      )}
       <div className="border-t border-border pt-1.5">
         {compactionCount > 0 ? (
           <div className="text-fg-muted">Compacted {compactionCount}× — older history summarised</div>
@@ -116,12 +110,20 @@ interface TurnUsage {
   cacheRead: number;
   cacheCreate: number;
   total: number;
+  /** True when derived from a compaction's postTokens estimate rather than
+   *  a real API usage report — the input/output/cache split isn't real. */
+  estimated: boolean;
 }
 
 function lastTurnUsage(messages: ChatMessage[]): TurnUsage | null {
   for (let i = messages.length - 1; i >= 0; i--) {
     const m = messages[i];
     if (m.role !== 'assistant') continue;
+    if (m.markerKind === 'compaction') {
+      const post = m.compactionMeta?.status === 'success' ? m.compactionMeta.postTokens : undefined;
+      if (post == null) continue;
+      return { input: 0, output: 0, cacheRead: 0, cacheCreate: 0, total: post, estimated: true };
+    }
     const u = m.latestCallUsage ?? m.usage;
     if (!u) continue;
     const input = u.inputTokens ?? 0;
@@ -130,7 +132,7 @@ function lastTurnUsage(messages: ChatMessage[]): TurnUsage | null {
     const cacheCreate = u.cacheCreationInputTokens ?? 0;
     const total = input + output + cacheRead + cacheCreate;
     if (total > 0) {
-      return { input, output, cacheRead, cacheCreate, total };
+      return { input, output, cacheRead, cacheCreate, total, estimated: false };
     }
   }
   return null;
