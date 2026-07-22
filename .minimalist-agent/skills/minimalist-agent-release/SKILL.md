@@ -77,6 +77,21 @@ exposed to it. In that case:
 - Silently fold the correction into the related `### Added` entry if it adds useful context, or omit it entirely.
 - This keeps the changelog focused on what users actually experienced changing.
 
+**One-story rule (collapse multi-commit iterations):** Multiple commits often describe the *same* underlying story —
+a feature added in one commit and then refined/fixed by later commits in the same release, or a bug patched across
+several follow-up commits. Don't list these as separate, disconnected bullets scattered across `Added`/`Fixed`.
+Before writing bullets, check whether commits reference the same feature area, IPC call, UI surface, or root cause:
+
+- If a `feat` commit and a later `fix`/`refactor` commit in the same release are really the same capability landing
+  in stages, **merge them into a single bullet** under `Added` (or `Fixed`, if the whole story is a bug that took
+  multiple commits to actually fix) — describe the end state a user sees, not the commit history.
+- If several `fix` commits are successive attempts at the same regression, collapse them into **one** bullet
+  describing the final fixed behavior, not one bullet per attempt.
+- Use a bold sub-heading (e.g. **Branching**) when a merged story has enough detail to need more than one bullet,
+  but still avoid one-bullet-per-commit if those bullets restate the same change from different angles.
+- This is separate from (and can combine with) the **Non-published bug rule** above — a fix folded in there may
+  further need merging with other commits about the same feature.
+
 Also derive a **short release summary** (1–2 sentences) that captures the main theme of this batch of commits. You will
 use this as the opening paragraph of the changelog entry.
 
