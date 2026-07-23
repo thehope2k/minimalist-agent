@@ -5,6 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.19.0] — 2026-07-23
+
+Compaction tuning switches from fixed token counts to percentages of the active model's context window.
+
+### Changed
+
+**Compaction settings**
+
+- Reserve and keep-recent compaction settings are now percentages of the active model's context window instead of fixed token counts — previously a flat token count could over-reserve on small-context models (e.g. 64K local models) or under-reserve on very large ones (e.g. 1M-token models), requiring manual retuning per model
+- Added optional floor/ceiling bounds per percentage (Advanced) for pinning an exact token count regardless of model, if needed
+- Existing reserve/keep-recent token settings are migrated automatically to the new percentage defaults
+
+---
+
 ## [1.18.1] — 2026-07-23
 
 Settings UI cleanup and removal of a defunct extended-context toggle.
