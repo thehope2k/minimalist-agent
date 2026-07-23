@@ -81,6 +81,7 @@ class InMemoryCredentialStore implements CredentialStore {
 
 const OAUTH_REFRESH_RETRY_DELAY_MS = 500;
 const DEFAULT_OAUTH_CREDENTIAL_TTL_MS = 30 * 60 * 1000;
+const AUTO_COMPACTION_TIMEOUT_MS = Number(process.env.MA_COMPACTION_TIMEOUT_MS) || 60_000;
 
 function errMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
@@ -301,6 +302,9 @@ interface State {
   modelSpan?: Span;
   /** OTel span for an auto-triggered (threshold/overflow) compaction. */
   autoCompactionSpan?: Span;
+  /** Force-abort timer for a stalled auto-compaction summarization call —
+   *  see {@link AUTO_COMPACTION_TIMEOUT_MS}. Cleared on `compaction_end`. */
+  compactionWatchdog?: NodeJS.Timeout;
   /** Wall-clock start of the current model span, for time-to-first-token. */
   modelSpanStartMs?: number;
   modelFirstTokenSeen?: boolean;
@@ -1290,6 +1294,19 @@ function compactionObservabilityExtension(): InlineExtension {
     hidden: true,
     factory: (pi) => {
       pi.on('session_before_compact', (event) => {
+        // Manual (`/compact` button) runs on its own explicit turn the user is
+        // already watching for, and shares the same abort path — skip the
+        // silent-hang watchdog here, it's only for the automatic pre-prompt case.
+        if (event.reason !== 'manual') {
+          clearTimeout(state.compactionWatchdog);
+          state.compactionWatchdog = setTimeout(() => {
+            log.warn(
+              `Auto-compaction (${event.reason}) silent for ${AUTO_COMPACTION_TIMEOUT_MS / 1000}s — ` +
+                'force-aborting so the turn can proceed without it.',
+            );
+            try { state.session?.abortCompaction(); } catch { /* */ }
+          }, AUTO_COMPACTION_TIMEOUT_MS);
+        }
         if (event.reason === 'manual' || !isOtelEnabled()) return;
         const { span } = startSpan('compaction', {
           attributes: {
@@ -1761,6 +1778,10 @@ function forwardEvent(piEvent: AgentSessionEvent): void {
   // chat event (see adaptPiEvent's compaction_end case), so the span opened
   // in compactionObservabilityExtension would otherwise never be closed —
   // catch that here directly off the raw SDK event.
+  if (t === 'compaction_end') {
+    clearTimeout(state.compactionWatchdog);
+    state.compactionWatchdog = undefined;
+  }
   if (t === 'compaction_end' && (piEvent as { aborted?: boolean }).aborted && state.autoCompactionSpan) {
     const span = state.autoCompactionSpan;
     state.autoCompactionSpan = undefined;
@@ -2401,6 +2422,10 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
 
     case 'abort':
       try { state.session?.abort(); } catch { /* */ }
+      // session.abort() does NOT cancel an in-flight auto-compaction summarization
+      // call (it only aborts the main agent loop) — without this, clicking Stop
+      // during a stalled compaction call does nothing and the turn stays hung.
+      try { state.session?.abortCompaction(); } catch { /* */ }
       state.turnAbort?.abort();
       return;
 
