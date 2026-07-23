@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.19.1] — 2026-07-23
+
+Bug fix for chat turns hanging indefinitely on follow-up messages.
+
+### Fixed
+
+- Fixed follow-up messages sometimes hanging on "Thinking" indefinitely — an automatic context-compaction call that runs silently before every follow-up prompt had no timeout, so a stalled network connection could block the turn forever. It's now force-aborted after 60s, letting the turn proceed normally. Clicking Stop during this state also now actually cancels it (previously it did nothing).
+
+---
+
 ## [1.19.0] — 2026-07-23
 
 Compaction tuning switches from fixed token counts to percentages of the active model's context window.
