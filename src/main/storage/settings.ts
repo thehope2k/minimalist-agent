@@ -2,6 +2,8 @@
 
 import { Paths } from './paths';
 import { type FileSchema, load, save } from './json-store';
+import type { CompactionTuning } from '../../shared/compaction';
+export type { CompactionTuning };
 
 export type ThinkingLevel = 'off' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
@@ -34,15 +36,9 @@ export interface AiSettings {
    * `null` disables auto-cleanup. Defaults to DEFAULT_SESSION_RETENTION_DAYS.
    */
   sessionRetentionDays?: number | null;
-  /** Context compaction tuning for the Pi backend. Undefined fields fall
-   *  back to the SDK's own defaults. */
-  compactionSettings?: {
-    enabled?: boolean;
-    reserveTokens?: number;
-    keepRecentTokens?: number;
-    /** Applies only to the manual "Compact now" trigger. */
-    summarizerModel?: string;
-  };
+  /** Context compaction tuning for the Pi backend — fractions of the active
+   *  model's contextWindow, resolved per-session in pi-server. */
+  compactionSettings?: CompactionTuning;
 }
 
 export const DEFAULT_CONTEXT_FILE_NAMES: readonly string[] = [
@@ -52,10 +48,6 @@ export const DEFAULT_CONTEXT_FILE_NAMES: readonly string[] = [
 ];
 export const DEFAULT_MAX_TURNS = 50;
 export const DEFAULT_PERMISSION_MODE: PermissionMode = 'auto';
-
-export const DEFAULT_COMPACTION_ENABLED = true;
-export const DEFAULT_COMPACTION_RESERVE_TOKENS = 100_000;
-export const DEFAULT_COMPACTION_KEEP_RECENT_TOKENS = 20000;
 
 /** Default autonomy level (0-100) when in auto mode. */
 export const DEFAULT_AUTONOMY_LEVEL = 50;
@@ -74,7 +66,7 @@ const RECENT_MAX = 10;
 
 const SCHEMA: FileSchema<AiSettings> = {
   path: Paths.settings(),
-  currentVersion: 3,
+  currentVersion: 4,
   defaultValue: DEFAULTS,
   migrations: [
     // v0 → v1: no-op (initial version)
@@ -89,6 +81,23 @@ const SCHEMA: FileSchema<AiSettings> = {
     },
     // v2 → v3: adds sessionRetentionDays (optional field, no-op migration)
     (prev) => prev as AiSettings,
+    // v3 → v4: compaction tuning becomes window-relative (reserveFraction /
+    // keepRecentFraction) instead of a flat absolute token count that ignored
+    // the active model's contextWindow. Drops the old absolute fields; every
+    // installation adopts the new adaptive fraction defaults.
+    (prev) => {
+      const settings = prev as AiSettings & {
+        compactionSettings?: CompactionTuning & {
+          reserveTokens?: number;
+          keepRecentTokens?: number;
+        };
+      };
+      const legacy = settings.compactionSettings;
+      if (!legacy) return settings as AiSettings;
+
+      const { reserveTokens: _reserveTokens, keepRecentTokens: _keepRecentTokens, ...migrated } = legacy;
+      return { ...settings, compactionSettings: migrated } as AiSettings;
+    },
   ],
 };
 

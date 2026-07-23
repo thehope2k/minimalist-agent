@@ -268,11 +268,7 @@ interface AiSettings {
   recentFolders?: string[];
   maxTurns?: number;
   defaultPermissionMode?: PermissionMode;
-  compactionSettings?: {
-    enabled?: boolean;
-    reserveTokens?: number;
-    keepRecentTokens?: number;
-  };
+  compactionSettings?: import('../shared/compaction').CompactionTuning;
 }
 
 interface TelemetrySettings {

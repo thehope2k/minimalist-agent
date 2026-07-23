@@ -1,12 +1,9 @@
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import {
-  DEFAULT_COMPACTION_KEEP_RECENT_TOKENS,
-  DEFAULT_COMPACTION_RESERVE_TOKENS,
   DEFAULT_MAX_TURNS,
   deleteConnection,
   refreshConnectionModels,
-  setCompactionSettings,
   setDefaultConnection,
   setDefaultModel,
   setDefaultPermissionMode,
@@ -22,10 +19,10 @@ import {
   SettingsDivider,
   SettingsRow,
   SettingsSection,
-  SettingsToggle,
 } from '../SettingsPrimitives';
 import { ConnectionRow } from '../ai-panel/ConnectionRow';
 import { ContextFileNamesRow } from '../ai-panel/ContextFileNamesRow';
+import { CompactionSection } from '../ai-panel/CompactionSection';
 
 const THINKING_LEVELS: ThinkingLevel[] = ['off', 'low', 'medium', 'high', 'xhigh', 'max'];
 
@@ -277,72 +274,12 @@ export function AIPanel() {
 
       <SettingsSection
         title="Context & Compaction"
-        subtitle="Tuning for the Pi backend's automatic conversation summarization (GitHub Copilot, local, OpenAI-compatible connections). Ignored for Anthropic."
+        subtitle="Tuning for the Pi backend's automatic conversation summarization (GitHub Copilot, local, OpenAI-compatible connections). Ignored for Anthropic. Percentages are resolved against whichever model is active in a chat."
       >
-        <SettingsCard>
-          <SettingsToggle
-            label="Auto-compact"
-            description="Automatically summarize older messages when the context window fills up. Disabling risks context-overflow errors on long sessions."
-            checked={settings.compactionSettings?.enabled ?? true}
-            onCheckedChange={(v) => void setCompactionSettings({ enabled: v })}
-          />
-          <SettingsDivider />
-          <SettingsRow
-            label="Reserve tokens"
-            description="Compaction triggers once the context window has this many tokens left — matches the badge's “auto-compacts near ~X%” line."
-            control={
-              <Input
-                type="number"
-                min={1000}
-                step={1000}
-                value={settings.compactionSettings?.reserveTokens ?? DEFAULT_COMPACTION_RESERVE_TOKENS}
-                onChange={(e) => {
-                  const v = parseInt(e.target.value, 10);
-                  if (Number.isFinite(v)) void setCompactionSettings({ reserveTokens: v });
-                }}
-                className="w-28 text-right"
-              />
-            }
-          />
-          <SettingsDivider />
-          <SettingsRow
-            label="Keep recent tokens"
-            description="Minimum amount of recent conversation kept verbatim (never summarized) after a compaction."
-            control={
-              <Input
-                type="number"
-                min={1000}
-                step={1000}
-                value={settings.compactionSettings?.keepRecentTokens ?? DEFAULT_COMPACTION_KEEP_RECENT_TOKENS}
-                onChange={(e) => {
-                  const v = parseInt(e.target.value, 10);
-                  if (Number.isFinite(v)) void setCompactionSettings({ keepRecentTokens: v });
-                }}
-                className="w-28 text-right"
-              />
-            }
-          />
-          <SettingsDivider />
-          <SettingsRow
-            label="Summarizer model"
-            description="Route compaction's hidden summarization call through a cheaper/faster model instead of the active chat model. Only applies to the manual “Compact now” trigger — the SDK's automatic compaction has no way to safely override this. Same provider as the default connection above."
-            control={
-              availableModels.length === 0 ? (
-                <span className="text-sm text-fg-subtle">—</span>
-              ) : (
-                <Select
-                  variant="compact"
-                  value={settings.compactionSettings?.summarizerModel ?? ''}
-                  onChange={(id) => void setCompactionSettings({ summarizerModel: id || undefined })}
-                  options={[
-                    { value: '', label: 'Same as chat model' },
-                    ...availableModels.map((m) => ({ value: m.id, label: m.name })),
-                  ]}
-                />
-              )
-            }
-          />
-        </SettingsCard>
+        <CompactionSection
+          settings={settings}
+          availableModels={availableModels}
+        />
       </SettingsSection>
 
       <AddConnectionDialog

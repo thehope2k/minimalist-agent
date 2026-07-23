@@ -45,12 +45,7 @@ import {resolveAuthForSlug} from '../../../auth/resolve';
 import {listConnections} from '../../../storage/connections';
 import {telemetryEnv} from '../../../storage/telemetry';
 import {loadAllAgents} from '../../../agents/storage';
-import {
-  getSettings,
-  DEFAULT_COMPACTION_ENABLED,
-  DEFAULT_COMPACTION_RESERVE_TOKENS,
-  DEFAULT_COMPACTION_KEEP_RECENT_TOKENS,
-} from '../../../storage/settings';
+import {getSettings} from '../../../storage/settings';
 import {createLogger} from '../../../logger';
 import {writeJsonLine} from '../../../../shared/jsonl-stdin';
 
@@ -292,16 +287,6 @@ function ensureSubprocess(
   return handle;
 }
 
-function resolveCompactionSettingsForInit(): MsgInit['compactionSettings'] {
-  const saved = getSettings().compactionSettings;
-  return {
-    enabled: saved?.enabled ?? DEFAULT_COMPACTION_ENABLED,
-    reserveTokens: saved?.reserveTokens ?? DEFAULT_COMPACTION_RESERVE_TOKENS,
-    keepRecentTokens: saved?.keepRecentTokens ?? DEFAULT_COMPACTION_KEEP_RECENT_TOKENS,
-    summarizerModel: saved?.summarizerModel,
-  };
-}
-
 /** Spawns a subprocess without registering it in the shared `handles` map — use for calls that must not touch a session's live connection. */
 function spawnSubprocess(req: PiChatRequest, systemPrompt: string): SubprocessHandle {
   const key = req.chatSessionPath;
@@ -444,7 +429,7 @@ function spawnSubprocess(req: PiChatRequest, systemPrompt: string): SubprocessHa
     };
   }
 
-  const compactionSettings = resolveCompactionSettingsForInit();
+  const compactionSettings = getSettings().compactionSettings;
 
   const init: MsgInit = {
     type: 'init',

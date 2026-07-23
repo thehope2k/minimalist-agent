@@ -161,6 +161,7 @@ import {
 } from '../../shared/planning-types';
 import { createLogger } from '../../shared/sub-logger';
 import { shouldEngage } from '../../shared/autonomy';
+import { resolveCompactionSettings, type ResolvedCompactionSettings } from '../../shared/compaction';
 import {
   initOtel,
   shutdownOtel,
@@ -260,8 +261,10 @@ interface State {
   permissionMode: PiPermissionMode;
   autonomyLevel: number;
   currentTurnId?: string;
-  /** Effective compaction settings resolved at session construction. */
-  compactionSettings?: { enabled: boolean; reserveTokens: number; keepRecentTokens: number };
+  /** Effective compaction settings resolved at session construction (and
+   *  re-resolved on every `set_model`, since it depends on the active
+   *  model's contextWindow). */
+  compactionSettings?: ResolvedCompactionSettings;
   /** The turn's terminal `turn_done`, buffered until session.prompt() settles.
    *  The pi SDK runs auto-compaction in its post-`agent_end` lifecycle, so the
    *  compaction events arrive after `agent_end`. We hold `turn_done` (which
@@ -1295,6 +1298,8 @@ function compactionObservabilityExtension(): InlineExtension {
             'gen_ai.conversation.id': state.init?.sessionId ?? '',
             'gen_ai.request.model': state.model?.id ?? state.init?.model ?? '',
             'minimalist_agent.compaction.reason': event.reason,
+            'minimalist_agent.compaction.reserve_tokens': state.compactionSettings?.reserveTokens,
+            'minimalist_agent.compaction.keep_recent_tokens': state.compactionSettings?.keepRecentTokens,
           },
         });
         state.autoCompactionSpan = span;
@@ -1454,6 +1459,8 @@ async function handleInit(msg: MsgInit): Promise<void> {
   await resourceLoader.reload();
   state.resourceLoader = resourceLoader;
 
+  const resolvedCompaction = resolveCompactionSettings(msg.compactionSettings, model);
+
   const { session } = await createAgentSession({
     cwd: msg.cwd,
     model,
@@ -1463,14 +1470,14 @@ async function handleInit(msg: MsgInit): Promise<void> {
     modelRuntime: state.modelRuntime,
     sessionManager,
     settingsManager: SettingsManager.inMemory({
-      compaction: msg.compactionSettings,
+      compaction: resolvedCompaction,
     }),
     resourceLoader,
     noTools: 'builtin',
     customTools: tools as never,
   });
   state.session = session;
-  state.compactionSettings = session.settingsManager.getCompactionSettings();
+  state.compactionSettings = resolvedCompaction;
   state.unsubscribe = session.subscribe(forwardEvent);
 
   // Set up PlanManager event forwarding
@@ -2345,6 +2352,14 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
           // Propagate to the live session so the next prompt uses the new model.
           if (state.session) {
             await state.session.setModel(newModel as never);
+            // Compaction tuning is window-relative, so a model switch changes
+            // the resolved absolute reserveTokens/keepRecentTokens too.
+            const resolvedCompaction = resolveCompactionSettings(
+              state.init.compactionSettings,
+              newModel,
+            );
+            state.session.settingsManager.applyOverrides({ compaction: resolvedCompaction });
+            state.compactionSettings = resolvedCompaction;
           }
         } catch (e) {
           log.error('set_model failed:', e);

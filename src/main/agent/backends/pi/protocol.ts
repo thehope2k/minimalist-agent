@@ -8,6 +8,7 @@
 // no Pi SDK imports — only types).
 
 import type { AgentChatEvent } from '../../events';
+import type { CompactionTuning } from '../../../../shared/compaction';
 
 /* ============================================================ */
 /*  Shared shapes                                                */
@@ -144,13 +145,10 @@ export interface MsgInit {
    * client per entry and exposes their tools as `mcp__<slug>__<tool>`.
    */
   mcpServers?: PiMcpServerConfig[];
-  /** App-level compaction tuning (see AiSettings.compactionSettings). */
-  compactionSettings?: {
-    enabled?: boolean;
-    reserveTokens?: number;
-    keepRecentTokens?: number;
-    summarizerModel?: string;
-  };
+  /** App-level compaction tuning (see AiSettings.compactionSettings). Resolved
+   *  into absolute reserveTokens/keepRecentTokens against the active model's
+   *  contextWindow inside pi-server, not here. */
+  compactionSettings?: CompactionTuning;
 }
 
 export interface MsgPrompt {

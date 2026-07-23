@@ -1,10 +1,18 @@
 // Renderer-side facade over the main-process connections / settings store.
 
 export const DEFAULT_MAX_TURNS = 50;
-/** Mirrors main's storage/settings.ts — duplicated since renderer can't
- *  import main-process modules. */
-export const DEFAULT_COMPACTION_RESERVE_TOKENS = 100_000;
-export const DEFAULT_COMPACTION_KEEP_RECENT_TOKENS = 20000;
+export {
+  DEFAULT_COMPACTION_ENABLED,
+  DEFAULT_RESERVE_FRACTION,
+  DEFAULT_RESERVE_TOKENS_FLOOR,
+  DEFAULT_RESERVE_TOKENS_CEILING,
+  DEFAULT_KEEP_RECENT_FRACTION,
+  DEFAULT_KEEP_RECENT_TOKENS_FLOOR,
+  DEFAULT_KEEP_RECENT_TOKENS_CEILING,
+  resolveCompactionSettings,
+  type CompactionTuning,
+  type CompactionModelInfo,
+} from '../../../shared/compaction';
 //
 // All persistence lives in `app.getPath('userData')`, accessed via the IPC
 // bridge in window.api. We cache loaded values per-process so consumers can

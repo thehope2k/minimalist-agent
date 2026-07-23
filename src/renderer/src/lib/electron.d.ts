@@ -76,6 +76,8 @@ import type {
   RevisePlanOutput,
 } from '../../../shared/planning-types';
 
+import type { CompactionTuning } from '../../../shared/compaction';
+
 export type {
   EngagementType,
   EngagementRequest,
@@ -364,12 +366,7 @@ export interface AiSettings {
   contextFileNames?: string[];
   /** Days after which archived sessions are auto-deleted. `null` disables. */
   sessionRetentionDays?: number | null;
-  compactionSettings?: {
-    enabled?: boolean;
-    reserveTokens?: number;
-    keepRecentTokens?: number;
-    summarizerModel?: string;
-  };
+  compactionSettings?: CompactionTuning;
 }
 
 export type OtelExporterType = 'file' | 'otlp' | 'console';
