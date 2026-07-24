@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.19.2] — 2026-07-24
+
+Reliability hardening — network calls to the LLM/OAuth backends are now bounded so a stalled connection can't hang a chat turn forever.
+
+### Fixed
+
+- Fixed rare cases where a chat turn or OAuth token refresh could hang indefinitely on a stalled network connection — all outbound HTTP/fetch calls now run under a global idle-timeout dispatcher and a unified deadline/cancellation system, and clicking Stop during a stuck OAuth refresh now actually cancels it instead of leaving it orphaned
+
+---
+
 ## [1.19.1] — 2026-07-23
 
 Bug fix for chat turns hanging indefinitely on follow-up messages.
