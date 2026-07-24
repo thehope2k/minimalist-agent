@@ -42,6 +42,12 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { getBuiltinModel, builtinModels } from '@earendil-works/pi-ai/providers/all';
 import type { Api, Credential, CredentialInfo, CredentialStore, Model, OAuthCredential, ThinkingLevel } from '@earendil-works/pi-ai';
+import { configureHttpIdleTimeout } from './http-idle-timeout';
+import { initOperationTracker, reportOperation, withOperation } from './operation-tracker';
+import { AUTH_REFRESH_MAIN_ROUNDTRIP_MS, AUTO_COMPACTION_TIMEOUT_MS, HTTP_IDLE_TIMEOUT_MS, MINI_COMPLETION_CEILING_MS } from '../../shared/timeouts';
+import { withTimeout } from '../../shared/with-timeout';
+
+configureHttpIdleTimeout(HTTP_IDLE_TIMEOUT_MS);
 
 /** Shared models instance for `completeSimple` calls (title gen, llm_query).
  *  Built-in provider catalog; auth is passed inline via `StreamOptions.apiKey`. */
@@ -69,7 +75,9 @@ class InMemoryCredentialStore implements CredentialStore {
     fn: (current: Credential | undefined) => Promise<Credential | undefined>,
   ): Promise<Credential | undefined> {
     const current = this.data.get(id);
-    const next = (await refreshViaMain()) ?? (await refreshWithLocalRetry(fn, current));
+    const next = await withOperation('oauth_refresh', async () =>
+      (await refreshViaMain()) ?? (await refreshWithLocalRetry(fn, current)),
+    );
     if (next !== undefined) this.data.set(id, next);
     return next;
   }
@@ -81,7 +89,6 @@ class InMemoryCredentialStore implements CredentialStore {
 
 const OAUTH_REFRESH_RETRY_DELAY_MS = 500;
 const DEFAULT_OAUTH_CREDENTIAL_TTL_MS = 30 * 60 * 1000;
-const AUTO_COMPACTION_TIMEOUT_MS = Number(process.env.MA_COMPACTION_TIMEOUT_MS) || 60_000;
 
 function errMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
@@ -192,6 +199,8 @@ const PI_SERVER_PATH = fileURLToPath(import.meta.url);
 function send(msg: SubprocessOutbound): void {
   process.stdout.write(JSON.stringify(msg) + '\n');
 }
+
+initOperationTracker((operation) => send({ type: 'operation_update', operation }));
 
 function fatal(message: string): never {
   const m: MsgFatalError = { type: 'error', message };
@@ -462,46 +471,46 @@ function instrumentTool(
   return {
     ...base,
     execute: (toolCallId, params, signal, onUpdate, ctx) =>
-      withSpan(
-        `execute_tool ${base.name}`,
-        async (span) => {
-          setAttrs(span, {
-            'gen_ai.operation.name': 'execute_tool',
-            'gen_ai.tool.name': base.name,
-            'gen_ai.tool.type': toolType,
-            'gen_ai.tool.call.id': String(toolCallId),
-            'gen_ai.tool.description': (base as { description?: string }).description,
-            'gen_ai.conversation.id': state.init?.sessionId,
-          });
-          if (captureContent()) {
-            span.setAttribute('gen_ai.tool.call.arguments', safeAttr(params));
-          }
-          try {
-            const res = await originalExecute(toolCallId, params, signal, onUpdate, ctx);
-            if (res && (res as { isError?: boolean }).isError) {
-              span.setAttribute('error.type', 'tool_error');
-              span.setStatus({ code: SpanStatusCode.ERROR, message: 'tool returned isError' });
+      withOperation(`tool:${base.name}`, () =>
+        withSpan(
+          `execute_tool ${base.name}`,
+          async (span) => {
+            setAttrs(span, {
+              'gen_ai.operation.name': 'execute_tool',
+              'gen_ai.tool.name': base.name,
+              'gen_ai.tool.type': toolType,
+              'gen_ai.tool.call.id': String(toolCallId),
+              'gen_ai.tool.description': (base as { description?: string }).description,
+              'gen_ai.conversation.id': state.init?.sessionId,
+            });
+            if (captureContent()) {
+              span.setAttribute('gen_ai.tool.call.arguments', safeAttr(params));
             }
-            if (captureContent() && res && (res as { content?: unknown }).content) {
-              span.setAttribute(
-                'gen_ai.tool.call.result',
-                safeAttr((res as { content?: unknown }).content),
-              );
+            try {
+              const res = await originalExecute(toolCallId, params, signal, onUpdate, ctx);
+              if (res && (res as { isError?: boolean }).isError) {
+                span.setAttribute('error.type', 'tool_error');
+                span.setStatus({ code: SpanStatusCode.ERROR, message: 'tool returned isError' });
+              }
+              if (captureContent() && res && (res as { content?: unknown }).content) {
+                span.setAttribute(
+                  'gen_ai.tool.call.result',
+                  safeAttr((res as { content?: unknown }).content),
+                );
+              }
+              return res;
+            } catch (err) {
+              span.setAttribute('error.type', err instanceof Error ? err.name : 'Error');
+              throw err;
             }
-            return res;
-          } catch (err) {
-            span.setAttribute('error.type', err instanceof Error ? err.name : 'Error');
-            throw err;
-          }
-        },
-        // Parent explicitly to the turn context so nesting holds even if the
-        // SDK's tool callback runs outside the turn's async context.
-        { parentContext: state.turnContext },
+          },
+          // Parent explicitly to the turn context so nesting holds even if the
+          // SDK's tool callback runs outside the turn's async context.
+          { parentContext: state.turnContext },
+        ),
       ),
   };
 }
-
-const AUTH_REFRESH_MAIN_TIMEOUT_MS = 10_000;
 
 function requestAuthRefresh(): Promise<MsgAuthRefreshResult> {
   return new Promise((resolve) => {
@@ -515,9 +524,9 @@ function requestAuthRefresh(): Promise<MsgAuthRefreshResult> {
     state.pendingAuthRefresh.set(requestId, { resolve: settle });
     setTimeout(
       () => settle({ type: 'auth_refresh_result', requestId, error: 'main did not respond in time' }),
-      AUTH_REFRESH_MAIN_TIMEOUT_MS,
+      AUTH_REFRESH_MAIN_ROUNDTRIP_MS,
     );
-    const req: MsgAuthRefreshRequest = { type: 'auth_refresh_request', requestId };
+    const req: MsgAuthRefreshRequest = { type: 'auth_refresh_request', requestId, turnId: state.currentTurnId };
     send(req);
   });
 }
@@ -1694,6 +1703,12 @@ function forwardEvent(piEvent: AgentSessionEvent): void {
 
   const t = (piEvent as { type?: string }).type;
 
+  if (t === 'message_start') {
+    reportOperation('model_call');
+  } else if (t === 'message_end') {
+    reportOperation(undefined);
+  }
+
   // GenAI `chat` span: one per assistant message (a tool loop yields several
   // per turn). Start on the assistant message_start, close on its message_end.
   if (isOtelEnabled() && state.turnContext) {
@@ -2193,21 +2208,27 @@ async function handleMiniCompletion(msg: MsgMiniCompletion): Promise<void> {
       return;
     }
 
-    const result = await tracedCompletion(
-      {
-        model: (model as { id?: string }).id ?? msg.model ?? state.model?.id ?? '',
-        callKind: 'mini_completion',
-        maxTokens: msg.maxTokens,
-        inputMessages: [{ role: 'user', content: msg.userPrompt }],
-        systemInstructions: msg.systemPrompt,
-      },
-      () =>
-        runEphemeralPrompt({
-          model: model as Model<Api>,
-          systemPrompt: msg.systemPrompt,
-          userPrompt: msg.userPrompt,
-          cwd: state.init!.cwd,
-        }).then((resultText) => ({ content: [{ type: 'text', text: resultText }] }) as never),
+    const result = await withOperation('mini_completion', () =>
+      tracedCompletion(
+        {
+          model: (model as { id?: string }).id ?? msg.model ?? state.model?.id ?? '',
+          callKind: 'mini_completion',
+          maxTokens: msg.maxTokens,
+          inputMessages: [{ role: 'user', content: msg.userPrompt }],
+          systemInstructions: msg.systemPrompt,
+        },
+        () =>
+          withTimeout(
+            runEphemeralPrompt({
+              model: model as Model<Api>,
+              systemPrompt: msg.systemPrompt,
+              userPrompt: msg.userPrompt,
+              cwd: state.init!.cwd,
+            }),
+            MINI_COMPLETION_CEILING_MS,
+            'mini_completion',
+          ).then((resultText) => ({ content: [{ type: 'text', text: resultText }] }) as never),
+      ),
     );
 
     const out: MsgMiniCompletionResult = {
@@ -2266,24 +2287,30 @@ async function handleLlmQuery(msg: MsgLlmQuery): Promise<void> {
     }
     const resolvedModel = state.modelRuntime ? await withResolvedBaseUrl(model, state.modelRuntime) : model;
     
-    const result = await tracedCompletion(
-      {
-        model: (resolvedModel as { id?: string }).id ?? req.model ?? state.model?.id ?? '',
-        callKind: 'llm_query',
-        inputMessages: [{ role: 'user', content: req.userPrompt }],
-        systemInstructions: req.systemPrompt,
-      },
-      () =>
-        piModels.completeSimple(resolvedModel, {
-          systemPrompt: req.systemPrompt,
-          messages: [
-            {
-              role: 'user',
-              content: [{ type: 'text', text: req.userPrompt }],
-            },
-          ],
-          tools: req.tools ?? [],
-        } as never) as Promise<AssistantMsg>,
+    const result = await withOperation('llm_query', () =>
+      tracedCompletion(
+        {
+          model: (resolvedModel as { id?: string }).id ?? req.model ?? state.model?.id ?? '',
+          callKind: 'llm_query',
+          inputMessages: [{ role: 'user', content: req.userPrompt }],
+          systemInstructions: req.systemPrompt,
+        },
+        () =>
+          withTimeout(
+            piModels.completeSimple(resolvedModel, {
+              systemPrompt: req.systemPrompt,
+              messages: [
+                {
+                  role: 'user',
+                  content: [{ type: 'text', text: req.userPrompt }],
+                },
+              ],
+              tools: req.tools ?? [],
+            } as never) as Promise<AssistantMsg>,
+            MINI_COMPLETION_CEILING_MS,
+            'llm_query',
+          ),
+      ),
     );
     const out: MsgLlmQueryResult = {
       type: 'llm_query_result',

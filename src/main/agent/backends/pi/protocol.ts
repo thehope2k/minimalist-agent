@@ -280,6 +280,16 @@ export interface MsgReady {
 }
 
 /**
+ * Reports the subprocess's current long-running operation (or `undefined`
+ * when idle between operations), so a stalled-subprocess watchdog on the
+ * main side can name what it was waiting on instead of a generic timeout.
+ */
+export interface MsgOperationUpdate {
+  type: 'operation_update';
+  operation?: string;
+}
+
+/**
  * Pre-translated agent event — the subprocess does the Pi→AgentChatEvent
  * adaptation in-process so main never imports Pi types.
  */
@@ -331,6 +341,9 @@ export interface MsgSessionIdUpdate {
 export interface MsgAuthRefreshRequest {
   type: 'auth_refresh_request';
   requestId: string;
+  /** The turn that triggered this refresh, if any — lets main cancel it via
+   *  that turn's AbortSignal instead of only waiting out a fixed ceiling. */
+  turnId?: string;
 }
 
 export interface MsgAuthRefreshResult {
@@ -435,6 +448,7 @@ export interface MsgPlanApprovalResponse {
 
 export type SubprocessOutbound =
   | MsgReady
+  | MsgOperationUpdate
   | MsgEvent
   | MsgPreToolUseRequest
   | MsgCollaborationRequest

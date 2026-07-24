@@ -48,6 +48,7 @@ import {loadAllAgents} from '../../../agents/storage';
 import {getSettings} from '../../../storage/settings';
 import {createLogger} from '../../../logger';
 import {writeJsonLine} from '../../../../shared/jsonl-stdin';
+import {TURN_IDLE_TIMEOUT_MS, WATCHDOG_SWEEP_MS} from '../../../../shared/timeouts';
 
 const log = createLogger('pi');
 import type {
@@ -162,6 +163,10 @@ interface SubprocessHandle {
     string,
     { mode: PermissionMode; sessionId: string }
   >;
+  /** turnId → the request's AbortSignal, so a mid-turn round-trip to main
+   *  (e.g. an auth_refresh_request triggered by the subprocess) can be
+   *  cancelled the moment the user hits Stop, not just bounded by a ceiling. */
+  turnSignals: Map<string, AbortSignal>;
   /** RequestId → resolver for mini_completion / llm_query. */
   pendingMini: Map<
     string,
@@ -188,17 +193,20 @@ interface SubprocessHandle {
   askCollaboration?: CollaborationAsk;
   /** Timestamp of the last stdout line received from this subprocess. */
   lastActivityAt: number;
+  /** Subprocess-reported label of whatever long-running operation is in
+   *  flight (e.g. 'model_call', 'oauth_refresh', 'tool:Bash'), or undefined
+   *  when idle between operations. Surfaced by the watchdog on force-recovery. */
+  currentOperation?: string;
 }
 
 /** Per-chat-session subprocess. */
 const handles = new Map<string, SubprocessHandle>();
 
-const TURN_IDLE_TIMEOUT_MS = Number(process.env.MA_TURN_IDLE_TIMEOUT_MS) || 5 * 60 * 1000;
-const WATCHDOG_SWEEP_MS = 15_000;
-
 function reapStuckHandle(key: string, handle: SubprocessHandle, idleMs: number): void {
+  const operation = handle.currentOperation;
+  const stuckOn = operation ? ` while running "${operation}"` : '';
   log.error(
-    `Subprocess for session ${handle.chatSessionId} silent for ${Math.round(idleMs / 1000)}s ` +
+    `Subprocess for session ${handle.chatSessionId} silent for ${Math.round(idleMs / 1000)}s${stuckOn} ` +
       `with ${handle.queues.size} turn(s) in flight — force-recovering.`,
   );
   for (const q of handle.queues.values()) {
@@ -212,7 +220,7 @@ function reapStuckHandle(key: string, handle: SubprocessHandle, idleMs: number):
           `${Math.round(TURN_IDLE_TIMEOUT_MS / 60_000)} minute(s) of silence — usually a stalled network ` +
           'connection. Send your message again.',
         canRetry: true,
-        originalError: `watchdog: no subprocess activity for ${Math.round(idleMs / 1000)}s`,
+        originalError: `watchdog: no subprocess activity for ${Math.round(idleMs / 1000)}s${stuckOn}`,
       },
     });
     q.finish();
@@ -326,6 +334,7 @@ function spawnSubprocess(req: PiChatRequest, systemPrompt: string): SubprocessHa
     string,
     { mode: PermissionMode; sessionId: string }
   >();
+  const turnSignals = new Map<string, AbortSignal>();
   const pendingMini = new Map<
     string,
     { resolve: (r: MsgMiniCompletionResult) => void }
@@ -350,6 +359,7 @@ function spawnSubprocess(req: PiChatRequest, systemPrompt: string): SubprocessHa
     ready,
     queues,
     permissionContext,
+    turnSignals,
     pendingMini,
     pendingLlm,
     stderrBuffer,
@@ -498,6 +508,11 @@ async function handleOutbound(
       const m = msg as MsgReady;
       if (m.piSessionId) persistPiSessionId(handle.chatSessionId, m.piSessionId);
       resolveReady();
+      return;
+    }
+
+    case 'operation_update': {
+      handle.currentOperation = msg.operation;
       return;
     }
 
@@ -739,8 +754,9 @@ async function handleOutbound(
 
     case 'auth_refresh_request': {
       const m = msg as MsgAuthRefreshRequest;
+      const signal = m.turnId ? handle.turnSignals.get(m.turnId) : undefined;
       try {
-        const fresh = await resolveAuthForSlug(handle.connectionSlug);
+        const fresh = await resolveAuthForSlug(handle.connectionSlug, signal);
         const result: MsgAuthRefreshResult =
           fresh.type === 'copilot_oauth'
             ? {
@@ -1004,6 +1020,7 @@ export async function* runPiChat(
     mode: req.permissionMode ?? 'auto',
     sessionId: req.chatSessionId,
   });
+  if (req.signal) handle.turnSignals.set(req.turnId, req.signal);
 
   const queue = new EventQueue();
   handle.queues.set(req.turnId, queue);
@@ -1039,6 +1056,7 @@ export async function* runPiChat(
   } finally {
     if (req.signal) req.signal.removeEventListener('abort', onAbort);
     handle.permissionContext.delete(req.turnId);
+    handle.turnSignals.delete(req.turnId);
   }
 }
 

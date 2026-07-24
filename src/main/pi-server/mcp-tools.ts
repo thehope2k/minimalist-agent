@@ -27,15 +27,10 @@ import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import type { ToolDefinition } from '@earendil-works/pi-coding-agent';
 import type { PiMcpServerConfig } from '../agent/backends/pi/protocol';
 import { createLogger } from '../../shared/sub-logger';
+import { withTimeout } from '../../shared/with-timeout';
+import { MCP_CALL_CEILING_MS, MCP_CONNECT_CEILING_MS, MCP_POOL_BUDGET_MS } from '../../shared/timeouts';
 
 const log = createLogger('pi-mcp');
-
-/** Default ceiling for a single server's connect + listTools handshake. */
-const DEFAULT_CONNECT_TIMEOUT_MS = 15_000;
-/** Default ceiling for a single tool invocation. */
-const DEFAULT_CALL_TIMEOUT_MS = 120_000;
-/** Default ceiling for the whole pool to come up; never block boot past this. */
-const DEFAULT_TOTAL_BUDGET_MS = 30_000;
 
 export interface ConnectMcpOptions {
   connectTimeoutMs?: number;
@@ -56,35 +51,11 @@ export interface McpServerDiagnostic {
 
 export interface ConnectMcpResult {
   /** Adapted Pi tools, ready to push into `customTools`. */
-  tools: ToolDefinition<any, any, any>[];
+  tools: ToolDefinition<any, any>[];
   /** Live clients to close on shutdown. */
   clients: Client[];
   /** Per-server outcomes for status surfacing. */
   diagnostics: McpServerDiagnostic[];
-}
-
-/* ============================================================ */
-/*  Helpers                                                      */
-/* ============================================================ */
-
-/** Reject after `ms`, so a hung transport can't block forever. */
-function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(
-      () => reject(new Error(`${label} timed out after ${ms}ms`)),
-      ms,
-    );
-    p.then(
-      (v) => {
-        clearTimeout(timer);
-        resolve(v);
-      },
-      (e) => {
-        clearTimeout(timer);
-        reject(e);
-      },
-    );
-  });
 }
 
 function errMsg(e: unknown): string {
@@ -183,7 +154,7 @@ function adaptTools(
   client: Client,
   tools: Array<{ name: string; description?: string; inputSchema?: unknown }>,
   callTimeoutMs: number,
-): ToolDefinition<any, any, any>[] {
+): ToolDefinition<any, any>[] {
   return tools.map((t) => {
     const qualifiedName = `mcp__${slug}__${t.name}`;
     const parameters =
@@ -220,7 +191,7 @@ function adaptTools(
           };
         }
       },
-    } as ToolDefinition<any, any, any>;
+    } as ToolDefinition<any, any>;
   });
 }
 
@@ -232,7 +203,7 @@ async function connectOne(
   cfg: PiMcpServerConfig,
   connectTimeoutMs: number,
   callTimeoutMs: number,
-): Promise<{ client: Client; tools: ToolDefinition<any, any, any>[]; diagnostic: McpServerDiagnostic }> {
+): Promise<{ client: Client; tools: ToolDefinition<any, any>[]; diagnostic: McpServerDiagnostic }> {
   const client = new Client(
     { name: 'minimalist-agent', version: '1.0.0' },
     { capabilities: {} },
@@ -264,9 +235,9 @@ export async function connectMcpServers(
   const result: ConnectMcpResult = { tools: [], clients: [], diagnostics: [] };
   if (!configs || configs.length === 0) return result;
 
-  const connectTimeoutMs = opts.connectTimeoutMs ?? DEFAULT_CONNECT_TIMEOUT_MS;
-  const callTimeoutMs = opts.callTimeoutMs ?? DEFAULT_CALL_TIMEOUT_MS;
-  const totalBudgetMs = opts.totalBudgetMs ?? DEFAULT_TOTAL_BUDGET_MS;
+  const connectTimeoutMs = opts.connectTimeoutMs ?? MCP_CONNECT_CEILING_MS;
+  const callTimeoutMs = opts.callTimeoutMs ?? MCP_CALL_CEILING_MS;
+  const totalBudgetMs = opts.totalBudgetMs ?? MCP_POOL_BUDGET_MS;
 
   log.info(`Connecting ${configs.length} MCP server(s)…`);
 

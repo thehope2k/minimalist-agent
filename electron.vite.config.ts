@@ -40,6 +40,16 @@ export default defineConfig({
           // external so they resolve from node_modules instead of bundling the
           // SDK's CJS internals into the ESM pi-server bundle.
           /^@opentelemetry\//,
+          // Kept external so bundling doesn't add a third copy on top of the two
+          // npm already installs (root + @earendil-works/pi-coding-agent's own
+          // exact-pinned nested copy — confirmed via `npm ls undici`, not deduped
+          // even when pinned to match). Our idle-timeout dispatcher config only
+          // reaches @earendil-works/pi-ai's calls (bare `fetch()`, patched
+          // process-wide by `undici.install()` in http-idle-timeout.ts) — it does
+          // NOT protect any code that imports its own `undici` and calls
+          // `request()`/`Client` directly, since that resolves the nested copy's
+          // own unconfigured dispatcher. See http-idle-timeout.ts for detail.
+          'undici',
           /^node:/,
         ],
         output: {

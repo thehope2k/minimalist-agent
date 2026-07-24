@@ -35,28 +35,37 @@ import {
 } from '../storage/connections';
 import type { ResolvedAuth } from '../agent/backends/types';
 import { createLogger } from '../logger';
-import { withTimeout } from '../utils/with-timeout';
+import { raceAbort, withDeadline } from '../../shared/with-timeout';
+import { AUTH_REFRESH_CEILING_MS } from '../../shared/timeouts';
 
 const log = createLogger('auth');
 
 const refreshInFlight = new Map<string, Promise<OAuthCred>>();
-const REFRESH_TIMEOUT_MS = 20_000;
 
-/** Runs `perform()` behind a per-slug mutex, bounded to REFRESH_TIMEOUT_MS so
- *  the mutex entry always clears even if the underlying network call never
- *  settles on its own. */
+/** Bounded by AUTH_REFRESH_CEILING_MS only — no parentSignal, since none of
+ *  the three provider refresh() calls accept one, so aborting the shared
+ *  promise would just orphan the real fetch and let a second attempt race it
+ *  on the same refresh token. `signal` only cancels this caller's own wait. */
 function guardedRefresh(
   slug: string,
   label: string,
   perform: () => Promise<OAuthCred>,
+  signal?: AbortSignal,
 ): Promise<OAuthCred> {
-  const existing = refreshInFlight.get(slug);
-  if (existing) return existing;
+  const shared = refreshInFlight.get(slug) ?? startRefresh(slug, label, perform);
+  return signal ? raceAbort(shared, signal) : shared;
+}
 
-  const promise = withTimeout(perform(), REFRESH_TIMEOUT_MS, label)
+function startRefresh(
+  slug: string,
+  label: string,
+  perform: () => Promise<OAuthCred>,
+): Promise<OAuthCred> {
+  const promise = withDeadline(perform, { ceilingMs: AUTH_REFRESH_CEILING_MS, label })
     .catch((e) => {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (/timed out after/.test(msg)) log.warn(`${label} did not respond — releasing lock:`, msg);
+      if (e instanceof Error && e.name === 'DeadlineExceededError') {
+        log.warn(`${label} did not respond — releasing lock:`, e.message);
+      }
       throw e;
     })
     .finally(() => refreshInFlight.delete(slug));
@@ -68,7 +77,7 @@ function findConnection(slug: string): ConnectionMeta | undefined {
   return listConnections().find((c) => c.slug === slug);
 }
 
-export async function resolveAuthForSlug(slug: string): Promise<ResolvedAuth> {
+export async function resolveAuthForSlug(slug: string, signal?: AbortSignal): Promise<ResolvedAuth> {
   const conn = findConnection(slug);
   if (!conn) {
     throw new Error(
@@ -101,9 +110,8 @@ export async function resolveAuthForSlug(slug: string): Promise<ResolvedAuth> {
         `Connection "${slug}" is a Pi/Copilot connection but its credential is not OAuth. Re-authenticate from Settings → AI.`,
       );
     }
-    // Route refresh by sub-provider.
     if (conn.piAuthProvider === 'openai-codex') {
-      const fresh = await ensureFreshChatGptOAuth(slug, cred);
+      const fresh = await ensureFreshChatGptOAuth(slug, cred, signal);
       return {
         type: 'copilot_oauth',
         accessToken: fresh.accessToken,
@@ -111,7 +119,7 @@ export async function resolveAuthForSlug(slug: string): Promise<ResolvedAuth> {
         expiresAt: fresh.expiresAt,
       };
     }
-    const fresh = await ensureFreshCopilotOAuth(slug, cred);
+    const fresh = await ensureFreshCopilotOAuth(slug, cred, signal);
     return {
       type: 'copilot_oauth',
       accessToken: fresh.accessToken,
@@ -124,7 +132,7 @@ export async function resolveAuthForSlug(slug: string): Promise<ResolvedAuth> {
   if (cred.type === 'api_key') {
     return { type: 'anthropic_api_key', apiKey: cred.apiKey };
   }
-  const fresh = await ensureFreshAnthropicOAuth(slug, cred);
+  const fresh = await ensureFreshAnthropicOAuth(slug, cred, signal);
   return { type: 'anthropic_oauth', accessToken: fresh.accessToken };
 }
 
@@ -133,6 +141,7 @@ export async function resolveAuthForSlug(slug: string): Promise<ResolvedAuth> {
 async function ensureFreshAnthropicOAuth(
   slug: string,
   cred: OAuthCred,
+  signal?: AbortSignal,
 ): Promise<OAuthCred> {
   if (!isExpired(cred.expiresAt)) return cred;
 
@@ -143,7 +152,7 @@ async function ensureFreshAnthropicOAuth(
   }
 
   return guardedRefresh(slug, `Claude OAuth refresh for ${slug}`, () =>
-    performAnthropicRefresh(slug, cred),
+    performAnthropicRefresh(slug, cred), signal,
   );
 }
 
@@ -185,6 +194,7 @@ async function performAnthropicRefresh(
 async function ensureFreshCopilotOAuth(
   slug: string,
   cred: OAuthCred,
+  signal?: AbortSignal,
 ): Promise<OAuthCred> {
   if (!isCopilotExpired(cred.expiresAt)) return cred;
 
@@ -195,7 +205,7 @@ async function ensureFreshCopilotOAuth(
   }
 
   return guardedRefresh(slug, `Copilot token refresh for ${slug}`, () =>
-    performCopilotRefresh(slug, cred),
+    performCopilotRefresh(slug, cred), signal,
   );
 }
 
@@ -233,6 +243,7 @@ async function performCopilotRefresh(
 async function ensureFreshChatGptOAuth(
   slug: string,
   cred: OAuthCred,
+  signal?: AbortSignal,
 ): Promise<OAuthCred> {
   if (!isChatGptExpired(cred.expiresAt)) return cred;
 
@@ -243,7 +254,7 @@ async function ensureFreshChatGptOAuth(
   }
 
   return guardedRefresh(slug, `ChatGPT Plus token refresh for ${slug}`, () =>
-    performChatGptRefresh(slug, cred),
+    performChatGptRefresh(slug, cred), signal,
   );
 }
 
