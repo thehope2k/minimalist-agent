@@ -149,6 +149,12 @@ function mapToolResult(
 /*  Adapt one server's tools                                    */
 /* ============================================================ */
 
+const OPENAI_TOOL_NAME_ALLOWED_CHARS = /[^a-zA-Z0-9_-]/g;
+
+function sanitizeToolNameForModelBackends(rawName: string): string {
+  return rawName.replace(OPENAI_TOOL_NAME_ALLOWED_CHARS, '_');
+}
+
 function adaptTools(
   slug: string,
   client: Client,
@@ -156,7 +162,7 @@ function adaptTools(
   callTimeoutMs: number,
 ): ToolDefinition<any, any>[] {
   return tools.map((t) => {
-    const qualifiedName = `mcp__${slug}__${t.name}`;
+    const qualifiedName = sanitizeToolNameForModelBackends(`mcp__${slug}__${t.name}`);
     const parameters =
       t.inputSchema && typeof t.inputSchema === 'object'
         ? (t.inputSchema as any)
