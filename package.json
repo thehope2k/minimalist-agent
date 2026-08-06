@@ -34,17 +34,17 @@
   },
   "overrides": {
     "@anthropic-ai/sdk": "^0.92.0",
-    "undici": "8.5.0"
+    "undici": "8.10.0"
   },
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.3.217",
-    "@earendil-works/pi-ai": "^0.81.1",
-    "@earendil-works/pi-coding-agent": "^0.81.1",
+    "@anthropic-ai/claude-agent-sdk": "^0.3.223",
+    "@earendil-works/pi-ai": "^0.83.0",
+    "@earendil-works/pi-coding-agent": "^0.83.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/context-async-hooks": "^2.8.0",
     "@opentelemetry/core": "^2.9.0",
-    "@opentelemetry/exporter-trace-otlp-http": "^0.220.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.221.0",
     "@opentelemetry/resources": "^2.9.0",
     "@opentelemetry/sdk-trace-base": "^2.9.0",
     "@opentelemetry/sdk-trace-node": "^2.8.0",
@@ -59,7 +59,7 @@
     "sherpa-onnx-node": "^1.13.4",
     "tar": "^7.5.20",
     "unbzip2-stream": "^1.4.3",
-    "undici": "8.5.0",
+    "undici": "8.10.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -90,11 +90,11 @@
     "electron": "^43.1.1",
     "electron-builder": "^26.15.6",
     "electron-vite": "^5.0.0",
-    "katex": "^0.17.0",
+    "katex": "^0.18.1",
     "lucide-react": "^1.24.0",
     "mark.js": "^8.11.1",
     "mermaid": "^11.15.0",
-    "monaco-editor": "^0.55.1",
+    "monaco-editor": "^0.56.0",
     "react": "^19.2.7",
     "react-diff-viewer-continued": "^4.4.0",
     "react-dom": "^19.2.7",
