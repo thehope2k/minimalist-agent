@@ -18,6 +18,7 @@ import type {
 } from '@/lib/electron';
 import { storeAttachment } from '@/lib/attachments';
 import { getAppSettings } from '@/lib/app-settings';
+import { emitPetEvent } from '@/lib/pet-events';
 import { createLogger } from '@/lib/logger';
 
 const log = createLogger('useChat');
@@ -838,6 +839,9 @@ export function useChat(
       if (!prev) return;
       const next = prev.map((m) => (m.id === evt.id ? applyEvent(m, evt) : m));
       messagesBySession.current.set(sid, next);
+
+      if (evt.type === 'tool_start') emitPetEvent('tool-start');
+      if (evt.type === 'tool_result' && evt.isError) emitPetEvent('tool-error');
 
       if (sid === activeSessionIdRef.current) {
         setMessages(next);

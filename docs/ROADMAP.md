@@ -97,6 +97,7 @@ What's shipped, what's coming, and what's intentionally out of scope.
 | **Smart snippet attachments** | Large clipboard pastes auto-converted to named snippet chips; language detection; inline preview |
 | **Tooltips** | Radix `@radix-ui/react-tooltip` across all `IconButton` usages app-wide; 400 ms delay, consistent styling, `TooltipProvider` at root |
 | **Auto-update** | `electron-updater` pulling from GitHub Releases |
+| **Desktop Pet** | Opt-in, off by default (Settings → App → Fun). A small decorative panda overlay that reacts to live app signals — streaming start/end, tool activity, tool errors, git commit success — plus idle-driven wander/nap. Draggable anywhere in the window; optional synthesized sound effects (off by default). Lazy-loaded (zero bundle cost when disabled), respects `prefers-reduced-motion`, pauses when the window is hidden. Purely cosmetic — never produces tooltips or suggestions. See [DESKTOP-PET.md](DESKTOP-PET.md) |
 
 ---
 

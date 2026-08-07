@@ -5,6 +5,7 @@ import { TerminalPanel } from './components/terminal/TerminalPanel';
 import { FileExplorerPanel } from './components/files';
 import { ContextPanel } from './components/context/ContextPanel';
 import { FileViewModal } from './components/search/FileViewModal';
+import { DesktopPetGate } from './components/pet/DesktopPetGate';
 import { TooltipProvider, ResizablePanelGroup, ResizablePanel, ResizableHandle } from './components/ui';
 import { useResizablePanels } from './hooks/useResizablePanels';
 import { push as pushRecentFile } from './lib/recent-files';
@@ -281,6 +282,8 @@ export default function App() {
             onClose={() => setViewFile(null)}
           />
         )}
+
+        <DesktopPetGate isStreaming={streamingSessionIds.size > 0} />
       </div>
     </TooltipProvider>
   );

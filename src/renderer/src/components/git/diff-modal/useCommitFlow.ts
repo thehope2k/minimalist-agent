@@ -3,6 +3,7 @@ import type { GitRepo, GitFileEntry } from '../types';
 import { applySelectedHunks } from '../git-util';
 import { buildDiffContext } from '../git-generate';
 import type { DiffCaches, PartialContentRefs } from './types';
+import { emitPetEvent } from '@/lib/pet-events';
 
 /**
  * Manages commit message generation and commit execution.
@@ -77,6 +78,7 @@ export function useCommitFlow(
 
         clearPersisted();
         await loadStatus();
+        emitPetEvent('commit-success');
       } catch (e) {
         setCommitError(e instanceof Error ? e.message : String(e));
       } finally {

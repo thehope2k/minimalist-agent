@@ -3,6 +3,8 @@ import { Button, Select } from '@/components/ui';
 import {
   getAppSettings,
   setNotificationsEnabled,
+  setPetEnabled,
+  setPetSoundEnabled,
 } from '@/lib/app-settings';
 import { setSessionRetentionDays } from '@/lib/connections';
 import { useAiData } from '@/hooks/useAiData';
@@ -123,6 +125,31 @@ export function AppPanel() {
             checked={settings.notificationsEnabled}
             onCheckedChange={(v) => {
               setNotificationsEnabled(v);
+              refresh();
+            }}
+          />
+        </SettingsCard>
+      </SettingsSection>
+
+      <SettingsSection title="Fun">
+        <SettingsCard>
+          <SettingsToggle
+            label="Desktop Pet"
+            description="A small decorative panda that wanders the window and reacts while the agent is working. Drag it anywhere, or click it. Purely cosmetic — never shows tooltips or suggestions."
+            checked={settings.petEnabled}
+            onCheckedChange={(v) => {
+              setPetEnabled(v);
+              refresh();
+            }}
+          />
+          <SettingsDivider />
+          <SettingsToggle
+            label="Pet Sound Effects"
+            description="Small synthesized chirps when the panda reacts. Off by default."
+            checked={settings.petSoundEnabled}
+            disabled={!settings.petEnabled}
+            onCheckedChange={(v) => {
+              setPetSoundEnabled(v);
               refresh();
             }}
           />
