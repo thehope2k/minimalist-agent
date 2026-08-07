@@ -601,6 +601,12 @@ export interface FileTreeNode {
   children: FileTreeNode[] | null;
 }
 
+/** Result of a `files.stat` probe — used to decide how a clicked reference opens. */
+export type FileStatResult =
+  | { kind: 'file'; absolutePath: string; size: number }
+  | { kind: 'dir'; absolutePath: string }
+  | { kind: 'unavailable' };
+
 /* ---------- Content grep (Search Everywhere) ---------- */
 
 export interface ContentMatchEntry {
@@ -1082,6 +1088,8 @@ export interface AppApi {
       includeHidden?: boolean;
       maxDepth?: number;
     }) => Promise<FileTreeNode[]>;
+    /** Existence/type probe confined to allowed roots — used to decide how a clicked reference opens. */
+    stat: (absolutePath: string) => Promise<FileStatResult>;
   };
   skills: {
     /** Absolute path of the on-disk skills directory (under userData). */

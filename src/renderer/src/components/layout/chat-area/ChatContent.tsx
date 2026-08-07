@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { CwdContext } from '@/contexts/CwdContext';
+import { FileOpenerProvider } from '@/contexts/FileOpenerContext';
 import { ChatScroll, type ChatScrollHandle } from '@/components/chat/ChatScroll';
 import { FindBar } from '@/components/chat/FindBar';
 import { useFindInChat } from '@/hooks/useFindInChat';
@@ -49,6 +50,8 @@ type Props = {
   findOpen: boolean;
   onFindClose: () => void;
   findInputRef: React.RefObject<HTMLInputElement | null>;
+  /** Opens the in-app file viewer modal for a clicked file reference. */
+  onOpenFile?: (absolutePath: string, lineNumber: number) => void;
 };
 
 export function ChatContent({
@@ -85,6 +88,7 @@ export function ChatContent({
   findOpen,
   onFindClose,
   findInputRef,
+  onOpenFile,
 }: Props) {
   // Ref forwarded to ChatScroll so that useFindInChat can scope mark.js to
   // the message list DOM node rather than the whole chat panel.
@@ -119,78 +123,80 @@ export function ChatContent({
   };
   return (
     <CwdContext.Provider value={cwd}>
-      <div className="flex h-full min-h-0 flex-col">
-      {/* Find bar slides in between the header and the message list. The bar
-          is always rendered (not conditionally mounted) so that the slide-out
-          animation plays correctly — if we unmounted on close the bar would
-          disappear instantly instead of sliding up. */}
-      <FindBar
-        open={findOpen}
-        query={findQuery}
-        onQueryChange={setFindQuery}
-        matchCount={matchCount}
-        activeIndex={activeIndex}
-        onNext={next}
-        onPrev={prev}
-        onClose={handleFindClose}
-        inputRef={findInputRef}
-      />
-      <ChatScroll ref={chatScrollRef} sessionId={activeSessionId ?? sessionId} contentSignal={contentSignal}>
-        {messages.length === 0 ? (
-          <EmptyState />
-        ) : (
-          <div className="pl-4 pr-12">
-            <MessageList
-              messages={messages}
-              onRetry={onRetry}
-              isStreaming={isStreaming}
-              onContinue={isStreaming ? undefined : onContinue}
-              onBranch={isStreaming ? undefined : onBranch}
-              sessionId={(activeSessionId ?? sessionId) as string | undefined}
-              getPlanForMessage={getPlanForMessage}
-            />
-          </div>
-        )}
-      </ChatScroll>
-
-      <div className="shrink-0 pb-4 pt-2 relative">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -top-6 left-0 right-0 h-6 bg-linear-to-b from-transparent to-canvas"
-        />
-        <div className="pl-4 pr-12">
-          <MessageInput
-            isStreaming={isStreaming}
-            streamingTurnId={streamingTurnId}
-            cwd={cwd}
-            onChangeCwd={setCwd}
-            cwdLocked={messages.length > 0}
-            permissionMode={permissionMode}
-            onChangePermissionMode={setPermissionMode}
-            autonomyLevel={autonomyLevel}
-            onChangeAutonomyLevel={setAutonomyLevel}
-            thinkingLevel={thinkingLevel}
-            onChangeThinkingLevel={setThinkingLevel}
-            onSend={onSend}
-            onAbort={onAbort}
-            onSteer={onSteer}
-            onManualCompact={onManualCompact}
-            sessionId={activeSessionId ?? sessionId}
-            title={title}
-            messages={messages}
-            lastCompaction={lastCompaction}
-            projectDefaultConnectionSlug={projectDefaultConnectionSlug || undefined}
-            sessionConnectionSlug={sessionConnectionSlug || undefined}
-            sessionModel={sessionModel || undefined}
-            loadedSessionPickId={loadedSessionPickId}
-            pendingMessage={pendingMessage}
-            onPendingMessageConsumed={onPendingMessageConsumed}
+      <FileOpenerProvider onOpenFile={onOpenFile}>
+        <div className="flex h-full min-h-0 flex-col">
+          {/* Find bar slides in between the header and the message list. The bar
+              is always rendered (not conditionally mounted) so that the slide-out
+              animation plays correctly — if we unmounted on close the bar would
+              disappear instantly instead of sliding up. */}
+          <FindBar
+            open={findOpen}
+            query={findQuery}
+            onQueryChange={setFindQuery}
+            matchCount={matchCount}
+            activeIndex={activeIndex}
+            onNext={next}
+            onPrev={prev}
+            onClose={handleFindClose}
+            inputRef={findInputRef}
           />
-        </div>
-      </div>
+          <ChatScroll ref={chatScrollRef} sessionId={activeSessionId ?? sessionId} contentSignal={contentSignal}>
+            {messages.length === 0 ? (
+              <EmptyState />
+            ) : (
+              <div className="pl-4 pr-12">
+                <MessageList
+                  messages={messages}
+                  onRetry={onRetry}
+                  isStreaming={isStreaming}
+                  onContinue={isStreaming ? undefined : onContinue}
+                  onBranch={isStreaming ? undefined : onBranch}
+                  sessionId={(activeSessionId ?? sessionId) as string | undefined}
+                  getPlanForMessage={getPlanForMessage}
+                />
+              </div>
+            )}
+          </ChatScroll>
 
-      <CollaborationPrompt />
-      </div>
+          <div className="shrink-0 pb-4 pt-2 relative">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute -top-6 left-0 right-0 h-6 bg-linear-to-b from-transparent to-canvas"
+            />
+            <div className="pl-4 pr-12">
+              <MessageInput
+                isStreaming={isStreaming}
+                streamingTurnId={streamingTurnId}
+                cwd={cwd}
+                onChangeCwd={setCwd}
+                cwdLocked={messages.length > 0}
+                permissionMode={permissionMode}
+                onChangePermissionMode={setPermissionMode}
+                autonomyLevel={autonomyLevel}
+                onChangeAutonomyLevel={setAutonomyLevel}
+                thinkingLevel={thinkingLevel}
+                onChangeThinkingLevel={setThinkingLevel}
+                onSend={onSend}
+                onAbort={onAbort}
+                onSteer={onSteer}
+                onManualCompact={onManualCompact}
+                sessionId={activeSessionId ?? sessionId}
+                title={title}
+                messages={messages}
+                lastCompaction={lastCompaction}
+                projectDefaultConnectionSlug={projectDefaultConnectionSlug || undefined}
+                sessionConnectionSlug={sessionConnectionSlug || undefined}
+                sessionModel={sessionModel || undefined}
+                loadedSessionPickId={loadedSessionPickId}
+                pendingMessage={pendingMessage}
+                onPendingMessageConsumed={onPendingMessageConsumed}
+              />
+            </div>
+          </div>
+
+          <CollaborationPrompt />
+        </div>
+      </FileOpenerProvider>
     </CwdContext.Provider>
   );
 }

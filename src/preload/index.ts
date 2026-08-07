@@ -3,6 +3,11 @@ import { homedir as osHomedir } from 'node:os';
 
 type PermissionMode = 'plan' | 'auto';
 
+type FileStatResult =
+  | { kind: 'file'; absolutePath: string; size: number }
+  | { kind: 'dir'; absolutePath: string }
+  | { kind: 'unavailable' };
+
 type EngagementType = 'decision' | 'preference' | 'feedback' | 'guidance' | 'approval';
 
 interface EngagementRequest {
@@ -749,6 +754,8 @@ const api = {
       ipcRenderer.invoke('files:listDirectory', args),
     buildFileTree: (args: { path: string; root: string; includeHidden?: boolean; maxDepth?: number }): Promise<unknown[]> =>
       ipcRenderer.invoke('files:buildFileTree', args),
+    stat: (absolutePath: string): Promise<FileStatResult> =>
+      ipcRenderer.invoke('files:stat', absolutePath),
   },
   skills: {
     getDir: (): Promise<string> => ipcRenderer.invoke('skills:getDir'),

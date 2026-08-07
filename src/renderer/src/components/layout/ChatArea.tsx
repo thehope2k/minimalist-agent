@@ -287,6 +287,7 @@ export function ChatArea({
           findOpen={findOpen}
           onFindClose={() => setFindOpen(false)}
           findInputRef={findInputRef}
+          onOpenFile={onOpenFile}
         />
       </div>
 

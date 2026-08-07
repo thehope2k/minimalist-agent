@@ -13,7 +13,7 @@
 import { loader } from '@monaco-editor/react';
 import * as monaco from 'monaco-editor';
 import type * as MonacoType from 'monaco-editor';
-import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
+import editorWorker from 'monaco-editor/editor/editor.worker.js?worker';
 
 (self as unknown as Record<string, unknown>).MonacoEnvironment = {
   getWorker(_moduleId: string, _label: string) {

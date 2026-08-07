@@ -11,6 +11,7 @@ export { ZoomPan } from './ZoomPan';
 export { Input, Textarea, FIELD_CHROME } from './Input';
 export { PasswordInput } from './PasswordInput';
 export { Menu, type MenuItem } from './Menu';
+export { FileRefMenu } from './FileRefMenu';
 export { Select } from './Select';
 export { Field } from './Field';
 export { Toggle } from './Toggle';

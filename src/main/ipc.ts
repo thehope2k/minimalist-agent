@@ -150,8 +150,8 @@ import {
 } from './extensions/mcp-config';
 import {type FileSearchEntry, searchFiles} from './files/search';
 import {buildFileTree, listDirectory} from './files/list-directory';
-import {isWithinAllowedRoots, resolveWithinAllowedRoots} from './files/path-guard';
-import {readFileSync, existsSync} from 'node:fs';
+import {isWithinAllowedRoots, resolveWithinAllowedRoots, type FileStatResult} from './files/path-guard';
+import {readFileSync, existsSync, statSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {writeFile} from 'node:fs/promises';
 import {publishExport, revokeExport, type PublishResult} from './export-transport/brewpage';
@@ -988,7 +988,12 @@ export function registerIpc(): void {
   );
   ipcMain.handle('sessions:listFiles', (_e, id: string) => listSessionFiles(id));
   ipcMain.handle('sessions:revealFile', (_e, absPath: string) => {
-    shell.showItemInFolder(absPath);
+    // Guard lives here, not just at renderer call sites — every caller
+    // (FileRefMenu, TreeNode, any future one) gets it for free, and none can
+    // bypass it by calling window.api.sessions.revealFile directly.
+    const safePath = resolveWithinAllowedRoots(absPath);
+    if (!safePath) return;
+    shell.showItemInFolder(safePath);
   });
 
   ipcMain.handle(
@@ -1394,6 +1399,20 @@ export function registerIpc(): void {
       return buildFileTree(args);
     },
   );
+
+  // Existence/type probe for click-to-open references (chat links, tool-call
+  // paths). Confined to allowed roots like every other files:*/fs:* handler.
+  ipcMain.handle('files:stat', (_e, rawPath: string): FileStatResult => {
+    const safePath = resolveWithinAllowedRoots(rawPath);
+    if (!safePath) return { kind: 'unavailable' };
+    try {
+      const stat = statSync(safePath);
+      if (stat.isDirectory()) return { kind: 'dir', absolutePath: safePath };
+      return { kind: 'file', absolutePath: safePath, size: stat.size };
+    } catch {
+      return { kind: 'unavailable' };
+    }
+  });
 
   // ---- Filesystem dialogs ------------------------------------------------
 

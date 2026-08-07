@@ -94,3 +94,9 @@ export function resolveWithinAllowedRoots(target: string): string | null {
 export function isWithinAllowedRoots(target: string): boolean {
   return resolveWithinAllowedRoots(target) !== null;
 }
+
+/** Result of a `files:stat` probe — used to decide how a clicked reference opens. */
+export type FileStatResult =
+  | { kind: 'file'; absolutePath: string; size: number }
+  | { kind: 'dir'; absolutePath: string }
+  | { kind: 'unavailable' };

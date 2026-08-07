@@ -16,6 +16,10 @@ import { MathBlock } from './MathBlock';
 import { DataTableBlock } from './DataTableBlock';
 import { ExpandModal, ZoomPan } from '@/components/ui';
 import { createLogger } from '@/lib/logger';
+import { useCwd } from '@/contexts/CwdContext';
+import { useFileOpener } from '@/contexts/FileOpenerContext';
+import { fileUrlToPath } from '@/lib/reference-resolver';
+import { useTransientFeedback } from '@/hooks/useTransientFeedback';
 
 const log = createLogger('markdown-link');
 
@@ -113,36 +117,56 @@ function InlineImage({ src, alt }: { src?: string; alt?: string }) {
   );
 }
 
-// ── Component map ────────────────────────────────────────────────────────────
-const COMPONENTS: Components = {
-  // Headings — let globals.css typography do the heavy lifting.
-  h1: ({ children }) => <h1>{children}</h1>,
-  h2: ({ children }) => <h2>{children}</h2>,
-  h3: ({ children }) => <h3>{children}</h3>,
-  h4: ({ children }) => <h4>{children}</h4>,
+// ── MarkdownLink ─────────────────────────────────────────────────────────
+// `file:` links get resolved+opened in-app (viewer or reveal-in-Finder)
+// instead of being handed to shell.openExternal, where url-safety.ts is
+// guaranteed to block them. Every other scheme keeps the original
+// openExternal path unchanged.
+function MarkdownLink({ href, children }: { href?: string; children?: ReactNode }) {
+  const [feedback, flash] = useTransientFeedback();
+  const cwd = useCwd();
+  const fileOpener = useFileOpener();
+  const safeHref = href ? defaultUrlTransform(href) : '';
 
-  a: ({ href, children }) => {
-    // Two-layer defense for agent-generated links:
-    //   1. Route left-click through the gated IPC handler so dangerous
-    //      schemes (file:, javascript:, ...) are blocked with a useful
-    //      error rather than handed to shell.openExternal.
-    //   2. Sanitize the DOM `href` via react-markdown's defaultUrlTransform
-    //      so middle-click / cmd-click / "Copy link address" / drag-to-
-    //      bookmark can't smuggle a dangerous scheme past the click handler.
-    const safeHref = href ? defaultUrlTransform(href) : '';
-    const onClick = (e: ReactMouseEvent<HTMLAnchorElement>) => {
-      // Let modifier-clicks fall through to setWindowOpenHandler (which
-      // also classifies); only intercept the plain left-click case to
-      // surface block reasons as a console warning.
-      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
-      if (!href) return;
+  const onClick = (e: ReactMouseEvent<HTMLAnchorElement>) => {
+    if (!href) return;
+    const filePath = fileUrlToPath(href);
+
+    if (filePath !== null) {
+      // `file:` links have no meaningful new-tab/new-window behavior, and
+      // react-markdown's protocol allowlist blanks the DOM href to "" for
+      // this scheme (file: isn't in its safeProtocol list) — so unlike
+      // http(s) links, letting modifier/middle-clicks fall through to the
+      // native target="_blank" handling would just navigate to the blanked
+      // href, i.e. the current page's own URL. Always intercept instead.
       e.preventDefault();
-      window.api.app.openExternal(href).catch((err: unknown) => {
-        const msg = err instanceof Error ? err.message : String(err);
-        log.warn('blocked:', msg);
-      });
-    };
-    return (
+      if (fileOpener) {
+        void fileOpener.openReference(href, cwd).then((outcome) => {
+          if (!outcome.ok) flash(outcome.reason);
+        });
+      } else {
+        openExternalWithFeedback(href);
+      }
+      return;
+    }
+
+    // Let modifier-clicks on genuine external links fall through to
+    // setWindowOpenHandler (which also classifies).
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    e.preventDefault();
+    openExternalWithFeedback(href);
+  };
+
+  function openExternalWithFeedback(url: string) {
+    window.api.app.openExternal(url).catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      log.warn('blocked:', msg);
+      flash(msg);
+    });
+  }
+
+  return (
+    <span className="inline-flex flex-wrap items-baseline gap-1.5">
       <a
         href={safeHref}
         target="_blank"
@@ -152,8 +176,24 @@ const COMPONENTS: Components = {
       >
         {children}
       </a>
-    );
-  },
+      {feedback && (
+        <span role="status" className="text-xs text-fg-subtle">
+          {feedback}
+        </span>
+      )}
+    </span>
+  );
+}
+
+// ── Component map ────────────────────────────────────────────────────────────
+const COMPONENTS: Components = {
+  // Headings — let globals.css typography do the heavy lifting.
+  h1: ({ children }) => <h1>{children}</h1>,
+  h2: ({ children }) => <h2>{children}</h2>,
+  h3: ({ children }) => <h3>{children}</h3>,
+  h4: ({ children }) => <h4>{children}</h4>,
+
+  a: MarkdownLink,
 
   // Images — click to expand via ExpandModal lightbox.
   img: ({ src, alt }) => <InlineImage src={src} alt={alt} />,
