@@ -5,6 +5,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.20.0] — 2026-08-07
+
+Adds an opt-in desktop pet overlay and in-app file link opening; fixes an MCP tool-name compatibility bug.
+
+### Added
+
+**Desktop pet overlay**
+
+- A new opt-in, purely decorative panda overlay reflects live app activity (streaming, tool start/error, commit success) as a small ambient signal — off by default, toggle it on via Settings → App → Fun, with a separate toggle for synthesized sound effects
+- Respects `prefers-reduced-motion` and pauses when the window is hidden; costs nothing when disabled
+
+**In-app file references**
+
+- Clicking a `file:` markdown link or a tool-call path chip (e.g. `file_path`, `notebook_path`) now opens the reference in-app — a viewer for files, reveal-in-Finder/Explorer for directories — instead of failing silently via the blocked external-shell path
+- New context menu on file references offers Copy Absolute/Relative Path and Reveal in Finder
+
+### Fixed
+
+- Fixed MCP tool names containing characters outside `[a-zA-Z0-9_-]` being rejected by some model providers — disallowed characters are now stripped before the tool name reaches the model backend
+
+---
+
 ## [1.19.2] — 2026-07-24
 
 Reliability hardening — network calls to the LLM/OAuth backends are now bounded so a stalled connection can't hang a chat turn forever.
