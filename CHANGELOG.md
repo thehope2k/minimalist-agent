@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.20.1] — 2026-08-11
+
+Bug fix — closes the last unbounded OAuth refresh path by upgrading the SDK and passing an explicit request timeout.
+
+### Fixed
+
+- Fixed the GitHub Copilot / OpenAI Codex OAuth token refresh request itself having no timeout — a stalled connection at token-expiry time could still hang the underlying fetch even though the app-level safeguards added in 1.19.2 bounded the surrounding call. Upgraded the SDK to a version with a request-level abort signal and wired it through, so the refresh now fails fast instead of relying solely on the 5-minute subprocess watchdog
+
+---
+
 ## [1.20.0] — 2026-08-07
 
 Adds an opt-in desktop pet overlay and in-app file link opening; fixes an MCP tool-name compatibility bug.
