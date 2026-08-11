@@ -75,9 +75,12 @@ class InMemoryCredentialStore implements CredentialStore {
     fn: (current: Credential | undefined) => Promise<Credential | undefined>,
   ): Promise<Credential | undefined> {
     const current = this.data.get(id);
+    const startedAt = Date.now();
+    log.info(`Credential refresh starting for ${id}`);
     const next = await withOperation('oauth_refresh', async () =>
       (await refreshViaMain()) ?? (await refreshWithLocalRetry(fn, current)),
     );
+    log.info(`Credential refresh for ${id} finished in ${Date.now() - startedAt}ms (${next !== undefined ? 'refreshed' : 'unchanged'})`);
     if (next !== undefined) this.data.set(id, next);
     return next;
   }
@@ -112,7 +115,9 @@ function toOAuthCredential(cred: { access: string; refresh: string; expires?: nu
 }
 
 async function refreshViaMain(): Promise<OAuthCredential | undefined> {
+  const startedAt = Date.now();
   const result = await requestAuthRefresh();
+  log.info(`Main round-trip refresh took ${Date.now() - startedAt}ms (${result.credential ? 'got credential' : 'no credential'}${result.error ? `, error: ${result.error}` : ''})`);
   return result.credential ? toOAuthCredential(result.credential) : undefined;
 }
 
@@ -120,8 +125,11 @@ async function refreshWithLocalRetry(
   fn: (current: Credential | undefined) => Promise<Credential | undefined>,
   current: Credential | undefined,
 ): Promise<Credential | undefined> {
+  const startedAt = Date.now();
   try {
-    return await fn(current);
+    const result = await fn(current);
+    log.info(`Local SDK refresh took ${Date.now() - startedAt}ms`);
+    return result;
   } catch (err) {
     if (!isTransientOAuthRefreshError(err)) throw err;
     log.warn('transient OAuth refresh failure — retrying once:', errMessage(err));

@@ -54,7 +54,15 @@ function guardedRefresh(
   perform: () => Promise<OAuthCred>,
   signal?: AbortSignal,
 ): Promise<OAuthCred> {
-  const shared = refreshInFlight.get(slug) ?? startRefresh(slug, label, perform);
+  const existing = refreshInFlight.get(slug);
+  if (existing) {
+    // Confirms/refutes cross-session serialization: a second caller for the
+    // same connection slug joins the first caller's refresh instead of
+    // starting its own, so its turn is blocked for however long that first
+    // refresh takes.
+    log.info(`${label} joining an in-flight refresh already started for ${slug}`);
+  }
+  const shared = existing ?? startRefresh(slug, label, perform);
   return signal ? raceAbort(shared, signal) : shared;
 }
 
@@ -63,10 +71,19 @@ function startRefresh(
   label: string,
   perform: () => Promise<OAuthCred>,
 ): Promise<OAuthCred> {
+  const startedAt = Date.now();
+  log.info(`${label} starting`);
   const promise = withDeadline(perform, { ceilingMs: AUTH_REFRESH_CEILING_MS, label })
+    .then((result) => {
+      log.info(`${label} succeeded in ${Date.now() - startedAt}ms`);
+      return result;
+    })
     .catch((e) => {
+      const msg = e instanceof Error ? e.message : String(e);
       if (e instanceof Error && e.name === 'DeadlineExceededError') {
-        log.warn(`${label} did not respond — releasing lock:`, e.message);
+        log.warn(`${label} did not respond — releasing lock:`, msg);
+      } else {
+        log.warn(`${label} failed after ${Date.now() - startedAt}ms:`, msg);
       }
       throw e;
     })
