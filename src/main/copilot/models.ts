@@ -9,6 +9,7 @@ import { githubCopilotProvider } from '@earendil-works/pi-ai/providers/github-co
 import { GITHUB_COPILOT_MODELS } from '@earendil-works/pi-ai/providers/github-copilot.models';
 import type { ModelDef } from '../storage/connections';
 import { createLogger } from '../logger';
+import { AUTH_REFRESH_CEILING_MS } from '../../shared/timeouts';
 
 const log = createLogger('copilot-models');
 
@@ -182,7 +183,10 @@ export async function fetchCopilotModels(
 ): Promise<ModelDef[]> {
   // Step 1: GitHub OAuth → Copilot API token.
   const oauth = githubCopilotProvider().auth.oauth!;
-  const creds = await oauth.refresh({ type: 'oauth', access: '', refresh: githubRefreshToken, expires: 0 });
+  const creds = await oauth.refresh(
+    { type: 'oauth', access: '', refresh: githubRefreshToken, expires: 0 },
+    AbortSignal.timeout(AUTH_REFRESH_CEILING_MS),
+  );
   const apiToken = creds.access;
 
   // Step 2: derive regional API base from the token.

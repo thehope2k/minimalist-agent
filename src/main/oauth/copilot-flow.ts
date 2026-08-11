@@ -9,6 +9,7 @@
 
 import { githubCopilotProvider } from '@earendil-works/pi-ai/providers/github-copilot';
 import { createLogger } from '../logger';
+import { AUTH_REFRESH_CEILING_MS } from '../../shared/timeouts';
 
 const log = createLogger('copilot-oauth');
 
@@ -91,7 +92,10 @@ export async function refreshCopilotTokens(
   githubRefreshToken: string,
 ): Promise<CopilotTokens> {
   const oauth = githubCopilotProvider().auth.oauth!;
-  const creds = await oauth.refresh({ type: 'oauth', access: '', refresh: githubRefreshToken, expires: 0 });
+  const creds = await oauth.refresh(
+    { type: 'oauth', access: '', refresh: githubRefreshToken, expires: 0 },
+    AbortSignal.timeout(AUTH_REFRESH_CEILING_MS),
+  );
   return {
     accessToken: creds.access,
     // Copilot refresh returns the same long-lived GitHub token (or a new

@@ -11,6 +11,7 @@
 
 import { openaiCodexProvider } from '@earendil-works/pi-ai/providers/openai-codex';
 import { createLogger } from '../logger';
+import { AUTH_REFRESH_CEILING_MS } from '../../shared/timeouts';
 
 const log = createLogger('chatgpt-oauth');
 
@@ -86,7 +87,10 @@ export async function refreshChatGptTokens(
   refreshToken: string,
 ): Promise<ChatGptTokens> {
   const oauth = openaiCodexProvider().auth.oauth!;
-  const creds = await oauth.refresh({ type: 'oauth', access: '', refresh: refreshToken, expires: 0 });
+  const creds = await oauth.refresh(
+    { type: 'oauth', access: '', refresh: refreshToken, expires: 0 },
+    AbortSignal.timeout(AUTH_REFRESH_CEILING_MS),
+  );
   return {
     accessToken: creds.access,
     refreshToken: (creds.refresh as string) || refreshToken,

@@ -42,10 +42,12 @@ const log = createLogger('auth');
 
 const refreshInFlight = new Map<string, Promise<OAuthCred>>();
 
-/** Bounded by AUTH_REFRESH_CEILING_MS only — no parentSignal, since none of
- *  the three provider refresh() calls accept one, so aborting the shared
- *  promise would just orphan the real fetch and let a second attempt race it
- *  on the same refresh token. `signal` only cancels this caller's own wait. */
+/** Bounded by AUTH_REFRESH_CEILING_MS; each provider refresh() call also
+ *  carries its own AbortSignal.timeout(), so the underlying fetch itself is
+ *  bounded too. `signal` here only cancels this caller's own wait on the
+ *  shared in-flight promise — aborting it doesn't cancel the real fetch, so
+ *  a second attempt would still race it on the same refresh token if it
+ *  outlives this caller's timeout. */
 function guardedRefresh(
   slug: string,
   label: string,
