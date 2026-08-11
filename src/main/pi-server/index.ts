@@ -44,7 +44,7 @@ import { getBuiltinModel, builtinModels } from '@earendil-works/pi-ai/providers/
 import type { Api, Credential, CredentialInfo, CredentialStore, Model, OAuthCredential, ThinkingLevel } from '@earendil-works/pi-ai';
 import { configureHttpIdleTimeout } from './http-idle-timeout';
 import { initOperationTracker, reportOperation, withOperation } from './operation-tracker';
-import { AUTH_REFRESH_MAIN_ROUNDTRIP_MS, AUTO_COMPACTION_TIMEOUT_MS, HTTP_IDLE_TIMEOUT_MS, MINI_COMPLETION_CEILING_MS } from '../../shared/timeouts';
+import { AUTH_REFRESH_CEILING_MS, AUTH_REFRESH_MAIN_ROUNDTRIP_MS, AUTO_COMPACTION_TIMEOUT_MS, HTTP_IDLE_TIMEOUT_MS, MINI_COMPLETION_CEILING_MS } from '../../shared/timeouts';
 import { withTimeout } from '../../shared/with-timeout';
 
 configureHttpIdleTimeout(HTTP_IDLE_TIMEOUT_MS);
@@ -126,15 +126,19 @@ async function refreshWithLocalRetry(
   current: Credential | undefined,
 ): Promise<Credential | undefined> {
   const startedAt = Date.now();
+  // `fn` is the SDK's own refresh closure, carrying whatever AbortSignal the
+  // SDK captured internally (tied to the turn, not to any timeout) — we
+  // can't make it actually stop, but withTimeout stops *us* waiting on it so
+  // a stalled connection here can't wedge every future turn on this session.
   try {
-    const result = await fn(current);
+    const result = await withTimeout(fn(current), AUTH_REFRESH_CEILING_MS, 'Local SDK refresh');
     log.info(`Local SDK refresh took ${Date.now() - startedAt}ms`);
     return result;
   } catch (err) {
     if (!isTransientOAuthRefreshError(err)) throw err;
     log.warn('transient OAuth refresh failure — retrying once:', errMessage(err));
     await delay(OAUTH_REFRESH_RETRY_DELAY_MS);
-    return fn(current);
+    return withTimeout(fn(current), AUTH_REFRESH_CEILING_MS, 'Local SDK refresh (retry)');
   }
 }
 import { adaptPiEvent } from './event-adapter';
