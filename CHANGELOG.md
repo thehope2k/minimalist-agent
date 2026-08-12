@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.20.2] — 2026-08-12
+
+Bug fix — closes a second OAuth refresh hang that could wedge every follow-up message in one session until restarted.
+
+### Fixed
+
+- Fixed a per-session hang where, once a GitHub Copilot / OpenAI Codex token refresh stalled mid-turn, every subsequent follow-up message in that same chat would stall the same way (~20–100s) until the session was manually restarted. The stall came from a fallback refresh path inside the subprocess that awaited the SDK's own refresh call with no timeout of ours; it's now bounded the same way the request-level fix in 1.20.1 bounded the primary path
+
+---
+
 ## [1.20.1] — 2026-08-11
 
 Bug fix — closes the last unbounded OAuth refresh path by upgrading the SDK and passing an explicit request timeout.
