@@ -3,6 +3,7 @@ import * as Popover from '@radix-ui/react-popover';
 import { Info } from 'lucide-react';
 import { Button } from '../ui';
 import { TitleEditor } from './session-info/TitleEditor';
+import { SessionIdRow } from './session-info/SessionIdRow';
 import { UsageSection } from './session-info/UsageSection';
 import { FileTree } from './session-info/FileTree';
 import { useSessionFiles } from './session-info/useSessionFiles';
@@ -51,6 +52,8 @@ export function SessionInfoButton({ sessionId, title, messages }: SessionInfoBut
             onCommit={() => void commitTitle()}
             onReset={resetDraft}
           />
+
+          {sessionId && <SessionIdRow sessionId={sessionId} />}
 
           <UsageSection messages={messages} />
 
