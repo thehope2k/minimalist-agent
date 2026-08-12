@@ -53,6 +53,13 @@ configureHttpIdleTimeout(HTTP_IDLE_TIMEOUT_MS);
  *  Built-in provider catalog; auth is passed inline via `StreamOptions.apiKey`. */
 const piModels = builtinModels();
 
+/** Tags subprocess auth logs with this process's chat session id, so lines
+ *  in the shared main.log can be attributed to one session without having
+ *  to reverse-engineer it from message content. */
+function sessionTag(): string {
+  return state.init?.sessionId ? `session=${state.init.sessionId}` : 'session=(pre-init)';
+}
+
 /* In-memory CredentialStore — one instance per pi-server subprocess.        */
 /* Credentials are seeded on init and updated via token_update messages.      */
 class InMemoryCredentialStore implements CredentialStore {
@@ -76,13 +83,21 @@ class InMemoryCredentialStore implements CredentialStore {
   ): Promise<Credential | undefined> {
     const current = this.data.get(id);
     const startedAt = Date.now();
-    log.info(`Credential refresh starting for ${id}`);
-    const next = await withOperation('oauth_refresh', async () =>
-      (await refreshViaMain()) ?? (await refreshWithLocalRetry(fn, current)),
-    );
-    log.info(`Credential refresh for ${id} finished in ${Date.now() - startedAt}ms (${next !== undefined ? 'refreshed' : 'unchanged'})`);
-    if (next !== undefined) this.data.set(id, next);
-    return next;
+    log.info(`Credential refresh starting for ${id} [${sessionTag()}]`);
+    try {
+      const next = await withOperation('oauth_refresh', async () =>
+        (await refreshViaMain()) ?? (await refreshWithLocalRetry(fn, current)),
+      );
+      log.info(`Credential refresh for ${id} finished in ${Date.now() - startedAt}ms (${next !== undefined ? 'refreshed' : 'unchanged'}) [${sessionTag()}]`);
+      if (next !== undefined) this.data.set(id, next);
+      return next;
+    } catch (e) {
+      // Always log completion, even on failure — without this, a rejection
+      // (e.g. our own withTimeout firing) leaves no trace at this level since
+      // the success-path log above never runs.
+      log.warn(`Credential refresh for ${id} failed after ${Date.now() - startedAt}ms: ${errMessage(e)} [${sessionTag()}]`);
+      throw e;
+    }
   }
 
   async delete(id: string): Promise<void> {
@@ -117,7 +132,7 @@ function toOAuthCredential(cred: { access: string; refresh: string; expires?: nu
 async function refreshViaMain(): Promise<OAuthCredential | undefined> {
   const startedAt = Date.now();
   const result = await requestAuthRefresh();
-  log.info(`Main round-trip refresh took ${Date.now() - startedAt}ms (${result.credential ? 'got credential' : 'no credential'}${result.error ? `, error: ${result.error}` : ''})`);
+  log.info(`Main round-trip refresh took ${Date.now() - startedAt}ms (${result.credential ? 'got credential' : 'no credential'}${result.error ? `, error: ${result.error}` : ''}) [${sessionTag()}]`);
   return result.credential ? toOAuthCredential(result.credential) : undefined;
 }
 
@@ -132,11 +147,11 @@ async function refreshWithLocalRetry(
   // a stalled connection here can't wedge every future turn on this session.
   try {
     const result = await withTimeout(fn(current), AUTH_REFRESH_CEILING_MS, 'Local SDK refresh');
-    log.info(`Local SDK refresh took ${Date.now() - startedAt}ms`);
+    log.info(`Local SDK refresh took ${Date.now() - startedAt}ms [${sessionTag()}]`);
     return result;
   } catch (err) {
     if (!isTransientOAuthRefreshError(err)) throw err;
-    log.warn('transient OAuth refresh failure — retrying once:', errMessage(err));
+    log.warn(`transient OAuth refresh failure — retrying once [${sessionTag()}]:`, errMessage(err));
     await delay(OAUTH_REFRESH_RETRY_DELAY_MS);
     return withTimeout(fn(current), AUTH_REFRESH_CEILING_MS, 'Local SDK refresh (retry)');
   }

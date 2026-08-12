@@ -96,7 +96,7 @@ function findConnection(slug: string): ConnectionMeta | undefined {
   return listConnections().find((c) => c.slug === slug);
 }
 
-export async function resolveAuthForSlug(slug: string, signal?: AbortSignal): Promise<ResolvedAuth> {
+export async function resolveAuthForSlug(slug: string, signal?: AbortSignal, callerTag?: string): Promise<ResolvedAuth> {
   const conn = findConnection(slug);
   if (!conn) {
     throw new Error(
@@ -130,7 +130,7 @@ export async function resolveAuthForSlug(slug: string, signal?: AbortSignal): Pr
       );
     }
     if (conn.piAuthProvider === 'openai-codex') {
-      const fresh = await ensureFreshChatGptOAuth(slug, cred, signal);
+      const fresh = await ensureFreshChatGptOAuth(slug, cred, signal, callerTag);
       return {
         type: 'copilot_oauth',
         accessToken: fresh.accessToken,
@@ -138,7 +138,7 @@ export async function resolveAuthForSlug(slug: string, signal?: AbortSignal): Pr
         expiresAt: fresh.expiresAt,
       };
     }
-    const fresh = await ensureFreshCopilotOAuth(slug, cred, signal);
+    const fresh = await ensureFreshCopilotOAuth(slug, cred, signal, callerTag);
     return {
       type: 'copilot_oauth',
       accessToken: fresh.accessToken,
@@ -151,7 +151,7 @@ export async function resolveAuthForSlug(slug: string, signal?: AbortSignal): Pr
   if (cred.type === 'api_key') {
     return { type: 'anthropic_api_key', apiKey: cred.apiKey };
   }
-  const fresh = await ensureFreshAnthropicOAuth(slug, cred, signal);
+  const fresh = await ensureFreshAnthropicOAuth(slug, cred, signal, callerTag);
   return { type: 'anthropic_oauth', accessToken: fresh.accessToken };
 }
 
@@ -161,6 +161,7 @@ async function ensureFreshAnthropicOAuth(
   slug: string,
   cred: OAuthCred,
   signal?: AbortSignal,
+  callerTag?: string,
 ): Promise<OAuthCred> {
   if (!isExpired(cred.expiresAt)) return cred;
 
@@ -170,7 +171,7 @@ async function ensureFreshAnthropicOAuth(
     );
   }
 
-  return guardedRefresh(slug, `Claude OAuth refresh for ${slug}`, () =>
+  return guardedRefresh(slug, `Claude OAuth refresh for ${slug}${callerTag ? ` [${callerTag}]` : ''}`, () =>
     performAnthropicRefresh(slug, cred), signal,
   );
 }
@@ -214,6 +215,7 @@ async function ensureFreshCopilotOAuth(
   slug: string,
   cred: OAuthCred,
   signal?: AbortSignal,
+  callerTag?: string,
 ): Promise<OAuthCred> {
   if (!isCopilotExpired(cred.expiresAt)) return cred;
 
@@ -223,7 +225,7 @@ async function ensureFreshCopilotOAuth(
     );
   }
 
-  return guardedRefresh(slug, `Copilot token refresh for ${slug}`, () =>
+  return guardedRefresh(slug, `Copilot token refresh for ${slug}${callerTag ? ` [${callerTag}]` : ''}`, () =>
     performCopilotRefresh(slug, cred), signal,
   );
 }
@@ -263,6 +265,7 @@ async function ensureFreshChatGptOAuth(
   slug: string,
   cred: OAuthCred,
   signal?: AbortSignal,
+  callerTag?: string,
 ): Promise<OAuthCred> {
   if (!isChatGptExpired(cred.expiresAt)) return cred;
 
@@ -272,7 +275,7 @@ async function ensureFreshChatGptOAuth(
     );
   }
 
-  return guardedRefresh(slug, `ChatGPT Plus token refresh for ${slug}`, () =>
+  return guardedRefresh(slug, `ChatGPT Plus token refresh for ${slug}${callerTag ? ` [${callerTag}]` : ''}`, () =>
     performChatGptRefresh(slug, cred), signal,
   );
 }

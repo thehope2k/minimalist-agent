@@ -756,7 +756,7 @@ async function handleOutbound(
       const m = msg as MsgAuthRefreshRequest;
       const signal = m.turnId ? handle.turnSignals.get(m.turnId) : undefined;
       try {
-        const fresh = await resolveAuthForSlug(handle.connectionSlug, signal);
+        const fresh = await resolveAuthForSlug(handle.connectionSlug, signal, `session=${handle.chatSessionId}`);
         const result: MsgAuthRefreshResult =
           fresh.type === 'copilot_oauth'
             ? {
@@ -831,7 +831,7 @@ async function handleOutbound(
       if (handle.refreshing) return;
       handle.refreshing = true;
       try {
-        const fresh = await resolveAuthForSlug(handle.connectionSlug);
+        const fresh = await resolveAuthForSlug(handle.connectionSlug, undefined, `session=${handle.chatSessionId}`);
         if (fresh.type === 'copilot_oauth') {
           const upd: MsgTokenUpdate = {
             type: 'token_update',
