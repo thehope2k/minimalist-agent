@@ -544,12 +544,17 @@ function requestAuthRefresh(): Promise<MsgAuthRefreshResult> {
     const requestId = `authref_${Date.now().toString(36)}_${Math.random()
       .toString(36)
       .slice(2, 8)}`;
+    // A real IPC response and the timeout fallback race to settle the same
+    // request; settle() is the single place that deletes the pending entry,
+    // so whichever fires first wins and the other sees it's already gone
+    // and no-ops instead of resolving twice.
     const settle = (result: MsgAuthRefreshResult) => {
       if (!state.pendingAuthRefresh.delete(requestId)) return;
+      clearTimeout(timer);
       resolve(result);
     };
     state.pendingAuthRefresh.set(requestId, { resolve: settle });
-    setTimeout(
+    const timer = setTimeout(
       () => settle({ type: 'auth_refresh_result', requestId, error: 'main did not respond in time' }),
       AUTH_REFRESH_MAIN_ROUNDTRIP_MS,
     );
@@ -2507,9 +2512,13 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
     }
 
     case 'auth_refresh_result': {
+      // Don't delete here — settle() (in requestAuthRefresh) is the single
+      // place that removes the entry, since it also races against the
+      // timeout fallback. Deleting it here first would make settle()'s own
+      // delete always find nothing and skip calling the real resolve(),
+      // leaving the request pending forever regardless of this response.
       const pending = state.pendingAuthRefresh.get(msg.requestId);
       if (!pending) return;
-      state.pendingAuthRefresh.delete(msg.requestId);
       pending.resolve(msg);
       return;
     }
