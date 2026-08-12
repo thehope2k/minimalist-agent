@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.20.3] — 2026-08-12
+
+Bug fixes and a small addition to the session info panel.
+
+### Added
+
+**Session info panel**
+
+- The session ID is now shown in the session info panel with a copy button, useful for correlating support requests with logs
+
+### Fixed
+
+- Fixed a rare but severe hang where follow-up messages could stall indefinitely (from tens of seconds up to the 5-minute force-recovery watchdog) after a GitHub Copilot / OpenAI Codex token silently expired mid-turn. A bug in the internal auth-refresh handshake discarded the refresh result even when it succeeded almost instantly, leaving the turn waiting forever instead of resuming
+
+---
+
 ## [1.20.2] — 2026-08-12
 
 Bug fix — closes a second OAuth refresh hang that could wedge every follow-up message in one session until restarted.
