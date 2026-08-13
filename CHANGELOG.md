@@ -5,6 +5,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.20.4] — 2026-08-13
+
+Bug fixes — collaboration prompts no longer time out while you're away, and macOS desktop notifications actually work.
+
+### Fixed
+
+**Collaboration prompts (approval / decision / feedback / guidance requests)**
+
+- Turns waiting on you to answer a RequestApproval, RequestDecision, RequestPreference, RequestGuidance, or RequestFeedback prompt could be silently killed by the internal 5-minute idle watchdog if you stepped away — you'd come back to find the turn had errored out and have to resend your message
+- The app now sends a desktop notification the moment one of these prompts appears while you're in another app
+
+**macOS desktop notifications**
+
+- Fixed a code-signing defect in the packaged macOS build that could silently prevent any desktop notification (including "Agent turn complete") from ever being delivered, regardless of the notification setting
+
+---
+
 ## [1.20.3] — 2026-08-12
 
 Bug fixes and a small addition to the session info panel.
