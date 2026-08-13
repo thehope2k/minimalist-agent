@@ -72,6 +72,8 @@ mac:
   # macOS will not work end-to-end until then.
   identity: null
 
+afterSign: build/afterSign.js
+
 dmg:
   artifactName: "Minimalist-Agent-${arch}.dmg"
 

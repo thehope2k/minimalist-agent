@@ -900,7 +900,9 @@ export function useChat(
             const body = isError
               ? evt.error.title || evt.error.message
               : sessionName || 'Your assistant has finished responding.';
-            void window.api.app.notify(title, body);
+            window.api.app
+              .notify(title, body)
+              .catch((err) => log.debug('OS notification failed:', err));
           }
         });
       }

@@ -191,6 +191,14 @@ interface SubprocessHandle {
   currentThinkingLevel?: PiThinkingLevel;
   /** Collaboration callback to show engagement dialogs. */
   askCollaboration?: CollaborationAsk;
+  /** Count of in-flight collaboration_request calls awaiting a human response
+   *  (RequestApproval/Decision/Preference/Guidance/Feedback). While > 0 the
+   *  subprocess is deliberately silent — waiting on the user, not stuck — so
+   *  the idle watchdog must not reap it. Safe to leak on a discarded handle:
+   *  every SubprocessHandle is freshly constructed by spawnSubprocess (never
+   *  pooled/reused), and handles.delete is always identity-checked, so a
+   *  stale count can never suppress the watchdog for a future handle. */
+  pendingCollaborationRequests: number;
   /** Timestamp of the last stdout line received from this subprocess. */
   lastActivityAt: number;
   /** Subprocess-reported label of whatever long-running operation is in
@@ -235,6 +243,7 @@ setInterval(() => {
   const now = Date.now();
   for (const [key, handle] of handles) {
     if (handle.queues.size === 0) continue; // no active turn — idle is expected
+    if (handle.pendingCollaborationRequests > 0) continue; // waiting on human input, not stuck
     const idleMs = now - handle.lastActivityAt;
     if (idleMs > TURN_IDLE_TIMEOUT_MS) reapStuckHandle(key, handle, idleMs);
   }
@@ -369,6 +378,7 @@ function spawnSubprocess(req: PiChatRequest, systemPrompt: string): SubprocessHa
     currentModel: req.model,
     currentThinkingLevel: req.thinkingLevel ?? 'medium',
     askCollaboration: req.askCollaboration,
+    pendingCollaborationRequests: 0,
     lastActivityAt: Date.now(),
   };
 
@@ -592,7 +602,11 @@ async function handleOutbound(
         payload: req.payload as any, // Payload is validated by collaboration handlers
       };
 
-      // Call the renderer callback
+      // Call the renderer callback. Held open until the user responds, which
+      // may take arbitrarily long — count it so the idle watchdog (which
+      // otherwise reaps subprocesses silent for TURN_IDLE_TIMEOUT_MS) knows
+      // this silence is expected, not a hang.
+      handle.pendingCollaborationRequests++;
       handle.askCollaboration(engagementRequest)
         .then((response: any) => {
           send(handle, {
@@ -612,6 +626,9 @@ async function handleOutbound(
               custom_response: 'Error: ' + String(err),
             },
           });
+        })
+        .finally(() => {
+          handle.pendingCollaborationRequests--;
         });
       return;
     }
