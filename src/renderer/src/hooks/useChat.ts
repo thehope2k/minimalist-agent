@@ -626,6 +626,9 @@ export function useChat(
   // Session-switch: render the bucket if cached, else load from disk.
   useEffect(() => {
     setActiveSessionId(sessionId);
+    // A running/finished compaction toast is per-session; don't let a stale
+    // one from the previously viewed session bleed into this one.
+    setLastCompaction(null);
     if (!sessionId) {
       setMessages([]);
       setIsStreaming(false);
@@ -738,28 +741,36 @@ export function useChat(
     return window.api.chat.onEvent((evt: ChatStreamEvent) => {
       // Must never fall through to applyEvent — can fire mid-turn.
       if (evt.type === 'compaction_progress') {
-        setLastCompaction({
-          at: Date.now(),
-          status: 'running',
-          trigger: evt.trigger ?? 'manual',
-        });
+        // Only surface the toast for the session currently on screen — a
+        // background session's compaction must not leak its badge into
+        // whatever chat the user happens to be viewing.
+        const sid = turnIdToSession.current.get(evt.id);
+        if (sid && sid === activeSessionIdRef.current) {
+          setLastCompaction({
+            at: Date.now(),
+            status: 'running',
+            trigger: evt.trigger ?? 'manual',
+          });
+        }
         return;
       }
       // Compaction is between-turn metadata, not part of any message.
       if (evt.type === 'compaction') {
-        setLastCompaction({
-          at: Date.now(),
-          status: evt.status ?? 'success',
-          trigger: evt.trigger,
-          preTokens: evt.preTokens,
-          postTokens: evt.postTokens,
-          errorMessage: evt.errorMessage,
-        });
-        
         const sid = turnIdToSession.current.get(evt.id);
+        if (sid && sid === activeSessionIdRef.current) {
+          setLastCompaction({
+            at: Date.now(),
+            status: evt.status ?? 'success',
+            trigger: evt.trigger,
+            preTokens: evt.preTokens,
+            postTokens: evt.postTokens,
+            errorMessage: evt.errorMessage,
+          });
+        }
+
         if (!sid) {
           log.warn(
-            'Compaction event for unknown turn — marker dropped, toast still shown:',
+            'Compaction event for unknown turn — marker and toast both dropped:',
             { turnId: evt.id, status: evt.status, trigger: evt.trigger, preTokens: evt.preTokens },
           );
           return;

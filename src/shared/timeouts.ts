@@ -29,8 +29,10 @@ export const MCP_CALL_CEILING_MS = envMs('MA_MCP_CALL_TIMEOUT_MS', 120_000);
 /** Ceiling for the whole MCP server pool to come up; never blocks session boot past this. */
 export const MCP_POOL_BUDGET_MS = envMs('MA_MCP_POOL_TIMEOUT_MS', 30_000);
 
-/** Auto-compaction silence ceiling before force-aborting. */
-export const AUTO_COMPACTION_TIMEOUT_MS = envMs('MA_COMPACTION_TIMEOUT_MS', 60_000);
+/** Auto-compaction silence ceiling before force-aborting. Must stay well
+ *  above normal completion time — killing a request that's still legitimately
+ *  in progress (not hung) leaves the context uncompacted with no retry. */
+export const AUTO_COMPACTION_TIMEOUT_MS = envMs('MA_COMPACTION_TIMEOUT_MS', 5 * 60_000);
 
 /** Force-recover a subprocess that has produced zero stdout for this long. */
 export const TURN_IDLE_TIMEOUT_MS = envMs('MA_TURN_IDLE_TIMEOUT_MS', 5 * 60 * 1000);

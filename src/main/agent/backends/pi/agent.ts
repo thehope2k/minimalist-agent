@@ -1091,6 +1091,7 @@ export async function* runPiManualCompact(req: {
   chatSessionPath: string;
   turnId: string;
   customInstructions?: string;
+  signal?: AbortSignal;
 }): AsyncGenerator<AgentChatEvent> {
   const handle = handles.get(req.chatSessionPath);
   if (!handle || handle.child.killed) {
@@ -1108,6 +1109,7 @@ export async function* runPiManualCompact(req: {
 
   const queue = new EventQueue();
   handle.queues.set(req.turnId, queue);
+  if (req.signal) handle.turnSignals.set(req.turnId, req.signal);
 
   const msg: MsgManualCompact = {
     type: 'manual_compact',
@@ -1115,6 +1117,14 @@ export async function* runPiManualCompact(req: {
     customInstructions: req.customInstructions,
   };
   send(handle, msg);
+
+  const onAbort = () => {
+    send(handle, { type: 'abort', turnId: req.turnId });
+  };
+  if (req.signal) {
+    if (req.signal.aborted) onAbort();
+    else req.signal.addEventListener('abort', onAbort, { once: true });
+  }
 
   try {
     for (;;) {
@@ -1127,7 +1137,9 @@ export async function* runPiManualCompact(req: {
       if (ev.type === 'turn_done' || ev.type === 'error') return;
     }
   } finally {
+    if (req.signal) req.signal.removeEventListener('abort', onAbort);
     handle.queues.delete(req.turnId);
+    handle.turnSignals.delete(req.turnId);
   }
 }
 

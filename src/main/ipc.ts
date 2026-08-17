@@ -198,6 +198,21 @@ export interface ChatSendRequest {
 
 const inFlight = new Map<string, AbortController>();
 
+/** Without this registration, `chat:abort` has no controller to look up
+ *  for `id` and silently no-ops. */
+async function withAbortable(
+  id: string,
+  fn: (signal: AbortSignal) => Promise<void>,
+): Promise<void> {
+  const ctrl = new AbortController();
+  inFlight.set(id, ctrl);
+  try {
+    await fn(ctrl.signal);
+  } finally {
+    inFlight.delete(id);
+  }
+}
+
 /**
  * Per-turn routing info so `chat:steer` knows which backend to call.
  * Cleared in the same `finally` that clears inFlight.
@@ -626,15 +641,18 @@ export function registerIpc(): void {
         return;
       }
 
-      for await (const chunk of runPiManualCompact({
-        chatSessionPath: sessionPath(args.sessionId),
-        turnId: args.turnId,
-        customInstructions: args.customInstructions,
-      })) {
-        if (event.sender.isDestroyed()) break;
-        event.sender.send('chat:event', { id: args.turnId, ...chunk });
-        if (chunk.type === 'turn_done' || chunk.type === 'error') break;
-      }
+      await withAbortable(args.turnId, async (signal) => {
+        for await (const chunk of runPiManualCompact({
+          chatSessionPath: sessionPath(args.sessionId),
+          turnId: args.turnId,
+          customInstructions: args.customInstructions,
+          signal,
+        })) {
+          if (event.sender.isDestroyed()) break;
+          event.sender.send('chat:event', { id: args.turnId, ...chunk });
+          if (chunk.type === 'turn_done' || chunk.type === 'error') break;
+        }
+      });
     },
   );
 

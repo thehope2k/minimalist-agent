@@ -437,7 +437,17 @@ export function adaptPiEvent(event: AgentSessionEvent): AgentChatEvent[] {
         aborted: boolean;
         errorMessage?: string;
       };
-      if (e.aborted) return out;
+      // An aborted compaction must still emit a completion event: it's the
+      // only signal the renderer's "Compacting…" toast has to clear itself.
+      if (e.aborted) {
+        out.push({
+          type: 'compaction',
+          status: 'failed',
+          trigger: e.reason,
+          errorMessage: e.errorMessage ?? 'Compaction was aborted before it finished.',
+        });
+        return out;
+      }
       if (e.result) {
         out.push({
           type: 'compaction',
