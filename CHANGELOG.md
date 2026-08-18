@@ -5,6 +5,32 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.20.5] — 2026-08-18
+
+Bug fixes — markdown links now open reliably, find-in-chat no longer breaks Mermaid diagrams, and skill file patterns show up correctly.
+
+### Fixed
+
+**Markdown links**
+
+- Clicking a link to a plain file path (not just a `file://` URL) in assistant messages could fail with a "URL blocked" error instead of opening the file in-app — bare relative/absolute paths are now routed through the in-app file opener the same as `file://` links
+- Clicking a link with an unrecognized or empty destination (including blocked schemes) could silently reopen the app itself in your system browser instead of doing nothing — these links now render as plain text instead of a broken clickable link
+- A failed link click's error tooltip now appears as a floating popover below the link instead of being spliced into the middle of the surrounding sentence, and dismisses on outside click or Escape instead of only after a few seconds
+
+**Find in chat**
+
+- Searching text that appeared inside a rendered Mermaid diagram could corrupt the diagram and trigger its "Syntax error in text" fallback across the whole window — diagrams are now excluded from find-in-chat matching
+
+**Skill file patterns**
+
+- The skill info page silently dropped a skill's configured file patterns (`globs`) instead of showing them
+
+**Compaction**
+
+- Aborting an in-progress conversation compaction could leave its "Compacting…" toast stuck on screen indefinitely, and a background session's compaction could leak its status into whichever session you were actively viewing
+
+---
+
 ## [1.20.4] — 2026-08-13
 
 Bug fixes — collaboration prompts no longer time out while you're away, and macOS desktop notifications actually work.
