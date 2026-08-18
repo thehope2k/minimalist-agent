@@ -1,4 +1,4 @@
-import { memo, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
+import { memo, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import ReactMarkdown, { defaultUrlTransform, type Components } from 'react-markdown';
 import type { PluggableList } from 'unified';
 import remarkGfm from 'remark-gfm';
@@ -118,27 +118,72 @@ function InlineImage({ src, alt }: { src?: string; alt?: string }) {
 }
 
 // ── MarkdownLink ─────────────────────────────────────────────────────────
-// `file:` links get resolved+opened in-app (viewer or reveal-in-Finder)
-// instead of being handed to shell.openExternal, where url-safety.ts is
-// guaranteed to block them. Every other scheme keeps the original
-// openExternal path unchanged.
+// `file:` links and bare paths (no scheme at all) get resolved+opened in-app
+// (viewer or reveal-in-Finder) via fileOpener instead of being handed to
+// shell.openExternal. `file:` survives sanitize only via the explicit
+// allowance in markdown-sanitize-schema.ts — see that file for why it's safe
+// despite `file:` being a blocked scheme for shell.openExternal itself
+// (url-safety.ts remains the fallback gate if fileOpener is unavailable).
+// Every genuine external scheme (http, mailto, vscode, ...) keeps the
+// original openExternal path unchanged.
+// True `scheme:` prefix, e.g. `https:`, `mailto:`, `file:`. A bare relative
+// or absolute path (`SKILL.md`, `src/foo.ts`, `/Users/x/y`) has none of
+// these, and `new URL(...)` on it throws rather than yielding a URL whose
+// protocol we could classify — it is never a genuine external link.
+const URL_SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i;
+
 function MarkdownLink({ href, children }: { href?: string; children?: ReactNode }) {
-  const [feedback, flash] = useTransientFeedback();
+  const [feedback, flash, dismiss] = useTransientFeedback();
   const cwd = useCwd();
   const fileOpener = useFileOpener();
+  const wrapperRef = useRef<HTMLSpanElement>(null);
+
+  // Dismiss the feedback tooltip on outside click / Escape, in addition to
+  // its own auto-clear timeout — otherwise it lingers for the full timeout
+  // even after the user has clearly moved on and clicked elsewhere.
+  useEffect(() => {
+    if (!feedback) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (!wrapperRef.current?.contains(e.target as Node)) dismiss();
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') dismiss();
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [feedback, dismiss]);
+
+  // No href at all (genuinely empty in the source markdown, e.g. `[text]()`),
+  // or a href whose scheme react-markdown's own `defaultUrlTransform` refuses
+  // to carry into a real DOM attribute (javascript:/data:/vbscript:/blob:/etc
+  // — everything outside its hardcoded https?|ircs?|mailto|xmpp allowlist,
+  // and *not* something we handle ourselves as a file reference below).
+  // Render inert text rather than a real `<a target="_blank">` in either
+  // case: a real anchor whose actual DOM href resolves to "" still has a
+  // native click action that navigates to the *current page's own URL*,
+  // which Electron's window-open handler then treats as a safe external
+  // link and opens in the system browser — a broken-looking "link click
+  // reopens the app's dev server URL in Chrome" bug that no JS-level
+  // handler can prevent, since a modifier/middle-click bypasses our onClick
+  // entirely and there's nothing left to classify at that point.
+  const filePath = href ? fileUrlToPath(href) : null;
+  const isFileReference = href != null && (filePath !== null || !URL_SCHEME_RE.test(href));
   const safeHref = href ? defaultUrlTransform(href) : '';
 
-  const onClick = (e: ReactMouseEvent<HTMLAnchorElement>) => {
-    if (!href) return;
-    const filePath = fileUrlToPath(href);
+  if (!href || (!isFileReference && !safeHref)) {
+    return <span className="text-fg-muted">{children}</span>;
+  }
 
-    if (filePath !== null) {
-      // `file:` links have no meaningful new-tab/new-window behavior, and
-      // react-markdown's protocol allowlist blanks the DOM href to "" for
-      // this scheme (file: isn't in its safeProtocol list) — so unlike
-      // http(s) links, letting modifier/middle-clicks fall through to the
-      // native target="_blank" handling would just navigate to the blanked
-      // href, i.e. the current page's own URL. Always intercept instead.
+  const onClick = (e: ReactMouseEvent<HTMLAnchorElement>) => {
+    if (isFileReference) {
+      // `file:` links (and bare paths) have no meaningful new-tab/new-window
+      // behavior, so unlike http(s) links, letting modifier/middle-clicks
+      // fall through to the native target="_blank" handling would just
+      // navigate to the resolved href — always intercept instead.
       e.preventDefault();
       if (fileOpener) {
         void fileOpener.openReference(href, cwd).then((outcome) => {
@@ -166,7 +211,11 @@ function MarkdownLink({ href, children }: { href?: string; children?: ReactNode 
   }
 
   return (
-    <span className="inline-flex flex-wrap items-baseline gap-1.5">
+    // `relative` + absolutely-positioned feedback keeps a failed-click message
+    // from being spliced into the surrounding prose as inline text (it used to
+    // sit as a flex sibling of the link, widening the line and breaking the
+    // sentence mid-flow when the link wasn't at the end of a paragraph).
+    <span ref={wrapperRef} className="relative inline-block">
       <a
         href={safeHref}
         target="_blank"
@@ -177,7 +226,10 @@ function MarkdownLink({ href, children }: { href?: string; children?: ReactNode 
         {children}
       </a>
       {feedback && (
-        <span role="status" className="text-xs text-fg-subtle">
+        <span
+          role="status"
+          className="absolute left-0 top-full z-10 mt-1 w-max max-w-xs rounded border border-border bg-panel px-2 py-1 text-xs text-fg-subtle shadow-lg"
+        >
           {feedback}
         </span>
       )}
@@ -291,6 +343,16 @@ function MarkdownInner({ text }: MarkdownProps) {
         remarkPlugins={REMARK_PLUGINS}
         rehypePlugins={REHYPE_PLUGINS}
         components={COMPONENTS}
+        // react-markdown runs its own `defaultUrlTransform` on href/src
+        // *after* our rehypeSanitize pass, independent of it, using a
+        // hardcoded protocol allowlist (no `file`) we have no way to widen
+        // from the sanitize schema — it would silently re-blank `file:`
+        // hrefs that rehypeSanitize just finished letting through. Pass the
+        // value straight through instead: MarkdownLink's own classification
+        // and the `shell:openExternal` IPC chokepoint (url-safety.ts) are
+        // the actual security boundary for link destinations; rehypeSanitize
+        // above still strips the dangerous *markup* (script/on*/etc.).
+        urlTransform={(value) => value}
       >
         {text}
       </ReactMarkdown>

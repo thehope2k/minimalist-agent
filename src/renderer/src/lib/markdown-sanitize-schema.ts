@@ -30,4 +30,18 @@ export const MARKDOWN_SANITIZE_SCHEMA: SanitizeSchema = {
     ...defaultSchema.attributes,
     code: [['className', /^language-./, 'math-display', 'math-inline']],
   },
+  protocols: {
+    ...defaultSchema.protocols,
+    // `file:` is intentionally allowed through here even though it's a known
+    // dangerous scheme for shell.openExternal (RCE on Windows) — without this,
+    // hast-util-sanitize deletes the `href` attribute entirely before
+    // MarkdownLink (components/.../markdown/Markdown.tsx) ever mounts, so it
+    // never gets a chance to intercept the click and route it through the
+    // sandboxed fileOpener. The link is still safe: MarkdownLink always
+    // intercepts `file:` hrefs and never hands them to shell.openExternal,
+    // and the shared `classifyExternalUrl` blocklist in shared/url-safety.ts
+    // independently blocks `file:` at the `shell:openExternal` IPC handler as
+    // a second gate, so this widening cannot itself reopen the RCE vector.
+    href: [...(defaultSchema.protocols?.href ?? []), 'file'],
+  },
 };
