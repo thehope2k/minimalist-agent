@@ -21,9 +21,10 @@
  *   including rendered Markdown, code blocks, and nested elements.
  *
  * What this hook does NOT do:
- *   - It does not search inside <canvas> elements (Mermaid diagrams render
- *     to SVG text which IS traversed, but xterm.js canvas is not). Terminal
- *     output lives in a separate panel entirely.
+ *   - It does not search inside <canvas> elements (xterm.js canvas is not
+ *     text-searchable) or inside rendered Mermaid <svg> diagrams — see
+ *     FIND_EXCLUDE_SELECTORS below for why SVG is excluded. Terminal output
+ *     lives in a separate panel entirely.
  *   - It does not persist the query across sessions or navigation — the find
  *     bar is ephemeral per open/close cycle.
  *   - It does not highlight as you type inside code blocks differently than
@@ -35,6 +36,19 @@ import Mark from 'mark.js';
 
 /** Delay in ms between the last keystroke and the mark.js search pass. */
 const DEBOUNCE_MS = 120;
+
+/**
+ * mark.js wraps matches by calling `document.createElement('mark')` — an
+ * HTML-namespace element — regardless of the matched text node's namespace.
+ * Rendered Mermaid diagrams (`dangerouslySetInnerHTML` in MermaidBlock.tsx)
+ * are SVG, where an HTML element is not a valid child of <text>/<tspan>.
+ * Wrapping a match there corrupts the diagram's live DOM and can trip
+ * Mermaid's own error-render fallback (a full-page "Syntax error in text"
+ * overlay injected outside React's control) on the next render. Excluding
+ * all SVG content avoids this; diagram source is still searchable via the
+ * raw <pre><code> fallback shown when a diagram fails to render.
+ */
+const FIND_EXCLUDE_SELECTORS = ['svg', 'svg *'];
 
 export interface FindInChatControls {
   /** Total number of matches for the current query (0 when query is empty). */
@@ -159,6 +173,7 @@ export function useFindInChat(
           marker.mark(searchQuery, {
             separateWordSearch: false,
             caseSensitive: false,
+            exclude: FIND_EXCLUDE_SELECTORS,
             // Collect each newly created <mark> element in document order.
             each: (el) => collected.push(el as HTMLElement),
             done: (count) => {
