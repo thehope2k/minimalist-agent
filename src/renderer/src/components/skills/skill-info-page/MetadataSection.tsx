@@ -27,10 +27,14 @@ export function MetadataSection({ skill, onEdit, disabled }: MetadataSectionProp
 }
 
 function buildMetadataRows(skill: LoadedSkill): KeyValueRow[] {
+  const globs = skill.metadata.globs ?? [];
   return [
     { label: 'Slug', value: <Mono>{skill.slug}</Mono> },
     { label: 'Name', value: skill.metadata.name },
     { label: 'Description', value: skill.metadata.description },
+    ...(globs.length > 0
+      ? [{ label: 'File patterns', value: <Mono>{globs.join(', ')}</Mono> }]
+      : []),
     {
       label: 'Location',
       value: (
