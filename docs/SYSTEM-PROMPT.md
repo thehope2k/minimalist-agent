@@ -91,7 +91,7 @@ present (the common case). Collaboration + planning alone are **~60%** of the ba
 | Working directory                                                                                                                                                                             | `getWorkingDirectoryContext()`                            | when cwd set                             |                                        ~60 |
 | **Scratch directory**                                                                                                                                                                         | `getScratchDirContext()`                                  | when session path known                  |                                        ~30 |
 | Extensions awareness (terse: flat slug list + scope-aware guide path hint — one hint per scope present; plus a gated "MCP not active" line when an enabled mcp-backed extension is blocked by consent/secret/connect failure) | `formatExtensionsAwareness()` (`extensions/directive.ts`) | when extensions installed                |                                    ~50–200 |
-| **Pinned context** (skills the user has pinned to the session — same pattern as `@mention`/`formatSkillDirective`, but persistent every turn)         | `buildPinnedContextBlock()` (`agent/system-prompt.ts`)    | when `session.pinnedAssets` is non-empty | ~10 tok per item (flat, path + label only) |
+| **Pinned context** (skills the user has pinned to the session — same pattern as `@mention`/`formatSkillDirective`, but persistent every turn)         | `buildPinnedContextBlock()` (`agent/system-prompt.ts`)    | when `session.pinnedAssets` is non-empty | ~25 tok per item (flat, path + label only) |
 
 The extensions block grows with state (one *slug* per enabled extension) but is
 now near-flat — it lists slugs only, plus a scope-aware guide path hint (one
@@ -111,9 +111,9 @@ The **pinned context block** emits a "read these files" directive — the same
 pattern as `@mention`/`formatSkillDirective` — so the model knows about pinned
 items every turn without paying the full content cost per request. The model reads
 the file when it needs to apply the instructions (one tool call), same as a
-persistent `@mention`. Cost is flat: ~10 tokens per pinned item regardless of
-content length. The 2 000-token warning in the UI is removed since it no longer
-applies.
+persistent `@mention`. Cost is flat: ~25 tokens per pinned item regardless of
+content length (name, description, and the resolved absolute file path — the
+model never has to reconstruct the path itself from the tier convention).
 
 ---
 

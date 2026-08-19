@@ -716,11 +716,13 @@ export function buildSystemPromptAppend(input: {
 /**
  * Build the <pinned_context> per-turn block from a session's pinnedAssets list.
  *
- * Emits a lightweight awareness note — name + description only — so the model
- * knows these skills/agents are relevant for this session without injecting
- * full content or file paths. The model can @mention them to invoke as needed.
+ * Emits a lightweight awareness note — name, description, and the resolved
+ * absolute file path — so the model knows these skills/agents are relevant
+ * for this session and can read them directly without reconstructing the
+ * path itself from the tier convention (the same failure mode as a
+ * `@mention` that never resolved).
  *
- * Cost: ~15 tokens per item regardless of content length.
+ * Cost: ~25 tokens per item regardless of content length.
  */
 export function buildPinnedContextBlock(
   pinnedAssets: string[] | undefined,
@@ -741,12 +743,14 @@ export function buildPinnedContextBlock(
     if (scope === 'user' || scope === 'project') {
       const skill = allSkills.find((s) => s.slug === slug && s.source === scope);
       if (skill) {
-        lines.push(`- @${slug} (skill): ${skill.metadata.description}`);
+        const skillPath = join(skill.path, 'SKILL.md');
+        lines.push(`- @${slug} (skill): ${skill.metadata.description} — ${skillPath}`);
         continue;
       }
       const agent = allAgents.find((a) => a.slug === slug && a.source === scope);
       if (agent) {
-        lines.push(`- ${slug} (agent): ${agent.metadata.description}`);
+        const agentPath = join(agent.path, 'AGENT.md');
+        lines.push(`- ${slug} (agent): ${agent.metadata.description} — ${agentPath}`);
       }
     }
   }
@@ -761,13 +765,13 @@ ${lines.join('\n')}
 
 /**
  * Token cost estimate for pinned assets.
- * ~15 tokens per item (name + description line).
+ * ~25 tokens per item (name + description + absolute file path).
  */
 export function estimatePinnedTokens(
   pinnedAssets: string[] | undefined,
   _cwd?: string,
 ): number {
-  return (pinnedAssets?.length ?? 0) * 15;
+  return (pinnedAssets?.length ?? 0) * 25;
 }
 
 export function buildPromptPrefix(input: { cwd?: string; scratchDir?: string; pinnedAssets?: string[] }): string {
