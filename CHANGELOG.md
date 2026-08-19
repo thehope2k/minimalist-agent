@@ -5,6 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.20.6] — 2026-08-19
+
+Bug fixes — pinned skills and agents are now located reliably every turn.
+
+### Fixed
+
+**Pinned context**
+
+- Pinned skills/agents were surfaced to the model by name and description only, with no file path — the model had to reconstruct the location itself from convention, which could fail silently. Pinned context now includes the resolved file path directly, so pinned items are read correctly every time.
+
+---
+
 ## [1.20.5] — 2026-08-18
 
 Bug fixes — markdown links now open reliably, find-in-chat no longer breaks Mermaid diagrams, and skill file patterns show up correctly.
