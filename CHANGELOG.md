@@ -5,6 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.21.1] — 2026-08-20
+
+Bug fixes for dialog scrolling, session title sync, and stale cached project dirs.
+
+### Fixed
+
+- Some dialogs (approval, preference, and project edit) had no height limit or scrolling, so long content could push the action buttons off-screen. They now cap their height and scroll internally.
+- The session title popover could keep showing a stale name after renaming the session elsewhere (e.g. the Info panel), until you reopened the app.
+- Switching between projects/sessions could leak the previous project's cached skills/extensions directories into the "+ New" dialog of a different project.
+
+---
+
 ## [1.21.0] — 2026-08-20
 
 Office document attachments, desktop pet drag momentum and idle animations.
