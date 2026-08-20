@@ -80,13 +80,14 @@ export function ProjectEditDialog({ project, onClose }: ProjectEditDialogProps) 
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-lg border border-border bg-panel p-5 shadow-2xl"
+        className="flex max-h-[85vh] w-full max-w-md flex-col rounded-lg border border-border bg-panel shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="mb-4 text-base font-semibold text-fg">
+        <h3 className="shrink-0 px-5 pt-5 text-base font-semibold text-fg">
           {isNew ? 'New project' : `Edit ${project!.name}`}
         </h3>
 
+        <div className="scroll-thin flex-1 overflow-y-auto px-5 py-4">
         <div className="flex flex-col gap-3">
           <Field label="Name">
             <Input
@@ -238,9 +239,10 @@ export function ProjectEditDialog({ project, onClose }: ProjectEditDialogProps) 
               ]}
             />
           </Field>
+          </div>
         </div>
 
-        <div className="mt-5 flex justify-end gap-2">
+        <div className="flex shrink-0 justify-end gap-2 border-t border-border px-5 py-4">
           <Button variant="ghost" size="sm" onClick={onClose}>
             Cancel
           </Button>

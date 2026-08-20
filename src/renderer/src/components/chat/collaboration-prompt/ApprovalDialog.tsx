@@ -39,6 +39,7 @@ export function ApprovalDialog({ reqId, payload, onRespond }: DialogProps<Approv
     <DialogLayout
       title="Approval Required"
       onKeyDown={handleKeyDown}
+      maxHeight
       footer={
         <>
           <Button onClick={handleDeny} variant="outline">

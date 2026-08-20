@@ -28,6 +28,7 @@ export function PreferenceDialog({ reqId, payload, onRespond }: DialogProps<Pref
     <DialogLayout
       title="Your Preference"
       onBackdropClick={handleDefer}
+      maxHeight
       footer={
         <>
           <Button onClick={handleDefer} variant="outline">
