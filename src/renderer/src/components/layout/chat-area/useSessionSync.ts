@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
-import {loadFullSession} from '@/lib/sessions';
+import {loadFullSession, snapshot, subscribe} from '@/lib/sessions';
 import {findProject, findProjectForPath} from '@/lib/projects';
 import {getNewSessionStateDraft, patchNewSessionStateDraft} from '@/lib/new-session-draft';
 import type {PermissionMode, ThinkingLevel} from '@/lib/electron';
@@ -182,6 +182,26 @@ export function useSessionSync(
       }
     });
   }, [sessionId, permissionMode]);
+
+  // Keep title in sync with the shared sessions store. updateSessionMeta()
+  // (e.g. the Info panel's title editor) reloads the store's cache but has
+  // no direct handle on this hook's local `title` state, so without this
+  // the popover would keep showing the stale title after being reopened.
+  useEffect(() => {
+    if (!sessionId) return;
+
+    const syncTitleFromCache = () => {
+      try {
+        const match = snapshot().find((s) => s.id === sessionId);
+        if (match) setTitle(match.title);
+      } catch {
+        // Store not bootstrapped yet — loadFullSession() above will set the
+        // initial title once it resolves.
+      }
+    };
+
+    return subscribe(syncTitleFromCache);
+  }, [sessionId]);
 
   // For fresh chats, track project/global default changes
   useEffect(() => {
