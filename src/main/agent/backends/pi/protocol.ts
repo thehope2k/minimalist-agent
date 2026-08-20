@@ -38,13 +38,6 @@ export type PiThinkingLevel =
   | 'xhigh'
   | 'max';
 
-export interface PiPromptImage {
-  type: 'image';
-  /** base64-encoded raw bytes. */
-  data: string;
-  mimeType: string;
-}
-
 /**
  * Fully-resolved MCP server config crossing main→subprocess. Mirror of
  * `ResolvedMcpServerConfig` in extensions/mcp-config.ts — duplicated here to
@@ -156,7 +149,6 @@ export interface MsgPrompt {
   /** Caller-side correlation id (matches a renderer-side message id). */
   turnId: string;
   message: string;
-  images?: PiPromptImage[];
   /** Per-turn system-prompt append for dynamic context injection. Pi subprocess updates resourceLoader when this changes. */
   systemPromptAppend?: string;
   /**
@@ -237,7 +229,6 @@ export interface MsgSteer {
   /** Turn id we're injecting into. */
   turnId: string;
   message: string;
-  images?: PiPromptImage[];
 }
 
 export interface MsgManualCompact {

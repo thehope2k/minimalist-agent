@@ -27,7 +27,6 @@ import {resolveExtensionEnv} from '../../../extensions/env-resolver';
 import {buildResolvedMcpServers, recordPiMcpStatus} from '../../../extensions/mcp-config';
 import {createInterface, type Interface as ReadlineInterface} from 'node:readline';
 import {app, BrowserWindow} from 'electron';
-import {readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {resolvePiServerPath} from './spawn-utils';
 import type {StoredAttachment} from '../../../storage/sessions';
@@ -36,6 +35,7 @@ import type {AgentChatEvent} from '../../events';
 import {parseError} from '../../errors';
 import {buildPromptPrefix, buildSystemPromptAppend,} from '../../system-prompt';
 import {extractSkillPaths, formatSkillDirective} from '../../../skills/directive';
+import {formatAttachmentsDirective} from '../../attachments-directive';
 import type {PermissionMode} from '../../permissions';
 import type {CopilotOAuthAuth, LocalApiAuth} from '../types';
 import type {CollaborationAsk} from '../../../../shared/collaboration-types';
@@ -71,7 +71,6 @@ import type {
   MsgSetThinkingLevel,
   MsgTokenUpdate,
   PiAuthProvider,
-  PiPromptImage,
   PiThinkingLevel,
   SubprocessInbound,
   SubprocessOutbound,
@@ -912,51 +911,6 @@ async function handleOutbound(
 /*  Public API: chat turn                                        */
 /* ============================================================ */
 
-const SDK_IMAGE_MEDIA = new Set([
-  'image/png',
-  'image/jpeg',
-  'image/gif',
-  'image/webp',
-]);
-
-/**
- * Prepend text/snippet/pdf-text attachments to the prompt so the Pi
- * backend receives their content (Pi only supports images natively).
- */
-function buildPiPrompt(prompt: string, attachments?: StoredAttachment[]): string {
-  if (!attachments?.length) return prompt;
-  const parts: string[] = [];
-  for (const att of attachments) {
-    if (att.type === 'text' || att.type === 'snippet') {
-      try {
-        const content = readFileSync(att.storedPath, 'utf-8');
-        parts.push(`[File: ${att.name}]\n\`\`\`\n${content}\n\`\`\``);
-      } catch {
-        parts.push(`[File: ${att.name}] (unreadable)`);
-      }
-    }
-    // PDFs and images are handled separately (images via buildImages,
-    // PDFs are binary — skip for now as Pi has no document block type).
-  }
-  return parts.length > 0 ? `${parts.join('\n\n')}\n\n${prompt}` : prompt;
-}
-
-function buildImages(attachments?: StoredAttachment[]): PiPromptImage[] | undefined {
-  if (!attachments?.length) return undefined;
-  const out: PiPromptImage[] = [];
-  for (const att of attachments) {
-    if (att.type !== 'image') continue;
-    if (!SDK_IMAGE_MEDIA.has(att.mimeType)) continue;
-    let data = att.resizedBase64;
-    if (!data) {
-      try { data = readFileSync(att.storedPath).toString('base64'); }
-      catch { continue; }
-    }
-    out.push({ type: 'image', data, mimeType: att.mimeType });
-  }
-  return out.length ? out : undefined;
-}
-
 export async function* runPiChat(
   req: PiChatRequest,
 ): AsyncGenerator<AgentChatEvent> {
@@ -1008,6 +962,7 @@ export async function* runPiChat(
     return;
   }
   const directive = formatSkillDirective(skillPaths, extensionGuidePaths, filePaths, folderPaths);
+  const attachmentsDirective = formatAttachmentsDirective(req.attachments);
 
   let handle: SubprocessHandle;
   try {
@@ -1042,12 +997,11 @@ export async function* runPiChat(
   const queue = new EventQueue();
   handle.queues.set(req.turnId, queue);
 
-  const finalPrompt = [prefix, directive, cleanMessage].filter(Boolean).join('\n\n');
+  const finalPrompt = [prefix, directive, attachmentsDirective, cleanMessage].filter(Boolean).join('\n\n');
   const promptMsg: MsgPrompt = {
     type: 'prompt',
     turnId: req.turnId,
-    message: buildPiPrompt(finalPrompt, req.attachments),
-    images: buildImages(req.attachments),
+    message: finalPrompt,
     systemPromptAppend: append,
   };
   send(handle, promptMsg);
@@ -1230,11 +1184,12 @@ export function steerPiTurn(args: {
 }): boolean {
   const handle = handles.get(args.chatSessionPath);
   if (!handle || !handle.queues.has(args.turnId)) return false;
+  const attachmentsDirective = formatAttachmentsDirective(args.attachments);
+  const message = [attachmentsDirective, args.message].filter(Boolean).join('\n\n');
   send(handle, {
     type: 'steer',
     turnId: args.turnId,
-    message: buildPiPrompt(args.message, args.attachments),
-    images: buildImages(args.attachments),
+    message,
   });
   return true;
 }

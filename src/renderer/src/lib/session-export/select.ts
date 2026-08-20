@@ -327,8 +327,8 @@ function selectAttachments(
         dataUri: `data:${a.mimeType};base64,${a.resizedBase64}`,
       };
     }
-    // Everything else (pdf/text/snippet, or oversized images) lives only on
-    // disk — not embedded in a renderer-side export.
+    // Everything else (pdf/text/snippet/office, or oversized images) lives
+    // only on disk — not embedded in a renderer-side export.
     return {
       type: a.type,
       name: a.name,

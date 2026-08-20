@@ -121,8 +121,8 @@ export interface ChatSendRequest {
   attachments?: StoredAttachment[];
 }
 
-/** File classes we know how to handle. Office files are intentionally not supported. */
-export type AttachmentType = 'image' | 'pdf' | 'text' | 'snippet';
+/** File classes we know how to handle. Office files are opaque binary, same as PDFs. */
+export type AttachmentType = 'image' | 'pdf' | 'text' | 'snippet' | 'office';
 
 /**
  * Draft attachment — picked / pasted / dropped, not yet persisted.
@@ -135,7 +135,7 @@ export interface DraftAttachment {
   name: string;
   mimeType: string;
   size: number;
-  /** Set for images / PDFs (raw base64 of original bytes). */
+  /** Set for images / PDFs / office files (raw base64 of original bytes). */
   base64?: string;
   /** Set for text files (entire content if small, truncated if large). */
   text?: string;

@@ -3,8 +3,10 @@
 // Layout:
 //   <userData>/sessions/{sessionId}/attachments/{uuid}_{safe-name}
 //
-// Office files (.docx/.xlsx/...) are intentionally NOT supported here — the
-// renderer rejects them before this point.
+// Office files (.docx/.xlsx/.pptx/...) are stored as opaque binary, same as
+// PDFs — never decoded or inlined. The model reads them itself via Bash with
+// whatever library happens to be available (openpyxl, python-docx, etc.),
+// same posture as PDFs (see agent/attachments-directive.ts).
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { extname, join } from 'node:path';
@@ -56,16 +58,22 @@ const TEXT_EXTENSIONS = new Set([
   '.csv', '.log', '.conf', '.ini', '.cfg',
 ]);
 
-/** Office files we explicitly reject (per project scope). */
-const REJECTED_EXTENSIONS = new Set([
-  '.docx', '.xlsx', '.pptx', '.doc', '.xls', '.ppt',
-]);
+// Legacy/OOXML office formats — opaque binary containers, classified
+// distinctly from 'text' so nothing ever tries to UTF-8-decode them.
+const OFFICE_MIME: Record<string, string> = {
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  '.doc': 'application/msword',
+  '.xls': 'application/vnd.ms-excel',
+  '.ppt': 'application/vnd.ms-powerpoint',
+};
 
-function classify(name: string): AttachmentType | 'reject' {
+function classify(name: string): AttachmentType {
   const ext = extname(name).toLowerCase();
-  if (REJECTED_EXTENSIONS.has(ext)) return 'reject';
   if (ext in IMAGE_MIME) return 'image';
   if (ext === '.pdf') return 'pdf';
+  if (ext in OFFICE_MIME) return 'office';
   return 'text';
 }
 
@@ -73,6 +81,7 @@ function mimeFor(name: string, type: AttachmentType): string {
   const ext = extname(name).toLowerCase();
   if (type === 'image') return IMAGE_MIME[ext] ?? 'application/octet-stream';
   if (type === 'pdf') return 'application/pdf';
+  if (type === 'office') return OFFICE_MIME[ext] ?? 'application/octet-stream';
   if (TEXT_EXTENSIONS.has(ext)) return 'text/plain';
   return 'application/octet-stream';
 }
@@ -110,11 +119,6 @@ export function readPathAsDraft(absPath: string): DraftAttachment | null {
 
   const name = absPath.split(/[\\/]/).pop() ?? 'file';
   const klass = classify(name);
-  if (klass === 'reject') {
-    throw new Error(
-      `Office files (.docx / .xlsx / .pptx) aren't supported in this build.`,
-    );
-  }
   const mimeType = mimeFor(name, klass);
   const draft: DraftAttachment = {
     type: klass,
@@ -124,7 +128,7 @@ export function readPathAsDraft(absPath: string): DraftAttachment | null {
     size: stats.size,
   };
 
-  if (klass === 'image' || klass === 'pdf') {
+  if (klass === 'image' || klass === 'pdf' || klass === 'office') {
     draft.base64 = readFileSync(absPath).toString('base64');
   } else {
     // text — read up to MAX_TEXT_SIZE for in-composer preview only.
@@ -201,14 +205,14 @@ export async function storeDraft(
     };
   }
 
-  if (draft.type === 'pdf') {
-    if (!draft.base64) throw new Error('PDF attachment missing base64');
+  if (draft.type === 'pdf' || draft.type === 'office') {
+    if (!draft.base64) throw new Error(`${draft.type === 'pdf' ? 'PDF' : 'Office'} attachment missing base64`);
     const buf = Buffer.from(draft.base64, 'base64');
     writeFileSync(storedPath, buf);
     return {
-      type: 'pdf',
+      type: draft.type,
       name: draft.name,
-      mimeType: 'application/pdf',
+      mimeType: draft.mimeType,
       size: buf.length,
       storedPath,
     };

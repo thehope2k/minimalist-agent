@@ -9,7 +9,7 @@ import {
   type SDKUserMessage,
   type AgentDefinition,
 } from '@anthropic-ai/claude-agent-sdk';
-import { readFileSync, writeFileSync, chmodSync, existsSync, readdirSync } from 'node:fs';
+import { writeFileSync, chmodSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { Paths } from '../../storage/paths';
 import type { StoredAttachment } from '../../storage/sessions';
@@ -30,6 +30,7 @@ import {
   buildPromptPrefix,
   buildSystemPromptAppend,
 } from '../system-prompt';
+import { formatAttachmentsDirective } from '../attachments-directive';
 import {
   extractSkillPaths,
   formatSkillDirective,
@@ -153,11 +154,9 @@ export function steerAnthropicTurn(
 ): boolean {
   const input = inputsByTurnId.get(turnId);
   if (!input) return false;
-  const msg =
-    attachments && attachments.length > 0
-      ? buildUserMessageWithAttachments(message, attachments)
-      : buildPlainUserMessage(message);
-  input.push(msg);
+  const attachmentsDirective = formatAttachmentsDirective(attachments);
+  const text = [attachmentsDirective, message].filter(Boolean).join('\n\n');
+  input.push(buildPlainUserMessage(text));
   return true;
 }
 
@@ -174,80 +173,6 @@ function buildPlainUserMessage(text: string): SDKUserMessage {
 }
 
 const DEFAULT_MAX_TURNS = 30;
-
-const SDK_IMAGE_MEDIA: Record<string, 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp'> = {
-  'image/png': 'image/png',
-  'image/jpeg': 'image/jpeg',
-  'image/gif': 'image/gif',
-  'image/webp': 'image/webp',
-};
-
-function buildUserMessageWithAttachments(
-  prompt: string,
-  attachments: StoredAttachment[],
-): SDKUserMessage {
-  type ContentBlock =
-    | { type: 'text'; text: string }
-    | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }
-    | { type: 'document'; source: { type: 'base64'; media_type: string; data: string } };
-
-  const blocks: ContentBlock[] = [];
-
-  for (const att of attachments) {
-    blocks.push({
-      type: 'text',
-      text: `[Attached file: ${att.name}]\n[Stored at: ${att.storedPath}]`,
-    });
-
-    if (att.type === 'image') {
-      const media = SDK_IMAGE_MEDIA[att.mimeType];
-      if (!media) continue;
-      let data = att.resizedBase64;
-      if (!data) {
-        try {
-          data = readFileSync(att.storedPath).toString('base64');
-        } catch {
-          continue;
-        }
-      }
-      blocks.push({ type: 'image', source: { type: 'base64', media_type: media, data } });
-    } else if (att.type === 'pdf') {
-      try {
-        const data = readFileSync(att.storedPath).toString('base64');
-        blocks.push({
-          type: 'document',
-          source: { type: 'base64', media_type: 'application/pdf', data },
-        });
-      } catch {
-        // skip unreadable
-      }
-    } else if (att.type === 'text' || att.type === 'snippet') {
-      try {
-        const content = readFileSync(att.storedPath, 'utf-8');
-        // Replace the stub header with the real content.
-        blocks.pop(); // remove the [Attached file] stub just pushed
-        blocks.push({
-          type: 'text',
-          text: `[File: ${att.name}]\n\`\`\`\n${content}\n\`\`\``,
-        });
-      } catch {
-        // keep the stub if the file is unreadable
-      }
-    }
-  }
-
-  if (prompt.trim()) blocks.push({ type: 'text', text: prompt });
-
-  return {
-    type: 'user',
-    message: {
-      role: 'user',
-      content: blocks as unknown as SDKUserMessage['message']['content'],
-    },
-    parent_tool_use_id: null,
-    session_id: '',
-  };
-}
 
 /**
  * Write our OAuth access token into the format the modern Claude Code
@@ -446,7 +371,8 @@ export async function* runAnthropicChat(
     return;
   }
   const directive = formatSkillDirective(skillPaths, extensionGuidePaths, filePaths, folderPaths);
-  const finalPrompt = [prefix, directive, cleanMessage]
+  const attachmentsDirective = formatAttachmentsDirective(req.attachments);
+  const finalPrompt = [prefix, directive, attachmentsDirective, cleanMessage]
     .filter(Boolean)
     .join('\n\n');
 
@@ -454,10 +380,7 @@ export async function* runAnthropicChat(
   // in a SteerableInput; the Claude SDK keeps consuming from the iterable
   // so additional messages pushed via `steerAnthropicTurn` get processed
   // mid-stream.
-  const initialUserMessage =
-    req.attachments && req.attachments.length > 0
-      ? buildUserMessageWithAttachments(finalPrompt, req.attachments)
-      : buildPlainUserMessage(finalPrompt);
+  const initialUserMessage = buildPlainUserMessage(finalPrompt);
 
   let steerable: SteerableInput | null = null;
   let promptInput: string | AsyncIterable<SDKUserMessage>;

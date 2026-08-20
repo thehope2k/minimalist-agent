@@ -52,7 +52,7 @@ export type StoredMessagePart =
       status: 'running' | 'done' | 'error';
     };
 
-export type AttachmentType = 'image' | 'pdf' | 'text' | 'snippet';
+export type AttachmentType = 'image' | 'pdf' | 'text' | 'snippet' | 'office';
 
 export interface StoredAttachment {
   type: AttachmentType;

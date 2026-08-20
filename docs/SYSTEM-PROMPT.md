@@ -115,6 +115,15 @@ persistent `@mention`. Cost is flat: ~25 tokens per pinned item regardless of
 content length (name, description, and the resolved absolute file path — the
 model never has to reconstruct the path itself from the tier convention).
 
+### A third tier: backend-level directives (outside these two assembly points)
+
+`formatSkillDirective()` and `formatAttachmentsDirective()` sit outside
+`getSystemPrompt()`/`buildPromptPrefix()` — each backend builds and joins them
+into the user message directly, rather than through the shared assembly
+functions above. Attachments are never inlined or sent as native content
+blocks; the model gets a reference (path + type) and reads it itself with its
+own tools. See `agent/attachments-directive.ts` for the exact format.
+
 ---
 
 ## 3. What is deliberately NOT in the prompt

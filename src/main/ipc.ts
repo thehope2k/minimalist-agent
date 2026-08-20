@@ -1076,6 +1076,7 @@ export function registerIpc(): void {
         { name: 'All Files', extensions: ['*'] },
         { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'] },
         { name: 'Documents', extensions: ['pdf', 'txt', 'md'] },
+        { name: 'Office', extensions: ['docx', 'xlsx', 'pptx', 'doc', 'xls', 'ppt'] },
         {
           name: 'Code',
           extensions: ['ts', 'tsx', 'js', 'jsx', 'py', 'go', 'rs', 'java', 'c', 'cpp', 'h', 'json', 'yaml', 'yml'],

@@ -31,7 +31,7 @@ export interface ExportOptions {
 
 /** A user-message attachment, prepared for embedding (or marked dropped). */
 export interface ExportAttachment {
-  type: 'image' | 'pdf' | 'text' | 'snippet';
+  type: 'image' | 'pdf' | 'text' | 'snippet' | 'office';
   name: string;
   mimeType: string;
   size: number;

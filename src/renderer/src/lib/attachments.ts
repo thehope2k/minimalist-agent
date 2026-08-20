@@ -4,9 +4,17 @@
 import type { DraftAttachment, StoredAttachment } from './electron';
 import { detectLanguage } from './language-detect';
 
-export const REJECTED_EXTS = new Set([
-  '.docx', '.xlsx', '.pptx', '.doc', '.xls', '.ppt',
-]);
+// Legacy/OOXML office formats — opaque binary, stored the same way as PDFs
+// (raw base64), never decoded as UTF-8 text. Matches OFFICE_MIME in
+// main/storage/attachments.ts.
+const OFFICE_MIME: Record<string, string> = {
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  '.doc': 'application/msword',
+  '.xls': 'application/vnd.ms-excel',
+  '.ppt': 'application/vnd.ms-powerpoint',
+};
 
 const IMAGE_MIME_PREFIX = 'image/';
 
@@ -18,9 +26,6 @@ function extOf(name: string): string {
 /** Read a File (drag-drop or <input type="file">) into a DraftAttachment. */
 export async function fileToDraft(file: File): Promise<DraftAttachment> {
   const ext = extOf(file.name);
-  if (REJECTED_EXTS.has(ext)) {
-    throw new Error(`Office files (${ext}) aren't supported in this build.`);
-  }
   if (file.size > 20 * 1024 * 1024) {
     throw new Error(
       `File too large: ${file.name} (${Math.round(file.size / 1024 / 1024)}MB > 20MB).`,
@@ -29,6 +34,7 @@ export async function fileToDraft(file: File): Promise<DraftAttachment> {
 
   const isImage = file.type.startsWith(IMAGE_MIME_PREFIX);
   const isPdf = file.type === 'application/pdf' || ext === '.pdf';
+  const officeMime = OFFICE_MIME[ext];
 
   if (isImage || isPdf) {
     const base64 = await fileToBase64(file);
@@ -37,6 +43,18 @@ export async function fileToDraft(file: File): Promise<DraftAttachment> {
       path: 'clipboard',
       name: file.name || (isImage ? 'pasted-image.png' : 'document.pdf'),
       mimeType: file.type || (isImage ? 'image/png' : 'application/pdf'),
+      size: file.size,
+      base64,
+    };
+  }
+
+  if (officeMime) {
+    const base64 = await fileToBase64(file);
+    return {
+      type: 'office',
+      path: 'clipboard',
+      name: file.name,
+      mimeType: file.type || officeMime,
       size: file.size,
       base64,
     };

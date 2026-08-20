@@ -1899,12 +1899,7 @@ function flushPendingTurnDone(): void {
 
 async function runSessionPrompt(msg: MsgPrompt, alreadyRetried = false): Promise<void> {
   try {
-    await state.session!.prompt(msg.message, {
-      images: msg.images?.map((i) => ({
-        mimeType: i.mimeType,
-        data: i.data,
-      })) as never,
-    });
+    await state.session!.prompt(msg.message);
   } catch (e) {
     if (!alreadyRetried && isTransientOAuthRefreshError(e)) {
       log.warn('turn failed on transient OAuth refresh — retrying once:', errMessage(e));
@@ -2557,7 +2552,6 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
       try {
         await state.session.prompt(msg.message, {
           streamingBehavior: 'steer',
-          images: msg.images,
         } as never);
       } catch (e) {
         log.error('steer failed:', e);
