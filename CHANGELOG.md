@@ -5,6 +5,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.21.0] — 2026-08-20
+
+Office document attachments, desktop pet drag momentum and idle animations.
+
+### Added
+
+**Office document attachments**
+
+- You can now attach Word, Excel, and PowerPoint files (`.docx`, `.xlsx`, `.pptx`, `.doc`, `.xls`, `.ppt`) — these were previously rejected outright as unsupported.
+
+**Desktop pet**
+
+- Flicking the pet while dragging now carries it to a momentum-driven, friction-decayed stop instead of dropping it dead where the pointer let go
+- While resting, the pet's eyes now drift slightly toward a nearby cursor, and it occasionally plays a stretch/fidget animation instead of sitting frozen
+- Idle wander/nap timing is now randomized per stretch instead of a fixed interval, so the pet's behavior reads less like a metronome
+
+### Changed
+
+- Attachments (images, PDFs, and documents) are now handled consistently by pointing the model at the file path/type and letting it read the content itself, instead of embedding it inline in the prompt across backends
+
+---
+
 ## [1.20.6] — 2026-08-19
 
 Bug fixes — pinned skills and agents are now located reliably every turn.
