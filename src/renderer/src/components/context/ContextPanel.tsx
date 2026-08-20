@@ -1,5 +1,5 @@
 import { Layers, RefreshCw, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useContextPanel } from '@/hooks/useContextPanel';
 import { getProjectSkillsDir } from '@/lib/skills';
@@ -45,11 +45,19 @@ export function ContextPanel({
   const [projectExtDir, setProjectExtDir] = useState<string | undefined>();
   const [detail, setDetail] = useState<DetailTarget>(null);
 
+  // Cached dirs are only valid for the cwd they were resolved against — this
+  // panel instance persists across session/project switches, so a stale dir
+  // from a previous cwd must not leak into a new project's "+ New" dialog.
+  useEffect(() => {
+    setProjectSkillsDir(undefined);
+    setProjectExtDir(undefined);
+  }, [cwd]);
+
   const openNewDialog = async (type: 'skill' | 'extension') => {
     if (!cwd) return;
-    if (type === 'skill' && !projectSkillsDir) {
+    if (type === 'skill') {
       setProjectSkillsDir(await getProjectSkillsDir(cwd));
-    } else if (type === 'extension' && !projectExtDir) {
+    } else {
       setProjectExtDir(await getProjectExtensionsDir(cwd));
     }
     setNewDialog(type);
