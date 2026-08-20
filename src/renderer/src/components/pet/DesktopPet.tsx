@@ -1,8 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { PetPanda } from './PetPanda';
 import { usePetSignal, type PetReaction, type PetBaseState } from './usePetSignal';
+import { useCursorGaze } from './useCursorGaze';
+import { usePrefersReducedMotion } from './usePrefersReducedMotion';
 import { getAppSettings, setPetLastX, setPetLastY } from '@/lib/app-settings';
 import { playPetSound, type PetSoundKind } from '@/lib/pet-sound';
+import {
+  applyFriction,
+  computeReleaseVelocity,
+  recordPointerSample,
+  speedOf,
+  type PointerSample,
+  type Velocity,
+} from '@/lib/pet-motion';
 
 const WALK_SPEED_PX_PER_SEC = 40;
 const DASH_SPEED_PX_PER_SEC = 140;
@@ -15,6 +25,14 @@ const POSITION_EPSILON_PX = 2;
 const POSITION_SAVE_INTERVAL_MS = 3000;
 const CLICK_DRAG_THRESHOLD_PX = 6;
 
+/** Fraction of velocity retained after a full second of momentum decay — low value = a short, snappy flick, not an ice-rink slide. */
+const MOMENTUM_FRICTION_RETAINED_PER_SEC = 0.08;
+/** Below this speed a flick isn't worth animating, and momentum stops decaying toward zero forever. */
+const MOMENTUM_STOP_SPEED_PX_PER_SEC = 24;
+/** A release slower than this just drops the pet in place, matching the pre-momentum drag behavior. */
+const MIN_FLICK_SPEED_PX_PER_SEC = 60;
+const FACING_FLIP_VELOCITY_THRESHOLD_PX_PER_SEC = 8;
+
 const REACTION_DURATION_MS: Record<Exclude<PetReaction, null>, number> = {
   greet: 1200,
   click: 650,
@@ -23,9 +41,10 @@ const REACTION_DURATION_MS: Record<Exclude<PetReaction, null>, number> = {
   'tool-start': 1000,
   'tool-error': 500,
   'commit-success': 800,
+  fidget: 1400,
 };
 
-const REACTION_SOUND: Record<Exclude<PetReaction, null>, PetSoundKind> = {
+const REACTION_SOUND: Partial<Record<Exclude<PetReaction, null>, PetSoundKind>> = {
   greet: 'happy',
   click: 'click',
   'streaming-start': 'tool',
@@ -33,6 +52,7 @@ const REACTION_SOUND: Record<Exclude<PetReaction, null>, PetSoundKind> = {
   'tool-start': 'tool',
   'tool-error': 'error',
   'commit-success': 'happy',
+  // 'fidget' intentionally has no sound — it's a rare idle flourish, not an event worth chiming for.
 };
 
 const DASH_TRIGGERS: ReadonlySet<PetReaction> = new Set(['tool-start', 'commit-success']);
@@ -76,18 +96,13 @@ function stepToward(
 function useMotionLoop(active: boolean, onStep: (deltaSec: number) => void): void {
   const onStepRef = useRef(onStep);
   onStepRef.current = onStep;
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   useEffect(() => {
     if (!active) return;
 
     let animationFrameId: number;
     let lastTimestamp: number | null = null;
-    const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    let prefersReducedMotion = reducedMotionQuery.matches;
-    const onReducedMotionChange = (event: MediaQueryListEvent) => {
-      prefersReducedMotion = event.matches;
-    };
-    reducedMotionQuery.addEventListener('change', onReducedMotionChange);
 
     const frame = (timestamp: number) => {
       animationFrameId = requestAnimationFrame(frame);
@@ -105,11 +120,8 @@ function useMotionLoop(active: boolean, onStep: (deltaSec: number) => void): voi
     };
 
     animationFrameId = requestAnimationFrame(frame);
-    return () => {
-      cancelAnimationFrame(animationFrameId);
-      reducedMotionQuery.removeEventListener('change', onReducedMotionChange);
-    };
-  }, [active]);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [active, prefersReducedMotion]);
 }
 
 interface DesktopPetProps {
@@ -136,10 +148,22 @@ export function DesktopPet({ isStreaming }: DesktopPetProps) {
   const dragPointerOffsetRef = useRef({ dx: 0, dy: 0 });
   const dragStartClientRef = useRef({ x: 0, y: 0 });
   const draggedBeyondThresholdRef = useRef(false);
+  const pointerHistoryRef = useRef<PointerSample[]>([]);
+
+  const [momentumActive, setMomentumActive] = useState(false);
+  const velocityRef = useRef<Velocity>({ vx: 0, vy: 0 });
+  const pendingDashRef = useRef(false);
+
+  const startDash = () => {
+    dashHomeXRef.current = xRef.current;
+    dashTargetXRef.current = randomDashTarget(xRef.current);
+    setDashPhase('out');
+  };
 
   useEffect(() => {
     if (!reaction) return;
-    if (getAppSettings().petSoundEnabled) playPetSound(REACTION_SOUND[reaction]);
+    const sound = REACTION_SOUND[reaction];
+    if (sound && getAppSettings().petSoundEnabled) playPetSound(sound);
     const timeoutId = setTimeout(clearReaction, REACTION_DURATION_MS[reaction]);
     return () => clearTimeout(timeoutId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -147,15 +171,31 @@ export function DesktopPet({ isStreaming }: DesktopPetProps) {
 
   useEffect(() => {
     if (!reaction || !DASH_TRIGGERS.has(reaction) || isDragging) return;
-    dashHomeXRef.current = xRef.current;
-    dashTargetXRef.current = randomDashTarget(xRef.current);
-    setDashPhase('out');
+    if (momentumActive) {
+      // Dashing now would fight the momentum motion loop for the same x/y state — defer it instead
+      // of dropping it; the momentum-end effect below fires it once the coast settles.
+      pendingDashRef.current = true;
+      return;
+    }
+    startDash();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reactionNonce]);
 
-  const displayState: PetBaseState = dashPhase ? 'walk' : baseState;
+  // Fires a dash that was deferred because momentum (or a re-grab) was in the way when it was triggered.
+  useEffect(() => {
+    if (momentumActive || isDragging || !pendingDashRef.current) return;
+    pendingDashRef.current = false;
+    startDash();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [momentumActive, isDragging]);
 
-  useMotionLoop(baseState === 'walk' && !dashPhase && !isDragging, (deltaSec) => {
+  const displayState: PetBaseState = dashPhase || momentumActive ? 'walk' : baseState;
+
+  const gazeEnabled = (displayState === 'idle' || displayState === 'sit') && !isDragging && reaction === null;
+  const gaze = useCursorGaze({ x: x + PET_WIDTH_PX / 2, y: y + PET_HEIGHT_PX / 2 }, gazeEnabled);
+  const localGaze = { x: gaze.x * facing, y: gaze.y };
+
+  useMotionLoop(baseState === 'walk' && !dashPhase && !isDragging && !momentumActive, (deltaSec) => {
     setX((current) => {
       const { next, arrived } = stepToward(current, walkTargetRef.current, WALK_SPEED_PX_PER_SEC, deltaSec);
       setFacing(walkTargetRef.current > current ? 1 : -1);
@@ -172,6 +212,19 @@ export function DesktopPet({ isStreaming }: DesktopPetProps) {
       if (arrived) setDashPhase((phase) => (phase === 'out' ? 'back' : null));
       return next;
     });
+  });
+
+  useMotionLoop(momentumActive, (deltaSec) => {
+    const nextVelocity = applyFriction(velocityRef.current, MOMENTUM_FRICTION_RETAINED_PER_SEC, deltaSec);
+    velocityRef.current = nextVelocity;
+
+    if (Math.abs(nextVelocity.vx) > FACING_FLIP_VELOCITY_THRESHOLD_PX_PER_SEC) {
+      setFacing(nextVelocity.vx > 0 ? 1 : -1);
+    }
+    setX((current) => clampX(current + nextVelocity.vx * deltaSec));
+    setY((current) => clampY(current + nextVelocity.vy * deltaSec));
+
+    if (speedOf(nextVelocity) < MOMENTUM_STOP_SPEED_PX_PER_SEC) setMomentumActive(false);
   });
 
   useEffect(() => {
@@ -204,6 +257,8 @@ export function DesktopPet({ isStreaming }: DesktopPetProps) {
     dragPointerOffsetRef.current = { dx: event.clientX - xRef.current, dy: event.clientY - yRef.current };
     dragStartClientRef.current = { x: event.clientX, y: event.clientY };
     draggedBeyondThresholdRef.current = false;
+    pointerHistoryRef.current = [{ x: event.clientX, y: event.clientY, timeMs: performance.now() }];
+    setMomentumActive(false);
     setDashPhase(null);
     setIsDragging(true);
   };
@@ -215,16 +270,27 @@ export function DesktopPet({ isStreaming }: DesktopPetProps) {
     if (Math.hypot(movedX, movedY) > CLICK_DRAG_THRESHOLD_PX) {
       draggedBeyondThresholdRef.current = true;
     }
+    pointerHistoryRef.current = recordPointerSample(pointerHistoryRef.current, {
+      x: event.clientX,
+      y: event.clientY,
+      timeMs: performance.now(),
+    });
     setX(clampX(event.clientX - dragPointerOffsetRef.current.dx));
     setY(clampY(event.clientY - dragPointerOffsetRef.current.dy));
   };
 
   const handlePointerUp = (event: React.PointerEvent) => {
     setIsDragging(false);
-    if (draggedBeyondThresholdRef.current) {
-      event.preventDefault();
-      setPetLastX(xRef.current);
-      setPetLastY(yRef.current);
+    if (!draggedBeyondThresholdRef.current) return;
+
+    event.preventDefault();
+    setPetLastX(xRef.current);
+    setPetLastY(yRef.current);
+
+    const releaseVelocity = computeReleaseVelocity(pointerHistoryRef.current);
+    if (speedOf(releaseVelocity) >= MIN_FLICK_SPEED_PX_PER_SEC) {
+      velocityRef.current = releaseVelocity;
+      setMomentumActive(true);
     }
   };
 
@@ -244,6 +310,7 @@ export function DesktopPet({ isStreaming }: DesktopPetProps) {
           isStreaming={isStreaming}
           reaction={reaction}
           reactionNonce={reactionNonce}
+          gaze={localGaze}
           onClick={triggerClick}
         />
       </div>

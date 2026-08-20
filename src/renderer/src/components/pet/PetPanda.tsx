@@ -1,4 +1,5 @@
 import './pet-panda.css';
+import type { Point } from './useCursorGaze';
 import type { PetBaseState, PetReaction } from './usePetSignal';
 
 interface PetPandaProps {
@@ -6,20 +7,23 @@ interface PetPandaProps {
   isStreaming: boolean;
   reaction: PetReaction;
   reactionNonce: number;
+  gaze: Point;
   onClick: () => void;
 }
 
-export function PetPanda({ baseState, isStreaming, reaction, reactionNonce, onClick }: PetPandaProps) {
-  const className = [
-    'pet-panda',
-    `state-${baseState}`,
-    isStreaming && 'is-streaming',
-    reaction === 'tool-error' && 'flinching',
-    reaction === 'click' && 'clicking',
-    reaction !== null && reaction !== 'tool-error' && reaction !== 'click' && 'reacting',
-  ]
+/** Reactions that get their own dedicated animation; anything else falls back to the generic `reacting` class. */
+const REACTION_CLASSNAME: Partial<Record<Exclude<PetReaction, null>, string>> = {
+  'tool-error': 'flinching',
+  click: 'clicking',
+  fidget: 'fidgeting',
+};
+
+export function PetPanda({ baseState, isStreaming, reaction, reactionNonce, gaze, onClick }: PetPandaProps) {
+  const reactionClassName = reaction ? (REACTION_CLASSNAME[reaction] ?? 'reacting') : null;
+  const className = ['pet-panda', `state-${baseState}`, isStreaming && 'is-streaming', reactionClassName]
     .filter(Boolean)
     .join(' ');
+  const gazeStyle = { '--gaze-x': `${gaze.x}px`, '--gaze-y': `${gaze.y}px` } as React.CSSProperties;
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === 'Enter' || event.key === ' ') onClick();
@@ -28,6 +32,7 @@ export function PetPanda({ baseState, isStreaming, reaction, reactionNonce, onCl
   return (
     <div
       className={className}
+      style={gazeStyle}
       onClick={onClick}
       onKeyDown={handleKeyDown}
       role="button"

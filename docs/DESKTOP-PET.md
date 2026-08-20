@@ -5,14 +5,17 @@ A decorative panda overlay that reflects real app activity instead of just sitti
 
 ## Where things live
 
-| Concern                         | File                                |
-|---------------------------------|-------------------------------------|
-| Enable/mount gate (lazy import) | `components/pet/DesktopPetGate.tsx` |
-| Position, drag, motion loops    | `components/pet/DesktopPet.tsx`     |
-| Reaction/state machine          | `components/pet/usePetSignal.ts`    |
-| Signal bus (app → pet)          | `lib/pet-events.ts`                 |
-| Sound synthesis                 | `lib/pet-sound.ts`                  |
-| Settings                        | `lib/app-settings.ts`               |
+| Concern                         | File                                        |
+|---------------------------------|---------------------------------------------|
+| Enable/mount gate (lazy import) | `components/pet/DesktopPetGate.tsx`         |
+| Position, drag, motion loops    | `components/pet/DesktopPet.tsx`             |
+| Drag-release momentum physics   | `lib/pet-motion.ts`                         |
+| Idle cursor-gaze tracking       | `components/pet/useCursorGaze.ts`           |
+| Shared reduced-motion check     | `components/pet/usePrefersReducedMotion.ts` |
+| Reaction/state machine          | `components/pet/usePetSignal.ts`            |
+| Signal bus (app → pet)          | `lib/pet-events.ts`                         |
+| Sound synthesis                 | `lib/pet-sound.ts`                          |
+| Settings                        | `lib/app-settings.ts`                       |
 
 ## Architecture
 
@@ -51,6 +54,20 @@ the thing actually worth reflecting.
 This is cosmetic pacing, not a Tamagotchi mechanic — there's no persisted mood/hunger, and nothing about the app
 degrades if the pet naps. It exists purely so the pet isn't a frozen sprite during long idle stretches.
 
+**Idle timing is jittered, not fixed.** The 90s/5min thresholds are re-rolled by ±35%/±20% every time the activity clock
+resets (`usePetSignal.ts`), so wander/nap never lands on a visible metronome. On top of that, resting
+`idle`/`sit` periods have a small per-tick chance of playing a one-off `fidget` reaction (a stretch) — cosmetic variety
+with no new signal source, same `fireReaction` plumbing as `click`.
+
+**Drag release carries momentum.** A quick flick computes release velocity from the last ~120ms of pointer samples
+(`lib/pet-motion.ts`, pure functions, no DOM) and lets the pet coast to a stop with friction instead of dropping dead
+where the pointer let go. A slow release still just drops it in place.
+
+**Idle gaze tracks the cursor.** While resting (`idle`/`sit`, not dragging/reacting), the pet's eyes drift a couple
+pixels toward a nearby cursor (`useCursorGaze.ts`) — a pure CSS custom-property offset on the eye-shine dot, no new
+app-state dependency, disabled under `prefers-reduced-motion` via the same shared `usePrefersReducedMotion` hook the
+motion loop uses.
+
 **No prop-threading for signals.** `useChat.ts` and `useCommitFlow.ts` each call `emitPetEvent(...)` at one existing
 point in their own logic and are otherwise completely unaware the pet exists. This keeps the pet an add-on rather than
 something that has to be threaded through chat/git code as those files evolve.
@@ -71,7 +88,8 @@ to a static frame under
 - No automated tests — the project has no test runner at all; the state machine (`usePetSignal`) is verified by
   `tsc --noEmit` and manual testing.
 - Single pet, no picker — revisit only if this proves worth expanding.
-- No throw/momentum physics on drag — release just drops it where the pointer is.
+- ~~No throw/momentum physics on drag~~ — added: release velocity now carries the pet to a friction-decayed stop instead
+  of dropping dead.
 
 ## Explicitly out of scope
 
