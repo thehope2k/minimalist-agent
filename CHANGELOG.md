@@ -5,6 +5,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.22.0] — 2026-08-25
+
+Quality of life improvement: see exactly which tool call is eating your context budget, plus a bug fix.
+
+### Added
+
+**Per-tool-call context cost badges**
+
+- Tool calls and diffs in the chat view now show a badge with the context tokens they added, so you can see which step in a turn actually grew the context window.
+- The session usage panel gains a "Biggest Context Contributors" summary, ranking the tool calls that consumed the most context in the session.
+- Subagent transcripts show the same per-call cost badges, and mid-turn compaction is handled correctly so the deltas don't get miscomputed against a stale baseline.
+
+### Fixed
+
+- Extension directives sent to the model used a generic templated path pattern that didn't always match where an extension's guide actually lived, sometimes pointing the model at the wrong file. Each extension now carries its own explicit guide path.
+
+---
+
 ## [1.21.1] — 2026-08-20
 
 Bug fixes for dialog scrolling, session title sync, and stale cached project dirs.
