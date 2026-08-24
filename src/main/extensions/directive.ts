@@ -1,7 +1,6 @@
 import { getExtensionRegistry } from './registry';
-import { getExtensionsDir, loadAllExtensions } from './storage';
+import { loadAllExtensions } from './storage';
 import { listMcpExtensionsStatus } from './mcp-config';
-import { join } from 'node:path';
 
 export function formatExtensionsAwareness(cwd?: string): string {
   const all = cwd
@@ -10,24 +9,14 @@ export function formatExtensionsAwareness(cwd?: string): string {
 
   if (all.length === 0) return '';
 
-  // Build a scope-aware guide path hint so the agent looks in the right
-  // directory for project-tier extensions vs user-tier extensions.
-  const userExts = all.filter((e) => e.scope === 'user');
-  const projectExts = all.filter((e) => e.scope === 'project');
-  const guideHints: string[] = [];
-  if (userExts.length > 0) {
-    guideHints.push(`global: ${join(getExtensionsDir(), '<slug>', 'guide.md')}`);
-  }
-  if (projectExts.length > 0 && cwd) {
-    guideHints.push(`project: ${join(cwd, '.minimalist-agent', 'extensions', '<slug>', 'guide.md')}`);
-  }
-  const guideHint = guideHints.join('; ');
-
   const lines: string[] = [];
   lines.push(
-    `Installed extension capabilities (CLIs / MCP servers / usage guides), referenced by slug. Before using one for the first time this session, read its guide (${guideHint}). Mentioning \`@slug\` auto-surfaces its guide.`,
+    'Installed extension capabilities (CLIs / MCP servers / usage guides). Before using one for the first time this session, read its guide at the exact path below. Mentioning `@slug` also auto-surfaces its guide.',
   );
-  lines.push(`Enabled: ${all.map((e) => e.slug).join(', ')}`);
+  lines.push('Enabled:');
+  for (const e of all) {
+    lines.push(`- ${e.slug} (${e.scope}): ${e.guidePath}`);
+  }
 
   const blockedMcp = listMcpExtensionsStatus(cwd).filter((s) => !s.ok);
   if (blockedMcp.length > 0) {
