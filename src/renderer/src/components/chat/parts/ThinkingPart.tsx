@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { Brain, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Markdown } from './markdown/Markdown';
+import { RoundOutputBadge } from './RoundOutputBadge';
 
-export function ThinkingPart({ text }: { text: string }) {
+export function ThinkingPart({ text, outputTokens }: { text: string; outputTokens?: number }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="rounded-md border border-border bg-elevated/40">
@@ -27,6 +28,9 @@ export function ThinkingPart({ text }: { text: string }) {
             </span>
           </>
         )}
+        <span className="ml-auto shrink-0">
+          <RoundOutputBadge outputTokens={outputTokens} />
+        </span>
       </button>
       {open && (
         <div className="border-t border-border px-3 py-2 text-sm italic text-fg-subtle">

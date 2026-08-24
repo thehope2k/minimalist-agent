@@ -36,6 +36,8 @@ export function ToolPart(props: ToolPartProps) {
         input={props.input}
         result={props.result}
         status={props.status}
+        contextDelta={props.contextDelta}
+        contextDeltaGroupSize={props.contextDeltaGroupSize}
       />
     );
   }

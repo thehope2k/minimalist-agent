@@ -156,7 +156,7 @@ export function Bubble({
 function PartView({ part }: { part: MessagePart }) {
   switch (part.kind) {
     case 'text':     return <TextPart text={part.text} />;
-    case 'thinking': return <ThinkingPart text={part.text} />;
+    case 'thinking': return <ThinkingPart text={part.text} outputTokens={part.outputTokens} />;
     case 'tool':
       return (
         <ToolPart
@@ -166,6 +166,8 @@ function PartView({ part }: { part: MessagePart }) {
           result={part.result}
           status={part.status}
           subagent={part.subagent}
+          contextDelta={part.contextDelta}
+          contextDeltaGroupSize={part.contextDeltaGroupSize}
         />
       );
     default: return null;

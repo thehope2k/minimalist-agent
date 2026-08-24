@@ -15,6 +15,7 @@ import { AgentResultSection } from './AgentResultSection';
 import { ResultBlock } from './ResultBlock';
 import { StatusIcon } from './StatusIcon';
 import { formatInput } from './tool-helpers';
+import { ContextDeltaBadge } from './ContextDeltaBadge';
 import type { ToolPartProps } from './types';
 
 function CodeFrame({ label, text }: { label: string; text: string }) {
@@ -38,6 +39,8 @@ export function ChipBody({
   result,
   status,
   subagent,
+  contextDelta,
+  contextDeltaGroupSize,
 }: ToolPartProps) {
   const [open, setOpen] = useState(false);
   const inputText = formatInput(input, partialInputJson);
@@ -104,6 +107,7 @@ export function ChipBody({
           {resultSummary && !open && (
             <span className="text-xs text-fg-subtle">{resultSummary}</span>
           )}
+          <ContextDeltaBadge contextDelta={contextDelta} contextDeltaGroupSize={contextDeltaGroupSize} />
           <StatusIcon status={status} resultIsError={result?.isError} />
         </span>
       </button>

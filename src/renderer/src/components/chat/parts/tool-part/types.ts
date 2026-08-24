@@ -7,6 +7,8 @@ export interface ToolPartProps {
   result?: { content: string; isError?: boolean };
   status: 'running' | 'done' | 'error';
   subagent?: SubagentTranscript;
+  contextDelta?: number;
+  contextDeltaGroupSize?: number;
 }
 
 export const RESULT_PREVIEW_LIMIT = 4096;

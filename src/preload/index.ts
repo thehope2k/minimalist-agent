@@ -306,7 +306,7 @@ type ChatRole = 'user' | 'assistant';
 
 type StoredMessagePart =
   | { kind: 'text'; text: string }
-  | { kind: 'thinking'; text: string }
+  | { kind: 'thinking'; text: string; outputTokens?: number }
   | {
       kind: 'tool';
       toolUseId: string;
@@ -315,6 +315,8 @@ type StoredMessagePart =
       partialInputJson?: string;
       result?: { content: string; isError?: boolean };
       status: 'running' | 'done' | 'error';
+      contextDelta?: number;
+      contextDeltaGroupSize?: number;
     };
 
 interface StoredMessage {

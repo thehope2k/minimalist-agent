@@ -2,6 +2,7 @@ import { cn } from '@/lib/utils';
 import { Markdown } from '../markdown/Markdown';
 import { ThinkingPart } from '../ThinkingPart';
 import { ToolPart } from '../ToolPart';
+import { compactNumber } from '../../message-list/utils';
 import { subagentPhaseLabel } from './tool-helpers';
 import type { SubagentTranscript } from '@/lib/chat';
 
@@ -15,6 +16,12 @@ export function SubagentSummaryLine({ subagent }: Props) {
   const errors = subagent.parts.filter(
     (p) => p.kind === 'tool' && (p.status === 'error' || p.result?.isError)
   ).length;
+  // A subagent is its own billing unit, so its growth is summed separately
+  // from the parent turn's total.
+  const contextTokens = subagent.parts.reduce(
+    (sum, p) => (p.kind === 'tool' ? sum + (p.contextDelta ?? 0) : sum),
+    0,
+  );
   return (
     <div className="flex items-center gap-2 rounded-md border border-border/70 bg-app/20 px-2 py-1 text-xs">
       <span className="font-medium text-fg">
@@ -25,6 +32,9 @@ export function SubagentSummaryLine({ subagent }: Props) {
       <span className={cn('text-fg-subtle', errors > 0 && 'text-red-300')}>
         · errors {errors}
       </span>
+      {contextTokens > 0 && (
+        <span className="text-fg-subtle">· +{compactNumber(contextTokens)} tokens</span>
+      )}
       <span className="ml-auto tabular-nums text-fg-subtle">
         {Math.floor(elapsedMs / 1000)}s
       </span>
@@ -48,7 +58,7 @@ export function SubagentTranscriptView({ subagent }: Props) {
             );
           }
           if (part.kind === 'thinking') {
-            return <ThinkingPart key={key} text={part.text} />;
+            return <ThinkingPart key={key} text={part.text} outputTokens={part.outputTokens} />;
           }
           return (
             <ToolPart
@@ -59,6 +69,8 @@ export function SubagentTranscriptView({ subagent }: Props) {
               result={part.result}
               status={part.status}
               subagent={part.subagent}
+              contextDelta={part.contextDelta}
+              contextDeltaGroupSize={part.contextDeltaGroupSize}
             />
           );
         })

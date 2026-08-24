@@ -41,7 +41,7 @@ export type ChatRole = 'user' | 'assistant';
  */
 export type StoredMessagePart =
   | { kind: 'text'; text: string }
-  | { kind: 'thinking'; text: string }
+  | { kind: 'thinking'; text: string; outputTokens?: number }
   | {
       kind: 'tool';
       toolUseId: string;
@@ -50,6 +50,8 @@ export type StoredMessagePart =
       partialInputJson?: string;
       result?: { content: string; isError?: boolean };
       status: 'running' | 'done' | 'error';
+      contextDelta?: number;
+      contextDeltaGroupSize?: number;
     };
 
 export type AttachmentType = 'image' | 'pdf' | 'text' | 'snippet' | 'office';

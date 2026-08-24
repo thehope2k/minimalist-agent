@@ -32,15 +32,18 @@ import {
   DIFF_METHOD_WORDS,
   WrittenView,
 } from './diff-utils';
+import { ContextDeltaBadge } from './tool-part/ContextDeltaBadge';
 
 interface DiffPartProps {
   name: string;
   input?: unknown;
   result?: { content: string; isError?: boolean };
   status: 'running' | 'done' | 'error';
+  contextDelta?: number;
+  contextDeltaGroupSize?: number;
 }
 
-export function DiffPart({ name, input, result, status }: DiffPartProps) {
+export function DiffPart({ name, input, result, status, contextDelta, contextDeltaGroupSize }: DiffPartProps) {
   // Backend-agnostic: Anthropic emits 'Write'/'Edit', Pi emits 'write'/'edit'.
   const isWrite = name.toLowerCase() === 'write';
   const erroredOrFailed = status === 'error' || result?.isError;
@@ -140,6 +143,7 @@ export function DiffPart({ name, input, result, status }: DiffPartProps) {
           </button>
           <span className="flex shrink-0 items-center gap-1.5 text-fg-muted">
             <CopyButton text={parsed.newValue} className="opacity-100" />
+            <ContextDeltaBadge contextDelta={contextDelta} contextDeltaGroupSize={contextDeltaGroupSize} />
             <button
               type="button"
               onClick={() => setModalOpen(true)}

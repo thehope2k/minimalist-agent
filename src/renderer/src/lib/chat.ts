@@ -28,13 +28,15 @@ export interface SubagentTranscript {
   stopReason?: string;
   usage?: AgentUsage;
   latestCallUsage?: AgentUsage;
+  contextCheckpointIndex?: number;
+  pendingRoundOutputTokens?: number;
   error?: string;
   errorInfo?: AgentError;
 }
 
 export type MessagePart =
   | { kind: 'text'; text: string }
-  | { kind: 'thinking'; text: string; collapsed?: boolean }
+  | { kind: 'thinking'; text: string; collapsed?: boolean; outputTokens?: number }
   | {
       kind: 'tool';
       toolUseId: string;
@@ -47,6 +49,8 @@ export type MessagePart =
       status: 'running' | 'done' | 'error';
       /** Full nested transcript when this tool spawns a sub-agent. */
       subagent?: SubagentTranscript;
+      contextDelta?: number;
+      contextDeltaGroupSize?: number;
     };
 
 export interface ChatMessage {
@@ -76,6 +80,28 @@ export interface ChatMessage {
    * session reload — see `usage` for the round-trip counterpart.
    */
   latestCallUsage?: AgentUsage;
+  /**
+   * A mid-turn compaction shrinks context out from under a still-streaming
+   * message, so the next `assistant_usage` can't be diffed against a
+   * pre-compaction baseline — the drop isn't the next tool call's doing.
+   * Set to skip exactly one comparison; never persisted.
+   */
+  contextResetPending?: boolean;
+  /**
+   * `parts` index where the last context-delta diff left off. Advances on
+   * every `assistant_usage` — stamped or skipped — so a round whose usage
+   * never fires still gets folded into the next successful diff instead of
+   * being dropped. Never persisted.
+   */
+  contextCheckpointIndex?: number;
+  /**
+   * A round's own `output_tokens` (thinking + text + tool-call JSON it
+   * generated), captured the instant `assistant_usage` fires — unlike
+   * `contextDelta`, no diffing is needed, but it can't be stamped onto a
+   * part yet because that part hasn't been produced. Held here until the
+   * round's first narration part appears, then cleared. Never persisted.
+   */
+  pendingRoundOutputTokens?: number;
   /** Origin tag — drives a contextual chip above user bubbles. */
   intentTag?: string;
   /** User-message attachments (images / PDFs / text files). */
@@ -96,6 +122,72 @@ export interface ChatMessage {
 
 export function newId(): string {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+}
+
+function usageTotal(u: AgentUsage | undefined): number {
+  if (!u) return 0;
+  return (
+    (u.inputTokens ?? 0) +
+    (u.outputTokens ?? 0) +
+    (u.cacheReadInputTokens ?? 0) +
+    (u.cacheCreationInputTokens ?? 0)
+  );
+}
+
+function usagePromptSize(u: AgentUsage): number {
+  return (u.inputTokens ?? 0) + (u.cacheReadInputTokens ?? 0) + (u.cacheCreationInputTokens ?? 0);
+}
+
+/**
+ * Attributes the exact token delta since the last checkpoint to the tool
+ * call(s) appended in that gap: `promptSize(newUsage) - total(prevUsage)`
+ * is the real, provider-reported cost — not an estimate.
+ *
+ * The group boundary is an explicit checkpoint index, not "contiguous tool
+ * parts at the end of the array": narration commonly sits between rounds,
+ * and not every round's `assistant_usage` fires, so inferring the boundary
+ * from contiguity drops a round's cost the moment a `text`/`thinking` part
+ * follows it. Diffing from an explicit `sinceIndex` instead means any gap
+ * — one round or several — is still attributed in full, just as a larger
+ * batch.
+ *
+ * Returns the original `parts` (but an advanced `checkpointIndex`) when
+ * there's no prior round to diff against, or nothing since the last
+ * checkpoint was a tool call.
+ *
+ * When more than one tool call closed out the gap, the whole delta is
+ * attached to the last one with `contextDeltaGroupSize` set — the API
+ * doesn't itemize per-block cost, so splitting it further would be
+ * fabricated precision.
+ */
+export function attributeContextDelta(
+  parts: MessagePart[],
+  prevUsage: AgentUsage | undefined,
+  newUsage: AgentUsage,
+  sinceIndex: number,
+): { parts: MessagePart[]; checkpointIndex: number } {
+  const checkpointIndex = parts.length;
+
+  if (!prevUsage) return { parts, checkpointIndex };
+
+  const pendingToolIndices: number[] = [];
+  for (let i = sinceIndex; i < parts.length; i++) {
+    if (parts[i].kind === 'tool' && (parts[i] as Extract<MessagePart, { kind: 'tool' }>).contextDelta === undefined) {
+      pendingToolIndices.push(i);
+    }
+  }
+  if (pendingToolIndices.length === 0) return { parts, checkpointIndex };
+
+  const delta = usagePromptSize(newUsage) - usageTotal(prevUsage);
+  const lastIdx = pendingToolIndices[pendingToolIndices.length - 1];
+  const groupSize = pendingToolIndices.length;
+  const nextParts = [...parts];
+  nextParts[lastIdx] = {
+    ...(parts[lastIdx] as Extract<MessagePart, { kind: 'tool' }>),
+    contextDelta: delta,
+    contextDeltaGroupSize: groupSize > 1 ? groupSize : undefined,
+  };
+  return { parts: nextParts, checkpointIndex };
 }
 
 /* -------- conversions ------------------------------------------- */

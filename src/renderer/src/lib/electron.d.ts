@@ -427,7 +427,7 @@ export interface StoredSubagentTranscript {
 
 export type StoredMessagePart =
   | { kind: 'text'; text: string }
-  | { kind: 'thinking'; text: string; collapsed?: boolean }
+  | { kind: 'thinking'; text: string; collapsed?: boolean; outputTokens?: number }
   | {
       kind: 'tool';
       toolUseId: string;
@@ -437,6 +437,8 @@ export type StoredMessagePart =
       result?: { content: string; isError?: boolean };
       status: 'running' | 'done' | 'error';
       subagent?: StoredSubagentTranscript;
+      contextDelta?: number;
+      contextDeltaGroupSize?: number;
     };
 
 export interface StoredMessage {
