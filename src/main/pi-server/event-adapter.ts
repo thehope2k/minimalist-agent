@@ -7,8 +7,47 @@
 //     (so Read/Write/Edit/etc. render with the same chip labels)
 
 import type { AgentSessionEvent } from '@earendil-works/pi-coding-agent';
-import type { AgentChatEvent, SubagentProgressUpdate } from '../agent/events';
+import type { AgentChatEvent, AgentUsage, SubagentProgressUpdate } from '../agent/events';
 import { parseError } from '../agent/errors';
+
+interface PiUsage {
+  input?: number;
+  output?: number;
+  cacheRead?: number;
+  cacheWrite?: number;
+}
+
+function toAgentUsage(u: PiUsage): AgentUsage {
+  return {
+    inputTokens: u.input ?? 0,
+    outputTokens: u.output ?? 0,
+    cacheReadInputTokens: u.cacheRead ?? 0,
+    cacheCreationInputTokens: u.cacheWrite ?? 0,
+  };
+}
+
+function hasAnyUsage(u: AgentUsage): boolean {
+  return !!(u.inputTokens || u.outputTokens || u.cacheReadInputTokens || u.cacheCreationInputTokens);
+}
+
+/**
+ * The Pi-backend equivalent of the Claude SDK's aggregate `result.usage`.
+ * `messages` is a fresh array allocated per run()/continue() call in
+ * pi-agent-core's agent-loop (never the whole session history), so summing
+ * it here can't double-count across turns.
+ */
+function sumRunUsage(messages: { role?: string; usage?: PiUsage }[]): AgentUsage | undefined {
+  const total: Required<PiUsage> = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+  for (const m of messages) {
+    if (m.role !== 'assistant' || !m.usage) continue;
+    total.input += m.usage.input ?? 0;
+    total.output += m.usage.output ?? 0;
+    total.cacheRead += m.usage.cacheRead ?? 0;
+    total.cacheWrite += m.usage.cacheWrite ?? 0;
+  }
+  const usage = toAgentUsage(total);
+  return hasAnyUsage(usage) ? usage : undefined;
+}
 
 interface AdapterState {
   /** Text accumulated for the current message; flushed on message_end. */
@@ -318,24 +357,10 @@ export function adaptPiEvent(event: AgentSessionEvent): AgentChatEvent[] {
       // the latest round's usage is the true current context footprint
       // (cacheRead grows as history accumulates), so the renderer overwrites
       // on each `assistant_usage`.
-      const u = (msg as {
-        usage?: {
-          input?: number;
-          output?: number;
-          cacheRead?: number;
-          cacheWrite?: number;
-        };
-      }).usage;
-      if (u && (u.input || u.output || u.cacheRead || u.cacheWrite)) {
-        out.push({
-          type: 'assistant_usage',
-          usage: {
-            inputTokens: u.input ?? 0,
-            outputTokens: u.output ?? 0,
-            cacheReadInputTokens: u.cacheRead ?? 0,
-            cacheCreationInputTokens: u.cacheWrite ?? 0,
-          },
-        });
+      const u = (msg as { usage?: PiUsage }).usage;
+      if (u) {
+        const usage = toAgentUsage(u);
+        if (hasAnyUsage(usage)) out.push({ type: 'assistant_usage', usage });
       }
       const finalText = pickAssistantText(msg);
       if (!state.emittedAnyDelta && finalText) {
@@ -413,7 +438,14 @@ export function adaptPiEvent(event: AgentSessionEvent): AgentChatEvent[] {
       // Use 'end_turn' (the Anthropic convention for a normal stop) so the
       // renderer's showStopBadge check (!== 'end_turn') doesn't render an
       // amber badge on every successfully completed Pi turn.
-      out.push({ type: 'turn_done', stopReason: 'end_turn' });
+      //
+      // Without a turn-level usage aggregate, the Session Usage panel never
+      // counts a Pi-backend turn (it requires `usage`, not just the
+      // per-round `assistant_usage` we already emit from message_end) —
+      // sumRunUsage fills the same role here that the SDK's own
+      // `result.usage` plays for the Claude backend.
+      const runMessages = (event as { messages?: { role?: string; usage?: PiUsage }[] }).messages ?? [];
+      out.push({ type: 'turn_done', stopReason: 'end_turn', usage: sumRunUsage(runMessages) });
       return out;
     }
 
