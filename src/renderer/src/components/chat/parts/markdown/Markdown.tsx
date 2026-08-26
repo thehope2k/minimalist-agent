@@ -60,8 +60,18 @@ const REMARK_PLUGINS: PluggableList = [remarkGfm, [remarkMath, MATH_OPTIONS]];
 // Order matters: rehype-raw must parse raw HTML into real nodes *before*
 // sanitize inspects the tree, and KaTeX must run *after* sanitize so its rich
 // (but trusted) output isn't stripped. See markdown-sanitize-schema.ts for the schema.
-const REHYPE_PLUGINS: PluggableList = [
+const REHYPE_PLUGINS_WITH_RAW_HTML: PluggableList = [
   rehypeRaw,
+  [rehypeSanitize, MARKDOWN_SANITIZE_SCHEMA],
+  rehypeKatex,
+];
+// Some callers render structured/technical text rather than chat prose,
+// where tag-shaped substrings (generics, placeholders) are more likely than
+// intentional HTML. rehype-raw turns unrecognized tags into elements that
+// sanitize then strips-and-unwraps, collapsing their inner newlines into one
+// line. Skipping rehype-raw avoids that: unrecognized tag-shaped text is
+// never parsed into a real node, so it's simply omitted, not mangled.
+const REHYPE_PLUGINS_NO_RAW_HTML: PluggableList = [
   [rehypeSanitize, MARKDOWN_SANITIZE_SCHEMA],
   rehypeKatex,
 ];
@@ -334,14 +344,17 @@ const COMPONENTS: Components = {
 
 interface MarkdownProps {
   text: string;
+  /** Set false for structured/technical text where raw-HTML parsing would
+   *  misfire on tag-shaped placeholders (see REHYPE_PLUGINS_NO_RAW_HTML). */
+  allowRawHtml?: boolean;
 }
 
-function MarkdownInner({ text }: MarkdownProps) {
+function MarkdownInner({ text, allowRawHtml = true }: MarkdownProps) {
   return (
     <div className="markdown">
       <ReactMarkdown
         remarkPlugins={REMARK_PLUGINS}
-        rehypePlugins={REHYPE_PLUGINS}
+        rehypePlugins={allowRawHtml ? REHYPE_PLUGINS_WITH_RAW_HTML : REHYPE_PLUGINS_NO_RAW_HTML}
         components={COMPONENTS}
         // react-markdown runs its own `defaultUrlTransform` on href/src
         // *after* our rehypeSanitize pass, independent of it, using a
@@ -365,4 +378,4 @@ function MarkdownInner({ text }: MarkdownProps) {
  * cheap on huge inputs — assistant text-deltas would otherwise force a full
  * re-parse on every keystroke from the model.
  */
-export const Markdown = memo(MarkdownInner, (a, b) => a.text === b.text);
+export const Markdown = memo(MarkdownInner, (a, b) => a.text === b.text && a.allowRawHtml === b.allowRawHtml);

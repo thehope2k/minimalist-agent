@@ -3,6 +3,8 @@ import { ChevronRight, Scissors, TriangleAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ChatMessage } from '@/lib/chat';
 import { compactNumber } from './utils';
+import { CopyButton, ExpandModal } from '@/components/ui';
+import { Markdown } from '../parts/markdown/Markdown';
 
 export function CompactionDivider({ message }: { message: ChatMessage }) {
   const meta = message.compactionMeta;
@@ -19,6 +21,8 @@ export function CompactionDivider({ message }: { message: ChatMessage }) {
       : 0;
   const trigger = meta?.trigger ?? 'auto';
   const hasDetails = Boolean(meta?.summary || meta?.readFiles?.length || meta?.modifiedFiles?.length);
+  const modifiedFiles = meta?.modifiedFiles ?? [];
+  const readFiles = meta?.readFiles ?? [];
 
   return (
     <div className="my-2">
@@ -66,27 +70,34 @@ export function CompactionDivider({ message }: { message: ChatMessage }) {
       </div>
 
       {open && hasDetails && (
-        <div className="mx-auto mt-2 max-w-2xl rounded-md border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-fg-muted">
-          {meta?.summary && (
-            <div className="whitespace-pre-wrap leading-relaxed">{meta.summary}</div>
-          )}
-          {(meta?.readFiles?.length || meta?.modifiedFiles?.length) ? (
-            <div className="mt-2 flex flex-col gap-1 border-t border-amber-500/20 pt-2">
-              {meta?.modifiedFiles && meta.modifiedFiles.length > 0 && (
-                <div>
-                  <span className="font-medium text-fg-subtle">Modified: </span>
-                  <span className="font-mono">{meta.modifiedFiles.join(', ')}</span>
-                </div>
-              )}
-              {meta?.readFiles && meta.readFiles.length > 0 && (
-                <div>
-                  <span className="font-medium text-fg-subtle">Read: </span>
-                  <span className="font-mono">{meta.readFiles.join(', ')}</span>
-                </div>
-              )}
-            </div>
-          ) : null}
-        </div>
+        <ExpandModal title="Compaction Summary" onClose={() => setOpen(false)}>
+          <div className="group flex items-center justify-end gap-1 border-b border-border/60 px-2 py-1">
+            <CopyButton text={meta?.summary ?? ''} />
+          </div>
+          <div className="scroll-thin min-h-0 flex-1 overflow-auto px-4 py-3 text-sm">
+            {/* pi appends its own <read-files>/<modified-files> tags to the
+                summary text; allowRawHtml=false keeps them from being parsed
+                as HTML and garbled — we render that data separately below
+                from the structured meta.readFiles/modifiedFiles instead. */}
+            {meta?.summary && <Markdown text={meta.summary} allowRawHtml={false} />}
+            {(modifiedFiles.length > 0 || readFiles.length > 0) && (
+              <div className="mt-4 flex flex-col gap-1 border-t border-border/60 pt-3 text-xs text-fg-muted">
+                {modifiedFiles.length > 0 && (
+                  <div>
+                    <span className="font-medium text-fg-subtle">Modified: </span>
+                    <span className="font-mono">{modifiedFiles.join(', ')}</span>
+                  </div>
+                )}
+                {readFiles.length > 0 && (
+                  <div>
+                    <span className="font-medium text-fg-subtle">Read: </span>
+                    <span className="font-mono">{readFiles.join(', ')}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </ExpandModal>
       )}
     </div>
   );
