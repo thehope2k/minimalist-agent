@@ -46,6 +46,7 @@ export function DecisionDialog({ reqId, payload, onRespond }: DialogProps<Decisi
 
       {payload.context && (
         <div className="p-3 rounded bg-elevated-1 border border-border">
+          <div className="text-xs font-medium text-fg-subtle mb-1">Why this matters:</div>
           <p className="text-sm text-fg-muted">{payload.context}</p>
         </div>
       )}

@@ -845,9 +845,9 @@ function createCollaborationTools(sessionId: string): ToolDefinition<any, any>[]
             5,
           ),
           recommended: schema.string('Your recommended option'),
-          context: schema.string('Additional context about why this decision matters'),
+          context: schema.string('Why this decision matters now — the situation/constraint that makes it non-trivial. Always fill this in; the dialog shown to the user has no other place to surface your reasoning.'),
         },
-        required: ['question', 'alternatives'],
+        required: ['question', 'alternatives', 'context'],
       },
       execute: createCollaborationExecutor(sessionId, 'decision', (result) =>
         `User selected: ${result.selected_option || result.custom_response || 'no_selection'}${
@@ -875,9 +875,9 @@ function createCollaborationTools(sessionId: string): ToolDefinition<any, any>[]
             2,
             4,
           ),
-          context: schema.string('Why this preference matters'),
+          context: schema.string('Why this preference matters — what makes the options equivalent/subjective. Always fill this in; the dialog shown to the user has no other place to surface your reasoning.'),
         },
-        required: ['question', 'options'],
+        required: ['question', 'options', 'context'],
       },
       execute: createCollaborationExecutor(sessionId, 'preference', (result) =>
         `User preference: ${result.selected_option || result.custom_response || 'no_selection'}${

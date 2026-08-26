@@ -53,13 +53,13 @@ export interface DecisionPayload {
   question: string;
   alternatives: Alternative[];
   recommended?: string;
-  context?: string;
+  context: string;
 }
 
 export interface PreferencePayload {
   question: string;
   options: NamedOption[];
-  context?: string;
+  context: string;
 }
 
 export interface FeedbackPayload {

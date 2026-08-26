@@ -43,7 +43,10 @@ export function PreferenceDialog({ reqId, payload, onRespond }: DialogProps<Pref
       <p className="text-fg">{payload.question}</p>
 
       {payload.context && (
-        <p className="text-sm text-fg-muted">{payload.context}</p>
+        <div className="p-3 rounded bg-elevated-1 border border-border">
+          <div className="text-xs font-medium text-fg-subtle mb-1">Why this matters:</div>
+          <p className="text-sm text-fg-muted">{payload.context}</p>
+        </div>
       )}
 
       <div className="space-y-2">
