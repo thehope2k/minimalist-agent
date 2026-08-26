@@ -8,7 +8,7 @@ Intelligent multi-phase execution for complex tasks. When facing work that requi
 
 A system that breaks down complex tasks into manageable phases:
 - **Safe phases** (read-only) execute automatically
-- **Non-safe phases** (writes/executes) request approval based on risk vs. autonomy level
+- **Non-safe phases** (writes/executes) request approval based on risk vs. autonomy level **in Plan mode**; in Auto mode phases run directly and autonomy instead governs the model's own `RequestApproval` calls (see [Autonomy Level](#autonomy-level))
 - **Plans adapt** mid-execution based on discoveries
 - **Progress persists** across app restarts
 - **Backend validation** catches AI safety misclassifications
@@ -42,13 +42,15 @@ Each phase has:
 
 ### Phase Execution
 
-Phases execute sequentially. When a phase's risk exceeds your autonomy level, you'll be asked to approve it.
+**This risk-vs-autonomy gate applies in Plan permission mode.** In Auto permission mode, phases execute directly with no phase-approval dialog — autonomy instead governs the model's own `RequestApproval` tool calls made *during* phase execution (see [COLLABORATION.md](COLLABORATION.md)). Don't read "autonomy controls phase approval" as true in both modes; it's Plan-mode-only.
 
-**Approval Logic:**
+In Plan mode, phases execute sequentially. When a phase's risk exceeds your autonomy level, you'll be asked to approve it.
+
+**Approval Logic (Plan mode only):**
 - If `phase.risk <= autonomyLevel`: executes automatically
 - If `phase.risk > autonomyLevel`: shows approval dialog
 
-**Example:** Autonomy at 50 means phases with risk ≤ 50 execute automatically; phases with risk > 50 request approval.
+**Example:** In Plan mode, autonomy at 50 means phases with risk ≤ 50 execute automatically; phases with risk > 50 request approval. In Auto mode, this example doesn't apply — the phase runs immediately and any approval need is up to the model's own risk judgment via `RequestApproval`.
 
 ### Safety Classification
 
@@ -158,14 +160,19 @@ Error alerts with recovery options:
 
 ## Autonomy Level
 
-The autonomy slider (0-100) controls approval frequency:
+The autonomy slider (0-100) has **different effects depending on permission mode**:
+
+- **Plan mode:** controls phase-approval frequency directly (below). This is the mode PLANNING_WORKFLOW's phase-gate description is about.
+- **Auto mode:** phases execute with no phase-approval dialog at all; autonomy instead governs whether the model *itself* chooses to call `RequestApproval` mid-phase. See [COLLABORATION.md](COLLABORATION.md) for the Auto-mode contract (`shouldEngage()` in `shared/autonomy.ts`).
+
+In Plan mode:
 
 - **0-30 (Cautious):** Frequent approvals, maximum control
 - **31-55 (Balanced):** Approval for medium+ risk operations
 - **56-80 (Confident):** Mostly autonomous, high-risk checks
 - **81-100 (Autonomous):** Minimal interruptions, critical-only approvals
 
-**Example:** Autonomy at 50 means phases with risk ≤ 50 execute automatically; phases with risk > 50 request approval.
+**Example:** In Plan mode, autonomy at 50 means phases with risk ≤ 50 execute automatically; phases with risk > 50 request approval. This does not apply in Auto mode.
 
 ---
 
