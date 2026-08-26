@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useChat } from '@/hooks/useChat';
 import { useAiData } from '@/hooks/useAiData';
 import { useProjects } from '@/hooks/useProjects';
@@ -141,53 +141,112 @@ export function ChatArea({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [streamingSessionIds]);
 
-  // Continue handler - uses session's remembered connection/model
-  const handleContinue = useCallback(() => {
-    if (!aiData) return;
+  // Extracted so the plan-approval auto-continue below can't drift from
+  // what the ordinary "Continue" button already established.
+  const resolveSessionConnectionModel = useCallback(() => {
+    if (!aiData) return null;
     const connection =
       aiData.connections.find((c) => c.slug === sessionConnectionSlug) ??
       aiData.connections.find((c) => c.slug === aiData.defaultSlug) ??
       aiData.connections[0];
-    if (!connection) return;
+    if (!connection) return null;
     const model =
       sessionModel ||
       connection.models.find((m) => m.id === aiData.settings.defaultModel)?.id ||
       connection.defaultModel;
+    return { connection, model };
+  }, [aiData, sessionConnectionSlug, sessionModel]);
+
+  const handleContinue = useCallback(() => {
+    const resolved = resolveSessionConnectionModel();
+    if (!resolved) return;
     void send({
       text: 'continue',
-      connection,
-      model,
+      connection: resolved.connection,
+      model: resolved.model,
       cwd: cwd ?? (homedir() || undefined),
-      maxTurns: aiData.settings.maxTurns,
+      maxTurns: aiData?.settings.maxTurns,
       permissionMode,
     });
-  }, [aiData, sessionConnectionSlug, sessionModel, send, cwd, permissionMode]);
+  }, [resolveSessionConnectionModel, aiData, send, cwd, permissionMode]);
 
   // Retry handler with fallback reconstruction
   const handleRetry = useCallback(() => {
-    if (!aiData) return void retry();
-    const connection =
-      aiData.connections.find((c) => c.slug === sessionConnectionSlug) ??
-      aiData.connections.find((c) => c.slug === aiData.defaultSlug) ??
-      aiData.connections[0];
-    if (!connection) return void retry();
-    const model =
-      sessionModel ||
-      connection.models.find((m) => m.id === aiData.settings.defaultModel)?.id ||
-      connection.defaultModel;
+    const resolved = resolveSessionConnectionModel();
+    if (!resolved) return void retry();
     void retry({
-      connection,
-      model,
+      connection: resolved.connection,
+      model: resolved.model,
       cwd: cwd ?? (homedir() || undefined),
-      maxTurns: aiData.settings.maxTurns,
+      maxTurns: aiData?.settings.maxTurns,
       permissionMode,
     });
-  }, [aiData, sessionConnectionSlug, sessionModel, retry, cwd, permissionMode]);
+  }, [resolveSessionConnectionModel, aiData, retry, cwd, permissionMode]);
 
-  // Planning dialog handlers
+  // Approving/denying a phase only updates plan state — the agent's turn
+  // already ended when ReportPhaseProgress told it to wait, and nothing else
+  // nudges it forward. Without this, the plan silently stalls until the user
+  // happens to type another message. So immediately after resolving the
+  // approval, kick off a fresh turn (same path as the "Continue" button) that
+  // tells the model what the user decided, using the same connection/model
+  // resolution `handleContinue` uses so it doesn't fall back to defaults
+  // mid-plan.
+  const fireResumeAfterDecision = useCallback(
+    (decision: 'approved' | 'denied', phaseLabel: string, note?: string) => {
+      const resolved = resolveSessionConnectionModel();
+      if (!resolved) return;
+      const text =
+        decision === 'approved'
+          ? `Phase ${phaseLabel} approved${note ? ` (note: ${note})` : ''}. Continue executing the plan.`
+          : `Phase ${phaseLabel} was denied${note ? `: ${note}` : ''}. Skip it and continue with the plan, or ask how to proceed if it was critical.`;
+      void send({
+        text,
+        connection: resolved.connection,
+        model: resolved.model,
+        cwd: cwd ?? (homedir() || undefined),
+        maxTurns: aiData?.settings.maxTurns,
+        permissionMode,
+      });
+    },
+    [resolveSessionConnectionModel, send, cwd, aiData, permissionMode],
+  );
+
+  // Holds a decision made while a turn was still streaming. `send()` has no
+  // concurrency guard, so we can't fire immediately — and the model is
+  // explicitly told it may keep working on other tasks while a phase awaits
+  // approval, so an in-flight turn at decision time is the common case, not
+  // an edge case. Dropping it here would silently reproduce the exact stall
+  // this mechanism exists to fix, just in a narrower window — so queue it and
+  // flush it the moment the in-flight turn ends (see the effect below).
+  const pendingPlanResumeRef = useRef<{
+    decision: 'approved' | 'denied';
+    phaseLabel: string;
+    note?: string;
+  } | null>(null);
+
+  const resumePlanAfterDecision = useCallback(
+    (decision: 'approved' | 'denied', phaseLabel: string, note?: string) => {
+      if (isStreaming) {
+        pendingPlanResumeRef.current = { decision, phaseLabel, note };
+        return;
+      }
+      fireResumeAfterDecision(decision, phaseLabel, note);
+    },
+    [isStreaming, fireResumeAfterDecision],
+  );
+
+  useEffect(() => {
+    if (isStreaming) return;
+    const pending = pendingPlanResumeRef.current;
+    if (!pending) return;
+    pendingPlanResumeRef.current = null;
+    fireResumeAfterDecision(pending.decision, pending.phaseLabel, pending.note);
+  }, [isStreaming, fireResumeAfterDecision]);
+
   const onApprovePhase = async (notes?: string) => {
     if (sessionId && phaseAwaitingApproval) {
       await window.api.planning.approvePhase(sessionId, phaseAwaitingApproval.id, notes);
+      resumePlanAfterDecision('approved', `${phaseAwaitingApproval.index}`, notes);
     }
     setShowPhaseApproval(false);
     setPhaseAwaitingApproval(null);
@@ -196,6 +255,7 @@ export function ChatArea({
   const onDenyPhase = async (reason?: string) => {
     if (sessionId && phaseAwaitingApproval) {
       await window.api.planning.denyPhase(sessionId, phaseAwaitingApproval.id, reason);
+      resumePlanAfterDecision('denied', `${phaseAwaitingApproval.index}`, reason);
     }
     setShowPhaseApproval(false);
     setPhaseAwaitingApproval(null);

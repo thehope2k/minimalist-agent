@@ -14,7 +14,7 @@ import {
   CreatePlanInput,
   RevisePlanInput,
 } from '../../../shared/planning-types';
-import { shouldEngage } from '../../../shared/autonomy';
+import { shouldEngage, isAlwaysConfirm } from '../../../shared/autonomy';
 import { RevisionDetector } from './revision-detector';
 import { PlanStorage } from './storage';
 
@@ -347,8 +347,15 @@ export class PlanManager extends EventEmitter {
     // Safe phases (read-only, risk < 20) never need approval
     if (phase.isSafe || phase.risk < 20) return false;
     
-    // Auto permission mode bypasses approval
-    if (permissionMode === 'auto') return false;
+    // Auto permission mode bypasses the risk-vs-autonomy gate (the model is
+    // trusted to self-police below the user's autonomy budget), but it must
+    // NOT bypass the irreversible floor. Without this, a single approval
+    // earlier in the same plan promotes the session to 'auto' (see
+    // promoteToAutoAfterApproval in pi-server/index.ts) and silently disables
+    // gating for every later phase — including a risk ≥ 85 phase that
+    // shared/autonomy.ts documents as "no autonomy setting should let this run
+    // unattended". Keep that guarantee real regardless of mode.
+    if (permissionMode === 'auto') return isAlwaysConfirm(phase.risk);
     
     // Single autonomy contract (shared with the collaboration tools):
     // the user's autonomy level IS the threshold — engage when risk meets it,

@@ -47,9 +47,17 @@ export const ALWAYS_CONFIRM = 85;
  * @returns `true` if the agent should engage the user (stop and ask).
  */
 export function shouldEngage(risk: number, autonomy: number): boolean {
-  const r = clamp(risk);
-  if (r >= ALWAYS_CONFIRM) return true;
-  return r >= clamp(autonomy);
+  if (isAlwaysConfirm(risk)) return true;
+  return clamp(risk) >= clamp(autonomy);
+}
+
+/**
+ * Single source of truth for the irreversible floor, so gates that bypass
+ * `shouldEngage` entirely (e.g. auto-mode's phase gate) don't re-derive
+ * `ALWAYS_CONFIRM` and risk drifting from it.
+ */
+export function isAlwaysConfirm(risk: number): boolean {
+  return clamp(risk) >= ALWAYS_CONFIRM;
 }
 
 /**
