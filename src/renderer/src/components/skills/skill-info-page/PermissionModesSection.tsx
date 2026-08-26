@@ -1,3 +1,5 @@
+import { Mono } from './shared';
+
 interface PermissionModesSectionProps {
   alwaysAllow: string[];
 }
@@ -36,8 +38,4 @@ export function PermissionModesSection({ alwaysAllow }: PermissionModesSectionPr
       </div>
     </section>
   );
-}
-
-function Mono({ children }: { children: React.ReactNode }) {
-  return <span className="font-mono text-[12.5px]">{children}</span>;
 }

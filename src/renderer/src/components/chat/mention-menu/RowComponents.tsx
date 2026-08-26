@@ -2,8 +2,8 @@ import { File as FileIcon, Folder as FolderIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { FileSearchEntry, LoadedExtension, LoadedSkill } from '@/lib/electron';
 import { displayDescription, displayName } from '@/lib/extensions';
-import { SkillAvatar } from '@/components/skills/SkillAvatar';
-import { ExtensionAvatar } from '@/components/extensions/ExtensionAvatar';
+import { SkillAvatar } from '@/components/skills';
+import { ExtensionAvatar } from '@/components/extensions';
 
 /* ---------- Layout ---------- */
 

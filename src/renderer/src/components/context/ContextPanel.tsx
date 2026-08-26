@@ -5,11 +5,9 @@ import { useContextPanel } from '@/hooks/useContextPanel';
 import { getProjectSkillsDir } from '@/lib/skills';
 import { getProjectExtensionsDir } from '@/lib/extensions';
 import { PinnedSection, AvailableSection, ExtensionsSection } from './ContextPanelSections';
-import { AddSkillDialog } from '@/components/skills/AddSkillDialog';
-import { AddExtensionDialog } from '@/components/extensions/AddExtensionDialog';
+import { AddSkillDialog, SkillInfoPage } from '@/components/skills';
+import { AddExtensionDialog, ExtensionInfoPage } from '@/components/extensions';
 import { ExpandModal } from '@/components/ui';
-import { SkillInfoPage } from '@/components/skills/SkillInfoPage';
-import { ExtensionInfoPage } from '@/components/extensions/ExtensionInfoPage';
 import type { LoadedSkill, LoadedExtension } from '@/lib/electron';
 import type { SeedSubmit } from '@/App';
 

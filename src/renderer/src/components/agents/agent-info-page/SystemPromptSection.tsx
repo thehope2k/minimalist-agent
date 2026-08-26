@@ -1,23 +1,23 @@
 import { Markdown } from '../../chat/parts/markdown/Markdown';
-import type { LoadedSkill } from '@/lib/electron';
+import type { LoadedAgent } from '@/lib/electron';
 import { EditButton } from './shared';
 
-interface InstructionsSectionProps {
-  skill: LoadedSkill;
+interface SystemPromptSectionProps {
+  agent: LoadedAgent;
   onEdit: () => void;
   disabled?: boolean;
 }
 
-export function InstructionsSection({ skill, onEdit, disabled }: InstructionsSectionProps) {
+export function SystemPromptSection({ agent, onEdit, disabled }: SystemPromptSectionProps) {
   return (
     <section>
       <div className="mb-2 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-fg">Instructions</h2>
+        <h2 className="text-sm font-semibold text-fg">System Prompt</h2>
         <EditButton onClick={onEdit} disabled={disabled} />
       </div>
       <div className="overflow-hidden rounded-lg border border-border/50 bg-elevated/20">
         <div className="markdown px-4 py-4">
-          <Markdown text={skill.content} />
+          <Markdown text={agent.content} />
         </div>
       </div>
     </section>

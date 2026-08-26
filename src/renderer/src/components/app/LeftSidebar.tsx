@@ -2,9 +2,9 @@ import type { ProjectFilter, View } from '../layout/TopBar';
 import type { SettingsCategory } from '../settings/SettingsCategoriesPanel';
 import type { SeedSubmit } from './types';
 import { SettingsCategoriesPanel } from '../settings/SettingsCategoriesPanel';
-import { SkillsPanel } from '../skills/SkillsPanel';
+import { SkillsPanel } from '../skills';
 import { AgentsPanel } from '../agents';
-import { ExtensionsPanel } from '../extensions/ExtensionsPanel';
+import { ExtensionsPanel } from '../extensions';
 import { SessionsPanel } from '../layout/SessionsPanel';
 
 type Props = {

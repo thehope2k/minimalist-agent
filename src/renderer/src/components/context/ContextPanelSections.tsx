@@ -3,8 +3,8 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import type { LoadedSkill, LoadedExtension } from '@/lib/electron';
 import { displayName as extensionDisplayName, displayDescription as extensionDisplayDescription } from '@/lib/extensions';
-import { SkillAvatar } from '@/components/skills/SkillAvatar';
-import { ExtensionAvatar } from '@/components/extensions/ExtensionAvatar';
+import { SkillAvatar } from '@/components/skills';
+import { ExtensionAvatar } from '@/components/extensions';
 
 /* ---------- Shared row ---------- */
 

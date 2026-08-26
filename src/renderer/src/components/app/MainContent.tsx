@@ -4,9 +4,9 @@ import type { SeedSubmit } from './types';
 import type { LoadedSkill, LoadedAgent, LoadedExtension } from '@/lib/electron';
 import { ChatArea } from '../layout/ChatArea';
 import { SettingsContent } from '../settings/SettingsContent';
-import { SkillInfoPage } from '../skills/SkillInfoPage';
+import { SkillInfoPage } from '../skills';
 import { AgentInfoPage } from '../agents';
-import { ExtensionInfoPage } from '../extensions/ExtensionInfoPage';
+import { ExtensionInfoPage } from '../extensions';
 
 type Props = {
   view: View;
