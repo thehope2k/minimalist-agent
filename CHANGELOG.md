@@ -5,6 +5,37 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.23.0] — 2026-08-27
+
+Drag-and-drop reordering, a hard guard against catastrophic rm commands, and several bug fixes.
+
+### Added
+
+**Drag-and-drop reordering**
+
+- Skills, agents, and extensions panels now support dragging rows to reorder them; the custom order is remembered per list and merges cleanly with newly added or removed items.
+
+**Catastrophic command guard**
+
+- Recursive, forced `rm`/`rmdir` commands that target the filesystem root, your home directory, or the project working tree (or its parents) are now hard-blocked before execution, in every permission mode — including Auto — since this is a distinct irreversible-mistake category rather than a normal risk tradeoff.
+
+**Compaction summary modal**
+
+- The compaction divider in chat now opens a scrollable modal with a copy button and properly rendered markdown, instead of a cramped inline preview.
+
+- Decision and preference prompts now require an explanation of why the question matters, shown as a "Why this matters" section in the dialog.
+
+### Changed
+
+- The Session Usage panel's "Biggest Context Contributors" breakdown was removed in favor of more reliable turn-level token totals.
+
+### Fixed
+
+- Plan phases at or above the irreversible-risk floor could bypass approval once a session was promoted to Auto mode; they are now still gated correctly. Approving or denying a plan phase also resumes the turn automatically instead of leaving execution stalled.
+- Token usage for Pi-backend sessions could under-report or miscount a turn's total; usage is now aggregated correctly across the turn.
+
+---
+
 ## [1.22.0] — 2026-08-25
 
 Quality of life improvement: see exactly which tool call is eating your context budget, plus a bug fix.
