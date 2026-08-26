@@ -3,12 +3,16 @@
 import { useEffect, useState } from 'react';
 import { Plus, RefreshCw, Bot } from 'lucide-react';
 import { useAgents } from '@/hooks/useAgents';
+import { useOrderedList } from '@/hooks/useOrderedList';
 import { reload as reloadAgents } from '@/lib/agents';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui';
+import { Button, SortableList } from '@/components/ui';
 import { AgentRow } from './AgentRow';
 import { AddAgentDialog } from './AddAgentDialog';
 import type { SeedSubmit } from '@/App';
+import type { LoadedAgent } from '@/lib/electron';
+
+const getAgentId = (agent: LoadedAgent): string => agent.slug;
 
 type Props = {
   /** Currently-selected slug (drives info-page rendering on the right). */
@@ -24,6 +28,11 @@ export function AgentsPanel({
   onStartChatWithSubmission,
 }: Props) {
   const agents = useAgents();
+  const { ordered: orderedAgents, reorder } = useOrderedList(
+    agents,
+    'agents',
+    getAgentId,
+  );
   const [dialogOpen, setDialogOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -79,22 +88,27 @@ export function AgentsPanel({
       </header>
 
       <div className="scroll-thin min-h-0 flex-1 overflow-y-auto p-2">
-        {agents === null ? (
+        {orderedAgents === null ? (
           <div className="px-2 py-3 text-sm text-fg-subtle">Loading…</div>
-        ) : agents.length === 0 ? (
+        ) : orderedAgents.length === 0 ? (
           <EmptyState onAdd={() => setDialogOpen(true)} />
         ) : (
-          agents.map((agent) => (
-            <AgentRow
-              key={agent.slug}
-              agent={agent}
-              active={agent.slug === activeSlug}
-              onClick={() => onSelect(agent.slug)}
-              onAfterDelete={() => {
-                if (agent.slug === activeSlug) onSelect(null);
-              }}
-            />
-          ))
+          <SortableList
+            items={orderedAgents}
+            getId={getAgentId}
+            onReorder={reorder}
+            renderItem={(agent, dragHandle) => (
+              <AgentRow
+                agent={agent}
+                active={agent.slug === activeSlug}
+                dragHandle={dragHandle}
+                onClick={() => onSelect(agent.slug)}
+                onAfterDelete={() => {
+                  if (agent.slug === activeSlug) onSelect(null);
+                }}
+              />
+            )}
+          />
         )}
       </div>
 

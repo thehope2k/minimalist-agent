@@ -2,6 +2,7 @@
 
 export const KEYS = {
   panelLayout: 'panel-layout',
+  listOrder: 'list-order',
 } as const;
 
 type Key = (typeof KEYS)[keyof typeof KEYS];

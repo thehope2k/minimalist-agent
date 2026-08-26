@@ -7,15 +7,23 @@
 import { useEffect, useState } from 'react';
 import { Plus, RefreshCw, Sparkles } from 'lucide-react';
 import { useSkills } from '@/hooks/useSkills';
+import { useOrderedList } from '@/hooks/useOrderedList';
 import { reload as reloadSkills } from '@/lib/skills';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui';
+import {
+  Button,
+  DragHandle,
+  SortableList,
+  type DragHandleProps,
+} from '@/components/ui';
 import { SkillAvatar } from './SkillAvatar';
 import { SkillMenu } from './SkillMenu';
 import { AddSkillDialog } from './AddSkillDialog';
 import type { LoadedSkill } from '@/lib/electron';
 
 import type { SeedSubmit } from '@/App';
+
+const getSkillId = (skill: LoadedSkill): string => skill.slug;
 
 type Props = {
   /** Currently-selected slug (drives info-page rendering on the right). */
@@ -31,6 +39,11 @@ export function SkillsPanel({
   onStartChatWithSubmission,
 }: Props) {
   const skills = useSkills();
+  const { ordered: orderedSkills, reorder } = useOrderedList(
+    skills,
+    'skills',
+    getSkillId,
+  );
   const [dialogOpen, setDialogOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -86,22 +99,27 @@ export function SkillsPanel({
       </header>
 
       <div className="scroll-thin min-h-0 flex-1 overflow-y-auto p-2">
-        {skills === null ? (
+        {orderedSkills === null ? (
           <div className="px-2 py-3 text-sm text-fg-subtle">Loading…</div>
-        ) : skills.length === 0 ? (
+        ) : orderedSkills.length === 0 ? (
           <EmptyState onAdd={() => setDialogOpen(true)} />
         ) : (
-          skills.map((skill) => (
-            <SkillRow
-              key={skill.slug}
-              skill={skill}
-              active={skill.slug === activeSlug}
-              onClick={() => onSelect(skill.slug)}
-              onAfterDelete={() => {
-                if (skill.slug === activeSlug) onSelect(null);
-              }}
-            />
-          ))
+          <SortableList
+            items={orderedSkills}
+            getId={getSkillId}
+            onReorder={reorder}
+            renderItem={(skill, dragHandle) => (
+              <SkillRow
+                skill={skill}
+                active={skill.slug === activeSlug}
+                dragHandle={dragHandle}
+                onClick={() => onSelect(skill.slug)}
+                onAfterDelete={() => {
+                  if (skill.slug === activeSlug) onSelect(null);
+                }}
+              />
+            )}
+          />
         )}
       </div>
 
@@ -117,11 +135,13 @@ export function SkillsPanel({
 function SkillRow({
   skill,
   active,
+  dragHandle,
   onClick,
   onAfterDelete,
 }: {
   skill: LoadedSkill;
   active: boolean;
+  dragHandle: DragHandleProps;
   onClick: () => void;
   onAfterDelete: () => void;
 }) {
@@ -131,23 +151,31 @@ function SkillRow({
       {active && (
         <span className="absolute inset-y-2 left-0 z-10 w-0.5 rounded-r-sm bg-accent" />
       )}
-      <button
-        onClick={onClick}
-        className={cn(
-          'flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors',
-          active ? 'bg-elevated' : 'hover:bg-elevated/60',
-        )}
-      >
-        <SkillAvatar skill={skill} size="md" />
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-[0.95rem] font-medium text-fg">
-            {skill.metadata.name}
-          </div>
-          <div className="mt-0.5 truncate text-xs text-fg-subtle">
-            {skill.metadata.description}
-          </div>
+      <div className="flex items-stretch">
+        <div className="flex w-5 shrink-0 items-center justify-center">
+          <DragHandle
+            dragHandle={dragHandle}
+            className="opacity-0 transition-opacity group-hover/skill:opacity-100"
+          />
         </div>
-      </button>
+        <button
+          onClick={onClick}
+          className={cn(
+            'flex min-w-0 flex-1 items-start gap-3 py-2.5 pr-3 pl-1 text-left transition-colors',
+            active ? 'bg-elevated' : 'hover:bg-elevated/60',
+          )}
+        >
+          <SkillAvatar skill={skill} size="md" />
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[0.95rem] font-medium text-fg">
+              {skill.metadata.name}
+            </div>
+            <div className="mt-0.5 truncate text-xs text-fg-subtle">
+              {skill.metadata.description}
+            </div>
+          </div>
+        </button>
+      </div>
 
       <div
         className={cn(

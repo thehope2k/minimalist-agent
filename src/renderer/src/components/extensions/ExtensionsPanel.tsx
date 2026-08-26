@@ -1,18 +1,21 @@
 import { useEffect, useState } from 'react';
 import { Plug, Plus, RefreshCw } from 'lucide-react';
 import { useExtensions } from '@/hooks/useExtensions';
+import { useOrderedList } from '@/hooks/useOrderedList';
 import {
   displayDescription,
   displayName,
   reload as reloadExtensions,
 } from '@/lib/extensions';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui';
+import { Button, DragHandle, SortableList, type DragHandleProps } from '@/components/ui';
 import { ExtensionAvatar } from './ExtensionAvatar';
 import { ExtensionMenu } from './ExtensionMenu';
 import { AddExtensionDialog } from './AddExtensionDialog';
 import type { LoadedExtension } from '@/lib/electron';
 import type { SeedSubmit } from '@/App';
+
+const getExtensionId = (ext: LoadedExtension): string => ext.slug;
 
 type Props = {
   activeSlug: string | null;
@@ -89,6 +92,11 @@ export function ExtensionsPanel({
   onStartChatWithSubmission,
 }: Props) {
   const extensions = useExtensions();
+  const { ordered: orderedExtensions, reorder } = useOrderedList(
+    extensions,
+    'extensions',
+    getExtensionId,
+  );
   const [dialogOpen, setDialogOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [mcpStatus, setMcpStatus] = useState<Record<string, McpStatus>>({});
@@ -156,23 +164,28 @@ export function ExtensionsPanel({
       </header>
 
       <div className="scroll-thin min-h-0 flex-1 overflow-y-auto p-2">
-        {extensions === null ? (
+        {orderedExtensions === null ? (
           <div className="px-2 py-3 text-sm text-fg-subtle">Loading…</div>
-        ) : extensions.length === 0 ? (
+        ) : orderedExtensions.length === 0 ? (
           <EmptyState onAdd={() => setDialogOpen(true)} />
         ) : (
-          extensions.map((ext) => (
-            <ExtensionRow
-              key={ext.slug}
-              ext={ext}
-              active={ext.slug === activeSlug}
-              mcpStatus={ext.variant === 'mcp-backed' ? mcpStatus[ext.slug] : undefined}
-              onClick={() => onSelect(ext.slug)}
-              onAfterDelete={() => {
-                if (ext.slug === activeSlug) onSelect(null);
-              }}
-            />
-          ))
+          <SortableList
+            items={orderedExtensions}
+            getId={getExtensionId}
+            onReorder={reorder}
+            renderItem={(ext, dragHandle) => (
+              <ExtensionRow
+                ext={ext}
+                active={ext.slug === activeSlug}
+                dragHandle={dragHandle}
+                mcpStatus={ext.variant === 'mcp-backed' ? mcpStatus[ext.slug] : undefined}
+                onClick={() => onSelect(ext.slug)}
+                onAfterDelete={() => {
+                  if (ext.slug === activeSlug) onSelect(null);
+                }}
+              />
+            )}
+          />
         )}
       </div>
 
@@ -188,12 +201,14 @@ export function ExtensionsPanel({
 function ExtensionRow({
   ext,
   active,
+  dragHandle,
   mcpStatus,
   onClick,
   onAfterDelete,
 }: {
   ext: LoadedExtension;
   active: boolean;
+  dragHandle: DragHandleProps;
   mcpStatus: McpStatus | undefined;
   onClick: () => void;
   onAfterDelete: () => void;
@@ -204,29 +219,37 @@ function ExtensionRow({
       {active && (
         <span className="absolute inset-y-2 left-0 z-10 w-0.5 rounded-r-sm bg-accent" />
       )}
-      <button
-        onClick={onClick}
-        className={cn(
-          'flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors',
-          active ? 'bg-elevated' : 'hover:bg-elevated/60',
-        )}
-      >
-        <ExtensionAvatar extension={ext} size="md" />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <div className="truncate text-[0.95rem] font-medium text-fg">
-              {displayName(ext)}
-            </div>
-            <span className="rounded bg-elevated/80 px-1.5 py-px font-mono text-[10px] uppercase tracking-wide text-fg-subtle">
-              {VARIANT_LABEL[ext.variant]}
-            </span>
-            <McpStatusBadge status={mcpStatus} />
-          </div>
-          <div className="mt-0.5 truncate text-xs text-fg-subtle">
-            {displayDescription(ext)}
-          </div>
+      <div className="flex items-stretch">
+        <div className="flex w-5 shrink-0 items-center justify-center">
+          <DragHandle
+            dragHandle={dragHandle}
+            className="opacity-0 transition-opacity group-hover/ext:opacity-100"
+          />
         </div>
-      </button>
+        <button
+          onClick={onClick}
+          className={cn(
+            'flex min-w-0 flex-1 items-start gap-3 py-2.5 pr-3 pl-1 text-left transition-colors',
+            active ? 'bg-elevated' : 'hover:bg-elevated/60',
+          )}
+        >
+          <ExtensionAvatar extension={ext} size="md" />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <div className="truncate text-[0.95rem] font-medium text-fg">
+                {displayName(ext)}
+              </div>
+              <span className="rounded bg-elevated/80 px-1.5 py-px font-mono text-[10px] uppercase tracking-wide text-fg-subtle">
+                {VARIANT_LABEL[ext.variant]}
+              </span>
+              <McpStatusBadge status={mcpStatus} />
+            </div>
+            <div className="mt-0.5 truncate text-xs text-fg-subtle">
+              {displayDescription(ext)}
+            </div>
+          </div>
+        </button>
+      </div>
 
       <div
         className={cn(
