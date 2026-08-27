@@ -5,6 +5,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.24.0] — 2026-08-28
+
+Extension security: a per-server tool blocklist and a unified, credential-aware consent model.
+
+### Added
+
+**Per-server tool blocklist**
+
+- Extensions can now declare `permissions.blockedTools` in `extension.json` to disallow specific MCP tool names (e.g. destructive ones); enforcement is identical on the Anthropic and Pi backends and applies regardless of plan/auto approval mode.
+
+### Changed
+
+- Consent for an extension is now keyed off everything actually being trusted — the MCP command/args/URL plus any secret-bearing env var names — so adding a new credential to an already-approved extension invalidates the stale grant instead of silently reusing it.
+- The Add/Info extension UI was reworked around two independent, composable capabilities (CLI env, MCP server) instead of a three-way "variant" pick, and now surfaces the blocked-tools affordance.
+
+---
+
 ## [1.23.0] — 2026-08-27
 
 Drag-and-drop reordering, a hard guard against catastrophic rm commands, and several bug fixes.
