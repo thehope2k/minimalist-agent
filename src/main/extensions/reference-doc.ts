@@ -4,18 +4,28 @@
  * content changes; the install pass overwrites stale copies.
  */
 
-export const EXTENSIONS_REFERENCE_VERSION = '0.2.0';
+export const EXTENSIONS_REFERENCE_VERSION = '0.3.0';
 
 export const EXTENSIONS_REFERENCE_MD = `# Extensions
 
-Extensions add capabilities to the agent. There are three variants, and you don't
-have to pick one up front — the variant is whatever \`extension.json\` declares:
+Every extension is a guide the agent reads before using it. Two capabilities
+are optional and independent — an extension can have neither, either, or
+both. There's no "variant" to pick; \`extension.json\`'s shape tells you what
+it has:
 
-| Variant       | Adds                                       | extension.json shape           |
-|---------------|--------------------------------------------|---------------------------------|
-| guide-only    | A how-to that nudges the agent's behavior  | no \`env\`, no \`mcp\`           |
-| cli-bound     | A CLI + credentials wired into Bash        | \`env\` block                    |
-| mcp-backed    | An MCP server with structured tools        | \`mcp\` block                    |
+| Capability | Adds | extension.json shape |
+|---|---|---|
+| _(none)_ | Prose that nudges the agent's behavior — that's the baseline every extension has | no \`env\`, no \`mcp\` |
+| CLI env | Credentials/config exported into every Bash call | \`env\` block |
+| MCP server | A running server exposing structured tools | \`mcp\` block |
+
+An extension with neither capability is just a guide (an internal SOP, a
+coding-style note, a CLI that's already configured elsewhere). One with
+\`env\` also wires credentials into Bash. One with \`mcp\` also spawns/connects
+a server whose tools appear as \`mcp__<slug>__<tool>\`. A real-world extension
+can have \`env\` **and** \`mcp\` at once (e.g. an MCP server that needs an API
+key — use \`envFromBinding: true\` so the key reaches the server process without
+also polluting the global Bash env).
 
 ## Folder layout
 
@@ -44,14 +54,15 @@ Each extension folder requires two files:
   "icon": "🟣",                               // optional
   "tags": ["pm", "issues"],
 
-  // cli-bound or mcp-backed: env values can be literal OR a SecretRef.
+  // env values (only needed if this extension requires credentials/config
+  // in Bash): literal OR a SecretRef.
   // ⚠ Credentials (API keys, tokens, passwords) MUST be SecretRefs — never
   // literal strings. See "Secrets" below.
   "env": {
     "LINEAR_API_KEY": { "secret": "linear.apiKey" }
   },
 
-  // mcp-backed only:
+  // only needed if this extension runs an MCP server:
   "mcp": {
     "transport": "stdio",
     "command": "npx",
@@ -59,9 +70,12 @@ Each extension folder requires two files:
     "envFromBinding": true
   },
 
-  // optional:
+  // optional. Only \`blockedTools\` is currently enforced (MCP-backed
+  // extensions only) — \`writeAccess\`/\`networkHosts\`/\`commandPrefixes\` are
+  // reserved for future enforcement; setting them today has no runtime
+  // effect, so don't tell a user they restrict anything yet.
   "permissions": {
-    "tools": ["bash", "read", "mcp__linear__*"],
+    "blockedTools": ["delete_issue", "archive_project"],
     "commandPrefixes": ["linear"],
     "networkHosts": ["api.linear.app"]
   },
@@ -106,29 +120,39 @@ installed extensions and their guide paths. Before invoking an extension's
 tools or running its CLI for the first time in a session, the agent must
 read \`guide.md\` to understand correct usage.
 
-## Variants in detail
+## Capabilities in detail
 
-### Guide-only
+### Guide only
 
 No \`env\`, no \`mcp\`. The agent uses existing built-in tools (Bash / Read)
 following your guide. Best fit when no credentials are needed and the agent
 only needs prose nudging — an internal SOP, a "how we use git" reference, a
 coding-style note, or a CLI that's already configured outside the app.
 
-### CLI-bound
+### + CLI env
 
 \`env\` block declares variables that get exported into Bash invocations.
-Best fit when there's a well-maintained CLI for the service and calling it
+Add this when there's a well-maintained CLI for the service and calling it
 from Bash is straightforward — \`gh\`, \`aws\`, \`vercel\`, \`kubectl\`,
-etc. Read **Secrets** below before populating \`env\`.
+etc. Read **Secrets** below before populating \`env\`. Any \`SecretRef\` in
+\`env\` requires the user's one-time approval before it's exported — but
+unlike an MCP server, it's automatic: saving the secret's value **is** the
+approval (see **Consent**).
 
-### MCP-backed
+### + MCP server
 
 \`mcp\` block configures a Model Context Protocol server. Stdio servers are
 spawned as subprocesses; HTTP/SSE servers are connected over the network.
 Tools exposed by the server appear to the agent as \`mcp__<slug>__<toolname>\`.
-Best fit when the service ships an official MCP server, or has no good CLI
-and you'd benefit from typed tool calls — Linear, Notion, etc.
+Add this when the service ships an official MCP server, or has no good CLI
+and you'd benefit from typed tool calls — Linear, Notion, etc. Always
+requires the user's one-time approval before it can be spawned/connected.
+
+To restrict which of the server's tools the agent may call, set
+\`permissions.blockedTools\` to the bare tool names (no \`mcp__<slug>__\`
+prefix) that should never be called — e.g. destructive ones. Everything not
+listed stays callable; omit the field entirely to allow every tool the
+server exposes. Enforced identically on both backends.
 
 ## Secrets
 
@@ -236,8 +260,8 @@ The agent does NOT see plaintext credentials, and SHOULD NOT ask the user
 to paste them into the chat. Instead:
 
 1. Write \`extension.json\` with the \`{ secret: "<key>" }\` reference.
-2. Tell the user to set the value through the extension's Secrets section
-   in the UI (Extensions → \`<extension>\` → Secrets), or via:
+2. Tell the user to set the value on the extension's info page
+   (Extensions → \`<extension>\` → Keys & access), or via:
    \`window.api.extensions.setSecret(<slug>, <key>, <value>)\`
 3. Until the secret is set, the env var simply won't be exported — the
    CLI will fail at runtime and the user will know to set it. That's the
@@ -249,13 +273,22 @@ Region names, endpoint URLs, default project IDs, feature flags, etc. —
 all of those can stay as literal strings. The hard rule applies only to
 values that grant access.
 
-## Choosing a variant
+## Choosing capabilities
 
-Pick the one that actually fits the service. Don't default to "simpler is
-better" — a real MCP server gives the agent typed tools, which is often a
-better experience than parsing CLI output. Conversely, wrapping a great CLI
-in MCP is unnecessary overhead. When two variants are both reasonable, the
-agent should ask the user.
+Don't default to "simpler is better" — a real MCP server gives the agent
+typed tools, which is often a better experience than parsing CLI output.
+Conversely, wrapping a great CLI in MCP is unnecessary overhead. These are
+two independent yes/no questions, not a single three-way pick:
+
+1. **Does this need a credential?** If the service requires an API key/token
+   to call, add \`env\` with a \`SecretRef\`. If not, skip \`env\` entirely.
+2. **Does this need a running server?** If there's a real MCP server for the
+   service, or no good CLI and you want typed tool calls, add \`mcp\`. If a
+   CLI (or no tooling at all) is the better fit, skip \`mcp\`.
+
+When the answer to either question is genuinely unclear or the trade-off is
+non-trivial (e.g. an official MCP server exists *and* the CLI works fine),
+the agent should ask the user rather than default.
 
 > **Both backends.** MCP servers are spawned on demand and their tools reach
 > the agent on both backends: the Claude Agent SDK spawns them for
@@ -264,6 +297,28 @@ agent should ask the user.
 > start (or exceeds the connect budget) is skipped without blocking the
 > session; its tools are simply absent that run. Required secrets and user
 > consent are enforced identically on both backends.
+
+## Consent
+
+Any extension that either (a) declares \`mcp\`, or (b) declares a \`SecretRef\`
+in \`env\`, requires one-time user approval before it can act —
+spawning/connecting the MCP server, or exporting the credential into Bash.
+
+- **MCP:** approval is a dedicated step in the Extensions panel (\`<extension>\`
+  → Keys & access → Allow) — spawning a server neither the user nor the
+  agent-drafted config has necessarily been reviewed line-by-line deserves an
+  explicit beat.
+- **Credential-only (no \`mcp\`):** approval happens automatically the moment
+  the user saves the secret's value — typing a real credential into a field
+  scoped to that exact extension and env var name already is the deliberate
+  act; a second click adds friction without adding a distinct decision.
+
+Either way, approval is scoped to what was approved: changing the MCP
+command/URL, or which env vars carry secrets, invalidates a prior approval
+and requires a fresh one. Extensions with neither capability (guide only, or
++ CLI env with only literal/non-secret values) need no approval.
+Project-tier extensions are always auto-approved (presence in
+\`.minimalist-agent/\` already is the approval).
 
 ## Creating extensions in chat
 

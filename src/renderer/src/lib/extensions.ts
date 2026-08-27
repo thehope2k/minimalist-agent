@@ -115,3 +115,20 @@ export function displayIcon(ext: LoadedExtension): string | undefined {
   return ext.guideFrontmatter.icon || ext.config.icon;
 }
 
+/**
+ * The only extension type worth calling out: an MCP server is a running
+ * process/connection with its own tool surface, unlike a plain extension
+ * (guide ± CLI env), which is just prose the agent reads. Absence of this
+ * is the default and isn't labeled anywhere — badges mark the exception,
+ * not the norm.
+ */
+export function isMcpBacked(ext: LoadedExtension): boolean {
+  return ext.variant === 'mcp-backed';
+}
+
+/** Whether this extension declares a credential (a SecretRef anywhere in `env`). */
+export function hasCredentials(ext: LoadedExtension): boolean {
+  if (!ext.config.env) return false;
+  return Object.values(ext.config.env).some((v) => typeof v !== 'string');
+}
+

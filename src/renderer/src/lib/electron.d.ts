@@ -708,7 +708,7 @@ export type McpConfig =
     };
 
 export interface ExtensionPermissions {
-  tools?: string[];
+  blockedTools?: string[];
   writeAccess?: boolean;
   networkHosts?: string[];
   commandPrefixes?: string[];

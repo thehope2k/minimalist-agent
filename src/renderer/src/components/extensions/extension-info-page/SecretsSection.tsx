@@ -20,19 +20,19 @@ const EMPTY: Status = {
 
 export function SecretsSection({ extension }: { extension: LoadedExtension }) {
   const slug = extension.slug;
-  const isMcp = !!extension.config.mcp;
+  const spawnsServer = !!extension.config.mcp;
   const [status, setStatus] = useState<Status>(EMPTY);
   const [pending, setPending] = useState<Record<string, string>>({});
   const [reveal, setReveal] = useState<Record<string, boolean>>({});
 
   const refresh = async () => {
+    // hasConsent() already returns true for extensions that need no
+    // approval (no server, no key), so it's always safe to ask.
     const [declared, set, encryptionAvailable, hasConsent] = await Promise.all([
       window.api.extensions.declaredSecrets(slug),
       window.api.extensions.listSecretKeys(slug),
       window.api.extensions.secretsEncryptionAvailable(),
-      isMcp
-        ? window.api.extensions.hasConsent(slug)
-        : Promise.resolve(true),
+      window.api.extensions.hasConsent(slug),
     ]);
     setStatus({ declared, set, encryptionAvailable, hasConsent });
   };
@@ -45,6 +45,9 @@ export function SecretsSection({ extension }: { extension: LoadedExtension }) {
 
   // Union of declared + currently-set keys.
   const allKeys = Array.from(new Set([...status.declared, ...status.set])).sort();
+  // Anything worth showing an approve/allow control for: a background
+  // server, or a key this extension can use.
+  const needsApproval = spawnsServer || allKeys.length > 0;
 
   const handleSave = async (keyName: string) => {
     const value = pending[keyName];
@@ -68,10 +71,9 @@ export function SecretsSection({ extension }: { extension: LoadedExtension }) {
   const handleConsent = async () => {
     if (
       !window.confirm(
-        `This will allow the agent to spawn the MCP server declared in ` +
-          `extension.json the next time you chat. Spawning runs code from ` +
-          `whatever package the extension points at — only grant consent ` +
-          `for extensions you trust.\n\nGrant consent for "${slug}"?`,
+        `This lets the agent start ${slug}'s program the next time you chat. ` +
+          `It'll be able to run code from whatever package it points to — only ` +
+          `allow extensions you trust.\n\nAllow "${slug}"?`,
       )
     ) {
       return;
@@ -87,12 +89,12 @@ export function SecretsSection({ extension }: { extension: LoadedExtension }) {
     await reloadExtensions();
   };
 
-  if (allKeys.length === 0 && !isMcp) return null;
+  if (!needsApproval) return null;
 
   return (
     <section className="border-b border-border/60 px-4 py-4">
       <h2 className="mb-2 text-[11px] font-medium uppercase tracking-wide text-fg-subtle">
-        Secrets &amp; consent
+        Keys &amp; access
       </h2>
 
       {!status.encryptionAvailable && allKeys.length > 0 && (
@@ -102,35 +104,34 @@ export function SecretsSection({ extension }: { extension: LoadedExtension }) {
         </div>
       )}
 
-      {isMcp && (
+      {spawnsServer && (
         <div className="mb-3 flex items-center gap-2 rounded-md border border-border/60 bg-elevated/40 p-2 text-xs">
           {status.hasConsent ? (
             <>
               <ShieldCheck className="h-4 w-4 text-green-400" strokeWidth={1.75} />
               <span className="flex-1 text-fg-muted">
-                MCP consent granted. The configured server may be spawned.
+                You've allowed this extension to run its program.
               </span>
               <button
                 type="button"
                 onClick={handleRevoke}
                 className="rounded-md px-2 py-0.5 text-fg-subtle hover:bg-elevated hover:text-fg"
               >
-                Revoke
+                Remove access
               </button>
             </>
           ) : (
             <>
               <ShieldAlert className="h-4 w-4 text-amber-400" strokeWidth={1.75} />
               <span className="flex-1 text-fg-muted">
-                MCP server has not been approved. Spawn is blocked until you
-                grant consent.
+                This extension runs its own program in the background — allow it before it can start.
               </span>
               <button
                 type="button"
                 onClick={handleConsent}
                 className="rounded-md bg-accent px-2 py-0.5 text-accent-fg hover:bg-accent-hover"
               >
-                Grant
+                Allow
               </button>
             </>
           )}

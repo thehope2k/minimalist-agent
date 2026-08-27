@@ -1313,6 +1313,13 @@ export function registerIpc(): void {
     'extensions:secrets.set',
     (_e, slug: string, keyName: string, value: string): void => {
       setExtensionSecret(slug, keyName, value);
+      // Saving a secret is itself the deliberate, explicit act of trust for
+      // a credential-only extension (no `mcp`) — a separate "Allow" click
+      // would just ask the user to confirm the same decision twice. MCP
+      // servers keep the explicit step: running code the user hasn't
+      // reviewed is a different kind of decision than handing over a token.
+      const ext = loadExtensionBySlug(slug);
+      if (ext && !ext.config.mcp) grantConsent(ext);
       broadcastMcpStatusChanged();
     },
   );

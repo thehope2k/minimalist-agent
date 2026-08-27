@@ -26,6 +26,7 @@ import {
 } from '../permissions';
 import { buildSdkMcpServers } from '../../extensions/mcp-config';
 import { resolveExtensionEnv } from '../../extensions/env-resolver';
+import { collectBlockedMcpToolNames } from '../../extensions/tool-permissions';
 import {
   buildPromptPrefix,
   buildSystemPromptAppend,
@@ -303,6 +304,11 @@ export async function* runAnthropicChat(
     agents: buildSdkAgentDefinitions(),
 
     mcpServers: buildSdkMcpServers(req.cwd),
+
+    // Per-server tool allowlisting (extension.json permissions.blockedTools).
+    // Additive/subtractive only — narrows what's callable, never widens it,
+    // so it can't interact with any other permission logic.
+    disallowedTools: collectBlockedMcpToolNames(req.cwd),
 
     // Merge auth env (process.env + ANTHROPIC_API_KEY/OAuth/CLAUDE_CONFIG_DIR
     // from getDefaultOptions) with cli-bound extension env. Previously this

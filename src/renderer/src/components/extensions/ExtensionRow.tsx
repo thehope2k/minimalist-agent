@@ -1,18 +1,13 @@
 import { useState } from 'react';
+import { KeyRound } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DragHandle, type DragHandleProps } from '@/components/ui';
-import { displayDescription, displayName } from '@/lib/extensions';
+import { displayDescription, displayName, hasCredentials, isMcpBacked } from '@/lib/extensions';
 import { ExtensionAvatar } from './ExtensionAvatar';
 import { ExtensionMenu } from './ExtensionMenu';
 import { McpStatusBadge } from './McpStatusBadge';
 import type { LoadedExtension } from '@/lib/electron';
 import type { McpStatus } from './mcpStatus';
-
-const VARIANT_LABEL: Record<LoadedExtension['variant'], string> = {
-  'guide-only': 'guide',
-  'cli-bound': 'cli',
-  'mcp-backed': 'mcp',
-};
 
 type Props = {
   ext: LoadedExtension;
@@ -58,9 +53,20 @@ export function ExtensionRow({
               <div className="truncate text-[0.95rem] font-medium text-fg">
                 {displayName(ext)}
               </div>
-              <span className="rounded bg-elevated/80 px-1.5 py-px font-mono text-[10px] uppercase tracking-wide text-fg-subtle">
-                {VARIANT_LABEL[ext.variant]}
-              </span>
+              {isMcpBacked(ext) && (
+                <span className="rounded bg-elevated-2 px-1.5 py-px font-mono text-[10px] uppercase tracking-wide text-fg-muted">
+                  MCP
+                </span>
+              )}
+              {hasCredentials(ext) && (
+                <span title="This extension stores a key">
+                  <KeyRound
+                    className="h-3 w-3 shrink-0 text-fg-subtle"
+                    strokeWidth={1.75}
+                    aria-label="This extension stores a key"
+                  />
+                </span>
+              )}
               <McpStatusBadge status={mcpStatus} />
             </div>
             <div className="mt-0.5 truncate text-xs text-fg-subtle">

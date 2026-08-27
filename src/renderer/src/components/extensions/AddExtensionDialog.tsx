@@ -214,19 +214,18 @@ function buildScaffoldPrompt(
 ${slug ? `<slug>${slug}</slug>` : ''}
 </extension_create>
 
-Read the reference doc at \`<reference_doc>\` first — it covers extension.json schema, guide.md format, the three variants (guide-only / cli-bound / mcp-backed), and examples.
+Read the reference doc at \`<reference_doc>\` first — it covers extension.json schema, guide.md format, the two optional capabilities (CLI env / MCP server), and examples.
 
 Then:
-1. If this involves a third-party service (e.g. Linear, Notion, AWS), use WebSearch to find the current docs / MCP package / CLI before deciding the variant. Cite sources in extension.json.provenance.
-2. Choose the variant that actually fits the service:
-   - **guide-only** when the agent only needs prose nudging (an internal SOP, a coding-style note, an existing CLI that's already configured).
-   - **cli-bound** when there's a well-maintained CLI for the service (\`gh\`, \`aws\`, \`vercel\`) and you'd just be calling it.
-   - **mcp-backed** when the service ships a real MCP server, OR has no good CLI and you want structured tool calls (Linear, Notion).
-   Don't bias toward simplicity for its own sake — pick what fits.
-3. **If two variants are both reasonable and the trade-off is non-trivial** (e.g. an official MCP server exists *and* the CLI works fine, or the user's intent is ambiguous), pause and ask the user which to use before writing files. Frame it as a short choice with a one-line reason for each.
+1. If this involves a third-party service (e.g. Linear, Notion, AWS), use WebSearch to find the current docs / MCP package / CLI before deciding. Cite sources in extension.json.provenance.
+2. Decide the two capabilities independently — don't treat this as picking one of three named variants:
+   - **Does it need a credential?** Add \`env\` with a \`SecretRef\` if the service needs an API key/token; otherwise skip \`env\`.
+   - **Does it need a running server?** Add \`mcp\` if the service ships a real MCP server, or has no good CLI and structured tool calls would help (Linear, Notion); otherwise skip \`mcp\` and just document the CLI (\`gh\`, \`aws\`, \`vercel\`, etc.) in the guide.
+   Don't bias toward simplicity for its own sake — pick what fits, and it's fine for both to apply at once.
+3. **If the running-server question is genuinely unclear or the trade-off is non-trivial** (e.g. an official MCP server exists *and* the CLI works fine, or the user's intent is ambiguous), pause and ask the user before writing files. Frame it as a short choice with a one-line reason for each.
 4. ${slugInstructions}
 5. After writing, validate by reading both files back.
-6. Briefly summarize what you built and what (if anything) the user needs to do next (e.g. provide an API key).
+6. Briefly summarize what you built and what (if anything) the user needs to do next (e.g. provide an API key — which requires their one-time approval in the Extensions panel before it's used).
 
 User wants an extension that will: ${description}`;
 }

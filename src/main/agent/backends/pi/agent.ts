@@ -25,6 +25,7 @@
 import {type ChildProcess, spawn} from 'node:child_process';
 import {resolveExtensionEnv} from '../../../extensions/env-resolver';
 import {buildResolvedMcpServers, recordPiMcpStatus} from '../../../extensions/mcp-config';
+import {isMcpToolNameBlocked} from '../../../extensions/tool-permissions';
 import {createInterface, type Interface as ReadlineInterface} from 'node:readline';
 import {app, BrowserWindow} from 'electron';
 import {join} from 'node:path';
@@ -157,10 +158,10 @@ interface SubprocessHandle {
   ready: Promise<void>;
   /** turnId → event queue. */
   queues: Map<string, EventQueue>;
-  /** turnId → permission context (mode + sessionId). */
+  /** turnId → permission context (mode + sessionId + cwd). */
   permissionContext: Map<
     string,
-    { mode: PermissionMode; sessionId: string }
+    { mode: PermissionMode; sessionId: string; cwd?: string }
   >;
   /** turnId → the request's AbortSignal, so a mid-turn round-trip to main
    *  (e.g. an auth_refresh_request triggered by the subprocess) can be
@@ -340,7 +341,7 @@ function spawnSubprocess(req: PiChatRequest, systemPrompt: string): SubprocessHa
   const queues = new Map<string, EventQueue>();
   const permissionContext = new Map<
     string,
-    { mode: PermissionMode; sessionId: string }
+    { mode: PermissionMode; sessionId: string; cwd?: string }
   >();
   const turnSignals = new Map<string, AbortSignal>();
   const pendingMini = new Map<
@@ -553,9 +554,17 @@ async function handleOutbound(
         return;
       }
       const decision: { action: 'allow' | 'block'; reason?: string } = { action: 'allow', reason: undefined };
-      
+
+      // Server-declared tool blocklist (extension.json permissions.blockedTools)
+      // applies regardless of permission mode — it's a capability boundary,
+      // not a plan/auto approval concern.
+      if (isMcpToolNameBlocked(req.toolName, ctx.cwd)) {
+        decision.action = 'block';
+        decision.reason = `"${req.toolName}" is blocked by its extension's permissions.blockedTools`;
+      }
+
       // In plan mode, block write operations
-      if (ctx.mode === 'plan') {
+      if (decision.action === 'allow' && ctx.mode === 'plan') {
         const readOnlyTools = new Set(['Read', 'Grep', 'Find', 'Ls']);
         if (!readOnlyTools.has(req.toolName)) {
           decision.action = 'block';
@@ -991,6 +1000,7 @@ export async function* runPiChat(
   handle.permissionContext.set(req.turnId, {
     mode: req.permissionMode ?? 'auto',
     sessionId: req.chatSessionId,
+    cwd: req.cwd,
   });
   if (req.signal) handle.turnSignals.set(req.turnId, req.signal);
 

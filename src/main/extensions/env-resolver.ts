@@ -9,14 +9,16 @@
 // global Bash env.
 
 import { loadAllExtensions } from './storage';
-import { resolveEnvValue } from './types';
+import { requiresConsent, resolveEnvValue } from './types';
 import { getSecret } from './secrets';
+import { hasConsent } from './mcp-config';
 
 /**
  * Returns env values to apply to the agent process. Only includes:
  *   - Enabled extensions
  *   - With a non-empty `env` block
  *   - That are NOT mcp-backed (mcp env goes through mcpServers)
+ *   - That don't carry a credential pending consent (see `requiresConsent`)
  *
  * SecretRef values are looked up; refs with no value set are silently
  * skipped (don't poison the env with empty strings).
@@ -29,49 +31,14 @@ export function resolveExtensionEnv(cwd?: string): Record<string, string> {
   for (const ext of loadAllExtensions(cwd)) {
     if (!ext.config.env) continue;
     if (ext.config.mcp) continue; // mcp-backed env goes via mcpServers
+    // A credential-bearing cli-bound extension is the same trust decision
+    // as an mcp-backed one — withhold the whole binding until consented.
+    if (requiresConsent(ext.config) && !hasConsent(ext)) continue;
     for (const [name, value] of Object.entries(ext.config.env)) {
       const resolved = resolveEnvValue(value, ext.scope, (key) => getSecret(ext.slug, key));
       // null = missing secret (skip silently for CLI-bound, no spawn block needed)
       // undefined = ${VAR} not set in environment (skip silently)
       if (resolved != null) out[name] = resolved;
-    }
-  }
-  return out;
-}
-
-/**
- * Diagnostic: which env vars *would* be set, what extension provided each,
- * and whether any are blocked by missing secrets. Used by the UI to
- * preview behavior without revealing values.
- */
-export interface EnvBindingReport {
-  varName: string;
-  fromExtension: string;
-  source: 'literal' | 'secret';
-  /** Only meaningful when source='secret'. */
-  secretSet?: boolean;
-}
-
-export function reportExtensionEnvBindings(cwd?: string): EnvBindingReport[] {
-  const out: EnvBindingReport[] = [];
-  for (const ext of loadAllExtensions(cwd)) {
-    if (!ext.config.env) continue;
-    if (ext.config.mcp) continue;
-    for (const [name, value] of Object.entries(ext.config.env)) {
-      if (typeof value === 'string') {
-        out.push({
-          varName: name,
-          fromExtension: ext.slug,
-          source: 'literal',
-        });
-      } else {
-        out.push({
-          varName: name,
-          fromExtension: ext.slug,
-          source: 'secret',
-          secretSet: !!getSecret(ext.slug, value.secret),
-        });
-      }
     }
   }
   return out;

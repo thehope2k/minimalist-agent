@@ -5,25 +5,21 @@ import type { McpStatus } from './mcpStatus';
 export function McpStatusBadge({ status }: { status: McpStatus | undefined }) {
   if (!status || status.reason === 'disabled') return null;
   if (status.ok) {
-    // toolCount is only known after a session actually connects the server.
-    // Until then the extension is merely eligible ("ready"), not verified
-    // — consent/secrets can be satisfied while the server still fails to
-    // start or authenticate on first real use.
-    const connected = status.toolCount != null;
+    // toolCount is only known once some session has actually connected the
+    // server — a stale, cross-session signal, not "live right now." It's
+    // real information (proof the command/URL works, not just that
+    // permissions are satisfied) but not a different state worth its own
+    // color/label: either way, the extension is ready to use.
+    const title =
+      status.toolCount != null
+        ? `Ready — connects on use, last verified with ${status.toolCount} tool(s)`
+        : 'Ready — consent and secrets satisfied, connects on first use this session';
     return (
       <span
-        className={
-          connected
-            ? 'rounded bg-emerald-500/15 px-1.5 py-px text-[10px] uppercase tracking-wide text-emerald-300'
-            : 'rounded bg-elevated/80 px-1.5 py-px text-[10px] uppercase tracking-wide text-fg-subtle'
-        }
-        title={
-          connected
-            ? `MCP server connected — ${status.toolCount} tool(s)`
-            : 'Eligible: consent and secrets satisfied. The server connects on first use this session.'
-        }
+        className="rounded bg-emerald-500/15 px-1.5 py-px text-[10px] uppercase tracking-wide text-emerald-300"
+        title={title}
       >
-        {connected ? 'active' : 'ready'}
+        ready
       </span>
     );
   }

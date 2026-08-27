@@ -9,8 +9,8 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { createHash } from 'node:crypto';
-import type { LoadedExtension, McpConfig } from './types';
-import { resolveEnvValue } from './types';
+import type { LoadedExtension } from './types';
+import { requiresConsent, resolveEnvValue } from './types';
 import { loadAllExtensions } from './storage';
 import { getSecret } from './secrets';
 import { Paths } from '../storage/paths';
@@ -35,12 +35,32 @@ interface ConsentsFile {
   granted: Record<string, true>;
 }
 
-function consentKey(slug: string, mcp: McpConfig): string {
-  if (mcp.transport === 'stdio') {
-    const sig = `${mcp.command} ${(mcp.args ?? []).join(' ')}`;
-    return `${slug}|stdio|${createHash('sha256').update(sig).digest('hex').slice(0, 16)}`;
+/**
+ * Consent is keyed off what's actually being trusted, so a config change
+ * (new command, new secret-bearing env var) invalidates a prior grant
+ * instead of silently carrying it over.
+ */
+function consentKey(ext: LoadedExtension): string {
+  const { slug, config } = ext;
+  const mcp = config.mcp;
+  // Secret-bearing env var names are part of the trust surface even for an
+  // MCP-backed extension: envFromBinding feeds them to the spawned server,
+  // so a new one is a new credential flowing somewhere, not a no-op.
+  const secretKeys = Object.entries(config.env ?? {})
+    .filter(([, v]) => typeof v !== 'string')
+    .map(([k]) => k)
+    .sort()
+    .join(',');
+
+  if (mcp) {
+    const mcpSig =
+      mcp.transport === 'stdio'
+        ? `stdio|${mcp.command} ${(mcp.args ?? []).join(' ')}`
+        : `${mcp.transport}|${mcp.url}`;
+    const sig = `${mcpSig}|env:${secretKeys}`;
+    return `${slug}|${createHash('sha256').update(sig).digest('hex').slice(0, 16)}`;
   }
-  return `${slug}|${mcp.transport}|${mcp.url}`;
+  return `${slug}|env|${createHash('sha256').update(secretKeys).digest('hex').slice(0, 16)}`;
 }
 
 function readConsents(): ConsentsFile {
@@ -62,21 +82,24 @@ function writeConsents(file: ConsentsFile): void {
 export function hasConsent(ext: LoadedExtension): boolean {
   // Project-tier extensions are auto-consented — presence in .minimalist-agent/ IS consent.
   if (ext.scope === 'project') return true;
-  if (!ext.config.mcp) return true;
-  return readConsents().granted[consentKey(ext.slug, ext.config.mcp)] === true;
+  // Neither an MCP server nor a credential: a guide, or a cli-bound
+  // extension with only literal (non-secret) env values. No trust decision
+  // to gate.
+  if (!requiresConsent(ext.config)) return true;
+  return readConsents().granted[consentKey(ext)] === true;
 }
 
 export function grantConsent(ext: LoadedExtension): void {
-  if (!ext.config.mcp) return;
+  if (!requiresConsent(ext.config)) return;
   const file = readConsents();
-  file.granted[consentKey(ext.slug, ext.config.mcp)] = true;
+  file.granted[consentKey(ext)] = true;
   writeConsents(file);
 }
 
 export function revokeConsent(ext: LoadedExtension): void {
-  if (!ext.config.mcp) return;
+  if (!requiresConsent(ext.config)) return;
   const file = readConsents();
-  delete file.granted[consentKey(ext.slug, ext.config.mcp)];
+  delete file.granted[consentKey(ext)];
   writeConsents(file);
 }
 

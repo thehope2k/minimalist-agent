@@ -50,7 +50,14 @@ export interface McpHttpTransport {
 export type McpConfig = McpStdioTransport | McpHttpTransport;
 
 export interface ExtensionPermissions {
-  tools?: string[];
+  /**
+   * MCP-backed extensions only: bare tool names (as exposed by the server,
+   * without the `mcp__<slug>__` prefix) that the agent may NOT call. Absent
+   * or empty means every tool the server exposes is callable. Ignored for
+   * extensions with no `mcp` block — there's no separate tool surface to
+   * restrict for those.
+   */
+  blockedTools?: string[];
   writeAccess?: boolean;
   networkHosts?: string[];
   commandPrefixes?: string[];
@@ -115,6 +122,52 @@ export function resolveEnvValue(
   return getSecretFn(value.secret) ?? null; // null = missing, blocks spawn
 }
 
+/**
+ * Whether this config declares any credential (a SecretRef, anywhere in
+ * `env`). Independent of `mcp` — a cli-bound extension can carry secrets
+ * too, and both cases deserve the same consent gate.
+ */
+export function hasSecretRefs(config: ExtensionConfig): boolean {
+  if (!config.env) return false;
+  return Object.values(config.env).some((v) => typeof v !== 'string');
+}
+
+/**
+ * Whether this config is a big enough trust decision to require explicit
+ * user consent before it can act: either it spawns/connects an MCP server
+ * (runs external code), or it exports a credential into the agent's Bash
+ * environment. A guide-only or credential-free cli-bound extension needs
+ * neither.
+ */
+export function requiresConsent(config: ExtensionConfig): boolean {
+  return !!config.mcp || hasSecretRefs(config);
+}
+
+const MCP_TOOL_PREFIX = 'mcp__';
+
+/**
+ * Split a fully-qualified MCP tool name (`mcp__<slug>__<tool>`) into its
+ * parts. Returns null for anything that isn't shaped like one — including
+ * built-in tool names, which this must never mistake for MCP tools.
+ */
+export function parseMcpToolName(
+  fullToolName: string,
+): { slug: string; tool: string } | null {
+  if (!fullToolName.startsWith(MCP_TOOL_PREFIX)) return null;
+  const rest = fullToolName.slice(MCP_TOOL_PREFIX.length);
+  const sep = rest.indexOf('__');
+  if (sep === -1) return null;
+  return { slug: rest.slice(0, sep), tool: rest.slice(sep + 2) };
+}
+
+/** Whether `config` blocks `bareToolName` via `permissions.blockedTools`. */
+export function isToolBlocked(config: ExtensionConfig, bareToolName: string): boolean {
+  if (!config.mcp) return false;
+  const blocked = config.permissions?.blockedTools;
+  if (!blocked || blocked.length === 0) return false;
+  return blocked.includes(bareToolName);
+}
+
 /* ---------- loaded record ---------- */
 
 export type ExtensionScope = 'user' | 'project';
@@ -137,12 +190,4 @@ export interface LoadedExtension {
 
 export function displayName(ext: LoadedExtension): string {
   return ext.guideFrontmatter.name || ext.config.name;
-}
-
-export function displayDescription(ext: LoadedExtension): string {
-  return ext.guideFrontmatter.description || ext.config.description;
-}
-
-export function displayIcon(ext: LoadedExtension): string | undefined {
-  return ext.guideFrontmatter.icon || ext.config.icon;
 }

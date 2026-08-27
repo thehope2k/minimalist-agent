@@ -75,7 +75,7 @@ const HttpTransportSchema = z.object({
 const McpConfigSchema = z.union([StdioTransportSchema, HttpTransportSchema]);
 
 const PermissionsSchema = z.object({
-  tools: z.array(z.string()).optional(),
+  blockedTools: z.array(z.string()).optional(),
   writeAccess: z.boolean().optional(),
   networkHosts: z.array(z.string()).optional(),
   commandPrefixes: z.array(z.string()).optional(),
