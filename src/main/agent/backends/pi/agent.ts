@@ -23,6 +23,7 @@
 //   error so the UI offers a one-click retry.
 
 import {type ChildProcess, spawn} from 'node:child_process';
+import {executeBrowserToolCommand} from '../../../browser/browser-tool-runtime';
 import {resolveExtensionEnv} from '../../../extensions/env-resolver';
 import {buildResolvedMcpServers, recordPiMcpStatus} from '../../../extensions/mcp-config';
 import {isMcpToolNameBlocked} from '../../../extensions/tool-permissions';
@@ -56,6 +57,7 @@ import type {
   MsgAuthRefreshRequest,
   MsgAuthRefreshResult,
   MsgAuthRequired,
+  MsgBrowserToolRequest,
   MsgCollaborationRequest,
   MsgEvent,
   MsgInit,
@@ -565,6 +567,10 @@ async function handleOutbound(
 
       // In plan mode, block write operations
       if (decision.action === 'allow' && ctx.mode === 'plan') {
+        // browser_tool is intentionally NOT exempt: unlike Read/Grep/Find/Ls it can
+        // click/fill/submit/evaluate against a real, remote page, so plan mode's
+        // "block write operations" contract has to cover it like any other tool
+        // with side effects.
         const readOnlyTools = new Set(['Read', 'Grep', 'Find', 'Ls']);
         if (!readOnlyTools.has(req.toolName)) {
           decision.action = 'block';
@@ -804,6 +810,28 @@ async function handleOutbound(
           type: 'auth_refresh_result',
           requestId: m.requestId,
           error: e instanceof Error ? e.message : String(e),
+        });
+      }
+      return;
+    }
+
+    case 'browser_tool_request': {
+      const m = msg as MsgBrowserToolRequest;
+      try {
+        const result = await executeBrowserToolCommand(m.sessionId, m.command);
+        send(handle, {
+          type: 'browser_tool_result',
+          requestId: m.requestId,
+          output: result.output,
+          imageBase64: result.imageBase64,
+          imageMimeType: result.imageMimeType,
+        });
+      } catch (e) {
+        send(handle, {
+          type: 'browser_tool_result',
+          requestId: m.requestId,
+          output: e instanceof Error ? e.message : String(e),
+          isError: true,
         });
       }
       return;

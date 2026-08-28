@@ -833,6 +833,14 @@ export interface TerminalTabInfo {
   alive: boolean;
 }
 
+export interface BrowserPaneState {
+  sessionId: string;
+  open: boolean;
+  url: string;
+  title: string;
+  agentControl: boolean;
+}
+
 export interface AppApi {
   update: {
     getInfo: () => Promise<UpdateInfo>;
@@ -1273,6 +1281,14 @@ export interface AppApi {
     onExit: (cb: (tabId: string, exitCode: number) => void) => () => void;
     /** Returns an unsubscribe function. */
     onTitleChange: (cb: (tabId: string, title: string) => void) => () => void;
+  };
+  browser: {
+    getState: (sessionId: string) => Promise<BrowserPaneState>;
+    focus: (sessionId: string) => Promise<void>;
+    release: (sessionId: string) => Promise<BrowserPaneState>;
+    close: (sessionId: string) => Promise<BrowserPaneState>;
+    /** Returns an unsubscribe function. */
+    onStateChanged: (cb: (state: BrowserPaneState) => void) => () => void;
   };
   voice: {
     getModelStatus: () => Promise<'ready' | 'not-downloaded'>;

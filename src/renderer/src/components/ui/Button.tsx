@@ -50,7 +50,7 @@ export const Button = forwardRef<HTMLButtonElement, Props>(
       ref={ref}
       disabled={disabled || loading}
       className={cn(
-        'inline-flex items-center justify-center rounded-md font-medium transition-colors disabled:cursor-not-allowed',
+        'inline-flex items-center justify-center rounded-md font-medium transition-colors cursor-pointer disabled:cursor-not-allowed',
         variant !== 'link' && SIZE_CLASS[size],
         VARIANT_CLASS[variant],
         fullWidth && 'w-full',

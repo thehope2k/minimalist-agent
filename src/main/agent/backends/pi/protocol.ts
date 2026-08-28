@@ -242,6 +242,17 @@ export interface MsgShutdown {
   type: 'shutdown';
 }
 
+/** Result of a `browser_tool` command, routed back from main → subprocess. */
+export interface MsgBrowserToolResult {
+  type: 'browser_tool_result';
+  requestId: string;
+  output: string;
+  /** Base64-encoded screenshot, present only for `screenshot` commands. */
+  imageBase64?: string;
+  imageMimeType?: 'image/png' | 'image/jpeg';
+  isError?: boolean;
+}
+
 export type SubprocessInbound =
   | MsgInit
   | MsgPrompt
@@ -258,6 +269,7 @@ export type SubprocessInbound =
   | MsgSteer
   | MsgPlanApprovalResponse
   | MsgAuthRefreshResult
+  | MsgBrowserToolResult
   | MsgShutdown;
 
 /* ============================================================ */
@@ -437,6 +449,15 @@ export interface MsgPlanApprovalResponse {
   notes?: string;
 }
 
+/** A `browser_tool` command, routed from subprocess → main for execution
+ *  against that session's owned browser window. */
+export interface MsgBrowserToolRequest {
+  type: 'browser_tool_request';
+  requestId: string;
+  sessionId: string;
+  command: string;
+}
+
 export type SubprocessOutbound =
   | MsgReady
   | MsgOperationUpdate
@@ -444,6 +465,7 @@ export type SubprocessOutbound =
   | MsgPreToolUseRequest
   | MsgCollaborationRequest
   | MsgAuthRefreshRequest
+  | MsgBrowserToolRequest
   | MsgPlanCreated
   | MsgPlanUpdated
   | MsgPhaseUpdated

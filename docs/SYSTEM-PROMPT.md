@@ -123,8 +123,12 @@ the exact format.
 ## 3. What is deliberately NOT in the prompt
 
 Capabilities omitted **on purpose** because the app has no tool/render architecture for them: live html-preview and
-pdf-preview panes, spreadsheet rendering, browser tools, session-management tools, document CLIs, `call_llm`,
+pdf-preview panes, spreadsheet rendering, session-management tools, document CLIs, `call_llm`,
 `transform_data`, `render_template`.
+
+`browser_tool` used to be on this list too, but it now exists (see [BROWSER-TOOL.md](./BROWSER-TOOL.md)) — its
+capabilities live entirely in its own tool description/`promptSnippet`, not here, per the "cheapest home" rule in
+[AGENTS.md](../AGENTS.md#system-prompt).
 
 **But mind the nuance** — some adjacent things *do* render in model output and shouldn't be confused with the omitted
 "preview" tools:

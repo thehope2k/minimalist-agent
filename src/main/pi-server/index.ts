@@ -158,12 +158,15 @@ async function refreshWithLocalRetry(
 }
 import { adaptPiEvent } from './event-adapter';
 import { createPiWebFetchTool, createPiWebSearchTool } from './web-tools';
+import { createPiBrowserTool } from './browser-tool';
 import { connectMcpServers, closeMcpClients } from './mcp-tools';
 import { createPiAgentTool } from '../agent/backends/pi/agent-tool';
 import type {
   MsgAuthRefreshRequest,
   MsgAuthRefreshResult,
   MsgAuthRequired,
+  MsgBrowserToolRequest,
+  MsgBrowserToolResult,
   MsgEvent,
   MsgFatalError,
   MsgInit,
@@ -319,6 +322,7 @@ interface State {
     { resolve: (r: MsgCollaborationResponse) => void }
   >;
   pendingAuthRefresh: Map<string, { resolve: (r: MsgAuthRefreshResult) => void }>;
+  pendingBrowserTool: Map<string, { resolve: (r: MsgBrowserToolResult) => void }>;
   planManager?: PlanManager;
   /** Adapted MCP tools from connected mcp-backed extensions, appended to every
    *  session build (init + model-switch recreate). */
@@ -361,6 +365,7 @@ const state: State = {
   pendingPermission: new Map(),
   pendingCollaboration: new Map(),
   pendingAuthRefresh: new Map(),
+  pendingBrowserTool: new Map(),
   appendArr: [],
   availableAgents: [],
   mcpTools: [],
@@ -444,6 +449,13 @@ const READ_ONLY_TOOL_NAMES = new Set([
   'web_fetch',
   'web_search',
 ]);
+
+// browser_tool is deliberately excluded from the set above: click/fill/select/
+// type/key/evaluate can submit forms, trigger destructive buttons, or run
+// arbitrary JS against any real site the agent navigates to — treating the
+// whole tool as read-only would let plan/ask mode's safety boundary be
+// bypassed for remote side effects. It goes through the normal
+// requestPermission() round-trip in plan/ask mode, same as Bash/Edit.
 
 /**
  * Wrap a Pi tool definition so its `execute` first asks main for
@@ -588,6 +600,25 @@ function requestAuthRefresh(): Promise<MsgAuthRefreshResult> {
     );
     const req: MsgAuthRefreshRequest = { type: 'auth_refresh_request', requestId, turnId: state.currentTurnId };
     send(req);
+  });
+}
+
+function requestBrowserTool(sessionId: string, command: string): Promise<MsgBrowserToolResult> {
+  return new Promise((resolve) => {
+    const requestId = `browser_${Date.now().toString(36)}_${Math.random()
+      .toString(36)
+      .slice(2, 8)}`;
+    state.pendingBrowserTool.set(requestId, { resolve });
+    const req: MsgBrowserToolRequest = { type: 'browser_tool_request', requestId, sessionId, command };
+    send(req);
+
+    state.turnAbort?.signal.addEventListener('abort', () => {
+      const pending = state.pendingBrowserTool.get(requestId);
+      if (pending) {
+        state.pendingBrowserTool.delete(requestId);
+        pending.resolve({ type: 'browser_tool_result', requestId, output: 'Turn aborted', isError: true });
+      }
+    });
   });
 }
 
@@ -1328,6 +1359,7 @@ function buildWrappedTools(
     // gate so plan/auto modes stay in control.
     wrapWithPermissionGate(createPiWebFetchTool()),
     wrapWithPermissionGate(createPiWebSearchTool()),
+    wrapWithPermissionGate(createPiBrowserTool(() => state.init?.sessionId ?? '', requestBrowserTool)),
   ];
 
   // Add Agent tool if we have the necessary context
@@ -2542,6 +2574,14 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
       // leaving the request pending forever regardless of this response.
       const pending = state.pendingAuthRefresh.get(msg.requestId);
       if (!pending) return;
+      pending.resolve(msg);
+      return;
+    }
+
+    case 'browser_tool_result': {
+      const pending = state.pendingBrowserTool.get(msg.requestId);
+      if (!pending) return;
+      state.pendingBrowserTool.delete(msg.requestId);
       pending.resolve(msg);
       return;
     }

@@ -1,7 +1,7 @@
 # Architecture
 
-Design record for the core agent pipeline. Describes how the main process integrates
-the Claude Agent SDK, normalizes events, and wires them to the renderer.
+Design record for the core agent pipeline. Describes how the main process integrates the Claude Agent SDK, normalizes
+events, and wires them to the renderer.
 
 ---
 
@@ -31,13 +31,13 @@ Main process
 
 `agent/options.ts` builds the `Options` object passed to `query()`:
 
-- `ensureClaudeConfig()` — repairs `~/.claude.json` corruption (BOM, empty
-  file, stale `.backup`, `.corrupted.*`) before the subprocess starts.
+- `ensureClaudeConfig()` — repairs `~/.claude.json` corruption (BOM, empty file, stale `.backup`, `.corrupted.*`) before
+  the subprocess starts.
 - `buildClaudeSubprocessEnv(overrides?)` — merges auth env vars on top of
   `process.env`; strips Bedrock routing vars to prevent accidental routing.
 - `getDefaultOptions()` — sets `executable: 'node'`, adds `--env-file=/dev/null`
-  (defends against Bun's automatic `.env` loading in the SDK subprocess), and
-  resolves `pathToClaudeCodeExecutable` to the bundled `cli.js`.
+  (defends against Bun's automatic `.env` loading in the SDK subprocess), and resolves `pathToClaudeCodeExecutable` to
+  the bundled `cli.js`.
 
 The Anthropic backend assembles:
 
@@ -78,16 +78,15 @@ const options: Options = {
 | `result` (success)                                        | `turn_done` with session_id, stop_reason, usage |
 | `result` (non-success subtype)                            | `error`                                         |
 
-Events are forwarded over IPC as `{ id: turnId, ...event }` so the renderer
-correlates them by turn id.
+Events are forwarded over IPC as `{ id: turnId, ...event }` so the renderer correlates them by turn id.
 
 ---
 
 ## Pi backend (GitHub Copilot / ChatGPT Plus / OpenAI-compatible)
 
 `agent/backends/pi/agent.ts` spawns a Node subprocess running
-`@earendil-works/pi-coding-agent`. Communication is over stdin/stdout as
-newline-delimited JSON (`SubprocessInbound` / `SubprocessOutbound` in
+`@earendil-works/pi-coding-agent`. Communication is over stdin/stdout as newline-delimited JSON (`SubprocessInbound` /
+`SubprocessOutbound` in
 `protocol.ts`).
 
 Lifecycle:
@@ -95,36 +94,31 @@ Lifecycle:
 1. `init` message — session id, working directory, model, auth, permission mode ('plan' or 'auto'), system prompt
 2. `prompt` messages — user turns
 3. Subprocess emits `event` messages (pre-adapted to `AgentChatEvent`)
-4. `auth_required` from subprocess → main refreshes the Copilot or ChatGPT token and
-   pushes a `token_update` back in
-5. `set_model` / `set_thinking_level` / `set_permission_mode` — live updates
-   without restarting the subprocess
+4. `auth_required` from subprocess → main refreshes the Copilot or ChatGPT token and pushes a `token_update` back in
+5. `set_model` / `set_thinking_level` / `set_permission_mode` — live updates without restarting the subprocess
 6. Sessions persist under `<sessionPath>/.pi-sessions/` and are resumed via
    `resumePiSessionId`
 
-For **OpenAI-compatible providers** (StepFun, DeepSeek, Moonshot, Together AI,
-Groq, OpenRouter, xAI, custom), model discovery hits the provider's `/v1/models`
-endpoint from the main process (no CORS), and authentication uses a Bearer API key
-resolved via `auth/resolve.ts` into `LocalApiAuth` (baseUrl + optional key).
-See [OPENAI-COMPATIBLE.md](OPENAI-COMPATIBLE.md) for the full reference.
+For **OpenAI-compatible providers** (StepFun, DeepSeek, Moonshot, Together AI, Groq, OpenRouter, xAI, custom), model
+discovery hits the provider's `/v1/models`
+endpoint from the main process (no CORS), and authentication uses a Bearer API key resolved via `auth/resolve.ts` into
+`LocalApiAuth` (baseUrl + optional key). See [OPENAI-COMPATIBLE.md](OPENAI-COMPATIBLE.md) for the full reference.
 
 ---
 
 ## System prompt
 
-`agent/system-prompt.ts` assembles the dynamic context block appended to
-every turn's user message:
+`agent/system-prompt.ts` assembles the dynamic context block appended to every turn's user message:
 
 - Working directory path and context label
 - Current date/time (authoritative for the agent)
-- Discovered project context files (`CLAUDE.md` / `AGENTS.md`) listed for
-  the model to read
+- Discovered project context files (`CLAUDE.md` / `AGENTS.md`) listed for the model to read
 - User preferences (`formatPreferencesForPrompt()`)
 - Skill directives (from `@mention` resolution)
 - Extension awareness block (installed extensions + guide paths)
 
-Project context files are discovered recursively up to a configurable depth,
-with a per-directory TTL cache invalidated on file-system events.
+Project context files are discovered recursively up to a configurable depth, with a per-directory TTL cache invalidated
+on file-system events.
 
 ---
 
@@ -132,9 +126,8 @@ with a per-directory TTL cache invalidated on file-system events.
 
 - API keys and OAuth tokens are stored encrypted via Electron `safeStorage`
   under `<userData>/credentials.enc`.
-- `auth/resolve.ts` is called at the start of every turn; it refreshes
-  expiring tokens (5-minute buffer) and serialises concurrent refreshes
-  for the same connection with a per-slug mutex.
+- `auth/resolve.ts` is called at the start of every turn; it refreshes expiring tokens (5-minute buffer) and serialises
+  concurrent refreshes for the same connection with a per-slug mutex.
 - Claude OAuth tokens are refreshed with `oauth/claude-flow.ts:refreshTokens()`.
 - ChatGPT Plus/Codex tokens are refreshed with `oauth/chatgpt-flow.ts:refreshChatGptTokens()`.
 - Copilot tokens are refreshed with `oauth/copilot-flow.ts:refreshCopilotTokens()`
@@ -146,27 +139,25 @@ with a per-directory TTL cache invalidated on file-system events.
 
 `extensions/` manages installable capability packs. Three variant types:
 
-- **MCP-backed** — spawns an MCP server (stdio or HTTP/SSE) and exposes its
-  tools as `mcp__<slug>__<tool>` on **both backends**. The Anthropic backend
-  wires them into `Options.mcpServers` via `buildSdkMcpServers(cwd?)`; the Pi
-  backend resolves serializable configs with `buildResolvedMcpServers(cwd?)`.
+- **MCP-backed** — spawns an MCP server (stdio or HTTP/SSE) and exposes its tools as `mcp__<slug>__<tool>` on **both
+  backends**. The Anthropic backend wires them into `Options.mcpServers` via `buildSdkMcpServers(cwd?)`; the Pi backend
+  resolves serializable configs with `buildResolvedMcpServers(cwd?)`.
 - **CLI-bound** — injects env vars into the SDK subprocess via
   `resolveExtensionEnv(cwd?)`, enabling bundled CLI tools.
 - **Guide-only** — provides a `guide.md` referenced in the per-turn awareness block.
 
 All three types support two tiers (same priority rules as skills/agents):
 
-| Tier | Path | Notes |
-|------|------|-------|
-| User | `~/.minimalist-agent/extensions/<slug>/` | `enabled` flag respected; MCP requires consent + keychain secrets |
+| Tier    | Path                                         | Notes                                                                                        |
+|---------|----------------------------------------------|----------------------------------------------------------------------------------------------|
+| User    | `~/.minimalist-agent/extensions/<slug>/`     | `enabled` flag respected; MCP requires consent + keychain secrets                            |
 | Project | `<cwd>/.minimalist-agent/extensions/<slug>/` | Always active (presence = enabled); MCP auto-consented; env refs resolved from `process.env` |
 
-All extension-loading functions accept an optional `cwd` parameter and merge
-both tiers. The `ExtensionRegistry` is user-tier only (Settings panel); project-tier
-is loaded dynamically per session turn.
+All extension-loading functions accept an optional `cwd` parameter and merge both tiers. The `ExtensionRegistry` is
+user-tier only (Settings panel); project-tier is loaded dynamically per session turn.
 
-For user-tier MCP: consent required before connecting; secrets stored in OS keychain;
-decrypted in main process before crossing into Pi subprocess via `MsgInit`.
+For user-tier MCP: consent required before connecting; secrets stored in OS keychain; decrypted in main process before
+crossing into Pi subprocess via `MsgInit`.
 
 ---
 
@@ -239,10 +230,9 @@ Three storage tiers. Priority (highest wins): **project > user > machine**.
 ```
 
 **Migration:** On first launch, `storage/migrate-user-config.ts` copies
-`<userData>/agents|skills|extensions` → `~/.minimalist-agent/` (idempotent,
-guarded by a marker file, only written on full success). Source dirs in
-`<userData>` are removed after the marker is written — they are never scanned
-post-migration.
+`<userData>/agents|skills|extensions` → `~/.minimalist-agent/` (idempotent, guarded by a marker file, only written on
+full success). Source dirs in
+`<userData>` are removed after the marker is written — they are never scanned post-migration.
 
 ---
 
@@ -270,14 +260,12 @@ On-device speech-to-text (Cmd+Shift+M) for the composer, via `sherpa-onnx-node`
 
 **Module boundaries:**
 
-- `src/main/voice/model.ts` — first-use model download + SHA256 verification, cached
-  under `userData/voice-models/`
-- `src/main/voice/vad.ts` / `recognizer.ts` — single-flight VAD and recognizer
-  instances shared process-wide (one active dictation surface today)
-- `src/main/voice/session.ts` — one dictation session: accept waveform → drain
-  completed segments → transcribe each
-- `src/renderer/.../useVoiceDictation.ts` — `AudioWorkletNode` capture, streaming
-  16kHz downsample (`pcm.ts`), ordered chunk send chain, cursor-aware insertion
+- `src/main/voice/model.ts` — first-use model download + SHA256 verification, cached under `userData/voice-models/`
+- `src/main/voice/vad.ts` / `recognizer.ts` — single-flight VAD and recognizer instances shared process-wide (one active
+  dictation surface today)
+- `src/main/voice/session.ts` — one dictation session: accept waveform → drain completed segments → transcribe each
+- `src/renderer/.../useVoiceDictation.ts` — `AudioWorkletNode` capture, streaming 16kHz downsample (`pcm.ts`), ordered
+  chunk send chain, cursor-aware insertion
 
 **IPC:** `voice:getModelStatus`, `voice:downloadModel` (+ `voice:downloadProgress`
 push), `voice:startSession`, `voice:pushChunk`, `voice:endSession`
@@ -290,6 +278,28 @@ See [VOICE.md](./VOICE.md) for full documentation.
 
 ---
 
+## Browser tool
+
+Session-scoped, real (visible) Chromium window the agent drives via Chrome DevTools Protocol (`webContents.debugger`) —
+navigate/snapshot/click/fill/ screenshot a running app instead of the static `web_fetch`/`web_search` pair.
+
+**Module boundaries:**
+
+- `src/main/browser/browser-cdp.ts` — CDP wrapper: accessibility snapshot, element interaction, screenshot (+ annotated
+  overlay), console log buffer
+- `src/main/browser/browser-pane-manager.ts` — one `BrowserWindow` per
+  `sessionId`, lazily opened; agent-control badge + release shortcut
+- `src/main/browser/browser-tool-runtime.ts` — parses the CLI-style command string and dispatches to the pane manager
+- `src/main/pi-server/browser-tool.ts` — the tool definition itself, running in the electron-free pi-server subprocess;
+  round-trips the command to main via `browser_tool_request`/`browser_tool_result` (`protocol.ts`)
+
+**IPC:** `browser:getState`, `browser:release`, `browser:close` (+
+`browser-state-changed` push for the chat header's status pill)
+
+See [BROWSER-TOOL.md](./BROWSER-TOOL.md) for full documentation, the command list, and deferred/out-of-scope items.
+
+---
+
 ## Context Panel
 
 Collapsible side panel (`Cmd+Shift+B`) showing what's available and pinned for the active session.
@@ -299,21 +309,20 @@ Collapsible side panel (`Cmd+Shift+B`) showing what's available and pinned for t
 
 **Sections:**
 
-| Section             | Content                                                    | Action      |
-|---------------------|------------------------------------------------------------|---------|
-| Active this session | Pinned skills                                              | Unpin       |
-| `<project-name>`    | Project-local skills from `<cwd>/.minimalist-agent/`       | Pin / Unpin |
-| Global              | User-tier skills from `~/.minimalist-agent/`               | Pin / Unpin |
-| Extensions          | All enabled extensions (read-only)                         | —           |
+| Section             | Content                                              | Action      |
+|---------------------|------------------------------------------------------|-------------|
+| Active this session | Pinned skills                                        | Unpin       |
+| `<project-name>`    | Project-local skills from `<cwd>/.minimalist-agent/` | Pin / Unpin |
+| Global              | User-tier skills from `~/.minimalist-agent/`         | Pin / Unpin |
+| Extensions          | All enabled extensions (read-only)                   | —           |
 
 **Pin mechanic:** Pinning adds the skill's name + description to the per-turn
-`<pinned_context>` block in the system prompt — a lightweight awareness note
-(~15 tokens per item) so the model knows the skill exists and can apply it
-when relevant. Not full-content injection. Pinned state persists in
+`<pinned_context>` block in the system prompt — a lightweight awareness note (~15 tokens per item) so the model knows
+the skill exists and can apply it when relevant. Not full-content injection. Pinned state persists in
 `session.json → pinnedAssets: string[]` (format: `'user:slug'` or `'project:slug'`).
 
-**Discovery card:** When a new session's CWD contains `.minimalist-agent/` assets,
-a one-time dismissible card appears at the top of the chat, linking to the panel.
+**Discovery card:** When a new session's CWD contains `.minimalist-agent/` assets, a one-time dismissible card appears
+at the top of the chat, linking to the panel.
 
 **IPC handlers:** `context:listAvailable`, `context:pin`, `context:unpin`,
 `context:estimateTokens`, `context:hasProjectAssets` (`src/main/ipc.ts`).

@@ -26,7 +26,7 @@ const ButtonInner = forwardRef<HTMLButtonElement, Props>(
       ref={ref}
       aria-label={label}
       className={cn(
-        'grid place-items-center rounded-md text-fg-muted transition-colors',
+        'grid place-items-center rounded-md text-fg-muted transition-colors cursor-pointer',
         'hover:bg-elevated hover:text-fg',
         'disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-fg-muted',
         SIZE_CLASS[size],

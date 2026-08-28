@@ -403,6 +403,14 @@ interface TerminalTabInfo {
   alive: boolean;
 }
 
+interface BrowserPaneState {
+  sessionId: string;
+  open: boolean;
+  url: string;
+  title: string;
+  agentControl: boolean;
+}
+
 interface UpdateInfo {
   state: UpdateState;
   currentVersion: string;
@@ -1004,6 +1012,25 @@ const api = {
       const h = (_e: unknown, p: { downloadedBytes: number; totalBytes: number | null }) => cb(p);
       ipcRenderer.on('voice:downloadProgress', h);
       return () => ipcRenderer.removeListener('voice:downloadProgress', h);
+    },
+  },
+  browser: {
+    getState: (sessionId: string): Promise<BrowserPaneState> =>
+      ipcRenderer.invoke('browser:getState', sessionId),
+
+    focus: (sessionId: string): Promise<void> =>
+      ipcRenderer.invoke('browser:focus', sessionId),
+
+    release: (sessionId: string): Promise<BrowserPaneState> =>
+      ipcRenderer.invoke('browser:release', sessionId),
+
+    close: (sessionId: string): Promise<BrowserPaneState> =>
+      ipcRenderer.invoke('browser:close', sessionId),
+
+    onStateChanged: (cb: (state: BrowserPaneState) => void): (() => void) => {
+      const h = (_e: unknown, state: BrowserPaneState) => cb(state);
+      ipcRenderer.on('browser-state-changed', h);
+      return () => ipcRenderer.removeListener('browser-state-changed', h);
     },
   },
 };
