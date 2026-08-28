@@ -5,6 +5,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.25.0] — 2026-08-28
+
+Native browser automation for the agent, plus settings and preferences UI cleanup.
+
+### Added
+
+**Agent-controlled browser**
+
+- The agent can now drive a live, session-scoped Chromium pane via Chrome DevTools Protocol — navigating, taking accessibility snapshots, clicking, filling forms, and capturing annotated screenshots — instead of relying only on static web fetch/search.
+- Console log buffering and a chat-header status pill show when the agent is in control, with a one-click release/close.
+
+### Changed
+
+- Settings' App and Telemetry panels were consolidated: Notifications/Power/Logs now live under General/About, and Telemetry's Privacy toggle merged into the main section, both using simple dividers instead of separate cards.
+- The location preference is now a single free-text field instead of separate city/region/country/timezone fields (the OS's live timezone already covers this); existing values are reset once during the upgrade.
+
+### Fixed
+
+- Attachments could not be added while the agent was streaming a response, with no functional reason for the restriction; you can now attach files at any time.
+
+---
+
 ## [1.24.0] — 2026-08-28
 
 Extension security: a per-server tool blocklist and a unified, credential-aware consent model.
