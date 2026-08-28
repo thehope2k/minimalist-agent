@@ -284,7 +284,6 @@ export function MessageInput({
           <AttachmentSection
             attachments={attachments}
             loadingCount={loadingCount}
-            isStreaming={isStreaming}
             supportsVision={supportsVision}
             onRemove={removeAttachment}
             onUpdate={updateAttachment}
