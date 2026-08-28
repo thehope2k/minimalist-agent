@@ -390,17 +390,10 @@ export interface TelemetrySettings {
   resourceAttributes: string;
 }
 
-export interface UserLocation {
-  city?: string;
-  region?: string;
-  country?: string;
-}
-
 export interface UserPreferences {
   name?: string;
-  /** IANA timezone, e.g. "America/Los_Angeles". */
-  timezone?: string;
-  location?: UserLocation;
+  /** Free-text location, e.g. "Hanoi, Vietnam". */
+  location?: string;
   /** ISO 639-1 language code (e.g. 'en', 'ja'). */
   language?: string;
   notes?: string;

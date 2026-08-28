@@ -1,6 +1,6 @@
-// User preferences — name, timezone, location, language, free-form notes,
-// and whether to include the "Co-Authored-By" trailer in commits. Mirrors
-// the comprehensive harness pattern: a structured block formatted into the
+// User preferences — name, location, language, free-form notes, and whether
+// to include the "Co-Authored-By" trailer in commits. Mirrors the
+// comprehensive harness pattern: a structured block formatted into the
 // system prompt's user-customization slot.
 //
 // Stored at <userData>/preferences.json. Keep this file separate from
@@ -11,19 +11,11 @@ import { join } from 'node:path';
 import { Paths } from './paths';
 import { type FileSchema, load, save } from './json-store';
 
-export interface UserLocation {
-  city?: string;
-  region?: string;
-  country?: string;
-}
-
 export interface UserPreferences {
   /** What to call the user. */
   name?: string;
-  /** IANA timezone, e.g. "America/Los_Angeles". Free-text — no validation. */
-  timezone?: string;
-  /** City / region / country (any combination). */
-  location?: UserLocation;
+  /** Free-text location, e.g. "Hanoi, Vietnam". */
+  location?: string;
   /** Language code (ISO 639-1) to respond in. Defaults to 'en'. */
   language?: string;
   /** Free-form notes about the user — replaces the old appendSystemPrompt. */
@@ -36,9 +28,22 @@ const DEFAULTS: UserPreferences = {};
 
 const SCHEMA: FileSchema<UserPreferences> = {
   path: join(Paths.root(), 'preferences.json'),
-  currentVersion: 1,
+  currentVersion: 2,
   defaultValue: DEFAULTS,
-  migrations: [],
+  migrations: [
+    // v0 → v1: no-op (initial version, unreachable — no file is ever
+    // written below the version that existed when this store was introduced).
+    (prev) => prev as UserPreferences,
+    // v1 → v2: dropped the unused `timezone` field (the per-turn date/time
+    // context already reflects the OS's live timezone every turn) and
+    // replaced the structured {city, region, country} location with one
+    // free-text field. Not worth preserving the old values — reset both.
+    (prev) => {
+      const { timezone: _timezone, location: _location, ...rest } =
+        prev as UserPreferences & { timezone?: string };
+      return rest as UserPreferences;
+    },
+  ],
 };
 
 export function loadPreferences(): UserPreferences {
@@ -47,21 +52,6 @@ export function loadPreferences(): UserPreferences {
 
 export function savePreferences(prefs: UserPreferences): void {
   save(SCHEMA, prefs);
-}
-
-export function updatePreferences(
-  patch: Partial<UserPreferences>,
-): UserPreferences {
-  const current = loadPreferences();
-  const next: UserPreferences = {
-    ...current,
-    ...patch,
-    location: patch.location
-      ? { ...current.location, ...patch.location }
-      : current.location,
-  };
-  save(SCHEMA, next);
-  return next;
 }
 
 /** Whether to include the Co-Authored-By trailer. Defaults to true. */
@@ -108,8 +98,7 @@ function languageNativeName(code: string): string {
  *     ## User Preferences - User has explicitly set these preferences, so adhere to them
  *
  *     - Name: …
- *     - Timezone: …
- *     - Location: city, region, country
+ *     - Location: …
  *     - Preferred language: …
  *
  *     ### Notes about this user
@@ -124,14 +113,9 @@ export function formatPreferencesForPrompt(): string {
   const langCode = (prefs.language ?? 'en').toLowerCase();
   const langName = languageNativeName(langCode);
 
-  const hasLocation =
-    !!prefs.location &&
-    (!!prefs.location.city || !!prefs.location.region || !!prefs.location.country);
-
   const hasAnything =
     !!prefs.name ||
-    !!prefs.timezone ||
-    hasLocation ||
+    !!prefs.location ||
     !!prefs.notes ||
     langCode !== 'en';
 
@@ -146,16 +130,8 @@ export function formatPreferencesForPrompt(): string {
     lines.push(`- Name: ${prefs.name}`);
   }
 
-  if (prefs.timezone) {
-    lines.push(`- Timezone: ${prefs.timezone}`);
-  }
-
-  if (hasLocation) {
-    const loc = prefs.location!;
-    const parts = [loc.city, loc.region, loc.country].filter(Boolean);
-    if (parts.length > 0) {
-      lines.push(`- Location: ${parts.join(', ')}`);
-    }
+  if (prefs.location) {
+    lines.push(`- Location: ${prefs.location}`);
   }
 
   // Always include language — the model needs to know which language to

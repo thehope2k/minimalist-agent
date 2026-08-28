@@ -287,16 +287,9 @@ interface TelemetrySettings {
   resourceAttributes: string;
 }
 
-interface UserLocation {
-  city?: string;
-  region?: string;
-  country?: string;
-}
-
 interface UserPreferences {
   name?: string;
-  timezone?: string;
-  location?: UserLocation;
+  location?: string;
   language?: string;
   notes?: string;
   includeCoAuthoredBy?: boolean;

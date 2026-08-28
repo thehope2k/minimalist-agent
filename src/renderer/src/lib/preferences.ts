@@ -50,13 +50,7 @@ export async function updatePreferences(
   patch: Partial<UserPreferences>,
 ): Promise<void> {
   const current = cache ?? (await load());
-  const next: UserPreferences = {
-    ...current,
-    ...patch,
-    location: patch.location
-      ? { ...current.location, ...patch.location }
-      : current.location,
-  };
+  const next: UserPreferences = { ...current, ...patch };
   await window.api.preferences.save(next);
   await reload();
 }

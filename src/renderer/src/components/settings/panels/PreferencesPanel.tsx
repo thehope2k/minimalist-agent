@@ -44,7 +44,7 @@ export function PreferencesPanel() {
     <div className="mx-auto max-w-3xl px-6 py-6">
       <SettingsSection
         title="About you"
-        subtitle="Pinned to the system prompt so the model can address you correctly and respond in your preferred language."
+        subtitle="Pinned to the system prompt so the model can address you correctly, respond in your preferred language, and reason about time/weather/locale questions."
       >
         <SettingsCard>
           <PrefRow
@@ -53,14 +53,6 @@ export function PreferencesPanel() {
             value={prefs.name ?? ''}
             placeholder="e.g. Alex"
             onCommit={(v) => void updatePreferences({ name: v || undefined })}
-          />
-          <SettingsDivider />
-          <PrefRow
-            label="Timezone"
-            description='IANA name, e.g. "America/Los_Angeles". Leave blank to use the system default.'
-            value={prefs.timezone ?? ''}
-            placeholder="America/Los_Angeles"
-            onCommit={(v) => void updatePreferences({ timezone: v || undefined })}
           />
           <SettingsDivider />
           <SettingsRow
@@ -78,61 +70,32 @@ export function PreferencesPanel() {
               />
             }
           />
-        </SettingsCard>
-      </SettingsSection>
-
-      <SettingsSection
-        title="Location"
-        subtitle="Optional. Helpful for time, weather, and locale-aware questions."
-      >
-        <SettingsCard>
-          <PrefRow
-            label="City"
-            value={prefs.location?.city ?? ''}
-            placeholder="San Francisco"
-            onCommit={(v) =>
-              void updatePreferences({ location: { city: v || undefined } })
-            }
-          />
           <SettingsDivider />
           <PrefRow
-            label="Region / State"
-            value={prefs.location?.region ?? ''}
-            placeholder="California"
-            onCommit={(v) =>
-              void updatePreferences({ location: { region: v || undefined } })
-            }
-          />
-          <SettingsDivider />
-          <PrefRow
-            label="Country"
-            value={prefs.location?.country ?? ''}
-            placeholder="United States"
-            onCommit={(v) =>
-              void updatePreferences({ location: { country: v || undefined } })
-            }
+            label="Location"
+            description="Optional — e.g. city, country."
+            value={prefs.location ?? ''}
+            placeholder="e.g. Hanoi, Vietnam"
+            controlClassName="w-80 text-right"
+            onCommit={(v) => void updatePreferences({ location: v || undefined })}
           />
         </SettingsCard>
       </SettingsSection>
 
       <SettingsSection
         title="Notes about you"
-        subtitle="Free-form text added to every system prompt under “Notes about this user”. Use it for stable preferences (response style, expertise level, recurring constraints)."
+        subtitle="Included in every conversation, so you don't need to repeat yourself. Use it for things like your experience level, how you like answers explained, or habits you want the assistant to always follow."
       >
-        <SettingsCard>
-          <div className="px-4 py-3">
-            <Textarea
-              rows={5}
-              placeholder="e.g. I'm a senior engineer; skip beginner explanations. Prefer concise answers."
-              defaultValue={prefs.notes ?? ''}
-              onBlur={(e) =>
-                void updatePreferences({
-                  notes: e.target.value.trim() || undefined,
-                })
-              }
-            />
-          </div>
-        </SettingsCard>
+        <Textarea
+          rows={5}
+          placeholder="e.g. I'm a senior engineer; skip beginner explanations. Prefer concise answers."
+          defaultValue={prefs.notes ?? ''}
+          onBlur={(e) =>
+            void updatePreferences({
+              notes: e.target.value.trim() || undefined,
+            })
+          }
+        />
       </SettingsSection>
 
       <SettingsSection
@@ -154,56 +117,95 @@ export function PreferencesPanel() {
   );
 }
 
-/** Inline-editable text row that commits on blur or Enter. */
-function PrefRow(props: {
-  label: string;
-  description?: string;
+/**
+ * Text input that tracks a local draft and commits (trimmed) on blur or
+ * Enter, reverting on Escape. Remounts (via the `key`) whenever the
+ * persisted value changes externally so the draft stays in sync without
+ * manual reconciliation.
+ */
+function CommitInput({
+  value,
+  placeholder,
+  className,
+  onCommit,
+}: {
   value: string;
   placeholder?: string;
+  className?: string;
   onCommit: (next: string) => void;
 }) {
-  // Remount whenever the persisted value changes externally so the local
-  // draft state stays in sync without manual reconciliation.
-  return <PrefRowInner key={props.value} {...props} />;
+  return (
+    <CommitInputInner
+      key={value}
+      value={value}
+      placeholder={placeholder}
+      className={className}
+      onCommit={onCommit}
+    />
+  );
 }
 
-function PrefRowInner({
+function CommitInputInner({
+  value,
+  placeholder,
+  className,
+  onCommit,
+}: {
+  value: string;
+  placeholder?: string;
+  className?: string;
+  onCommit: (next: string) => void;
+}) {
+  const [draft, setDraft] = useState(value);
+
+  return (
+    <Input
+      value={draft}
+      placeholder={placeholder}
+      className={className}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={() => {
+        const trimmed = draft.trim();
+        if (trimmed !== value) onCommit(trimmed);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.currentTarget.blur();
+        } else if (e.key === 'Escape') {
+          setDraft(value);
+          e.currentTarget.blur();
+        }
+      }}
+    />
+  );
+}
+
+/** Labeled settings row wrapping a {@link CommitInput}. */
+function PrefRow({
   label,
   description,
   value,
   placeholder,
+  controlClassName = 'w-64 text-right',
   onCommit,
 }: {
   label: string;
   description?: string;
   value: string;
   placeholder?: string;
+  controlClassName?: string;
   onCommit: (next: string) => void;
 }) {
-  const [draft, setDraft] = useState(value);
-
   return (
     <SettingsRow
       label={label}
       description={description}
       control={
-        <Input
-          value={draft}
+        <CommitInput
+          value={value}
           placeholder={placeholder}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={() => {
-            const trimmed = draft.trim();
-            if (trimmed !== value) onCommit(trimmed);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.currentTarget.blur();
-            } else if (e.key === 'Escape') {
-              setDraft(value);
-              e.currentTarget.blur();
-            }
-          }}
-          className="w-64 text-right"
+          className={controlClassName}
+          onCommit={onCommit}
         />
       }
     />
