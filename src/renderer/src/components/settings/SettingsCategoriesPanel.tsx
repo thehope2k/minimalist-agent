@@ -12,9 +12,9 @@ import { cn } from '@/lib/utils';
 export const SETTINGS_CATEGORIES = [
   { id: 'ai',          label: 'AI',          hint: 'Model, thinking, connections',  icon: Sparkles },
   { id: 'preferences', label: 'Preferences', hint: 'Name, language, location, notes',  icon: User },
+  { id: 'app',         label: 'App',         hint: 'Notifications and updates',     icon: Cog },
   { id: 'projects',    label: 'Projects',    hint: 'Group sessions by project',     icon: Folders },
   { id: 'terminal',    label: 'Terminal',    hint: 'Shell, font, scrollback',           icon: SquareTerminal },
-  { id: 'app',         label: 'App',         hint: 'Notifications and updates',     icon: Cog },
   { id: 'telemetry',   label: 'Telemetry',   hint: 'OpenTelemetry tracing',             icon: Activity },
   { id: 'shortcuts',    label: 'Shortcuts',   hint: 'Keyboard shortcut reference',       icon: Keyboard },
 ] as const;

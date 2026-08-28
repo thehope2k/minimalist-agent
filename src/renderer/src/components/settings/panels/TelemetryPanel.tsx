@@ -10,6 +10,7 @@ import {
 } from '@/lib/telemetry-settings';
 import {
   SettingsCard,
+  SettingsDivider,
   SettingsRow,
   SettingsSection,
   SettingsToggle,
@@ -66,6 +67,14 @@ export function TelemetryPanel() {
             checked={settings.enabled}
             onCheckedChange={(v) => update({ enabled: v })}
           />
+          <SettingsDivider />
+          <SettingsToggle
+            label="Capture content"
+            description="Attach prompt, response, and tool-argument text to spans. Off keeps traces to metadata only (timings, token counts, tool names). Secrets are never recorded."
+            checked={settings.captureContent}
+            onCheckedChange={(v) => update({ captureContent: v })}
+            disabled={!settings.enabled}
+          />
         </SettingsCard>
       </SettingsSection>
 
@@ -88,11 +97,10 @@ export function TelemetryPanel() {
               />
             }
           />
-        </SettingsCard>
 
-        {settings.exporter === 'file' && (
-          <div className="mt-3">
-            <SettingsCard>
+          {settings.exporter === 'file' && (
+            <>
+              <SettingsDivider />
               <div className="px-4 py-3">
                 <Field
                   label="Output file"
@@ -106,23 +114,21 @@ export function TelemetryPanel() {
                     onChange={(e) => update({ outfile: e.target.value })}
                   />
                 </Field>
-                <div className="mt-3">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => void revealTracesFile()}
-                  >
-                    Reveal traces file
-                  </Button>
-                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  onClick={() => void revealTracesFile()}
+                >
+                  Reveal traces file
+                </Button>
               </div>
-            </SettingsCard>
-          </div>
-        )}
+            </>
+          )}
 
-        {settings.exporter === 'otlp' && (
-          <div className="mt-3">
-            <SettingsCard>
+          {settings.exporter === 'otlp' && (
+            <>
+              <SettingsDivider />
               <div className="px-4 py-3">
                 <Field
                   label="OTLP endpoint"
@@ -137,9 +143,9 @@ export function TelemetryPanel() {
                   />
                 </Field>
               </div>
-            </SettingsCard>
-          </div>
-        )}
+            </>
+          )}
+        </SettingsCard>
       </SettingsSection>
 
       <SettingsSection
@@ -147,7 +153,7 @@ export function TelemetryPanel() {
         subtitle="Attributes attached to every span's resource so a shared usage dashboard can attribute token usage to you. Optional; metadata only."
       >
         <SettingsCard>
-          <div className="px-4 py-3">
+          <div className="space-y-3 px-4 py-3">
             <Field
               label="Display name"
               hint="Emitted as the user.name resource attribute, e.g. alice. Use the same value on every device so your totals merge."
@@ -159,43 +165,27 @@ export function TelemetryPanel() {
                 onChange={(e) => update({ userName: e.target.value })}
               />
             </Field>
-            <div className="mt-3">
-              <Field label="Team id" hint="Emitted as the team.id resource attribute, e.g. team-a.">
-                <Input
-                  placeholder="team-a"
-                  value={settings.teamId}
-                  disabled={!settings.enabled}
-                  onChange={(e) => update({ teamId: e.target.value })}
-                />
-              </Field>
-            </div>
-            <div className="mt-3">
-              <Field
-                label="Extra resource attributes"
-                hint="Advanced. OTEL_RESOURCE_ATTRIBUTES form: key=value,key=value. Merged after the fields above. The standard OTEL_RESOURCE_ATTRIBUTES env var is also honored."
-              >
-                <Input
-                  mono
-                  placeholder="deployment.environment=prod,cost.center=eng-42"
-                  value={settings.resourceAttributes}
-                  disabled={!settings.enabled}
-                  onChange={(e) => update({ resourceAttributes: e.target.value })}
-                />
-              </Field>
-            </div>
+            <Field label="Team id" hint="Emitted as the team.id resource attribute, e.g. team-a.">
+              <Input
+                placeholder="team-a"
+                value={settings.teamId}
+                disabled={!settings.enabled}
+                onChange={(e) => update({ teamId: e.target.value })}
+              />
+            </Field>
+            <Field
+              label="Extra resource attributes"
+              hint="Advanced. OTEL_RESOURCE_ATTRIBUTES form: key=value,key=value. Merged after the fields above. The standard OTEL_RESOURCE_ATTRIBUTES env var is also honored."
+            >
+              <Input
+                mono
+                placeholder="deployment.environment=prod,cost.center=eng-42"
+                value={settings.resourceAttributes}
+                disabled={!settings.enabled}
+                onChange={(e) => update({ resourceAttributes: e.target.value })}
+              />
+            </Field>
           </div>
-        </SettingsCard>
-      </SettingsSection>
-
-      <SettingsSection title="Privacy">
-        <SettingsCard>
-          <SettingsToggle
-            label="Capture content"
-            description="Attach prompt, response, and tool-argument text to spans. Off keeps traces to metadata only (timings, token counts, tool names). Secrets are never recorded."
-            checked={settings.captureContent}
-            onCheckedChange={(v) => update({ captureContent: v })}
-            disabled={!settings.enabled}
-          />
         </SettingsCard>
       </SettingsSection>
     </div>

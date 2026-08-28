@@ -89,6 +89,27 @@ export function AppPanel() {
 
   return (
     <div className="mx-auto max-w-190 px-8 py-10">
+      <SettingsSection title="General">
+        <SettingsCard>
+          <SettingsToggle
+            label="Desktop Notifications"
+            description="Show system notifications when long-running tasks finish."
+            checked={settings.notificationsEnabled}
+            onCheckedChange={(v) => {
+              setNotificationsEnabled(v);
+              refresh();
+            }}
+          />
+          <SettingsDivider />
+          <SettingsToggle
+            label="Keep Screen Awake"
+            description="Prevent display sleep while the agent is running."
+            checked={keepAwake}
+            onCheckedChange={handleKeepAwake}
+          />
+        </SettingsCard>
+      </SettingsSection>
+
       <SettingsSection title="Storage">
         <SettingsCard>
           <SettingsToggle
@@ -113,20 +134,6 @@ export function AppPanel() {
                 menuWidth={200}
               />
             }
-          />
-        </SettingsCard>
-      </SettingsSection>
-
-      <SettingsSection title="Notifications">
-        <SettingsCard>
-          <SettingsToggle
-            label="Desktop Notifications"
-            description="Show system notifications when long-running tasks finish."
-            checked={settings.notificationsEnabled}
-            onCheckedChange={(v) => {
-              setNotificationsEnabled(v);
-              refresh();
-            }}
           />
         </SettingsCard>
       </SettingsSection>
@@ -156,17 +163,6 @@ export function AppPanel() {
         </SettingsCard>
       </SettingsSection>
 
-      <SettingsSection title="Power">
-        <SettingsCard>
-          <SettingsToggle
-            label="Keep Screen Awake"
-            description="Prevent display sleep while the agent is running."
-            checked={keepAwake}
-            onCheckedChange={handleKeepAwake}
-          />
-        </SettingsCard>
-      </SettingsSection>
-
       <SettingsSection title="About">
         <SettingsCard>
           <SettingsRow
@@ -175,6 +171,7 @@ export function AppPanel() {
               <span className="text-sm text-fg-subtle">{version ?? 'Loading…'}</span>
             }
           />
+          <SettingsDivider />
           <SettingsRow
             label="Check for Updates"
             control={
@@ -187,11 +184,7 @@ export function AppPanel() {
               </Button>
             }
           />
-        </SettingsCard>
-      </SettingsSection>
-
-      <SettingsSection title="Logs">
-        <SettingsCard>
+          <SettingsDivider />
           <SettingsRow
             label="Application Logs"
             description="Reveal or copy the on-disk log file to attach to a bug report."
