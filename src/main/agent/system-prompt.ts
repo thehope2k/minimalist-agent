@@ -19,6 +19,7 @@ import { getSettings, DEFAULT_CONTEXT_FILE_NAMES } from '../storage/settings';
 import { getActivePlan } from './plan-cache';
 import type { Plan } from '../../shared/planning-types';
 import { createLogger } from '../logger';
+import { Paths } from '../storage/paths';
 
 const log = createLogger('system-prompt');
 
@@ -484,6 +485,8 @@ When creating a skill, confirm which scope the user wants unless already specifi
 
 **Unmatched mentions:** Treat \`@unknown\` as a typo or plain mention. Don't fabricate behavior.
 
+**Creating or editing a skill (in chat, not the dialog):** read \`${Paths.skillsReferenceDoc()}\` first — it is the full format spec (frontmatter fields, slug rules, body conventions). The one-liner above is not enough to write a correct \`SKILL.md\` from scratch or to safely modify an existing one.
+
 ## Extensions
 
 Extensions add capabilities beyond built-in tools. Each is a directory with:
@@ -499,6 +502,8 @@ Extensions add capabilities beyond built-in tools. Each is a directory with:
 **Awareness block:** Each turn, runtime prepends an \`<extensions>\` block listing installed extensions **by slug** and the correct guide path for each extension's scope. Before using one for the first time in a session, read its guide. Mentioning \`@slug\` auto-surfaces that guide path for you.
 
 **Disabled extensions:** Appear in awareness but cannot be invoked. Suggest re-enabling if asked.
+
+**Creating or editing an extension:** read \`${Paths.extensionsReferenceDoc()}\` first — it is the full \`extension.json\` schema, including the \`env\`/\`mcp\` capability blocks and, critically, how credentials must be stored (\`SecretRef\`, never a literal string — see the doc's Secrets section before writing any \`env\` value). Never ask the user to paste a secret into chat; tell them to set it on the extension's info page instead.
 
 ## Diagrams (Mermaid)
 
