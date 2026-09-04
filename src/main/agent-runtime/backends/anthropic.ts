@@ -343,6 +343,7 @@ export async function* runAnthropicChat(
     scratchDir: req.chatSessionId
       ? join(Paths.sessionsDir(), req.chatSessionId, 'scratch')
       : undefined,
+    sessionId: req.chatSessionId,
     pinnedAssets: req.pinnedAssets,
   });
 

@@ -418,6 +418,7 @@ export async function* runPiChat(
   const prefix = buildPromptPrefix({
     cwd: req.cwd,
     scratchDir: join(req.chatSessionPath, 'scratch'),
+    sessionId: req.chatSessionId,
     pinnedAssets: req.pinnedAssets,
   });
 

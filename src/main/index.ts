@@ -13,6 +13,11 @@ import { getAppIcon } from './app-icon';
 import { checkOnLaunch } from './auto-update';
 import { classifyExternalUrl, formatBlockedUrlError } from '../shared/url-safety';
 import { getSettings, DEFAULT_SESSION_RETENTION_DAYS } from './storage/settings';
+import {
+  ASSET_PROTOCOL_SCHEME,
+  registerAssetProtocolAsPrivileged,
+  registerAssetProtocolHandler,
+} from './protocols/asset-protocol';
 
 import { isWorktreeSupported } from './agent-runtime/backends/pi/worktree-manager';
 
@@ -22,6 +27,11 @@ const log = createLogger('app');
 const urlLog = createLogger('url-safety');
 
 app.setName('Minimalist Agent');
+
+// Must run before app.whenReady() — Electron consumes privileged-scheme
+// registration at Chromium startup, same constraint as the disk-cache-size
+// switch below.
+registerAssetProtocolAsPrivileged();
 
 // Cap Electron's HTTP and compiled-JS caches before Chromium initialises.
 // Must be set before app.whenReady() — commandLine switches are consumed at
@@ -130,7 +140,7 @@ function buildCsp(): string {
       `default-src 'self' ${devOrigin}`,
       `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${devOrigin}`,
       `style-src 'self' 'unsafe-inline'`,
-      `img-src 'self' data: blob: https:`,
+      `img-src 'self' data: blob: https: ${ASSET_PROTOCOL_SCHEME}:`,
       `font-src 'self' data:`,
       `connect-src 'self' ${devOrigin} ${ws} ${localHosts}`,
       `frame-src 'none'`,
@@ -144,7 +154,7 @@ function buildCsp(): string {
     `default-src 'self'`,
     `script-src 'self'`,
     `style-src 'self' 'unsafe-inline'`,
-    `img-src 'self' data: blob: https:`,
+    `img-src 'self' data: blob: https: ${ASSET_PROTOCOL_SCHEME}:`,
     `font-src 'self' data:`,
     `connect-src 'self' ${localHosts}`,
     `frame-src 'none'`,
@@ -250,6 +260,7 @@ function createWindow(icon?: Electron.NativeImage | null) {
 
 app.whenReady().then(async () => {
   initLogging(Paths.logsDir());
+  registerAssetProtocolHandler();
 
   installSkillsReferenceDoc();
   installExtensionsReferenceDoc();

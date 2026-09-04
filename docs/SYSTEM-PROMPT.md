@@ -88,7 +88,7 @@ AGENTS.md adds ~200 tokens; a detailed one can add ~2K.
 |-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------|------------------------------------------|-------------------------------------------:|
 | Date/time                                                                                                                                                                                                                               | `getDateTimeContext()`                                    | always                                   |                                        ~50 |
 | Working directory                                                                                                                                                                                                                       | `getWorkingDirectoryContext()`                            | when cwd set                             |                                        ~60 |
-| **Scratch directory**                                                                                                                                                                                                                   | `getScratchDirContext()`                                  | when session path known                  |                                        ~30 |
+| **Scratch directory** (path + `ma-asset://` base for inline images)                                                                                                                                                                     | `getScratchDirContext()`                                  | when session path known                  |                                        ~40 |
 | Extensions awareness (one line per enabled extension with its slug, scope, and **resolved absolute `guidePath`**; plus a gated "MCP not active" line when an enabled mcp-backed extension is blocked by consent/secret/connect failure) | `formatExtensionsAwareness()` (`extensions/directive.ts`) | when extensions installed                |                   ~20–25 tok per extension |
 | **Pinned context** (skills the user has pinned to the session — same pattern as `@mention`/`formatSkillDirective`, but persistent every turn)                                                                                           | `buildPinnedContextBlock()` (`agent/system-prompt.ts`)    | when `session.pinnedAssets` is non-empty | ~25 tok per item (flat, path + label only) |
 
@@ -133,12 +133,14 @@ capabilities live entirely in its own tool description/`promptSnippet`, not here
 **But mind the nuance** — some adjacent things *do* render in model output and shouldn't be confused with the omitted
 "preview" tools:
 
-- **Inline images** (`![](…)` / `<img>`) render with a click-to-expand, zoom/pan lightbox — **but only for `http://`/
-  `https://`
-  sources**. `rehype-sanitize`'s protocol allowlist for `src` is `["http", "https"]` only ([
-  `markdown-sanitize-schema.ts`](../src/renderer/src/lib/markdown-sanitize-schema.ts) inherits this unchanged from
-  `defaultSchema`) — a `data:` URI `src` is silently stripped before the `<img>` ever mounts. No error, no fallback
-  text, just a broken-image icon. This is documented in the prompt itself (see the Images bullet in
+- **Inline images** (`![](…)` / `<img>`) render with a click-to-expand, zoom/pan lightbox for `http://`/`https://`
+  sources, and for a session's own scratch-directory files via `ma-asset://<sessionId>/<relPath>` (a jailed protocol
+  handler, see [`asset-protocol.ts`](../src/main/protocols/asset-protocol.ts)). The per-turn scratch directory block
+  emits the exact `ma-asset://` base for the current session. A bare `data:` URI `src` is still silently stripped before
+  the `<img>` ever mounts — `rehype-sanitize`'s `protocols.src` allowlist ([
+  `markdown-sanitize-schema.ts`](../src/renderer/src/lib/markdown-sanitize-schema.ts)) permits `http`, `https`, and
+  `ma-asset` only, deliberately not `data:` (unbounded inline bytes, no audit point). No error, no fallback text for
+  `data:`, just a broken-image icon. This is documented in the prompt itself (see the Images bullet in
   `getAssistantPrompt()`) precisely because it's a silent failure mode a model would otherwise rediscover the hard way.
 - **Inline HTML** renders, but **sanitized** — `script`/`iframe`/`object`/`form`/
   `on*` are stripped (`rehype-sanitize`; renderer XSS = IPC RCE). So formatting HTML works; a live HTML *preview pane*

@@ -289,12 +289,15 @@ export function getWorkingDirectoryContext(workingDirectory?: string): string {
 /**
  * Per-turn scratch-directory line. Tells the agent WHERE its session scratch
  * area is (the path is session-specific, so it can't live in the static
- * prompt). Intentionally just the path — no file listing/manifest, to avoid
- * per-turn bloat and to keep the agent from acting as a janitor.
+ * prompt) and the `ma-asset://` base for showing images written there inline
+ * (see the Images bullet in `getAssistantPrompt()`). Intentionally just the
+ * path + one URL base — no file listing/manifest, to avoid per-turn bloat
+ * and to keep the agent from acting as a janitor.
  */
-export function getScratchDirContext(scratchDir?: string): string {
+export function getScratchDirContext(scratchDir?: string, sessionId?: string): string {
   if (!scratchDir) return '';
-  return `<scratch_directory>${scratchDir}</scratch_directory>`;
+  const assetBase = sessionId ? `\n<scratch_asset_base>ma-asset://${sessionId}/</scratch_asset_base>` : '';
+  return `<scratch_directory>${scratchDir}</scratch_directory>${assetBase}`;
 }
 
 /**
@@ -454,7 +457,7 @@ You are Minimalist Agent — an AI coding assistant that helps users understand,
 - **Project awareness** — You read \`AGENTS.md\` / \`CLAUDE.md\` to learn project conventions before making non-trivial changes.
 - **Skills** — Reusable instruction files (\`SKILL.md\`) the user can invoke with \`@slug\` to give you specialized behavior on demand.
 - **Extensions** — Installed capabilities (MCP servers, bundled CLIs, or pure usage guides) that expand what you can do beyond the built-in tools.
-- **Images** — Markdown images (\`![](url)\`) render with a click-to-expand, zoom/pan lightbox — but only for \`http://\`/\`https://\` URLs. A \`data:\` URI \`src\` is silently stripped (broken-image icon, no error) — never use one for inline images; link to a real hosted URL instead.
+- **Images** — Markdown images (\`![](url)\`) render with a click-to-expand, zoom/pan lightbox for \`http://\`/\`https://\` URLs, or for a file in your own scratch directory via \`ma-asset://<sessionId>/<relPath>\` (see the per-turn scratch directory block for the exact base to use). A bare \`data:\` URI \`src\` is silently stripped instead (broken-image icon, no error) — never use one.
 - **Diagrams** — You can render Mermaid diagrams natively for architecture, flow, and structure visualizations.
 - **Math** — KaTeX renders \`$$...$$\` expressions and \`\`\`latex\`/\`\`\`math\` fenced blocks as typeset equations.
 - **Tables** — GFM tables (\`| a | b |\`) render with themed borders; prefer them over ASCII-art grids for tabular data.
@@ -783,12 +786,17 @@ export function estimatePinnedTokens(
   return (pinnedAssets?.length ?? 0) * 25;
 }
 
-export function buildPromptPrefix(input: { cwd?: string; scratchDir?: string; pinnedAssets?: string[] }): string {
+export function buildPromptPrefix(input: {
+  cwd?: string;
+  scratchDir?: string;
+  sessionId?: string;
+  pinnedAssets?: string[];
+}): string {
   const blocks: string[] = [];
   blocks.push(getDateTimeContext());
   const wd = getWorkingDirectoryContext(input.cwd);
   if (wd) blocks.push(wd);
-  const scratch = getScratchDirContext(input.scratchDir);
+  const scratch = getScratchDirContext(input.scratchDir, input.sessionId);
   if (scratch) blocks.push(scratch);
   const ext = formatExtensionsAwareness(input.cwd);
   if (ext) blocks.push(ext);

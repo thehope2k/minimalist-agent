@@ -23,6 +23,8 @@ import type { Options as SanitizeSchema } from 'rehype-sanitize';
  *   wrappers emitted by `remark-math` — must survive sanitization, or block
  *   math silently degrades to inline. The default `code` schema only allows
  *   `language-*`, so we also permit the two math marker classes.
+ *
+ *   One more widening beyond that: `ma-asset:` on `src` (see comment below).
  */
 export const MARKDOWN_SANITIZE_SCHEMA: SanitizeSchema = {
   ...defaultSchema,
@@ -43,5 +45,9 @@ export const MARKDOWN_SANITIZE_SCHEMA: SanitizeSchema = {
     // independently blocks `file:` at the `shell:openExternal` IPC handler as
     // a second gate, so this widening cannot itself reopen the RCE vector.
     href: [...(defaultSchema.protocols?.href ?? []), 'file'],
+    // `ma-asset:` is a jailed, file-backed scheme (main/protocols/asset-protocol.ts),
+    // not a bare `data:` allowance — deliberately scoped to `src` only, since
+    // `<img>` has no MarkdownLink-style click interception to gate `href`.
+    src: [...(defaultSchema.protocols?.src ?? []), 'ma-asset'],
   },
 };
