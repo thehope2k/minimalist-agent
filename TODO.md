@@ -43,6 +43,16 @@ tracks what's *left to do*, not what's done. Add a one-line note only if it'll s
   - Context isolation works ✅ (only input+output in LLM context)
   - Storage isolation works ✅ (unique session paths per sub-agent)
   - Full transcripts persist ✅ (nested events saved to disk)
+  - **Root cause found (Sep 4, 2026):** `worktree-manager.ts` is otherwise plain Node
+    (`child_process`/`fs`/`path`/`minimatch`) — the only thing that can't load in the
+    pi-server subprocess is `import { createLogger } from '../../../logger'`, which pulls
+    in `electron-log` + `electron`. That single import is the entire blocker.
+  - **Proposed fix:** inject the logger instead of hard-importing it — main process passes
+    the real `electron-log`-backed logger, the pi-server subprocess passes
+    `shared/sub-logger.ts` (already electron-free, same pattern used elsewhere). Then wire
+    `subagent/lifecycle.ts` to the real `createAgentWorktree`/`removeAgentWorktree`/
+    `cleanupOrphanedWorktrees` instead of the stubs. Not yet implemented — worth a full
+    check for other transitive electron-only imports before flipping the switch.
 
 ---
 
@@ -50,7 +60,14 @@ tracks what's *left to do*, not what's done. Add a one-line note only if it'll s
 
 - [ ] **Split "god files"** — several modules far exceed the AGENTS.md ~250-line guideline
   (16 `.ts` files >400 lines; 20 `.tsx` components >250). Remaining named offenders:
-  - `src/main/pi-server/index.ts` — 2,705 lines (god script, real shared closure `state` object)
+  - `src/main/pi-server/index.ts` — was 2,705 lines; split (Sep 4, 2026) into `state.ts`,
+    `transport.ts`, `credential-store.ts`, `model-utils.ts`, `tool-wrapping.ts`,
+    `collaboration-tools.ts`, `planning-tools.ts`, `otel-usage.ts`. Now 1,383 lines — still
+    a god script, but only the genuinely tightly-coupled core remains: `handleInit`/
+    `handlePrompt`/`handleManualCompact`/`dispatch`/the stdin entrypoint, all sharing
+    `activePromptPromise` and the OTel span lifecycle via the module-scoped `state` object.
+    Splitting that core further is real risk (deep mutable-state + async-ordering coupling),
+    not mechanical code motion — treat as its own scoped task, not more "safe" extraction.
   - Note: these are also the highest change-risk files — a natural place to add tests/logging
     discipline as they're split.
 
