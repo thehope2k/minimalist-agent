@@ -17,11 +17,9 @@ note only if it'll save someone time later.
   - Worth addressing:
     1. **Retrieval cost** — `loadSession` reads the whole `messages.jsonl` into
        memory every open (`storage/sessions.ts`); grows with session length.
-    2. **Compaction robustness** — lossy + untested, and SDK vs Pi compact
-       differently (`agent/events.ts`, `pi-server/event-adapter.ts`).
-    3. **Forgetting/housekeeping** — sessions and sub-agent dirs
+    2. **Forgetting/housekeeping** — sessions and sub-agent dirs
        (`.agents/<execId>`) grow unbounded, never pruned (`agent-tool.ts`).
-    4. **Resume robustness** — `sdkSessionId`/`piSessionId` share one field;
+    3. **Resume robustness** — `sdkSessionId`/`piSessionId` share one field;
        missing resume id silently starts fresh (`backends/anthropic.ts`
        `findClaudeSession` warn); mid-session SDK↔Pi toggle drops context.
 
@@ -29,7 +27,6 @@ note only if it'll save someone time later.
 
 ## Features / Improvements
 
-- [ ] Implement hooks/lifecycle automation
 - [ ] **Configurable agent backend (Claude Agent SDK vs Pi) for Anthropic models** —
       let users route an Anthropic connection through the Pi backend instead of
       the Claude Agent SDK.
@@ -55,7 +52,7 @@ note only if it'll save someone time later.
     2. accept Anthropic auth in `PiChatRequest.auth`; map to `piAuth`
        (oauth `sk-ant-oat…` → `{type:'api_key'}`, pi-ai auto-detects)
     3. pass `'anthropic'` to `getModel(...)` in `pi-server/index.ts` (already generic)
-    4. per-connection backend override in `runAgentChat` (`claude.ts`) — today it
+    4. per-connection backend override in `runAgentChat` (`agent-runtime/runner.ts`) — today it
        branches purely on `auth.type`
     5. `backend?: 'sdk' | 'pi'` on `ConnectionMeta` + connection-flow toggle
     6. add an `anthropic_oauth` branch to the Pi `auth_required` refresh handler
@@ -93,16 +90,14 @@ note only if it'll save someone time later.
 ## Tech Debt
 
 - [ ] **Split "god files"** — several modules far exceed the AGENTS.md ~250-line guideline
-      (16 files >400 lines; 23 `.tsx` components >250). Biggest offenders:
-  - `src/main/pi-server/index.ts` — 1,699
-  - ~~`src/main/ipc.ts` — 1,542~~ ✅ split into `src/main/ipc/*-ipc.ts` (14 domain modules, largest 373 lines)
-  - `src/renderer/src/hooks/useChat.ts` — 1,424
-  - `src/main/agent/backends/pi/agent.ts` — 1,000 (`handleOutbound` was a 687-line, 22-case switch) ✅ split into `outbound/*.ts` (8 files by concern) + `subprocess-handle.ts`; agent.ts now 719 lines
-  - `src/main/agent/backends/pi/agent-tool.ts` — 739
+      (16 `.ts` files >400 lines; 20 `.tsx` components >250). Remaining named offenders:
+  - `src/main/pi-server/index.ts` — 2,705 (god script, real shared closure `state` object —
+    riskier split than the ones below; see AGENTS.md discussion)
+  - `src/main/agent-runtime/backends/pi/agent-tool.ts` — 735
   - Note: these are also the highest change-risk files —
     a natural place to add tests/logging discipline as they're split.
 
-- [ ] **No automated tests** — 0 test/spec files across ~55K lines.
+- [ ] **No automated tests** — 0 test/spec files across ~68K lines.
       Start with highest-risk modules (IPC surface, agent loop, worktree manager).
 
 ---
