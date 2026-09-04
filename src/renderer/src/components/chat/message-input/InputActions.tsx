@@ -114,6 +114,7 @@ export function InputActions({
         <IconButton
           icon={AtSign}
           label="Mention skill"
+          onMouseDown={(e) => e.preventDefault()}
           onClick={onTriggerMention}
           disabled={isStreaming || !connection}
         />
