@@ -59,17 +59,23 @@ tracks what's *left to do*, not what's done. Add a one-line note only if it'll s
 ## Tech Debt
 
 - [ ] **Split "god files"** — several modules far exceed the AGENTS.md ~250-line guideline
-  (16 `.ts` files >400 lines; 20 `.tsx` components >250). Remaining named offenders:
-  - `src/main/pi-server/index.ts` — was 2,705 lines; split (Sep 4, 2026) into `state.ts`,
-    `transport.ts`, `credential-store.ts`, `model-utils.ts`, `tool-wrapping.ts`,
-    `collaboration-tools.ts`, `planning-tools.ts`, `otel-usage.ts`. Now 1,383 lines — still
-    a god script, but only the genuinely tightly-coupled core remains: `handleInit`/
-    `handlePrompt`/`handleManualCompact`/`dispatch`/the stdin entrypoint, all sharing
-    `activePromptPromise` and the OTel span lifecycle via the module-scoped `state` object.
-    Splitting that core further is real risk (deep mutable-state + async-ordering coupling),
-    not mechanical code motion — treat as its own scoped task, not more "safe" extraction.
-  - Note: these are also the highest change-risk files — a natural place to add tests/logging
-    discipline as they're split.
+  (16 `.ts` files >400 lines; 19 `.tsx` components >250; ~68.7K lines total across `src/`).
+  Largest remaining offenders:
+  - `src/main/pi-server/index.ts` — 1,361 lines. Orchestrates `handleInit`/`handlePrompt`/
+    `handleManualCompact`/`dispatch`/the stdin entrypoint, all sharing `activePromptPromise`
+    and the OTel span lifecycle via the module-scoped `state` object. Genuinely
+    tightly-coupled (deep mutable-state + async-ordering coupling) — further splitting is
+    real risk, not mechanical code motion.
+  - `src/renderer/src/lib/electron.d.ts` — 1,312 lines (type surface for the whole `window.api`;
+    grows with every IPC method, splitting it needs a per-domain type layout decision first)
+  - `src/preload/index.ts` — 1,032 lines
+  - `src/renderer/src/hooks/useChat.ts` — 969 lines
+  - `src/main/storage/sessions.ts` — 799 lines
+  - `src/main/agent-runtime/system-prompt.ts` — 798 lines
+  - `src/main/agent-runtime/backends/pi/agent.ts` — 719 lines
+  - Largest `.tsx`: `src/renderer/src/components/chat/MessageInput.tsx` (376),
+    `src/renderer/src/components/settings/CopilotQuotaBar.tsx` (326),
+    `src/renderer/src/components/pet/DesktopPet.tsx` (319)
 
 - [ ] **No automated tests** — 0 test/spec files across ~68K lines. Start with highest-risk modules
   (IPC surface, agent loop, worktree manager).
