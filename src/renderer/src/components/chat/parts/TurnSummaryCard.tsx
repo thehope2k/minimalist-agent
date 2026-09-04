@@ -17,12 +17,11 @@ import {
   countDiffLines,
   shortenPath,
   diffViewerStyles,
-  DiffExpandModal,
-  LazyDiffViewer,
   DIFF_METHOD_WORDS,
-  WrittenView,
   EDIT_SEP,
 } from './diff-utils';
+import { DiffExpandModal, LazyDiffViewer } from './DiffExpandModal';
+import { WrittenView } from './WrittenView';
 
 interface FileSummary {
   filePath: string;

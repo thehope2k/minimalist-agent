@@ -1,7 +1,7 @@
 import { BrowserWindow, ipcMain } from 'electron';
 import { sessionPath } from '../storage/sessions';
-import { sendPlanApprovalResponse } from '../agent/backends/pi/agent';
-import { getActivePlan, updatePlanCache as updatePlan } from '../agent/plan-cache';
+import { sendPlanApprovalResponse } from '../agent-runtime/backends/pi/agent';
+import { getActivePlan, updatePlanCache as updatePlan } from '../agent-runtime/plan-cache';
 import type { Phase } from '../../shared/planning-types';
 import { createLogger } from '../logger';
 

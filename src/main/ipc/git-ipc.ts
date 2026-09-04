@@ -81,7 +81,7 @@ export function registerGitIpc(): void {
       try {
         const { resolveAuthForSlug } = await import('../auth/resolve');
         const { listConnections } = await import('../storage/connections');
-        const { generateCommitMessage } = await import('../agent/commit-message');
+        const { generateCommitMessage } = await import('../agent-runtime/commit-message');
         const auth = await resolveAuthForSlug(args.connectionSlug);
         const conn = listConnections().find((c) => c.slug === args.connectionSlug);
         return await generateCommitMessage({

@@ -1,6 +1,6 @@
 import { BrowserWindow, ipcMain } from 'electron';
-import { runAgentChat } from '../agent/runner';
-import { parseError } from '../agent/errors';
+import { runAgentChat } from '../agent-runtime/runner';
+import { parseError } from '../agent-runtime/errors';
 import { resolveAuthForSlug } from '../auth/resolve';
 import {
   type ConnectionMeta,
@@ -14,7 +14,7 @@ import {
 import { onConnectionModelsChanged, refreshConnectionModels } from '../storage/model-refresh';
 import { type Credential, isEncryptionAvailable } from '../storage/credentials';
 import { type AiSettings, getSettings, saveSettings } from '../storage/settings';
-import { invalidateContextFileCache } from '../agent/system-prompt';
+import { invalidateContextFileCache } from '../agent-runtime/system-prompt';
 
 /** Connection CRUD, connection testing/model discovery, and global AI settings. */
 export function registerConnectionsIpc(): void {

@@ -14,7 +14,7 @@ import { checkOnLaunch } from './auto-update';
 import { classifyExternalUrl, formatBlockedUrlError } from '../shared/url-safety';
 import { getSettings, DEFAULT_SESSION_RETENTION_DAYS } from './storage/settings';
 
-import { isWorktreeSupported } from './agent/backends/pi/worktree-manager';
+import { isWorktreeSupported } from './agent-runtime/backends/pi/worktree-manager';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -339,7 +339,7 @@ app.on('will-quit', () => {
   void import('./browser/browser-pane-manager').then((m) => m.browserPaneManager.destroyAll());
   // Best-effort SIGTERM/KILL to any running Pi subprocesses so they don't
   // outlive the parent.
-  void import('./agent/backends/pi/agent').then((m) => m.shutdownAllPiSubprocesses());
+  void import('./agent-runtime/backends/pi/agent').then((m) => m.shutdownAllPiSubprocesses());
   // Kill any active agent sub-subprocesses.
-  void import('./agent/backends/pi/agent-tool').then((m) => m.shutdownAllAgentSubprocesses());
+  void import('./agent-runtime/backends/pi/agent-tool').then((m) => m.shutdownAllAgentSubprocesses());
 });

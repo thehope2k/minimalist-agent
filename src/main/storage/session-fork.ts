@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { SessionManager, type SessionEntry, collectEntriesForBranchSummary, generateBranchSummary } from '@earendil-works/pi-coding-agent';
 import type { Model, Api } from '@earendil-works/pi-ai';
 import { forkSession as forkClaudeSession } from '@anthropic-ai/claude-agent-sdk';
-import { findClaudeSessionFile } from '../agent/backends/anthropic';
+import { findClaudeSessionFile } from '../agent-runtime/backends/anthropic';
 import { createLogger } from '../logger';
 
 const log = createLogger('session-fork');

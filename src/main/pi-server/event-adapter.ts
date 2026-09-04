@@ -7,8 +7,8 @@
 //     (so Read/Write/Edit/etc. render with the same chip labels)
 
 import type { AgentSessionEvent } from '@earendil-works/pi-coding-agent';
-import type { AgentChatEvent, AgentUsage, SubagentProgressUpdate } from '../agent/events';
-import { parseError } from '../agent/errors';
+import type { AgentChatEvent, AgentUsage, SubagentProgressUpdate } from '../agent-runtime/events';
+import { parseError } from '../agent-runtime/errors';
 
 interface PiUsage {
   input?: number;

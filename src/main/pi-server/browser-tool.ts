@@ -9,7 +9,7 @@ import {
   defineTool,
   type ToolDefinition,
 } from '@earendil-works/pi-coding-agent';
-import type { MsgBrowserToolResult } from '../agent/backends/pi/protocol';
+import type { MsgBrowserToolResult } from '../agent-runtime/backends/pi/protocol';
 
 const browserToolSchema = Type.Object({
   command: Type.String({

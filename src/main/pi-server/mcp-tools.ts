@@ -25,7 +25,7 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import type { ToolDefinition } from '@earendil-works/pi-coding-agent';
-import type { PiMcpServerConfig } from '../agent/backends/pi/protocol';
+import type { PiMcpServerConfig } from '../agent-runtime/backends/pi/protocol';
 import { createLogger } from '../../shared/sub-logger';
 import { withTimeout } from '../../shared/with-timeout';
 import { MCP_CALL_CEILING_MS, MCP_CONNECT_CEILING_MS, MCP_POOL_BUDGET_MS } from '../../shared/timeouts';

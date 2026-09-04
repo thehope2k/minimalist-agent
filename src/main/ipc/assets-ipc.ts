@@ -57,7 +57,7 @@ import {
   revokeConsent,
 } from '../extensions/mcp-config';
 import { pinAsset, unpinAsset } from '../storage/sessions';
-import { estimatePinnedTokens } from '../agent/system-prompt';
+import { estimatePinnedTokens } from '../agent-runtime/system-prompt';
 import { Paths } from '../storage/paths';
 
 /** Skills, agents, extensions (incl. secrets/consent), and the context-panel

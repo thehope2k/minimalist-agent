@@ -160,7 +160,7 @@ import { adaptPiEvent } from './event-adapter';
 import { createPiWebFetchTool, createPiWebSearchTool } from './web-tools';
 import { createPiBrowserTool } from './browser-tool';
 import { connectMcpServers, closeMcpClients } from './mcp-tools';
-import { createPiAgentTool } from '../agent/backends/pi/agent-tool';
+import { createPiAgentTool } from '../agent-runtime/backends/pi/agent-tool';
 import type {
   MsgAuthRefreshRequest,
   MsgAuthRefreshResult,
@@ -188,10 +188,10 @@ import type {
   PiThinkingLevel,
   SubprocessInbound,
   SubprocessOutbound,
-} from '../agent/backends/pi/protocol';
+} from '../agent-runtime/backends/pi/protocol';
 import { fileURLToPath } from 'node:url';
 import type { LoadedAgent } from '../agents/types';
-import { PlanManager } from '../agent/planning/manager';
+import { PlanManager } from '../agent-runtime/planning/manager';
 import {
   validateCreatePlanInput,
   validateReportPhaseProgressInput,

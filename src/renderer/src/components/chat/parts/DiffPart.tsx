@@ -27,11 +27,10 @@ import {
   shortenPath,
   stripErrorWrapper,
   diffViewerStyles,
-  DiffExpandModal,
-  LazyDiffViewer,
   DIFF_METHOD_WORDS,
-  WrittenView,
 } from './diff-utils';
+import { DiffExpandModal, LazyDiffViewer } from './DiffExpandModal';
+import { WrittenView } from './WrittenView';
 import { ContextDeltaBadge } from './tool-part/ContextDeltaBadge';
 
 interface DiffPartProps {

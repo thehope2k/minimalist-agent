@@ -3,7 +3,7 @@ import {basename, join} from 'node:path';
 import type {LoadedAgent} from './types';
 import {parseAgentFile} from './parse';
 import {Paths, projectConfigRoot} from '../storage/paths';
-import {invalidateAgentsPromptCache} from '../agent/system-prompt';
+import {invalidateAgentsPromptCache} from '../agent-runtime/system-prompt';
 
 /* ---------- directory resolution ---------- */
 

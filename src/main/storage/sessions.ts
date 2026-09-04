@@ -20,7 +20,7 @@ import {
 import { join } from 'node:path';
 import { Paths } from './paths';
 import { type FileSchema, load, save } from './json-store';
-import { invalidateContextFileCache } from '../agent/system-prompt';
+import { invalidateContextFileCache } from '../agent-runtime/system-prompt';
 import type { PermissionMode, ThinkingLevel } from './settings';
 import { findProjectForPath } from './projects';
 import { createLogger } from '../logger';

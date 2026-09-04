@@ -1,20 +1,8 @@
-// Shared diff utilities used by both DiffPart (per-tool chip) and
-// TurnSummaryCard (end-of-turn aggregate view).
+// Pure diff utilities used by both DiffPart (per-tool chip) and
+// TurnSummaryCard (end-of-turn aggregate view). No React/JSX here —
+// see WrittenView.tsx and DiffExpandModal.tsx for the UI pieces.
 
-import { lazy, Suspense, useState } from 'react';
 import type { DiffMethod } from 'react-diff-viewer-continued';
-import { FilePenLine, FileText, Code } from 'lucide-react';
-import { CopyButton, ExpandModal } from '@/components/ui';
-import { CodeBlock } from './markdown/CodeBlock';
-import { Markdown } from './markdown/Markdown';
-import { JsonBlock } from './markdown/JsonBlock';
-
-// Lazy-loaded so react-diff-viewer-continued (~2.7 MB) stays out of the
-// initial bundle. The viewer is only rendered when the user expands a diff
-// chip or opens the split-view modal, so the deferred load is invisible.
-export const LazyDiffViewer = lazy(() =>
-  import('react-diff-viewer-continued').then((m) => ({ default: m.default }))
-);
 
 // DiffMethod.WORDS = 'diffWords' — inlined to avoid importing the full package.
 // Cast via `import type` (erased at runtime — zero bundle cost).
@@ -35,121 +23,6 @@ export function langFromPath(filePath: string): string {
     dockerfile: 'dockerfile', tf: 'hcl',
   };
   return MAP[ext] ?? 'text';
-}
-
-/**
- * Used for Write tool results — no old content to diff, just show the
- * written file with special rendering for markdown/JSON/images.
- */
-export function WrittenView({
-  filePath,
-  content,
-  embedded = false,
-}: {
-  filePath: string;
-  content: string;
-  embedded?: boolean;
-}) {
-  const ext = filePath.split('.').pop()?.toLowerCase() ?? '';
-  const isMarkdown = ext === 'md' || ext === 'mdx';
-  const isJson = ext === 'json' || ext === 'jsonc';
-  const isHtml = ext === 'html' || ext === 'htm';
-
-  const [showSource, setShowSource] = useState(false);
-
-  // ── Markdown viewer with Preview/Source toggle ──
-  if (isMarkdown) {
-    return (
-      <div className="flex min-h-0 flex-1 flex-col bg-panel">
-        {/* Header with toggle */}
-        <div className="flex shrink-0 items-center justify-between border-b border-border/60 px-3 py-1.5">
-          <span className="text-[10px] uppercase tracking-wide text-fg-subtle">markdown</span>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setShowSource((v) => !v)}
-              className="flex items-center gap-1 text-[10px] text-fg-muted transition-colors hover:text-fg"
-            >
-              <Code className="h-3 w-3" strokeWidth={1.75} />
-              {showSource ? 'Preview' : 'Source'}
-            </button>
-            <CopyButton text={content} className="opacity-100" />
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="scroll-thin min-h-0 flex-1 overflow-auto">
-          {showSource ? (
-            <pre className="m-0 overflow-auto px-4 py-3 font-mono text-[12.5px] leading-relaxed text-fg">
-              <code>{content}</code>
-            </pre>
-          ) : (
-            <div className="px-6 py-4">
-              <Markdown text={content} />
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // ── HTML viewer with Source/Preview toggle (sandboxed, safe to show preview) ──
-  if (isHtml) {
-    return (
-      <div className="flex min-h-0 flex-1 flex-col bg-panel">
-        {/* Header with toggle */}
-        <div className="flex shrink-0 items-center justify-between border-b border-border/60 px-3 py-1.5">
-          <span className="text-[10px] uppercase tracking-wide text-fg-subtle">html</span>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setShowSource((v) => !v)}
-              className="flex items-center gap-1 text-[10px] text-fg-muted transition-colors hover:text-fg"
-            >
-              <Code className="h-3 w-3" strokeWidth={1.75} />
-              {showSource ? 'Preview' : 'Source'}
-            </button>
-            <CopyButton text={content} className="opacity-100" />
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="scroll-thin min-h-0 flex-1 overflow-auto">
-          {showSource ? (
-            <pre className="m-0 overflow-auto px-4 py-3 font-mono text-[12.5px] leading-relaxed text-fg">
-              <code>{content}</code>
-            </pre>
-          ) : (
-            <div className="p-2">
-              {/* Sandboxed iframe — blocks scripts, forms, popups, top navigation */}
-              <iframe
-                srcDoc={content}
-                sandbox="allow-same-origin"
-                title="HTML Preview"
-                className="h-[min(65vh,760px)] min-h-[420px] w-full rounded border border-border/40 bg-white"
-              />
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // ── JSON viewer with interactive tree ──
-  if (isJson) {
-    return (
-      <div className="scroll-thin min-h-0 flex-1 overflow-auto bg-panel">
-        <JsonBlock code={content} embedded={embedded} />
-      </div>
-    );
-  }
-
-  // ── Default: syntax-highlighted code block ──
-  return (
-    <div className="scroll-thin min-h-0 flex-1 overflow-auto bg-panel">
-      <CodeBlock code={content} language={langFromPath(filePath)} embedded={embedded} />
-    </div>
-  );
 }
 
 export interface ParsedDiff {
@@ -350,55 +223,6 @@ export const diffViewerStyles = {
     wordBreak: 'break-word' as const,
   },
 } as const;
-
-// Shared split-view modal — used by both DiffPart and TurnSummaryCard.
-export function DiffExpandModal({
-  parsed,
-  name,
-  onClose,
-}: {
-  parsed: ParsedDiff;
-  name: string;
-  onClose: () => void;
-}) {
-  const isWrite = name.toLowerCase() === 'write';
-  const Icon = isWrite ? FileText : FilePenLine;
-
-  const title = (
-    <>
-      <Icon className="h-4 w-4 text-accent" strokeWidth={1.75} />
-      <span className="text-sm font-medium text-fg">{name}</span>
-      <span className="text-fg-subtle">·</span>
-      <span className="min-w-0 flex-1 truncate font-mono text-xs text-fg-muted">
-        {shortenPath(parsed.filePath)}
-      </span>
-      <CopyButton text={parsed.newValue} className="shrink-0 opacity-100" />
-    </>
-  );
-
-  return (
-    <ExpandModal title={title} onClose={onClose} className="max-w-6xl">
-      <div className="flex min-h-0 flex-1 flex-col bg-panel">
-        {isWrite ? (
-          <WrittenView filePath={parsed.filePath} content={parsed.newValue} embedded={true} />
-        ) : (
-          <div className="scroll-thin min-h-0 flex-1 overflow-auto">
-            <Suspense fallback={<div className="h-16 animate-pulse rounded bg-elevated/40 m-4" />}>
-              <LazyDiffViewer
-                oldValue={parsed.oldValue}
-                newValue={parsed.newValue}
-                splitView={true}
-                compareMethod={DIFF_METHOD_WORDS}
-                useDarkTheme={true}
-                styles={diffViewerStyles}
-              />
-            </Suspense>
-          </div>
-        )}
-      </div>
-    </ExpandModal>
-  );
-}
 
 // Separator string used when joining multiple edit patches for the same file.
 export const EDIT_SEP = '\n\n// ─── next edit ───\n\n';

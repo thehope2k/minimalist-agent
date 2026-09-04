@@ -33,7 +33,7 @@ import {
   listConnections,
   type ConnectionMeta,
 } from '../storage/connections';
-import type { ResolvedAuth } from '../agent/backends/types';
+import type { ResolvedAuth } from '../agent-runtime/backends/types';
 import { createLogger } from '../logger';
 import { raceAbort, withDeadline } from '../../shared/with-timeout';
 import { AUTH_REFRESH_CEILING_MS } from '../../shared/timeouts';
