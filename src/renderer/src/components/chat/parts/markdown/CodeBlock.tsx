@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Maximize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CopyButton, ExpandModal } from '@/components/ui';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('code-block');
 
 /**
  * Lazy-loaded Shiki highlighter. We keep a singleton across the app so
@@ -52,9 +55,16 @@ async function getHighlighter(): Promise<ShikiHighlighter> {
   if (!highlighterPromise) {
     highlighterPromise = (async () => {
       const shiki = await import('shiki');
+      // Production CSP is `script-src 'self'` (no `unsafe-eval` /
+      // `wasm-unsafe-eval`), which blocks the default WASM-based oniguruma
+      // engine's `WebAssembly.instantiate` call — it silently fails there
+      // (dev's relaxed CSP masks this). The JS regex engine is slower but
+      // has no WASM dependency, so it works under the strict prod CSP
+      // without loosening it.
       const hl = await shiki.createHighlighter({
         themes: [THEME],
         langs: [...LANGS],
+        engine: shiki.createJavaScriptRegexEngine(),
       });
       return hl as unknown as ShikiHighlighter;
     })();
@@ -116,8 +126,11 @@ export function CodeBlock({ code, language, embedded = false }: CodeBlockProps) 
         if (cancelled || !mounted.current) return;
         const out = hl.codeToHtml(code, { lang, theme: THEME });
         if (!cancelled && mounted.current) setHtml(out);
-      } catch {
-        if (!cancelled && mounted.current) setHtml(null);
+      } catch (err) {
+        if (!cancelled && mounted.current) {
+          log.warn(`highlight failed for lang=${lang}, falling back to plain text`, err);
+          setHtml(null);
+        }
       }
     })();
     return () => {
