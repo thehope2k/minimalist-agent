@@ -5,6 +5,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.25.1] — 2026-09-04
+
+Quality of life improvements: a refreshable Copilot quota pill and better skill/extension doc awareness for the agent.
+
+### Added
+
+- The Copilot quota pill in Settings is now a clickable button that triggers a refresh; it keeps showing the last successfully-loaded quota during a refresh or after a failure, flagging staleness with a warning marker and surfacing the failure in the tooltip instead of blanking out.
+- The agent is now pointed to the full skills/extensions schema reference docs in its system prompt, so it reads the authoritative schema before creating or editing skills/extensions in chat instead of relying on inline prompt knowledge.
+
+---
+
 ## [1.25.0] — 2026-08-28
 
 Native browser automation for the agent, plus settings and preferences UI cleanup.
