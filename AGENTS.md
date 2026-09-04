@@ -4,11 +4,21 @@ Guidance for any agent (human or AI) modifying this codebase.
 
 ## Agent worktree isolation
 
-When multiple sub-agents run in parallel on the same project, each gets its own
-**git worktree** for complete file isolation. This prevents resource contention
-(Maven locks, npm locks, git operations, etc.).
+**Currently disabled.** Sub-agents were designed to each get their own **git
+worktree** for complete file isolation (preventing resource contention on
+Maven locks, npm locks, git operations, etc.), but `agent-tool.ts` currently
+uses a hard-coded stub (`createAgentWorktree`/`removeAgentWorktree`/
+`cleanupAllWorktrees`/`cleanupOrphanedWorktrees`) that always returns the
+original CWD and no-ops the rest. It was disabled the day after landing
+(commit b68c671, following 77e7599) due to Electron import issues when the
+worktree manager is loaded inside the pi-server subprocess. See
+[`TODO.md`](TODO.md) for the re-enable plan.
 
-### How it works
+Until re-enabled, parallel sub-agents share the same working directory —
+avoid concurrent builds/installs/git ops per the Resource Contention section
+below.
+
+### How it's meant to work (once re-enabled)
 
 - Each agent execution creates a worktree at `.minimalist-agent/worktrees/<execId>/`
 - The worktree branches from `origin/HEAD` (fresh checkout)

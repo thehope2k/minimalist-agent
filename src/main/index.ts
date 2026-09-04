@@ -259,15 +259,22 @@ app.whenReady().then(async () => {
   const { runUserConfigMigration } = await import('./storage/migrate-user-config');
   runUserConfigMigration();
 
-  // Prune stale sessions in the background — archived ones older than 90 days
-  // and empty stubs older than 7 days. Non-blocking; failures are silent.
-  void import('./storage/sessions').then(({ pruneArchivedSessions, pruneEmptySessions }) => {
-    const { sessionRetentionDays } = getSettings();
-    const retentionDays = sessionRetentionDays ?? DEFAULT_SESSION_RETENTION_DAYS;
-    const archived = retentionDays !== null ? pruneArchivedSessions(retentionDays) : 0;
-    const empty = retentionDays !== null ? pruneEmptySessions() : 0;
-    if (archived + empty > 0) log.info(`Session prune: removed ${archived} archived, ${empty} empty`);
-  });
+  // Prune stale sessions in the background — archived ones older than the
+  // retention window, empty stubs older than 7 days, and sub-agent transcript
+  // dirs (`.agents/<execId>`) inside sessions that never get archived. Non-blocking.
+  void import('./storage/sessions')
+    .then(({ pruneArchivedSessions, pruneEmptySessions, pruneSubagentDirs }) => {
+      const { sessionRetentionDays } = getSettings();
+      const retentionDays = sessionRetentionDays ?? DEFAULT_SESSION_RETENTION_DAYS;
+      if (retentionDays === null) return;
+      const archived = pruneArchivedSessions(retentionDays);
+      const empty = pruneEmptySessions();
+      const subagentDirs = pruneSubagentDirs(retentionDays);
+      if (archived + empty + subagentDirs > 0) {
+        log.info(`Session prune: removed ${archived} archived, ${empty} empty, ${subagentDirs} sub-agent dirs`);
+      }
+    })
+    .catch((err) => log.error('Session prune failed:', err));
 
   // Check git/worktree support for parallel agent isolation
   const worktreeSupported = await isWorktreeSupported();

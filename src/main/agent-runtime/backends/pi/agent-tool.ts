@@ -13,7 +13,6 @@
 
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createInterface, type Interface as ReadlineInterface } from 'node:readline';
-import { join } from 'node:path';
 import { mkdirSync } from 'node:fs';
 import { Type } from 'typebox';
 import { defineTool, type AgentToolUpdateCallback, type ToolDefinition } from '@earendil-works/pi-coding-agent';
@@ -22,6 +21,7 @@ import type { AgentChatEvent, SubagentProgressUpdate } from '../../events';
 import { createLogger } from '../../../../shared/sub-logger';
 import { injectTraceContext } from '../../../../shared/otel';
 import { writeJsonLine } from '../../../../shared/jsonl-stdin';
+import { subagentDir } from '../../../../shared/subagent-storage';
 
 const log = createLogger('pi-agent-tool');
 import {
@@ -407,7 +407,7 @@ async function initializeAgent(
   }
 
   // Create isolated storage path for this execution
-  const agentSessionPath = join(ctx.sessionPath, '.agents', handle.execId);
+  const agentSessionPath = subagentDir(ctx.sessionPath, handle.execId);
   try {
     mkdirSync(agentSessionPath, { recursive: true });
   } catch (err) {
