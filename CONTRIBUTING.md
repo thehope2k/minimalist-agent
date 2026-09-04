@@ -42,7 +42,8 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for a detailed breakdown of the
 The full coding guide lives in [AGENTS.md](AGENTS.md). Key points:
 
 - **UI primitives** — use `components/ui/` before writing inline styles.
-- **IPC** — renderer talks to main only via `window.api`; new methods go in `src/main/ipc.ts` + `src/preload/index.ts`.
+- **IPC** — renderer talks to main only via `window.api`; new methods go in `src/main/ipc/*-ipc.ts` +
+  `src/preload/index.ts`.
 - **Comments** — don't restate the code; write a one-liner only when the *why* is non-obvious.
 - **Component size** — split files that exceed ~250 lines into a parent + subdirectory.
 

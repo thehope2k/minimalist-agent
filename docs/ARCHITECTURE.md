@@ -325,4 +325,4 @@ the skill exists and can apply it when relevant. Not full-content injection. Pin
 at the top of the chat, linking to the panel.
 
 **IPC handlers:** `context:listAvailable`, `context:pin`, `context:unpin`,
-`context:estimateTokens`, `context:hasProjectAssets` (`src/main/ipc.ts`).
+`context:estimateTokens`, `context:hasProjectAssets` (`src/main/ipc/assets-ipc.ts`).

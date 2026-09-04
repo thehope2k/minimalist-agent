@@ -130,7 +130,8 @@ run `node scripts/rebuild-native.mjs` before `npm run dev` to ensure
 ## Process boundaries
 
 - Renderer talks to main only via `window.api` (typed in `lib/electron.d.ts`).
-- New IPC methods go in `src/main/ipc.ts` and `src/preload/index.ts`.
+- New IPC methods go in `src/main/ipc/*-ipc.ts` (one file per domain, composed
+  in `src/main/ipc/index.ts`) and `src/preload/index.ts`.
 - The preload uses `contextBridge.exposeInMainWorld('api', api)` — do **not**
   drop the `treeshake: false` setting in `electron.vite.config.ts` for the
   preload build, or the side-effect call gets eliminated.

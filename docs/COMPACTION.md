@@ -13,7 +13,7 @@ and cost-attributed. Same treatment a tool call gets.
 |------------------------------------------------------|---------------------------------------------------------------------------------------------|
 | Event model + Pi/Claude adapters                     | `src/main/agent/events.ts`, `src/main/pi-server/event-adapter.ts`                           |
 | Session settings, manual-trigger handling, OTel span | `src/main/pi-server/index.ts`                                                               |
-| Manual-compact IPC                                   | `src/main/ipc.ts` (`chat:manualCompact`), `src/main/agent/backends/pi/agent.ts`             |
+| Manual-compact IPC                                   | `src/main/ipc/chat-ipc.ts` (`chat:manualCompact`), `src/main/agent/backends/pi/agent.ts`    |
 | Settings (defaults + shape)                          | `src/main/storage/settings.ts`                                                              |
 | Persisted `compactionMeta`                           | `src/main/storage/sessions.ts`                                                              |
 | Settings UI                                          | `src/renderer/src/components/settings/panels/AIPanel.tsx`                                   |
