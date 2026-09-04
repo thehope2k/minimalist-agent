@@ -36,6 +36,7 @@ it's the design. If something doesn't earn its keep, it doesn't make the cut.
 ### Agent Runtime
 
 - **Full toolset** — Read, Write, Edit, Bash, Grep, Glob, WebFetch, WebSearch, Task via the `claude_code` SDK preset
+- **In-app browser (`browser_tool`)** — drive a real, visible Chromium window (one per session) to navigate, click, fill forms, screenshot, and read console/JS output on a running app
 - **Multi-phase planning** — complex tasks broken into phases with progress tracking, per-phase approval, and plan revision based on discoveries
 - **Phase-level approval workflow** — configure when phases require approval based on risk level and autonomy settings
 - **Subagents** — Task tool for Anthropic connections spawns subagents within a turn; parallel execution with git worktree isolation
@@ -183,6 +184,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development guide.
 - [Agent Definitions](docs/AGENT-DEFINITIONS.md) — reusable agent configurations and sub-agent system
 - [Collaboration](docs/COLLABORATION.md) — autonomy system and intelligent engagement
 - [Terminal](docs/TERMINAL.md) — in-app terminal reference
+- [Browser Tool](docs/BROWSER-TOOL.md) — in-app browser automation reference
 - [Worktree Isolation](docs/WORKTREE-ISOLATION.md) — parallel agent isolation via git worktrees
 - [OpenTelemetry Tracing](docs/OTEL.md) — opt-in spans for agent turns, model requests, and tool calls
 
