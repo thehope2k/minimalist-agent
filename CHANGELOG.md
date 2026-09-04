@@ -5,6 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.25.2] — 2026-09-04
+
+Bug fixes and internal housekeeping improvements.
+
+### Added
+
+- Session housekeeping now also prunes sub-agent transcript directories, keeping session storage from growing unbounded over long-running projects with many sub-agent calls.
+
+### Fixed
+
+- The @-mention button in the chat composer no longer steals focus from the message input when clicked.
+
+---
+
 ## [1.25.1] — 2026-09-04
 
 Quality of life improvements: a refreshable Copilot quota pill and better skill/extension doc awareness for the agent.
