@@ -97,7 +97,7 @@ note only if it'll save someone time later.
   - `src/main/pi-server/index.ts` — 1,699
   - ~~`src/main/ipc.ts` — 1,542~~ ✅ split into `src/main/ipc/*-ipc.ts` (14 domain modules, largest 373 lines)
   - `src/renderer/src/hooks/useChat.ts` — 1,424
-  - `src/main/agent/backends/pi/agent.ts` — 1,000 (`handleOutbound` is a 687-line, 22-case switch — split candidate)
+  - `src/main/agent/backends/pi/agent.ts` — 1,000 (`handleOutbound` was a 687-line, 22-case switch) ✅ split into `outbound/*.ts` (8 files by concern) + `subprocess-handle.ts`; agent.ts now 719 lines
   - `src/main/agent/backends/pi/agent-tool.ts` — 739
   - Note: these are also the highest change-risk files —
     a natural place to add tests/logging discipline as they're split.

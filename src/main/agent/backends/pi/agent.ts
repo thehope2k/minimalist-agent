@@ -22,17 +22,14 @@
 //   credential via `token_update`, and emit a typed expired_oauth_token
 //   error so the UI offers a one-click retry.
 
-import {type ChildProcess, spawn} from 'node:child_process';
-import {executeBrowserToolCommand} from '../../../browser/browser-tool-runtime';
+import {spawn} from 'node:child_process';
 import {resolveExtensionEnv} from '../../../extensions/env-resolver';
-import {buildResolvedMcpServers, recordPiMcpStatus} from '../../../extensions/mcp-config';
-import {isMcpToolNameBlocked} from '../../../extensions/tool-permissions';
-import {createInterface, type Interface as ReadlineInterface} from 'node:readline';
-import {app, BrowserWindow} from 'electron';
+import {buildResolvedMcpServers} from '../../../extensions/mcp-config';
+import {createInterface} from 'node:readline';
+import {app} from 'electron';
 import {join} from 'node:path';
 import {resolvePiServerPath} from './spawn-utils';
 import type {StoredAttachment} from '../../../storage/sessions';
-import {updateSessionMeta} from '../../../storage/sessions';
 import type {AgentChatEvent} from '../../events';
 import {parseError} from '../../errors';
 import {buildPromptPrefix, buildSystemPromptAppend,} from '../../system-prompt';
@@ -41,41 +38,27 @@ import {formatAttachmentsDirective} from '../../attachments-directive';
 import type {PermissionMode} from '../../permissions';
 import type {CopilotOAuthAuth, LocalApiAuth} from '../types';
 import type {CollaborationAsk} from '../../../../shared/collaboration-types';
-import type {EngagementRequest} from '../../../../shared/collaboration-types';
-import {getActivePlan as getCachedPlan, updatePlanCache} from '../../plan-cache';
-import {resolveAuthForSlug} from '../../../auth/resolve';
 import {listConnections} from '../../../storage/connections';
 import {telemetryEnv} from '../../../storage/telemetry';
 import {loadAllAgents} from '../../../agents/storage';
 import {getSettings} from '../../../storage/settings';
 import {createLogger} from '../../../logger';
-import {writeJsonLine} from '../../../../shared/jsonl-stdin';
 import {TURN_IDLE_TIMEOUT_MS, WATCHDOG_SWEEP_MS} from '../../../../shared/timeouts';
+import {EventQueue, send, type SubprocessHandle} from './subprocess-handle';
+import {dispatchOutbound} from './outbound';
 
 const log = createLogger('pi');
 import type {
-  MsgAuthRefreshRequest,
-  MsgAuthRefreshResult,
-  MsgAuthRequired,
-  MsgBrowserToolRequest,
-  MsgCollaborationRequest,
-  MsgEvent,
   MsgInit,
   MsgLlmQueryResult,
   MsgManualCompact,
   MsgMiniCompletion,
   MsgMiniCompletionResult,
-  MsgMcpStatus,
-  MsgPreToolUseRequest,
   MsgPrompt,
-  MsgReady,
-  MsgSessionIdUpdate,
   MsgSetModel,
   MsgSetThinkingLevel,
-  MsgTokenUpdate,
   PiAuthProvider,
   PiThinkingLevel,
-  SubprocessInbound,
   SubprocessOutbound,
 } from './protocol';
 
@@ -123,91 +106,8 @@ export interface PiMiniCompletionRequest {
 }
 
 /* ============================================================ */
-/*  Async event queue                                             */
+/*  Subprocess handle (shared type + `send`)                      */
 /* ============================================================ */
-
-class EventQueue {
-  private buf: AgentChatEvent[] = [];
-  private resolvers: Array<(v: AgentChatEvent | null) => void> = [];
-  private done = false;
-
-  push(ev: AgentChatEvent): void {
-    if (this.done) return;
-    const r = this.resolvers.shift();
-    if (r) r(ev);
-    else this.buf.push(ev);
-  }
-
-  finish(): void {
-    this.done = true;
-    while (this.resolvers.length) this.resolvers.shift()!(null);
-  }
-
-  next(): Promise<AgentChatEvent | null> {
-    if (this.buf.length) return Promise.resolve(this.buf.shift()!);
-    if (this.done) return Promise.resolve(null);
-    return new Promise((res) => this.resolvers.push(res));
-  }
-}
-
-/* ============================================================ */
-/*  Subprocess handle                                            */
-/* ============================================================ */
-
-interface SubprocessHandle {
-  child: ChildProcess;
-  rl: ReadlineInterface;
-  ready: Promise<void>;
-  /** turnId → event queue. */
-  queues: Map<string, EventQueue>;
-  /** turnId → permission context (mode + sessionId + cwd). */
-  permissionContext: Map<
-    string,
-    { mode: PermissionMode; sessionId: string; cwd?: string }
-  >;
-  /** turnId → the request's AbortSignal, so a mid-turn round-trip to main
-   *  (e.g. an auth_refresh_request triggered by the subprocess) can be
-   *  cancelled the moment the user hits Stop, not just bounded by a ceiling. */
-  turnSignals: Map<string, AbortSignal>;
-  /** RequestId → resolver for mini_completion / llm_query. */
-  pendingMini: Map<
-    string,
-    { resolve: (r: MsgMiniCompletionResult) => void }
-  >;
-  pendingLlm: Map<
-    string,
-    { resolve: (r: MsgLlmQueryResult) => void }
-  >;
-  stderrBuffer: string[];
-  /** The chat session this subprocess serves. */
-  chatSessionId: string;
-  /** Connection slug, captured at spawn so refresh can mutex per-slug. */
-  connectionSlug: string;
-  /** Sub-provider (e.g. 'github-copilot' | 'openai-codex') for error messages. */
-  piAuthProvider?: string;
-  /** True while a token refresh is in progress for this handle. */
-  refreshing?: boolean;
-  /** Model ID currently active in the subprocess. */
-  currentModel?: string;
-  /** Thinking level currently active in the subprocess. */
-  currentThinkingLevel?: PiThinkingLevel;
-  /** Collaboration callback to show engagement dialogs. */
-  askCollaboration?: CollaborationAsk;
-  /** Count of in-flight collaboration_request calls awaiting a human response
-   *  (RequestApproval/Decision/Preference/Guidance/Feedback). While > 0 the
-   *  subprocess is deliberately silent — waiting on the user, not stuck — so
-   *  the idle watchdog must not reap it. Safe to leak on a discarded handle:
-   *  every SubprocessHandle is freshly constructed by spawnSubprocess (never
-   *  pooled/reused), and handles.delete is always identity-checked, so a
-   *  stale count can never suppress the watchdog for a future handle. */
-  pendingCollaborationRequests: number;
-  /** Timestamp of the last stdout line received from this subprocess. */
-  lastActivityAt: number;
-  /** Subprocess-reported label of whatever long-running operation is in
-   *  flight (e.g. 'model_call', 'oauth_refresh', 'tool:Bash'), or undefined
-   *  when idle between operations. Surfaced by the watchdog on force-recovery. */
-  currentOperation?: string;
-}
 
 /** Per-chat-session subprocess. */
 const handles = new Map<string, SubprocessHandle>();
@@ -254,10 +154,6 @@ setInterval(() => {
 /* ============================================================ */
 /*  Subprocess lifecycle                                         */
 /* ============================================================ */
-
-function send(handle: SubprocessHandle, msg: SubprocessInbound): void {
-  writeJsonLine(handle.child.stdin, msg, log);
-}
 
 /**
  * Whether the given connection+model accepts image input, per the app's
@@ -394,7 +290,7 @@ function spawnSubprocess(req: PiChatRequest, systemPrompt: string): SubprocessHa
       log.error('bad JSONL:', line.slice(0, 200));
       return;
     }
-    void handleOutbound(msg, handle, resolveReady, rejectReady);
+    void dispatchOutbound(msg, handle, resolveReady, rejectReady);
   });
 
   child.on('exit', (code) => {
@@ -497,451 +393,6 @@ function spawnSubprocess(req: PiChatRequest, systemPrompt: string): SubprocessHa
   send(handle, init);
 
   return handle;
-}
-
-/** Persists the Pi SDK's transcript-file id on session meta, stable for a
- *  session's lifetime unless an extension forks/rotates it mid-conversation. */
-function persistPiSessionId(chatSessionId: string, piSessionId: string): void {
-  try {
-    updateSessionMeta(chatSessionId, { sdkSessionId: piSessionId });
-  } catch (e) {
-    log.error('failed to persist piSessionId:', e);
-  }
-}
-
-async function handleOutbound(
-  msg: SubprocessOutbound,
-  handle: SubprocessHandle,
-  resolveReady: () => void,
-  rejectReady: (e: Error) => void,
-): Promise<void> {
-  switch (msg.type) {
-    case 'ready': {
-      const m = msg as MsgReady;
-      if (m.piSessionId) persistPiSessionId(handle.chatSessionId, m.piSessionId);
-      resolveReady();
-      return;
-    }
-
-    case 'operation_update': {
-      handle.currentOperation = msg.operation;
-      return;
-    }
-
-    case 'event': {
-      const m = msg as MsgEvent;
-      const q = handle.queues.get(m.turnId);
-      if (!q) return;
-      q.push(m.event);
-      if (m.event.type === 'turn_done' || m.event.type === 'error') {
-        q.finish();
-        handle.queues.delete(m.turnId);
-        handle.permissionContext.delete(m.turnId);
-      }
-      return;
-    }
-
-    case 'pre_tool_use_request': {
-      const req = msg as MsgPreToolUseRequest;
-      const ctx = handle.permissionContext.get(req.turnId);
-      if (!ctx) {
-        // No context registered → block conservatively. Should not happen
-        // in a normal flow, but covers a stray request after turn end.
-        send(handle, {
-          type: 'pre_tool_use_response',
-          requestId: req.requestId,
-          action: 'block',
-          reason: 'No permission context for this turn',
-        });
-        return;
-      }
-      const decision: { action: 'allow' | 'block'; reason?: string } = { action: 'allow', reason: undefined };
-
-      // Server-declared tool blocklist (extension.json permissions.blockedTools)
-      // applies regardless of permission mode — it's a capability boundary,
-      // not a plan/auto approval concern.
-      if (isMcpToolNameBlocked(req.toolName, ctx.cwd)) {
-        decision.action = 'block';
-        decision.reason = `"${req.toolName}" is blocked by its extension's permissions.blockedTools`;
-      }
-
-      // In plan mode, block write operations
-      if (decision.action === 'allow' && ctx.mode === 'plan') {
-        // browser_tool is intentionally NOT exempt: unlike Read/Grep/Find/Ls it can
-        // click/fill/submit/evaluate against a real, remote page, so plan mode's
-        // "block write operations" contract has to cover it like any other tool
-        // with side effects.
-        const readOnlyTools = new Set(['Read', 'Grep', 'Find', 'Ls']);
-        if (!readOnlyTools.has(req.toolName)) {
-          decision.action = 'block';
-          decision.reason = 'Plan mode: write operations not allowed';
-        }
-      }
-      // In auto mode, allow all tools (agent uses collaboration tools for engagement)
-      
-      send(handle, {
-        type: 'pre_tool_use_response',
-        requestId: req.requestId,
-        action: decision.action,
-        reason: decision.reason,
-      });
-      return;
-    }
-
-    case 'collaboration_request': {
-      const req = msg as MsgCollaborationRequest;
-      
-      // Forward to askCollaboration callback if available
-      if (!handle.askCollaboration) {
-        log.warn('Collaboration request received but no askCollaboration callback');
-        // Return a default "no" response
-        send(handle, {
-          type: 'collaboration_response',
-          requestId: req.requestId,
-          response: {
-            type: req.engagementType,
-            decision: 'denied',
-            custom_response: 'Collaboration not available',
-          },
-        });
-        return;
-      }
-
-      // Convert to EngagementRequest format
-      const engagementRequest: EngagementRequest = {
-        reqId: req.requestId,
-        turnId: req.turnId,
-        sessionId: req.sessionId,
-        type: req.engagementType,
-        payload: req.payload as any, // Payload is validated by collaboration handlers
-      };
-
-      // Call the renderer callback. Held open until the user responds, which
-      // may take arbitrarily long — count it so the idle watchdog (which
-      // otherwise reaps subprocesses silent for TURN_IDLE_TIMEOUT_MS) knows
-      // this silence is expected, not a hang.
-      handle.pendingCollaborationRequests++;
-      handle.askCollaboration(engagementRequest)
-        .then((response: any) => {
-          send(handle, {
-            type: 'collaboration_response',
-            requestId: req.requestId,
-            response,
-          });
-        })
-        .catch((err: any) => {
-          log.error('Collaboration request failed:', err);
-          send(handle, {
-            type: 'collaboration_response',
-            requestId: req.requestId,
-            response: {
-              type: req.engagementType,
-              decision: 'denied',
-              custom_response: 'Error: ' + String(err),
-            },
-          });
-        })
-        .finally(() => {
-          handle.pendingCollaborationRequests--;
-        });
-      return;
-    }
-
-    // Planning workflow events - forward to renderer via IPC and update cache
-    case 'planning:created':
-    case 'planning:updated': {
-      const { plan, sessionId = handle.chatSessionId } = msg as any;
-      if (plan) {
-        // Update the cache so getActivePlan returns the latest state
-        updatePlanCache(sessionId, plan);
-
-        // Forward to renderer
-        const win = BrowserWindow.getAllWindows()[0];
-        if (win && !win.isDestroyed()) {
-          win.webContents.send(msg.type, { sessionId, plan });
-        }
-      }
-      return;
-    }
-
-    case 'planning:phase-updated': {
-      const { sessionId = handle.chatSessionId, planId, phase } = msg as any;
-      // Update the cached plan's phase
-      const cachedPlan = getCachedPlan(sessionId);
-      if (cachedPlan && cachedPlan.id === planId) {
-        const phaseIndex = cachedPlan.phases.findIndex((p: any) => p.id === phase.id);
-        if (phaseIndex >= 0) {
-          cachedPlan.phases[phaseIndex] = phase;
-          updatePlanCache(sessionId, cachedPlan);
-        }
-      }
-
-      // Forward to renderer
-      const win = BrowserWindow.getAllWindows()[0];
-      if (win && !win.isDestroyed()) {
-        win.webContents.send(msg.type, { sessionId, planId, phase });
-      }
-      return;
-    }
-
-    case 'planning:revised': {
-      const { sessionId = handle.chatSessionId, plan, revision } = msg as any;
-      if (plan) {
-        updatePlanCache(sessionId, plan);
-
-        const win = BrowserWindow.getAllWindows()[0];
-        if (win && !win.isDestroyed()) {
-          win.webContents.send(msg.type, { sessionId, plan, revision });
-        }
-      }
-      return;
-    }
-
-    case 'planning:completed':
-    case 'planning:cancelled': {
-      const { sessionId = handle.chatSessionId, planId } = msg as any;
-
-      // Update cache status or remove
-      if (msg.type === 'planning:cancelled') {
-        updatePlanCache(sessionId, null);
-      } else {
-        const cachedPlan = getCachedPlan(sessionId);
-        if (cachedPlan && cachedPlan.id === planId) {
-          cachedPlan.status = 'completed';
-          updatePlanCache(sessionId, cachedPlan);
-        }
-      }
-
-      // Forward to renderer
-      const win = BrowserWindow.getAllWindows()[0];
-      if (win && !win.isDestroyed() && planId) {
-        win.webContents.send(msg.type, { sessionId, planId });
-      }
-      return;
-    }
-
-    case 'planning:error': {
-      const { sessionId = handle.chatSessionId, planId, error, phaseId } = msg as any;
-
-      // Update cache to error status
-      const cachedPlan = getCachedPlan(sessionId);
-      if (cachedPlan && cachedPlan.id === planId) {
-        cachedPlan.status = 'error';
-        updatePlanCache(sessionId, cachedPlan);
-      }
-
-      // Forward to renderer
-      const win = BrowserWindow.getAllWindows()[0];
-      if (win && !win.isDestroyed()) {
-        win.webContents.send(msg.type, { sessionId, planId, error, phaseId });
-      }
-      return;
-    }
-
-    case 'planning:approval-required': {
-      const { sessionId = handle.chatSessionId, planId, phase } = msg as any;
-
-      // Forward to renderer to show approval dialog
-      const win = BrowserWindow.getAllWindows()[0];
-      if (win && !win.isDestroyed()) {
-        win.webContents.send(msg.type, { sessionId, planId, phase });
-      }
-      return;
-    }
-
-    case 'permission_mode_changed': {
-      const { sessionId = handle.chatSessionId, mode } = msg as any;
-
-      // CRITICAL: Update permission context for all active turns
-      // When user approves a phase in plan mode, we switch to auto,
-      // but the turn's permission context is cached from turn start.
-      // Without this update, tools still get blocked by the plan mode guard.
-      for (const ctx of handle.permissionContext.values()) {
-        if (ctx.sessionId === sessionId) {
-          ctx.mode = mode;
-        }
-      }
-
-      // Update session metadata to persist the mode change
-      try {
-        updateSessionMeta(sessionId, { permissionMode: mode });
-      } catch (e) {
-        log.error('Failed to persist permission mode:', e);
-      }
-
-      // Forward to renderer to update UI
-      const win = BrowserWindow.getAllWindows()[0];
-      if (win && !win.isDestroyed()) {
-        win.webContents.send('permission-mode-changed', { sessionId, mode });
-      }
-      return;
-    }
-
-    case 'session_id_update': {
-      const m = msg as MsgSessionIdUpdate;
-      persistPiSessionId(handle.chatSessionId, m.piSessionId);
-      return;
-    }
-
-    case 'auth_refresh_request': {
-      const m = msg as MsgAuthRefreshRequest;
-      const signal = m.turnId ? handle.turnSignals.get(m.turnId) : undefined;
-      try {
-        const fresh = await resolveAuthForSlug(handle.connectionSlug, signal, `session=${handle.chatSessionId}`);
-        const result: MsgAuthRefreshResult =
-          fresh.type === 'copilot_oauth'
-            ? {
-                type: 'auth_refresh_result',
-                requestId: m.requestId,
-                credential: {
-                  access: fresh.accessToken,
-                  refresh: fresh.refreshToken ?? '',
-                  expires: fresh.expiresAt,
-                },
-              }
-            : {
-                type: 'auth_refresh_result',
-                requestId: m.requestId,
-                error: `Connection "${handle.connectionSlug}" has no OAuth credential to refresh`,
-              };
-        send(handle, result);
-      } catch (e) {
-        send(handle, {
-          type: 'auth_refresh_result',
-          requestId: m.requestId,
-          error: e instanceof Error ? e.message : String(e),
-        });
-      }
-      return;
-    }
-
-    case 'browser_tool_request': {
-      const m = msg as MsgBrowserToolRequest;
-      try {
-        const result = await executeBrowserToolCommand(m.sessionId, m.command);
-        send(handle, {
-          type: 'browser_tool_result',
-          requestId: m.requestId,
-          output: result.output,
-          imageBase64: result.imageBase64,
-          imageMimeType: result.imageMimeType,
-        });
-      } catch (e) {
-        send(handle, {
-          type: 'browser_tool_result',
-          requestId: m.requestId,
-          output: e instanceof Error ? e.message : String(e),
-          isError: true,
-        });
-      }
-      return;
-    }
-
-    case 'mcp_status': {
-      const { sessionId = handle.chatSessionId, servers } = msg as MsgMcpStatus;
-      // Runtime connection outcome for mcp-backed extensions. Cache it so the
-      // extensions:mcp.status IPC reflects live connect failures, not just
-      // config-level blockers, and forward to the renderer for surfacing.
-      recordPiMcpStatus(servers);
-      for (const s of servers) {
-        if (s.ok) {
-          log.info(`MCP ${s.slug} connected (${s.toolCount ?? 0} tool(s))`);
-        } else {
-          log.warn(`MCP ${s.slug} failed: ${s.error ?? 'unknown error'}`);
-        }
-      }
-      const win = BrowserWindow.getAllWindows()[0];
-      if (win && !win.isDestroyed()) {
-        win.webContents.send('mcp-status', { sessionId, servers });
-      }
-      return;
-    }
-
-    case 'mini_completion_result': {
-      const m = msg as MsgMiniCompletionResult;
-      const p = handle.pendingMini.get(m.requestId);
-      if (p) {
-        handle.pendingMini.delete(m.requestId);
-        p.resolve(m);
-      }
-      return;
-    }
-
-    case 'llm_query_result': {
-      const m = msg as MsgLlmQueryResult;
-      const p = handle.pendingLlm.get(m.requestId);
-      if (p) {
-        handle.pendingLlm.delete(m.requestId);
-        p.resolve(m);
-      }
-      return;
-    }
-
-    case 'auth_required': {
-      const m = msg as MsgAuthRequired;
-      // Refresh once, push token_update; we don't auto-retry the turn
-      // (Pi already errored it). The user can re-send.
-      if (handle.refreshing) return;
-      handle.refreshing = true;
-      try {
-        const fresh = await resolveAuthForSlug(handle.connectionSlug, undefined, `session=${handle.chatSessionId}`);
-        if (fresh.type === 'copilot_oauth') {
-          const upd: MsgTokenUpdate = {
-            type: 'token_update',
-            credential: handle.piAuthProvider === 'github-copilot'
-              ? {
-                  type: 'oauth',
-                  access: fresh.accessToken,
-                  refresh: fresh.refreshToken ?? '',
-                  expires: fresh.expiresAt,
-                }
-              : {
-                  type: 'api_key',
-                  key: fresh.accessToken,
-                },
-          };
-          send(handle, upd);
-        }
-      } catch (e) {
-        log.error('token refresh failed:', e);
-      } finally {
-        handle.refreshing = false;
-      }
-      // Surface to the active turn so the UI shows a retry-able error.
-      if (m.turnId) {
-        const q = handle.queues.get(m.turnId);
-        if (q) {
-          const isChatGpt = handle.piAuthProvider === 'openai-codex';
-          q.push({
-            type: 'error',
-            error: {
-              code: 'expired_oauth_token',
-              title: isChatGpt ? 'ChatGPT Plus session expired' : 'GitHub Copilot session expired',
-              message: isChatGpt
-                ? 'Your ChatGPT Plus token was refreshed. Re-send the message to continue.'
-                : 'Your Copilot token was refreshed. Re-send the message to continue.',
-              canRetry: true,
-              originalError: m.message,
-            },
-          });
-          q.finish();
-          handle.queues.delete(m.turnId);
-        }
-      }
-      return;
-    }
-
-    case 'error': {
-      const m = msg as { message: string };
-      for (const q of handle.queues.values()) {
-        q.push({ type: 'error', error: parseError(new Error(m.message)) });
-        q.finish();
-      }
-      handle.queues.clear();
-      rejectReady(new Error(m.message));
-      return;
-    }
-  }
 }
 
 /* ============================================================ */
