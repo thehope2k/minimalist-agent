@@ -386,7 +386,7 @@ export function resolveProviderDescription(
       return 'Claude Code (Anthropic)';
     case 'copilot_oauth':
       if (piAuthProvider === 'openai-codex') {
-        return `ChatGPT Plus / OpenAI${modelSuffix}`;
+        return `ChatGPT / OpenAI${modelSuffix}`;
       }
       return `GitHub Copilot${modelSuffix}`;
     case 'local_api':

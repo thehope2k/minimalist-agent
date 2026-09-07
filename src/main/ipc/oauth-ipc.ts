@@ -54,7 +54,7 @@ export function registerOAuthIpc(): void {
 
   ipcMain.handle('copilot-oauth:cancel', () => cancelCopilotLogin());
 
-  // ---- ChatGPT Plus (Codex) OAuth (PKCE browser-redirect via Pi SDK) --------
+  // ---- ChatGPT (Codex) OAuth (PKCE browser-redirect via Pi SDK) --------
 
   // The PKCE flow opens the user's browser to auth.openai.com and catches
   // the redirect on a local HTTP server (port 1455) the Pi SDK manages.
@@ -167,7 +167,7 @@ export function registerOAuthIpc(): void {
     },
   );
 
-  // ---- ChatGPT Plus (Codex) model discovery ---------------------------
+  // ---- ChatGPT (Codex) model discovery ---------------------------
 
   ipcMain.handle('chatgpt:getModels', async (): Promise<ModelDef[]> => {
     const { getBuiltinModels } = await import('@earendil-works/pi-ai/providers/all');

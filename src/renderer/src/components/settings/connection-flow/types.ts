@@ -2,7 +2,7 @@ import type { ConnectionMeta } from '@/lib/electron';
 
 export type ConnectionKind =
   | 'claude-max'
-  | 'chatgpt-plus'
+  | 'chatgpt'
   | 'github-copilot'
   | 'openai-compatible'
   | 'other'

@@ -88,9 +88,9 @@ export async function handleAuthRequired(msg: MsgAuthRequired, handle: Subproces
         type: 'error',
         error: {
           code: 'expired_oauth_token',
-          title: isChatGpt ? 'ChatGPT Plus session expired' : 'GitHub Copilot session expired',
+          title: isChatGpt ? 'ChatGPT session expired' : 'GitHub Copilot session expired',
           message: isChatGpt
-            ? 'Your ChatGPT Plus token was refreshed. Re-send the message to continue.'
+            ? 'Your ChatGPT token was refreshed. Re-send the message to continue.'
             : 'Your Copilot token was refreshed. Re-send the message to continue.',
           canRetry: true,
           originalError: msg.message,

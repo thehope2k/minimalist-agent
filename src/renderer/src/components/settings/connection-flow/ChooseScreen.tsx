@@ -60,9 +60,9 @@ export function ChooseScreen({ onPick }: { onPick: (k: ConnectionKind) => void }
         />
         <Choice
           icon={<OpenAIMark />}
-          title="Codex · ChatGPT Plus"
-          desc="Sign in with your ChatGPT Plus or Pro account."
-          onClick={() => onPick('chatgpt-plus')}
+          title="Codex · ChatGPT"
+          desc="Sign in with your ChatGPT account."
+          onClick={() => onPick('chatgpt')}
         />
         <Choice
           icon={<GithubMark />}

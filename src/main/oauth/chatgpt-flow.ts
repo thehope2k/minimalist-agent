@@ -1,4 +1,4 @@
-// ChatGPT Plus (Codex) OAuth — wraps the PKCE browser-redirect flow
+// ChatGPT (Codex) OAuth — wraps the PKCE browser-redirect flow
 // exposed by `@earendil-works/pi-ai`.
 //
 // Unlike Copilot (device-code, no local server), this flow opens the
@@ -99,7 +99,7 @@ export function cancelLogin(): void {
 }
 
 /**
- * Refresh a ChatGPT Plus token. The Pi SDK re-runs the id_token →
+ * Refresh a ChatGPT token. The Pi SDK re-runs the id_token →
  * OpenAI API key exchange, returning fresh credentials.
  */
 export async function refreshChatGptTokens(

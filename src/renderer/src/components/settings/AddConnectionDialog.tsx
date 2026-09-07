@@ -30,7 +30,7 @@ function inferKind(meta: ConnectionMeta): ConnectionKind {
     return 'github-copilot';
   }
   if (meta.providerType === 'pi' && meta.piAuthProvider === 'openai-codex') {
-    return 'chatgpt-plus';
+    return 'chatgpt';
   }
   if (meta.providerType === 'local') return 'local';
   if (meta.providerType === 'openai-compatible') return 'openai-compatible';
@@ -86,7 +86,7 @@ export function AddConnectionDialog({
         {activeKind === 'other' && <ApiKeyForm {...flowProps} />}
         {activeKind === 'claude-max' && <ClaudeOAuthForm {...flowProps} />}
         {activeKind === 'github-copilot' && <CopilotFlow {...flowProps} />}
-        {activeKind === 'chatgpt-plus' && <ChatGptFlow {...flowProps} />}
+        {activeKind === 'chatgpt' && <ChatGptFlow {...flowProps} />}
         {activeKind === 'local' && <LocalModelFlow {...flowProps} />}
         {activeKind === 'openai-compatible' && <OpenAICompatibleFlow {...flowProps} />}
       </div>

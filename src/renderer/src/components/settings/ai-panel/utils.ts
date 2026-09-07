@@ -8,7 +8,7 @@ export function providerLabel(conn: ConnectionMeta): string {
   }
   if (conn.providerType === 'pi') {
     if (conn.piAuthProvider === 'github-copilot') return 'GitHub Copilot';
-    if (conn.piAuthProvider === 'openai-codex') return 'ChatGPT Plus';
+    if (conn.piAuthProvider === 'openai-codex') return 'ChatGPT';
     return 'Pi';
   }
   return conn.authType === 'oauth' ? 'Claude OAuth' : 'Anthropic API';

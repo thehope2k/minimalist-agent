@@ -259,7 +259,7 @@ async function performCopilotRefresh(
   }
 }
 
-/* --------------------------- ChatGPT Plus (Codex) OAuth ----------------- */
+/* ------------------------------ ChatGPT (Codex) OAuth -------------------- */
 
 async function ensureFreshChatGptOAuth(
   slug: string,
@@ -271,11 +271,11 @@ async function ensureFreshChatGptOAuth(
 
   if (!cred.refreshToken) {
     throw new Error(
-      'ChatGPT Plus session expired and no refresh token is stored. Sign in again from Settings → AI.',
+      'ChatGPT session expired and no refresh token is stored. Sign in again from Settings → AI.',
     );
   }
 
-  return guardedRefresh(slug, `ChatGPT Plus token refresh for ${slug}${callerTag ? ` [${callerTag}]` : ''}`, () =>
+  return guardedRefresh(slug, `ChatGPT token refresh for ${slug}${callerTag ? ` [${callerTag}]` : ''}`, () =>
     performChatGptRefresh(slug, cred), signal,
   );
 }
@@ -301,10 +301,10 @@ async function performChatGptRefresh(
       log.warn(`ChatGPT OAuth refresh rejected for ${slug} — clearing credential (forced re-auth):`, msg);
       try { deleteCredential(slug); } catch { /* best effort */ }
       throw new Error(
-        `ChatGPT Plus session was rejected (${msg}). Sign in again from Settings → AI.`,
+        `ChatGPT session was rejected (${msg}). Sign in again from Settings → AI.`,
       );
     }
-    log.error(`ChatGPT Plus token refresh failed for ${slug}:`, msg);
-    throw new Error(`ChatGPT Plus token refresh failed: ${msg}`);
+    log.error(`ChatGPT token refresh failed for ${slug}:`, msg);
+    throw new Error(`ChatGPT token refresh failed: ${msg}`);
   }
 }

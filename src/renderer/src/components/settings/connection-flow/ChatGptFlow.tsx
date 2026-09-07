@@ -10,7 +10,7 @@ type Step = 'idle' | 'browser-open' | 'saving';
 
 export function ChatGptFlow({ onBack, onClose, onSaved, editingMeta }: FlowProps) {
   const editing = !!editingMeta;
-  const [name, setName] = useState(editingMeta?.name ?? 'ChatGPT Plus');
+  const [name, setName] = useState(editingMeta?.name ?? 'ChatGPT');
   const [models, setModels] = useState<ModelDef[]>(editingMeta?.models ?? []);
   const [model, setModel] = useState<string>(
     editingMeta?.defaultModel ?? '',
@@ -93,7 +93,7 @@ export function ChatGptFlow({ onBack, onClose, onSaved, editingMeta }: FlowProps
     } catch (e) {
       setStep('idle');
       setError(
-        e instanceof Error ? e.message : 'ChatGPT Plus authorization failed.',
+        e instanceof Error ? e.message : 'ChatGPT authorization failed.',
       );
     } finally {
       inFlight.current = false;
@@ -108,7 +108,7 @@ export function ChatGptFlow({ onBack, onClose, onSaved, editingMeta }: FlowProps
   };
 
   return (
-    <FormShell title="ChatGPT Plus" onBack={onBack}>
+    <FormShell title="ChatGPT" onBack={onBack}>
       <Field label="Name">
         <Input value={name} onChange={(e) => setName(e.target.value)} />
       </Field>
@@ -116,8 +116,8 @@ export function ChatGptFlow({ onBack, onClose, onSaved, editingMeta }: FlowProps
       {step === 'idle' && (
         <div className="space-y-3">
           <p className="text-xs text-fg-subtle">
-            Sign in with your ChatGPT Plus or Pro account. Your browser will
-            open to <code className="mx-1 rounded bg-elevated px-1 py-0.5 text-[11px] text-fg-muted">auth.openai.com</code>{' '}
+            Sign in with your ChatGPT account. Your browser will open to{' '}
+            <code className="mx-1 rounded bg-elevated px-1 py-0.5 text-[11px] text-fg-muted">auth.openai.com</code>
             and redirect back automatically — no code to copy.
             Model availability varies by plan — if a model returns an error,
             switch to another from the picker.

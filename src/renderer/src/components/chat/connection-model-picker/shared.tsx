@@ -25,7 +25,7 @@ export function categoryHeader(c: ProviderCategory): string {
   switch (c) {
     case 'anthropic': return 'Anthropic';
     case 'copilot':   return 'GitHub Copilot';
-    case 'chatgpt':   return 'ChatGPT Plus';
+    case 'chatgpt':   return 'ChatGPT';
     case 'local':     return 'Local';
     case 'openai-compatible': return 'OpenAI-compatible';
     default:          return 'Other';

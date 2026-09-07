@@ -12,7 +12,7 @@
  * Central model catalog for agent configuration.
  * 
  * Agents are GLOBAL - not tied to specific connections. The same agent
- * can be used with GitHub Copilot, ChatGPT Plus, or custom endpoints.
+ * can be used with GitHub Copilot, ChatGPT, or custom endpoints.
  * 
  * This catalog lists all known model IDs across all providers.
  * Runtime validation checks if a model is available for the current connection.
@@ -92,7 +92,7 @@ export function getModelValidationError(modelId: string): string {
   return (
     `Unknown model ID "${modelId}". ` +
     `Common models: ${commonModels.join(', ')}, or "${SESSION_DEFAULT_MODEL}" to inherit session model. ` +
-    `Note: Model availability depends on your connection (GitHub Copilot, ChatGPT Plus, or custom endpoint).`
+    `Note: Model availability depends on your connection (GitHub Copilot, ChatGPT, or custom endpoint).`
   );
 }
 
