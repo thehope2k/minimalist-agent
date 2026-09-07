@@ -37,11 +37,13 @@ export function TopBar({
 
       <div className="w-2" />
 
-      <ProjectSwitcher
-        value={projectFilter}
-        onChange={onProjectFilterChange}
-        onManage={onManageProjects}
-      />
+      {view === 'all' && (
+        <ProjectSwitcher
+          value={projectFilter}
+          onChange={onProjectFilterChange}
+          onManage={onManageProjects}
+        />
+      )}
 
       <ViewTabs view={view} onViewChange={onViewChange} />
 

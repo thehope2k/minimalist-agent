@@ -7,6 +7,7 @@ import { Button, IconButton, Input } from '../ui';
 import { cn } from '@/lib/utils';
 import { useHasNewSessionDraft } from '@/hooks/useHasNewSessionDraft';
 import type { ProjectFilter, View } from './TopBar';
+import { projectFilterLabel } from './top-bar/project-filter';
 import { SessionRow } from './sessions-panel/SessionRow';
 import { groupByDate } from './sessions-panel/utils';
 import { Circle } from 'lucide-react';
@@ -46,10 +47,7 @@ export function SessionsPanel({
   const trimmedQuery = query.trim().toLowerCase();
 
   const heading =
-    view === 'archived' ? 'Archived'
-    : projectFilter === 'inbox' ? 'Inbox'
-    : projectFilter === 'all' ? 'All Sessions'
-    : projects.find((p) => p.id === projectFilter)?.name ?? 'Sessions';
+    view === 'archived' ? 'Archived' : projectFilterLabel(projectFilter, projects);
 
   const showProjectDot = view !== 'archived' && projectFilter === 'all';
 
@@ -147,7 +145,7 @@ export function SessionsPanel({
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); closeSearch(); } }}
             placeholder="Search by name…"
-            className="h-7 border-0 bg-transparent px-1 focus:border-0"
+            className="h-7 border-0 bg-transparent px-1"
           />
           <IconButton icon={X} label="Close search" size="sm" onClick={closeSearch} />
         </header>

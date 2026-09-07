@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProjects } from '@/hooks/useProjects';
+import { projectFilterLabel } from './project-filter';
 import type { ProjectFilter } from './types';
 
 interface ProjectSwitcherProps {
@@ -25,12 +26,7 @@ export function ProjectSwitcher({ value, onChange, onManage }: ProjectSwitcherPr
     value !== 'all' && value !== 'inbox'
       ? projects?.find((p) => p.id === value)
       : null;
-  const label =
-    value === 'all'
-      ? 'All Sessions'
-      : value === 'inbox'
-        ? 'Inbox'
-        : selectedProject?.name ?? 'Project';
+  const label = projectFilterLabel(value, projects ?? []);
   const dot = selectedProject?.color;
 
   return (
@@ -72,7 +68,7 @@ export function ProjectSwitcher({ value, onChange, onManage }: ProjectSwitcherPr
           className="z-50 w-56 overflow-hidden rounded-lg border border-border bg-panel p-1 shadow-2xl"
         >
           <ProjectSwitcherItem
-            label="All Sessions"
+            label="All Projects"
             icon={Folders}
             selected={value === 'all'}
             onSelect={() => {
