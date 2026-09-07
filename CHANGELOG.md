@@ -5,6 +5,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.26.0] — 2026-09-07
+
+Adds ChatGPT quota visibility and inline session image rendering; several OAuth and model-list fixes.
+
+### Added
+
+- ChatGPT (Codex) OAuth connections now show a live rate-limit quota bar/pill in AI settings and the chat input actions, fetched from the same usage endpoint the Codex CLI polls.
+- The agent can now render session-generated images inline via a jailed `ma-asset://` protocol scoped to that session's own scratch directory, in addition to `http(s)://` sources.
+
+### Changed
+
+- "ChatGPT Plus" connections and copy are now labeled "ChatGPT" throughout the app.
+- The Copilot and general model catalogs are now sourced live from the pi-ai SDK instead of a hand-maintained list, so newly available models show up automatically.
+- Buttons now show a pointer cursor (not-allowed when disabled) instead of the default text cursor.
+
+### Fixed
+
+- The ChatGPT login prompt could break or silently pick the wrong login method; it now automatically selects the browser flow.
+- Copilot OAuth token refresh could fail to send the right credential shape in some code paths; it's now consistent across all call sites.
+- Syntax highlighting in code blocks stopped working under the production Content Security Policy; it now uses a WASM-free regex engine that works under strict CSP.
+
+---
+
 ## [1.25.2] — 2026-09-04
 
 Bug fixes and internal housekeeping improvements.
