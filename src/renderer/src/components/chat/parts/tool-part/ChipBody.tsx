@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CopyButton } from '@/components/ui';
+import { useCwd } from '@/contexts/CwdContext';
 import {
   canonicalToolName,
   iconForTool,
@@ -43,8 +44,9 @@ export function ChipBody({
   contextDeltaGroupSize,
 }: ToolPartProps) {
   const [open, setOpen] = useState(false);
+  const cwd = useCwd();
   const inputText = formatInput(input, partialInputJson);
-  const summary = summarizeToolCall(name, input);
+  const summary = summarizeToolCall(name, input, cwd);
   const resultSummary = summarizeToolResult(name, result);
   const toolName = canonicalToolName(name);
   const isAgentTool = toolName === 'Agent';

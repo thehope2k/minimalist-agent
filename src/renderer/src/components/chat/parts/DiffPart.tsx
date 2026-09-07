@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CopyButton } from '@/components/ui';
+import { useCwd } from '@/contexts/CwdContext';
 import {
   parseDiffInput,
   countDiffLines,
@@ -45,6 +46,7 @@ interface DiffPartProps {
 export function DiffPart({ name, input, result, status, contextDelta, contextDeltaGroupSize }: DiffPartProps) {
   // Backend-agnostic: Anthropic emits 'Write'/'Edit', Pi emits 'write'/'edit'.
   const isWrite = name.toLowerCase() === 'write';
+  const cwd = useCwd();
   const erroredOrFailed = status === 'error' || result?.isError;
   // Diff chips stay collapsed by default — even on error. The red border +
   // alert icon already flag failure, and a failed edit didn't actually
@@ -74,7 +76,7 @@ export function DiffPart({ name, input, result, status, contextDelta, contextDel
   }
 
   const Icon = isWrite ? FileText : FilePenLine;
-  const shortPath = shortenPath(parsed.filePath);
+  const shortPath = shortenPath(parsed.filePath, cwd);
 
   return (
     <>

@@ -3,6 +3,7 @@
 import { lazy, Suspense } from 'react';
 import { FilePenLine, FileText } from 'lucide-react';
 import { CopyButton, ExpandModal } from '@/components/ui';
+import { useCwd } from '@/contexts/CwdContext';
 import { WrittenView } from './WrittenView';
 import { type ParsedDiff, DIFF_METHOD_WORDS, diffViewerStyles, shortenPath } from './diff-utils';
 
@@ -24,6 +25,7 @@ export function DiffExpandModal({
 }) {
   const isWrite = name.toLowerCase() === 'write';
   const Icon = isWrite ? FileText : FilePenLine;
+  const cwd = useCwd();
 
   const title = (
     <>
@@ -31,7 +33,7 @@ export function DiffExpandModal({
       <span className="text-sm font-medium text-fg">{name}</span>
       <span className="text-fg-subtle">·</span>
       <span className="min-w-0 flex-1 truncate font-mono text-xs text-fg-muted">
-        {shortenPath(parsed.filePath)}
+        {shortenPath(parsed.filePath, cwd)}
       </span>
       <CopyButton text={parsed.newValue} className="shrink-0 opacity-100" />
     </>

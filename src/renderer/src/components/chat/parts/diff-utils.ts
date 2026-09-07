@@ -3,6 +3,7 @@
 // see WrittenView.tsx and DiffExpandModal.tsx for the UI pieces.
 
 import type { DiffMethod } from 'react-diff-viewer-continued';
+import { relativeToCwd } from '@/lib/path';
 
 // DiffMethod.WORDS = 'diffWords' — inlined to avoid importing the full package.
 // Cast via `import type` (erased at runtime — zero bundle cost).
@@ -178,8 +179,8 @@ function toLines(s: string): string[] {
   return trimmed.split('\n');
 }
 
-export function shortenPath(p: string): string {
-  return p.replace(/^\/Users\/[^/]+\//, '~/');
+export function shortenPath(p: string, cwd?: string): string {
+  return relativeToCwd(p, cwd);
 }
 
 export function stripErrorWrapper(s: string): string {

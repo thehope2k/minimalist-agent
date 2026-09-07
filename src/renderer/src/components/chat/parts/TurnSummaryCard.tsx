@@ -10,6 +10,7 @@
 import { useMemo, useState, Suspense } from 'react';
 import { ChevronRight, FilePenLine, FileText, GitCommit, Maximize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useCwd } from '@/contexts/CwdContext';
 import type { MessagePart } from '@/lib/chat';
 import {
   type ParsedDiff,
@@ -205,7 +206,8 @@ function FileRow({
 }) {
   const { merged, stats, lastOpKind, opCount } = summary;
   const Icon = lastOpKind === 'write' ? FileText : FilePenLine;
-  const shortPath = shortenPath(merged.filePath);
+  const cwd = useCwd();
+  const shortPath = shortenPath(merged.filePath, cwd);
 
   return (
     <div className={cn('border-border/40', !isLast && 'border-b')}>

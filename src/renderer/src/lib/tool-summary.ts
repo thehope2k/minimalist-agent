@@ -17,6 +17,7 @@ import {
   Search,
   SquareTerminal,
 } from 'lucide-react';
+import { relativeToCwd } from './path';
 
 const MAX_SUMMARY = 120;
 
@@ -27,11 +28,6 @@ function clip(s: string, n = MAX_SUMMARY): string {
 
 function asObj(input: unknown): Record<string, unknown> | null {
   return input && typeof input === 'object' ? (input as Record<string, unknown>) : null;
-}
-
-function relPath(p: string): string {
-  // Trim repetitive cwd prefixes the agent often emits.
-  return p.replace(/^\/Users\/[^/]+\//, '~/').replace(/\/+/g, '/');
 }
 
 // Bash calls almost always lead with a `cd <same project dir> && ` boilerplate
@@ -71,12 +67,12 @@ export function canonicalToolName(name: string): string {
   }
 }
 
-export function summarizeToolCall(name: string, input: unknown): string {
+export function summarizeToolCall(name: string, input: unknown, cwd?: string): string {
   const o = asObj(input) ?? {};
 
   switch (canonicalToolName(name)) {
     case 'Read': {
-      const p = typeof o.file_path === 'string' ? relPath(o.file_path) : '';
+      const p = typeof o.file_path === 'string' ? relativeToCwd(o.file_path, cwd) : '';
       const offset = typeof o.offset === 'number' ? o.offset : null;
       const limit = typeof o.limit === 'number' ? o.limit : null;
       if (!p) return '';
@@ -87,18 +83,18 @@ export function summarizeToolCall(name: string, input: unknown): string {
     }
 
     case 'Write': {
-      const p = typeof o.file_path === 'string' ? relPath(o.file_path) : '';
+      const p = typeof o.file_path === 'string' ? relativeToCwd(o.file_path, cwd) : '';
       return clip(p);
     }
 
     case 'Edit': {
-      const p = typeof o.file_path === 'string' ? relPath(o.file_path) : '';
+      const p = typeof o.file_path === 'string' ? relativeToCwd(o.file_path, cwd) : '';
       const replaceAll = o.replace_all === true;
       return clip(replaceAll ? `${p} (replace all)` : p);
     }
 
     case 'NotebookEdit': {
-      const p = typeof o.notebook_path === 'string' ? relPath(o.notebook_path) : '';
+      const p = typeof o.notebook_path === 'string' ? relativeToCwd(o.notebook_path, cwd) : '';
       return clip(p);
     }
 
@@ -119,13 +115,13 @@ export function summarizeToolCall(name: string, input: unknown): string {
 
     case 'Glob': {
       const pattern = typeof o.pattern === 'string' ? o.pattern : '';
-      const path = typeof o.path === 'string' ? relPath(o.path) : '';
+      const path = typeof o.path === 'string' ? relativeToCwd(o.path, cwd) : '';
       return clip(path ? `${pattern} in ${path}` : pattern);
     }
 
     case 'Grep': {
       const pattern = typeof o.pattern === 'string' ? o.pattern : '';
-      const path = typeof o.path === 'string' ? relPath(o.path) : '';
+      const path = typeof o.path === 'string' ? relativeToCwd(o.path, cwd) : '';
       const glob = typeof o.glob === 'string' ? ` (${o.glob})` : '';
       return clip(`"${pattern}"${path ? ' in ' + path : ''}${glob}`);
     }
