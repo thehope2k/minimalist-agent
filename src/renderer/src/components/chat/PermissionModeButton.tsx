@@ -10,7 +10,7 @@
 import { useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
 import { Check, ChevronDown, Compass, Zap } from 'lucide-react';
-import { Button } from '../ui';
+import { Button, Tooltip } from '../ui';
 import type { PermissionMode } from '@/lib/electron';
 import { cn } from '@/lib/utils';
 import { describeAutonomy, silentRiskCeiling } from '../../../../shared/autonomy';
@@ -111,25 +111,25 @@ export function PermissionModeButton({
       {mode === 'auto' && (
         <div className="flex items-center gap-2 px-2 py-1 rounded-full border border-border bg-elevated-1">
           <span className="text-xs text-fg-subtle whitespace-nowrap">Autonomy:</span>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={autonomyLevel}
-            onChange={(e) => onAutonomyChange(Number(e.target.value))}
-            disabled={disabled}
-            className="w-24 h-1 bg-border rounded-full appearance-none cursor-pointer accent-amber-400 disabled:opacity-50 disabled:cursor-not-allowed"
-            title={describeAutonomy(autonomyLevel)}
-          />
+          <Tooltip content={describeAutonomy(autonomyLevel)}>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={autonomyLevel}
+              onChange={(e) => onAutonomyChange(Number(e.target.value))}
+              disabled={disabled}
+              className="w-24 h-1 bg-border rounded-full appearance-none cursor-pointer accent-amber-400 disabled:opacity-50 disabled:cursor-not-allowed"
+            />
+          </Tooltip>
           <span className="text-xs font-medium text-fg tabular-nums min-w-[2.5rem] text-right">
             {autonomyLevel}%
           </span>
-          <span
-            className="text-[10px] text-fg-subtle whitespace-nowrap tabular-nums"
-            title={describeAutonomy(autonomyLevel)}
-          >
-            acts ≤{silentRiskCeiling(autonomyLevel)}
-          </span>
+          <Tooltip content={describeAutonomy(autonomyLevel)}>
+            <span className="cursor-help text-[10px] text-fg-subtle decoration-fg-subtle/50 decoration-dotted underline-offset-2 hover:underline whitespace-nowrap tabular-nums">
+              acts ≤{silentRiskCeiling(autonomyLevel)}
+            </span>
+          </Tooltip>
         </div>
       )}
     </div>
