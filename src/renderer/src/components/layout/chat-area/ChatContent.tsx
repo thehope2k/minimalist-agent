@@ -150,7 +150,7 @@ export function ChatContent({
                   onRetry={onRetry}
                   isStreaming={isStreaming}
                   onContinue={isStreaming ? undefined : onContinue}
-                  onBranch={isStreaming ? undefined : onBranch}
+                  onBranch={onBranch}
                   sessionId={(activeSessionId ?? sessionId) as string | undefined}
                   getPlanForMessage={getPlanForMessage}
                 />
