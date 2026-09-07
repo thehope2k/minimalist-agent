@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Check, ChevronsRight, Copy, GitBranch, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button, Menu } from '../../ui';
 import { readAttachmentBase64 } from '@/lib/attachments';
-import type { ChatMessage, MessagePart } from '@/lib/chat';
+import type { ChatMessage } from '@/lib/chat';
 import type { Plan, StoredAttachment } from '@/lib/electron';
 import { AssistantCard } from '../AssistantCard';
 import { ErrorBubble } from '../ErrorBubble';
@@ -11,12 +11,12 @@ import { MentionText } from '../MentionText';
 import { MessageAttachments } from '../MessageAttachments';
 import { StreamStatus } from '../StreamStatus';
 import { PlanProgress } from '../PlanProgress';
-import { TextPart } from '../parts/TextPart';
-import { ThinkingPart } from '../parts/ThinkingPart';
-import { ToolPart } from '../parts/ToolPart';
 import { TurnSummaryCard } from '../parts/TurnSummaryCard';
+import { ToolPack } from '../parts/ToolPack';
 import { ShareResponseButton } from './ShareResponseButton';
-import { compactNumber, emptyTurnLabel, labelForIntent, partKey } from './utils';
+import { PartView } from './PartView';
+import { groupMessageParts } from './group-parts';
+import { compactNumber, emptyTurnLabel, labelForIntent } from './utils';
 import { createLogger } from '@/lib/logger';
 
 const log = createLogger('bubble');
@@ -40,6 +40,7 @@ export function Bubble({
 }) {
   const isUser = m.role === 'user';
   const parts = m.parts;
+  const blocks = useMemo(() => groupMessageParts(parts), [parts]);
   const showStopBadge =
     !m.isStreaming && m.stopReason && m.stopReason !== 'end_turn' && !isUser;
   const intentLabel = isUser ? labelForIntent(m.intentTag) : null;
@@ -77,9 +78,17 @@ export function Bubble({
       ) : (
         (parts.length > 0 || m.isStreaming) ? (
           <AssistantCard>
-            {parts.map((p, i) => (
-              <PartView key={partKey(p.kind, p.kind === 'tool' ? p.toolUseId : undefined, i)} part={p} />
-            ))}
+            {blocks.map((block, i) =>
+              block.kind === 'text' ? (
+                <PartView key={block.key} part={block.part} />
+              ) : (
+                <ToolPack
+                  key={block.key}
+                  parts={block.parts}
+                  isLive={!!m.isStreaming && i === blocks.length - 1}
+                />
+              ),
+            )}
             {!m.isStreaming && <TurnSummaryCard parts={m.parts} />}
             {m.isStreaming && <StreamStatus parts={parts} startedAt={m.createdAt} />}
             {/* Plan Progress - pinned to the assistant message that created the plan */}
@@ -128,7 +137,7 @@ export function Bubble({
               <span className={cn(
                 'inline-flex items-center gap-1.5 rounded-md border border-border/40 bg-panel/40',
                 'px-1.5 py-0.5 font-mono text-[10px] text-fg-subtle',
-                'opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100',
+                'opacity-0 transition-opacity duration-150 group-hover:opacity-100',
               )}>
                 {m.model && <span className="text-fg-muted">{m.model}</span>}
                 {m.model && m.usage?.outputTokens !== undefined && <span className="opacity-50">·</span>}
@@ -151,27 +160,6 @@ export function Bubble({
       )}
     </div>
   );
-}
-
-function PartView({ part }: { part: MessagePart }) {
-  switch (part.kind) {
-    case 'text':     return <TextPart text={part.text} />;
-    case 'thinking': return <ThinkingPart text={part.text} outputTokens={part.outputTokens} />;
-    case 'tool':
-      return (
-        <ToolPart
-          name={part.name}
-          input={part.input}
-          partialInputJson={part.partialInputJson}
-          result={part.result}
-          status={part.status}
-          subagent={part.subagent}
-          contextDelta={part.contextDelta}
-          contextDeltaGroupSize={part.contextDeltaGroupSize}
-        />
-      );
-    default: return null;
-  }
 }
 
 function UserMessageActions({ text, attachments, onBranch }: {
@@ -214,7 +202,7 @@ function UserMessageActions({ text, attachments, onBranch }: {
         className={cn(
           'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-fg-subtle',
           'transition-opacity duration-150 hover:bg-elevated hover:text-fg',
-          'opacity-0 group-hover:opacity-100 focus-visible:opacity-100',
+          'opacity-0 group-hover:opacity-100',
         )}
         title={copyState === 'error' ? 'Copy failed' : 'Copy message'}
       >
@@ -233,7 +221,7 @@ function UserMessageActions({ text, attachments, onBranch }: {
               className={cn(
                 'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-fg-subtle',
                 'transition-opacity duration-150 hover:bg-elevated hover:text-fg',
-                'opacity-0 group-hover:opacity-100 focus-visible:opacity-100',
+                'opacity-0 group-hover:opacity-100',
                 branchState === 'branching' && 'opacity-60 cursor-wait',
               )}
               title="Branch conversation from here"
