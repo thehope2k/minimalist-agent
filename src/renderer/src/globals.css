@@ -22,7 +22,7 @@
 
   /* Text tones — pure neutral grays, not panel-tinted */
   --fg-muted:   oklch(0.74 0.004 270);
-  --fg-subtle:  oklch(0.60 0.004 270);
+  --fg-subtle:  oklch(0.66 0.004 270);
 
   /* Borders — translucent foreground. `--border` is for in-content separators
      (inputs, bubbles, list dividers); `--border-strong` is for panel outlines
