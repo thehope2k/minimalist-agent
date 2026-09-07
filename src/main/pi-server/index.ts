@@ -173,9 +173,17 @@ function buildWrappedTools(
     permissionMode: 'plan' | 'auto';
   },
 ): ToolDefinition<any, any>[] {
+  const bashTool = createBashToolDefinition(cwd);
+  bashTool.promptGuidelines = [
+    ...(bashTool.promptGuidelines ?? []),
+    `Each command already starts in ${cwd} — don't "cd" there first, it's redundant. ` +
+      `(Each call is a fresh shell in that directory, not a persistent session, so DO ` +
+      `still "cd <subdir> && ..." when you actually need to run something in a different directory.)`,
+  ];
+
   const tools: ToolDefinition<any, any>[] = [
     wrapWithPermissionGate(createReadToolDefinition(cwd)),
-    wrapWithPermissionGate(createBashToolDefinition(cwd), { catastrophicRmCwd: cwd }),
+    wrapWithPermissionGate(bashTool, { catastrophicRmCwd: cwd }),
     wrapWithPermissionGate(createEditToolDefinition(cwd)),
     wrapWithPermissionGate(createWriteToolDefinition(cwd)),
     wrapWithPermissionGate(createGrepToolDefinition(cwd)),

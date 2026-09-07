@@ -34,6 +34,14 @@ function relPath(p: string): string {
   return p.replace(/^\/Users\/[^/]+\//, '~/').replace(/\/+/g, '/');
 }
 
+// Bash calls almost always lead with a `cd <same project dir> && ` boilerplate
+// prefix (the agent re-asserts cwd every call). Since `clip()` truncates from
+// the tail, that identical prefix was eating the whole visible width and
+// hiding the one part of the command that actually differs row to row.
+function stripCdPrefix(cmd: string): string {
+  return cmd.replace(/^cd\s+(?:'[^']*'|"[^"]*"|\S+)\s*&&\s*/, '');
+}
+
 /**
  * Return a 1-line summary of the call (or '' if we can't make a useful one).
  * Names match the Claude Agent SDK built-in tool set; unknown tool names
@@ -95,7 +103,7 @@ export function summarizeToolCall(name: string, input: unknown): string {
     }
 
     case 'Bash': {
-      const cmd = typeof o.command === 'string' ? o.command.replace(/\s+/g, ' ') : '';
+      const cmd = typeof o.command === 'string' ? stripCdPrefix(o.command.replace(/\s+/g, ' ')) : '';
       return clip(cmd);
     }
 
