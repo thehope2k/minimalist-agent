@@ -5,6 +5,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.27.0] — 2026-09-08
+
+Quality of life improvements to chat readability, plus several tooltip and browser-pane bug fixes.
+
+### Added
+
+- Thinking and tool-call parts between the model's own text checkpoints now collapse into a single groupable "pack" instead of a long scrolling list, keeping the conversation easier to scan.
+- Displayed file paths in chat are now shortened relative to the session's working directory (falling back to `~/`) instead of always showing the full absolute path.
+
+### Fixed
+
+**Tooltips**
+
+- Locked-folder hints, autonomy slider/risk-ceiling labels in the permission mode button, and session-panel status dots now use the shared styled Tooltip component instead of native browser tooltips, for consistent look and hover behavior.
+
+- Branching from a message is no longer disabled while a response is still streaming.
+- Malformed edits now show a clear error/raw-input view instead of the diff getting stuck on a loading spinner.
+- The browser status pill now visually distinguishes an actively-driven browser (rotating ring, pulsing icon) from an idle one.
+- The agent-controlled browser pane window no longer steals focus when it opens.
+
+---
+
 ## [1.26.0] — 2026-09-07
 
 Adds ChatGPT quota visibility and inline session image rendering; several OAuth and model-list fixes.
