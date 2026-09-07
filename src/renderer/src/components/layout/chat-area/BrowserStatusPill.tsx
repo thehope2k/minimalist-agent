@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Bot, Globe, User, Maximize2, XCircle } from 'lucide-react';
 import { IconButton } from '@/components/ui';
+import { cn } from '@/lib/utils';
 import type { BrowserPaneState } from '@/lib/electron';
 
 type Props = {
@@ -34,8 +35,13 @@ export function BrowserStatusPill({ sessionId }: Props) {
   if (!sessionId || !state?.open) return null;
 
   return (
-    <div className="flex items-center gap-1 rounded-md border border-border bg-elevated pl-2 pr-0.5 text-xs text-fg-muted">
-      <Globe className="h-3.5 w-3.5 shrink-0 text-accent" />
+    <div
+      className={cn(
+        'relative flex items-center gap-1 rounded-md border border-border bg-elevated pl-2 pr-0.5 text-xs text-fg-muted',
+        state.agentControl ? 'browsing-ring' : 'browsing-idle'
+      )}
+    >
+      <Globe className={cn('h-3.5 w-3.5 shrink-0 text-accent', state.agentControl && 'animate-pulse')} />
       <span className="max-w-32 truncate" title={state.url}>
         {state.title || state.url || 'Browser'}
       </span>

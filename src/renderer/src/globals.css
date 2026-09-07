@@ -240,3 +240,53 @@ mark[data-markjs].find-active {
 .conflict-theirs-word {
   background-color: rgba(42, 56, 84, 0.6);
 }
+
+/* =============================================================================
+   Active-browsing ring — a rotating conic-gradient sliver traces the border
+   of BrowserStatusPill while the agent is driving the browser, so "the agent
+   is currently browsing" reads at a glance instead of looking identical to
+   an idle/parked browser pane.
+============================================================================= */
+@property --browsing-ring-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes browsing-ring-spin {
+  to {
+    --browsing-ring-angle: 360deg;
+  }
+}
+
+.browsing-idle {
+  border-color: oklch(from var(--accent) l c h / 0.45);
+  box-shadow: 0 0 0 1px oklch(from var(--accent) l c h / 0.12) inset;
+}
+
+.browsing-ring::before {
+  content: '';
+  position: absolute;
+  inset: -1.5px;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--browsing-ring-angle),
+    transparent 0deg,
+    transparent 180deg,
+    oklch(from var(--accent) l c h / 0.5) 220deg,
+    var(--accent) 270deg,
+    oklch(0.85 0.12 290) 300deg,
+    var(--accent) 330deg,
+    oklch(from var(--accent) l c h / 0.5) 350deg,
+    transparent 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: browsing-ring-spin 1.8s linear infinite;
+  pointer-events: none;
+  filter: drop-shadow(0 0 3px oklch(from var(--accent) l c h / 0.7));
+}
