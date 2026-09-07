@@ -18,7 +18,7 @@ export function ContextDeltaBadge({ contextDelta, contextDeltaGroupSize }: Props
 
   return (
     <Tooltip content={tooltip}>
-      <span className="shrink-0 rounded bg-amber-500/10 px-1.5 py-0.5 font-mono text-[10px] text-amber-300">
+      <span className="shrink-0 cursor-help rounded bg-amber-500/10 px-1.5 py-0.5 font-mono text-[10px] text-amber-300 decoration-amber-300/50 decoration-dotted underline-offset-2 hover:underline">
         {label}
       </span>
     </Tooltip>

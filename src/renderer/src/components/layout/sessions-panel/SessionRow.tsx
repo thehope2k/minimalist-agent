@@ -10,7 +10,7 @@ import {
   setSessionProject,
   updateSessionMeta,
 } from '@/lib/sessions';
-import { IconButton, Menu, type MenuItem } from '../../ui';
+import { IconButton, Menu, Tooltip, type MenuItem } from '../../ui';
 import type { Project, SessionSummary } from '@/lib/electron';
 import { RunningDot } from './RunningDot';
 import { relativeTime, revealLabel } from './utils';
@@ -105,11 +105,12 @@ export function SessionRow({
   ) : isStreaming ? (
     <RunningDot title="Running…" />
   ) : showProjectDot ? (
-    <span
-      className="h-2.5 w-2.5 shrink-0 rounded-full"
-      style={{ backgroundColor: project?.color ?? 'var(--color-fg-subtle)', opacity: project ? 1 : 0.4 }}
-      title={project?.name ?? 'Inbox'}
-    />
+    <Tooltip content={project ? `Project: ${project.name}` : 'No project — in Inbox'}>
+      <span
+        className="h-2.5 w-2.5 shrink-0 rounded-full"
+        style={{ backgroundColor: project?.color ?? 'var(--color-fg-subtle)', opacity: project ? 1 : 0.4 }}
+      />
+    </Tooltip>
   ) : (
     <Circle className="h-4 w-4 shrink-0 text-fg-subtle" strokeWidth={1.75} />
   );
