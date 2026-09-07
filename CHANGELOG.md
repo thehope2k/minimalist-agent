@@ -5,6 +5,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.27.1] — 2026-09-08
+
+Bug fixes for the new chat message grouping.
+
+### Fixed
+
+- A message with only a single thinking/tool part no longer collapses into a collapsible "pack" summary — it now renders directly like before.
+- Pack summary labels now break down actions vs. thoughts separately when a pack contains both, instead of only counting tool steps.
+
+---
+
 ## [1.27.0] — 2026-09-08
 
 Quality of life improvements to chat readability, plus several tooltip and browser-pane bug fixes.
