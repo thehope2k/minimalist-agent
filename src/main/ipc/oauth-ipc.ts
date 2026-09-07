@@ -167,6 +167,38 @@ export function registerOAuthIpc(): void {
     },
   );
 
+  /**
+   * Fetch Codex rate-limit usage for a ChatGPT OAuth connection.
+   * Uses the same wham/usage endpoint the Codex CLI polls, authenticated
+   * with a freshly-resolved (auto-refreshed) ChatGPT access token.
+   */
+  ipcMain.handle(
+    'chatgpt:fetchQuota',
+    async (
+      _e,
+      args: { connectionSlug: string },
+    ) => {
+      try {
+        const meta = listConnections().find((c) => c.slug === args.connectionSlug);
+        if (!meta || meta.providerType !== 'pi' || meta.piAuthProvider !== 'openai-codex') {
+          return { error: 'Connection is not a ChatGPT (Codex) OAuth connection.' };
+        }
+        const auth = await resolveAuthForSlug(args.connectionSlug);
+        if (auth.type !== 'copilot_oauth') {
+          return { error: 'Resolved auth is not ChatGPT OAuth.' };
+        }
+        const { fetchChatGptQuota } = await import('../chatgpt/quota');
+        const result = await fetchChatGptQuota(auth.accessToken);
+        if ('error' in result) {
+          log.error('chatgpt:fetchQuota:', result.error);
+        }
+        return result;
+      } catch (e) {
+        return { error: e instanceof Error ? e.message : String(e) };
+      }
+    },
+  );
+
   // ---- ChatGPT (Codex) model discovery ---------------------------
 
   ipcMain.handle('chatgpt:getModels', async (): Promise<ModelDef[]> => {

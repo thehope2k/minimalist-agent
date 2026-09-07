@@ -232,6 +232,20 @@ interface ClaudeUsageEntry {
   status: 'allowed' | 'allowed_warning' | 'rejected';
 }
 
+interface ChatGptRateLimitWindow {
+  usedPercent: number;
+  windowMinutes: number | null;
+  resetsAt: number | null;
+}
+
+interface ChatGptQuota {
+  planType: string | null;
+  primary: ChatGptRateLimitWindow | null;
+  secondary: ChatGptRateLimitWindow | null;
+  creditsBalance: string | null;
+  unlimitedCredits: boolean;
+}
+
 interface ModelDef {
   id: string;
   name: string;
@@ -490,6 +504,10 @@ const api = {
   },
   chatgpt: {
     getModels: (): Promise<ModelDef[]> => ipcRenderer.invoke('chatgpt:getModels'),
+    fetchQuota: (
+      args: { connectionSlug: string },
+    ): Promise<ChatGptQuota | { error: string }> =>
+      ipcRenderer.invoke('chatgpt:fetchQuota', args),
   },
   claude: {
     fetchUsage: (

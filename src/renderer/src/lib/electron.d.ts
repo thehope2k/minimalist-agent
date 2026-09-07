@@ -300,6 +300,28 @@ export interface ClaudeUsageEntry {
   status: 'allowed' | 'allowed_warning' | 'rejected';
 }
 
+export interface ChatGptRateLimitWindow {
+  /** Percentage of this window's allowance already used (0–100, can exceed 100). */
+  usedPercent: number;
+  /** Window length in minutes (e.g. 300 for a 5h window, 10080 for 7d). Null if unknown. */
+  windowMinutes: number | null;
+  /** Epoch ms when this window resets. Null if unknown. */
+  resetsAt: number | null;
+}
+
+export interface ChatGptQuota {
+  /** Normalised plan identifier: 'plus' | 'pro' | 'team' | 'enterprise' etc. */
+  planType: string | null;
+  /** Short rolling window (typically 5h). Null if the account has no rate limit. */
+  primary: ChatGptRateLimitWindow | null;
+  /** Longer rolling window (typically 7d). Null if not reported. */
+  secondary: ChatGptRateLimitWindow | null;
+  /** On-demand credits balance as a decimal string (e.g. "9.99"). Null if not applicable. */
+  creditsBalance: string | null;
+  /** True when the account has unlimited on-demand credits. */
+  unlimitedCredits: boolean;
+}
+
 export interface ModelDef {
   id: string;
   name: string;
@@ -894,6 +916,14 @@ export interface AppApi {
   chatgpt: {
     /** Pi SDK static model registry for openai-codex — no network call. */
     getModels: () => Promise<ModelDef[]>;
+    /**
+     * Fetch Codex rate-limit usage (rolling windows, not a monthly
+     * entitlement) for a ChatGPT OAuth connection. Uses a freshly-resolved
+     * (auto-refreshed) access token.
+     */
+    fetchQuota: (
+      args: { connectionSlug: string },
+    ) => Promise<ChatGptQuota | { error: string }>;
   };
   claude: {
     /** Fetch OAuth usage buckets from api.anthropic.com for a Claude OAuth connection. */

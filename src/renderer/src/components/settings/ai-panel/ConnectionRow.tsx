@@ -1,6 +1,7 @@
 import { Activity, KeyRound, LogIn, MoreHorizontal, RefreshCw, Star, Trash2 } from 'lucide-react';
 import { BrandMark } from '../connection-flow/shared';
 import { CopilotQuotaBar } from '../CopilotQuotaBar';
+import { ChatGptQuotaBar } from '../ChatGptQuotaBar';
 import { ClaudeUsageBar } from '../ClaudeUsageBar';
 import { Badge, IconButton, Menu, type MenuItem } from '@/components/ui';
 import type { ConnectionMeta } from '@/lib/electron';
@@ -52,6 +53,9 @@ export function ConnectionRow({
         </div>
         {conn.providerType === 'pi' && conn.piAuthProvider === 'github-copilot' && (
           <CopilotQuotaBar connectionSlug={conn.slug} />
+        )}
+        {conn.providerType === 'pi' && conn.piAuthProvider === 'openai-codex' && (
+          <ChatGptQuotaBar connectionSlug={conn.slug} />
         )}
         {conn.providerType === 'anthropic' && conn.authType === 'oauth' && (
           <ClaudeUsageBar connectionSlug={conn.slug} />

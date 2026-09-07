@@ -3,6 +3,7 @@ import { IconButton } from '@/components/ui';
 import { FolderPicker } from '../FolderPicker';
 import { ConnectionModelPicker } from '../ConnectionModelPicker';
 import { CopilotQuotaPill } from '@/components/settings/CopilotQuotaBar';
+import { ChatGptQuotaPill } from '@/components/settings/ChatGptQuotaBar';
 import { MOD as SHORTCUT_MOD_SYMBOL } from '@/lib/shortcuts';
 import type { ConnectionMeta } from '@/lib/electron';
 import type { useAiData } from '@/hooks/useAiData';
@@ -129,6 +130,14 @@ export function InputActions({
               isCopilot={
                 connection.providerType === 'pi' &&
                 connection.piAuthProvider === 'github-copilot'
+              }
+              isStreaming={isStreaming}
+            />
+            <ChatGptQuotaPill
+              connectionSlug={connection.slug}
+              isChatGpt={
+                connection.providerType === 'pi' &&
+                connection.piAuthProvider === 'openai-codex'
               }
               isStreaming={isStreaming}
             />
