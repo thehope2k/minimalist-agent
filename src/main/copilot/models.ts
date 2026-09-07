@@ -1,9 +1,11 @@
 // Live Copilot model discovery.
 //
-// Hits Copilot's /models endpoint with the user's OAuth token and returns
-// only models the user's tier (Individual / Business / Enterprise) is
-// allowed to use. The token's `proxy-ep` claim picks the right
-// regional endpoint.
+// GitHub Copilot only allows using models enabled for the account's tier
+// (Individual / Business / Enterprise policy). `@earendil-works/pi-ai`
+// already computes that tier-filtered id list server-side on every OAuth
+// refresh (hitting Copilot's /models endpoint itself) and returns it as
+// `availableModelIds` — so we reuse that instead of re-fetching /models
+// and re-implementing the same tier filtering ourselves.
 
 import { githubCopilotProvider } from '@earendil-works/pi-ai/providers/github-copilot';
 import { GITHUB_COPILOT_MODELS } from '@earendil-works/pi-ai/providers/github-copilot.models';
@@ -13,263 +15,75 @@ import { AUTH_REFRESH_CEILING_MS } from '../../shared/timeouts';
 
 const log = createLogger('copilot-models');
 
-const COPILOT_HEADERS = {
-  // VS Code Copilot Chat client identification — required by GitHub's proxy.
-  'User-Agent': 'GitHubCopilotChat/0.35.0',
-  'Editor-Version': 'vscode/1.107.0',
-  'Editor-Plugin-Version': 'copilot-chat/0.35.0',
-  'Copilot-Integration-Id': 'vscode-chat',
-  Accept: 'application/json',
-} as const;
+type CopilotCatalogModel = (typeof GITHUB_COPILOT_MODELS)[keyof typeof GITHUB_COPILOT_MODELS];
+const CATALOG = GITHUB_COPILOT_MODELS as Record<string, CopilotCatalogModel>;
 
-const FETCH_TIMEOUT_MS = 15_000;
-
-// Embedding / non-chat model id prefixes Copilot still includes in /models.
-// Add to this list if a new vendor ships a non-chat family.
-const NON_CHAT_PREFIXES = ['text-embedding-', 'embed-'];
-
-interface RawCopilotModel {
-  id: string;
-  name?: string;
-  vendor?: string;
-  capabilities?: {
-    family?: string;
-    type?: string;
-    supports?: { tool_calls?: boolean; vision?: boolean };
-    limits?: {
-      max_context_window_tokens?: number;
-      max_output_tokens?: number;
-    };
-  };
-  policy?: { state?: string };
-  model_picker_enabled?: boolean;
-  model_picker_category?: 'powerful' | 'versatile' | 'lightweight';
-  preview?: boolean;
-}
-
-function getBaseUrlFromToken(token: string): string | null {
-  // Copilot API tokens encode the regional proxy endpoint as
-  // `proxy-ep=<host>` in a semicolon-delimited claims string.
-  const match = token.match(/proxy-ep=([^;]+)/);
-  if (!match?.[1]) return null;
-  // Convention: replace `proxy.` prefix with `api.` for the chat host.
-  const apiHost = match[1].replace(/^proxy\./, 'api.');
-  return `https://${apiHost}`;
-}
-
-function dropReason(raw: RawCopilotModel): string {
-  if (!raw?.id) return 'no-id';
-  if (raw.policy?.state && raw.policy.state !== 'enabled') {
-    return `policy=${raw.policy.state}`;
-  }
-  if (NON_CHAT_PREFIXES.some((p) => raw.id.startsWith(p))) return 'non-chat';
-  // Respect GitHub's "model_picker_enabled" flag — only show models approved for user selection.
-  if (!raw.model_picker_enabled) return 'not-user-facing';
-  // Filter out preview/experimental models to avoid confusing users.
-  if (raw.preview) return 'preview';
-  return 'unknown';
-}
-
-function getRecommendations(raw: RawCopilotModel, ctx: number): string[] {
-  const recommendations: string[] = [];
-
-  if (ctx >= 200000) {
-    recommendations.push('long-context');
-  }
-  
-  if (raw.capabilities?.supports?.vision) {
-    recommendations.push('vision');
-  }
-  
-  if (raw.capabilities?.supports?.tool_calls) {
-    recommendations.push('tool-use');
-  }
-  
-  // Category-based recommendations
-  if (raw.model_picker_category === 'powerful') {
-    recommendations.push('complex-reasoning');
-  } else if (raw.model_picker_category === 'lightweight') {
-    recommendations.push('quick-tasks');
-  } else {
-    recommendations.push('general-purpose');
-  }
-  
-  return recommendations;
-}
-
-/** Prefers the SDK's own model catalog contextWindow (what's actually
- *  enforced) over Copilot's live /models value, which can understate it. */
-function resolveContextWindow(raw: RawCopilotModel): number {
-  const catalogWindow = (
-    GITHUB_COPILOT_MODELS as Record<string, { contextWindow?: number }>
-  )[raw.id]?.contextWindow;
-  return catalogWindow ?? raw.capabilities?.limits?.max_context_window_tokens ?? 128_000;
-}
-
-function modelDefFrom(raw: RawCopilotModel): ModelDef | null {
-  if (!raw?.id) return null;
-  // Only surface models the user's tier has enabled.
-  if (raw.policy?.state && raw.policy.state !== 'enabled') return null;
-  // Embedding-only models are id-prefixed by Copilot's API; rather than
-  // gating on `capabilities.type` (which excluded valid completion-style
-  // chat models like Codex variants), drop the few known non-chat prefixes.
-  if (NON_CHAT_PREFIXES.some((p) => raw.id.startsWith(p))) return null;
-  if (!raw.model_picker_enabled) return null;
-  if (raw.preview) return null;
-
-  const ctx = resolveContextWindow(raw);
-  const family = raw.capabilities?.family ?? '';
-  const description = describe(raw, family);
-  
-  // Extract capabilities from raw model — trust the Copilot API as-is.
-  // Vision for Copilot connections is a plan/account-level setting controlled
-  // by GitHub, not a per-model capability. We do not apply any fallback
-  // heuristic here; whatever Copilot reports is the ground truth.
-  const supportsVision = !!raw.capabilities?.supports?.vision;
-  const supportsToolCalls = raw.capabilities?.supports?.tool_calls ?? false;
-  const supportsStreaming = true; // Assume streaming support for all models
-  const supportsReasoning =
-    (GITHUB_COPILOT_MODELS as Record<string, { reasoning?: boolean }>)[raw.id]?.reasoning ?? false;
-  const category = raw.model_picker_category;
-  const recommendedFor = getRecommendations(raw, ctx);
-
-  return {
-    id: raw.id,
-    name: raw.name ?? raw.id,
-    shortName: shortNameFrom(raw.id, family),
-    description,
-    contextWindow: ctx,
-    supportsVision,
-    supportsToolCalls,
-    supportsStreaming,
-    supportsReasoning,
-    category,
-    recommendedFor,
-  };
-}
-
-function shortNameFrom(id: string, family: string): string {
-  // "claude-sonnet-4.6" → "Sonnet"; "gpt-5.1-codex" → "GPT-5.1 Codex"
+function shortNameFrom(id: string): string {
   const lc = id.toLowerCase();
   if (lc.includes('sonnet')) return 'Sonnet';
   if (lc.includes('haiku')) return 'Haiku';
   if (lc.includes('opus')) return 'Opus';
-  if (lc.includes('codex')) {
-    const m = /gpt-([\d.]+)/.exec(lc);
-    return m ? `GPT-${m[1]} Codex` : 'Codex';
-  }
-  if (lc.startsWith('gpt-')) {
-    const m = /gpt-([\d.]+)/.exec(lc);
-    return m ? `GPT-${m[1]}` : 'GPT';
-  }
+  const gptVersion = /gpt-([\d.]+)/.exec(lc)?.[1];
+  if (lc.includes('codex')) return gptVersion ? `GPT-${gptVersion} Codex` : 'Codex';
+  if (lc.startsWith('gpt-')) return gptVersion ? `GPT-${gptVersion}` : 'GPT';
   if (lc.includes('gemini')) return 'Gemini';
   if (lc.includes('grok')) return 'Grok';
-  return family || id;
+  return id;
 }
 
-function describe(raw: RawCopilotModel, family: string): string {
-  // Capabilities (vision, tools) are surfaced as icons in the model picker;
-  // the description just names the vendor/provider.
-  const vendor = raw.vendor ?? family ?? 'Copilot';
-  return `${vendor} via Copilot`;
+function modelDefFrom(model: CopilotCatalogModel): ModelDef {
+  const shortName = shortNameFrom(model.id);
+  return {
+    id: model.id,
+    name: model.name,
+    shortName,
+    description: `${shortName} via Copilot`,
+    contextWindow: model.contextWindow,
+    supportsVision: model.input.includes('image'),
+    // pi's own tier filtering drops any model without tool-call support
+    // before it can appear in `availableModelIds`, so everything reachable
+    // here is guaranteed tool-call-capable.
+    supportsToolCalls: true,
+    supportsStreaming: true,
+    supportsReasoning: model.reasoning,
+    maxOutputTokens: model.maxTokens,
+  };
+}
+
+function partitionByCatalog(availableModelIds: string[]): {
+  known: CopilotCatalogModel[];
+  unknownIds: string[];
+} {
+  const known: CopilotCatalogModel[] = [];
+  const unknownIds: string[] = [];
+  for (const id of availableModelIds) {
+    const model = CATALOG[id];
+    if (model) known.push(model);
+    else unknownIds.push(id);
+  }
+  return { known, unknownIds };
 }
 
 /**
- * Fetch the live, tier-filtered model list for a Copilot OAuth credential.
+ * Fetch the tier-filtered model list for a Copilot OAuth credential.
  * Throws on auth or network failure — caller decides whether to fall back.
  */
-export async function fetchCopilotModels(
-  githubRefreshToken: string,
-): Promise<ModelDef[]> {
-  // Step 1: GitHub OAuth → Copilot API token.
+export async function fetchCopilotModels(githubRefreshToken: string): Promise<ModelDef[]> {
   const oauth = githubCopilotProvider().auth.oauth!;
   const creds = await oauth.refresh(
     { type: 'oauth', access: '', refresh: githubRefreshToken, expires: 0 },
     AbortSignal.timeout(AUTH_REFRESH_CEILING_MS),
   );
-  const apiToken = creds.access;
 
-  // Step 2: derive regional API base from the token.
-  const baseUrl = getBaseUrlFromToken(apiToken);
-  if (!baseUrl) {
-    throw new Error(
-      'Could not extract Copilot API base URL from the OAuth token (missing proxy-ep claim).',
-    );
+  const availableModelIds = creds.availableModelIds;
+  if (!Array.isArray(availableModelIds) || !availableModelIds.every((id) => typeof id === 'string')) {
+    throw new Error('Copilot OAuth refresh did not return an available-model list.');
   }
 
-  // Step 3: GET /models with VS Code Copilot headers.
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
-  let res: Response;
-  try {
-    res = await fetch(`${baseUrl}/models`, {
-      method: 'GET',
-      headers: { ...COPILOT_HEADERS, Authorization: `Bearer ${apiToken}` },
-      signal: ctrl.signal,
-    });
-  } finally {
-    clearTimeout(timer);
+  const { known, unknownIds } = partitionByCatalog(availableModelIds);
+  if (unknownIds.length > 0) {
+    log.warn(`account has ${unknownIds.length} model(s) not in the bundled catalog: ${unknownIds.join(', ')}`);
   }
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`Copilot /models ${res.status}: ${text.slice(0, 300)}`);
-  }
-  const body = (await res.json()) as
-    | { data?: RawCopilotModel[] }
-    | { models?: RawCopilotModel[] }
-    | RawCopilotModel[];
-  
-  log.debug('Raw API Response:', JSON.stringify(body, null, 2));
-  
-  const list: RawCopilotModel[] = Array.isArray(body)
-    ? body
-    : ('data' in body && body.data) || ('models' in body && body.models) || [];
 
-  const out: ModelDef[] = [];
-  const dropped: Array<{ id: string; reason: string; details: Partial<RawCopilotModel> }> = [];
-  for (const raw of list) {
-    const def = modelDefFrom(raw);
-    if (def) {
-      out.push(def);
-    } else if (raw?.id) {
-      dropped.push({
-        id: raw.id,
-        reason: dropReason(raw),
-        details: {
-          name: raw.name,
-          model_picker_enabled: raw.model_picker_enabled,
-          preview: raw.preview,
-          model_picker_category: raw.model_picker_category,
-        },
-      });
-    }
-  }
-  // Detailed breakdown for debugging.
-  const pickerDisabled = dropped.filter((d) => d.reason === 'not-user-facing').length;
-  const previewModels = dropped.filter((d) => d.reason === 'preview').length;
-  const otherDropped = dropped.filter((d) => !['not-user-facing', 'preview'].includes(d.reason));
-  log.warn(
-    `received=${list.length} kept=${out.length} dropped=${dropped.length}` +
-      ` | picker_disabled=${pickerDisabled} preview=${previewModels} other=${otherDropped.length}`,
-  );
-  if (dropped.length) {
-    log.debug('Dropped models:', dropped);
-  }
-  const categoryOrder: Record<string, number> = { powerful: 0, versatile: 1, lightweight: 2 };
-  const categoryMap = new Map<string, number>();
-  for (const raw of list) {
-    if (raw?.id && raw.model_picker_category) {
-      categoryMap.set(raw.id, categoryOrder[raw.model_picker_category]);
-    }
-  }
-  out.sort((a, b) => {
-    const catA = categoryMap.get(a.id) ?? Object.keys(categoryOrder).length;
-    const catB = categoryMap.get(b.id) ?? Object.keys(categoryOrder).length;
-    if (catA !== catB) return catA - catB;
-    return a.name.localeCompare(b.name);
-  });
-
-  log.debug('Final curated list (sorted):', JSON.stringify(out, null, 2));
-  
-  return out;
+  return known.map(modelDefFrom).sort((a, b) => a.name.localeCompare(b.name));
 }
