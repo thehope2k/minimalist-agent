@@ -4,7 +4,7 @@ import { Check, Folder, FolderOpen, Lock, X } from 'lucide-react';
 import { homedir } from '@/lib/path';
 import { useAiData } from '@/hooks/useAiData';
 import { pushRecentFolder, removeRecentFolder } from '@/lib/connections';
-import { Button } from '../ui';
+import { Button, Tooltip } from '../ui';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -67,16 +67,19 @@ export function FolderPicker({ value, onChange, locked }: Props) {
 
   if (locked) {
     return (
-      <Button
-        variant="outline"
-        size="sm"
-        icon={Lock}
-        disabled
-        className="ml-1 rounded-full !opacity-70"
-        title={LOCKED_TOOLTIP + (isDefault ? ` (using ${home})` : '')}
-      >
-        {label}
-      </Button>
+      <Tooltip content={LOCKED_TOOLTIP + (isDefault ? ` (using ${home})` : '')}>
+        <span className="inline-block">
+          <Button
+            variant="outline"
+            size="sm"
+            icon={Lock}
+            disabled
+            className="ml-1 rounded-full !opacity-70"
+          >
+            {label}
+          </Button>
+        </span>
+      </Tooltip>
     );
   }
 
