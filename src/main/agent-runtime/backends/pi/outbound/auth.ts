@@ -60,17 +60,12 @@ export async function handleAuthRequired(msg: MsgAuthRequired, handle: Subproces
     if (fresh.type === 'copilot_oauth') {
       const upd: MsgTokenUpdate = {
         type: 'token_update',
-        credential: handle.piAuthProvider === 'github-copilot'
-          ? {
-              type: 'oauth',
-              access: fresh.accessToken,
-              refresh: fresh.refreshToken ?? '',
-              expires: fresh.expiresAt,
-            }
-          : {
-              type: 'api_key',
-              key: fresh.accessToken,
-            },
+        credential: {
+          type: 'oauth',
+          access: fresh.accessToken,
+          refresh: fresh.refreshToken ?? '',
+          expires: fresh.expiresAt,
+        },
       };
       send(handle, upd);
     }

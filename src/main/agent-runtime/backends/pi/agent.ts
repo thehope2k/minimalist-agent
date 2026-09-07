@@ -364,17 +364,12 @@ function spawnSubprocess(req: PiChatRequest, systemPrompt: string): SubprocessHa
       ? { provider: 'openai', credential: { type: 'api_key', key: localAuth?.apiKey ?? 'local' } }
       : {
           provider: req.piAuthProvider!,
-          credential: req.piAuthProvider === 'github-copilot'
-            ? {
-                type: 'oauth',
-                access: (req.auth as CopilotOAuthAuth).accessToken,
-                refresh: (req.auth as CopilotOAuthAuth).refreshToken ?? '',
-                expires: (req.auth as CopilotOAuthAuth).expiresAt,
-              }
-            : {
-                type: 'api_key',
-                key: (req.auth as CopilotOAuthAuth).accessToken,
-              },
+          credential: {
+            type: 'oauth',
+            access: (req.auth as CopilotOAuthAuth).accessToken,
+            refresh: (req.auth as CopilotOAuthAuth).refreshToken ?? '',
+            expires: (req.auth as CopilotOAuthAuth).expiresAt,
+          },
         },
     ...(baseUrl ? { baseUrl, customEndpoint } : {}),
     permissionMode: (req.permissionMode ?? 'auto') as MsgInit['permissionMode'],
