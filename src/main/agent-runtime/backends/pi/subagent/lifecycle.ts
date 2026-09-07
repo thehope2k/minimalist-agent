@@ -40,9 +40,9 @@ export async function initializeAgent(
   // catalog hasn't caught up with the latest releases.
   const usesSessionModel =
     !agent.metadata.model || agent.metadata.model === SESSION_DEFAULT_MODEL;
-  if (!usesSessionModel && !isValidModelId(model)) {
+  if (!usesSessionModel && !(await isValidModelId(model))) {
     throw new Error(
-      `Agent "${agent.metadata.name}" has invalid model configuration: ${getModelValidationError(model)}. ` +
+      `Agent "${agent.metadata.name}" has invalid model configuration: ${await getModelValidationError(model)}. ` +
       `Check the agent's AGENT.md frontmatter.`
     );
   }

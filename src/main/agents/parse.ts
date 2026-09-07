@@ -120,10 +120,10 @@ export function parseAgentFile(
  * @param markdownContent — full file content
  * @param slug — folder name (validated against slug regex)
  */
-export function validateAgentContent(
+export async function validateAgentContent(
   markdownContent: string,
   slug: string,
-): ValidationResult {
+): Promise<ValidationResult> {
   const errors: ValidationIssue[] = [];
   const warnings: ValidationIssue[] = [];
 
@@ -160,8 +160,8 @@ export function validateAgentContent(
   // 4. model ID validation
   if (metaResult.success && frontmatter && typeof frontmatter === 'object') {
     const fm = frontmatter as { model?: string };
-    if (fm.model && !isValidModelId(fm.model)) {
-      const errorMsg = getModelValidationError(fm.model);
+    if (fm.model && !(await isValidModelId(fm.model))) {
+      const errorMsg = await getModelValidationError(fm.model);
       errors.push({
         path: 'model',
         message: errorMsg,

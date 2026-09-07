@@ -139,15 +139,15 @@ export function registerAssetsIpc(): void {
   });
   ipcMain.handle(
     'agents:validate',
-    (_e, dirPath: string, slug: string): { ok: boolean; report: string } => {
+    async (_e, dirPath: string, slug: string): Promise<{ ok: boolean; report: string }> => {
       try {
         const content = readFileSync(`${dirPath}/AGENT.md`, 'utf-8');
-        const result = validateAgentContent(content, slug);
+        const result = await validateAgentContent(content, slug);
         return { ok: result.valid, report: formatAgentValidationResult(result) };
       } catch (e) {
         return {
           ok: false,
-          report: `✗ Could not read AGENT.md: ${e instanceof Error ? e.message : String(e)}`,
+          report: `✗ Could not validate AGENT.md: ${e instanceof Error ? e.message : String(e)}`,
         };
       }
     },
