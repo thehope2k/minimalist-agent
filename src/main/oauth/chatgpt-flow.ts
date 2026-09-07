@@ -28,6 +28,25 @@ interface FlowState {
 
 let inFlight: FlowState | null = null;
 
+function waitForManualCodePrompt(signal?: AbortSignal): Promise<string> {
+  return new Promise((_resolve, reject) => {
+    const onAbort = (): void => reject(new Error('cancelled'));
+    if (signal?.aborted) {
+      onAbort();
+      return;
+    }
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
+function answerLoginPrompt(prompt: {
+  type: string;
+  signal?: AbortSignal;
+}): Promise<string> {
+  if (prompt.type === 'select') return Promise.resolve('browser');
+  return waitForManualCodePrompt(prompt.signal);
+}
+
 /**
  * Start the PKCE browser-redirect flow. Resolves once the user has
  * authenticated on auth.openai.com and the Pi SDK has exchanged the
@@ -49,7 +68,7 @@ export function startLogin(
     const oauth = openaiCodexProvider().auth.oauth!;
     const creds = await oauth.login({
       signal: abort.signal,
-      prompt: async () => '',
+      prompt: answerLoginPrompt,
       notify: (event) => {
         if (event.type === 'auth_url') {
           onBrowserOpen(event.url);
