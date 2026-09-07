@@ -148,6 +148,7 @@ class BrowserPaneManager {
       width: WINDOW_WIDTH,
       height: WINDOW_HEIGHT,
       title: 'Browser — Minimalist Agent',
+      show: false,
       webPreferences: {
         sandbox: true,
         contextIsolation: true,
@@ -193,6 +194,8 @@ class BrowserPaneManager {
       this.panes.delete(sessionId);
       this.emitState(sessionId);
     });
+
+    window.minimize();
 
     return entry;
   }
