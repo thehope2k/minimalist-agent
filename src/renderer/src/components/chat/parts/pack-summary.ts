@@ -34,16 +34,18 @@ function pluralize(count: number, noun: string): string {
 
 export function summarizePack(parts: MessagePart[]): PackSummary {
   const toolParts = parts.filter((p): p is ToolMessagePart => p.kind === 'tool');
+  const thinkingCount = parts.filter((p) => p.kind === 'thinking').length;
   const editedFileCount = countEditedFiles(toolParts);
   const errorCount = toolParts.filter(isFailedCall).length;
   const hasSubagent = toolParts.some((p) => canonicalToolName(p.name) === 'Agent');
 
-  // Only count actual actions as "steps" — a pack that's pure reasoning
-  // (no tool calls between two narration checkpoints) reads as "Reasoning",
-  // matching StreamStatus's own vocabulary for the same case, instead of
-  // inflating the count with Thinking parts or misreporting "0 steps".
-  const stepLabel = toolParts.length > 0 ? pluralize(toolParts.length, 'step') : 'Reasoning';
-  const label = editedFileCount > 0 ? `${stepLabel} · ${pluralize(editedFileCount, 'file')}` : stepLabel;
+  const parenLabel =
+    toolParts.length > 0 && thinkingCount > 0
+      ? `${pluralize(toolParts.length, 'action')} · ${pluralize(thinkingCount, 'thought')}`
+      : toolParts.length > 0
+        ? pluralize(toolParts.length, 'action')
+        : 'Reasoning';
+  const label = editedFileCount > 0 ? `${parenLabel} · ${pluralize(editedFileCount, 'file')}` : parenLabel;
 
   return { label, errorCount, hasSubagent };
 }

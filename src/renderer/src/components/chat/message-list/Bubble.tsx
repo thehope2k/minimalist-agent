@@ -78,17 +78,18 @@ export function Bubble({
       ) : (
         (parts.length > 0 || m.isStreaming) ? (
           <AssistantCard>
-            {blocks.map((block, i) =>
-              block.kind === 'text' ? (
-                <PartView key={block.key} part={block.part} />
-              ) : (
+            {blocks.map((block, i) => {
+              if (block.kind === 'text' || block.kind === 'single') {
+                return <PartView key={block.key} part={block.part} />;
+              }
+              return (
                 <ToolPack
                   key={block.key}
                   parts={block.parts}
                   isLive={!!m.isStreaming && i === blocks.length - 1}
                 />
-              ),
-            )}
+              );
+            })}
             {!m.isStreaming && <TurnSummaryCard parts={m.parts} />}
             {m.isStreaming && <StreamStatus parts={parts} startedAt={m.createdAt} />}
             {/* Plan Progress - pinned to the assistant message that created the plan */}

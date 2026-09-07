@@ -4,6 +4,7 @@ type TextMessagePart = Extract<MessagePart, { kind: 'text' }>;
 
 export type MessageBlock =
   | { kind: 'text'; key: string; part: TextMessagePart }
+  | { kind: 'single'; key: string; part: MessagePart }
   | { kind: 'pack'; key: string; parts: MessagePart[] };
 
 /**
@@ -18,7 +19,11 @@ export function groupMessageParts(parts: MessagePart[]): MessageBlock[] {
 
   const flushPack = () => {
     if (pending.length === 0) return;
-    blocks.push({ kind: 'pack', key: `pack:${blocks.length}`, parts: pending });
+    if (pending.length === 1) {
+      blocks.push({ kind: 'single', key: `single:${blocks.length}`, part: pending[0] });
+    } else {
+      blocks.push({ kind: 'pack', key: `pack:${blocks.length}`, parts: pending });
+    }
     pending = [];
   };
 
