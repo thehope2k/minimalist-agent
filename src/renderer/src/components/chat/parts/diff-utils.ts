@@ -54,8 +54,18 @@ export function parseDiffInput(name: string, input: unknown): ParsedDiff | null 
   }
 
   // Claude Code flat format
-  const oldValue = typeof o.old_string === 'string' ? o.old_string : '';
-  const newValue = typeof o.new_string === 'string' ? o.new_string : '';
+  if (typeof o.old_string === 'string' || typeof o.new_string === 'string') {
+    const oldValue = typeof o.old_string === 'string' ? o.old_string : '';
+    const newValue = typeof o.new_string === 'string' ? o.new_string : '';
+    if (!oldValue && !newValue) return null;
+    return { filePath, oldValue, newValue };
+  }
+
+  // Pi single-edit flat format — the backend can split a multi-edit call's
+  // edits[] into separate per-edit transcript entries, each a flat pair
+  // instead of wrapped in an edits[] array.
+  const oldValue = typeof o.oldText === 'string' ? o.oldText : '';
+  const newValue = typeof o.newText === 'string' ? o.newText : '';
   if (!oldValue && !newValue) return null;
   return { filePath, oldValue, newValue };
 }

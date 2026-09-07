@@ -57,9 +57,8 @@ export function DiffPart({ name, input, result, status, contextDelta, contextDel
     [parsed],
   );
 
-  // Couldn't extract a usable diff — usually because input is still
-  // streaming (file_path not yet present). Render a status-aware placeholder
-  // so we don't crash the bubble *and* don't lie about the work being done.
+  // Only reachable on a non-running status if ToolPart's finalized-and-
+  // unparseable check missed a case — see ToolPart.tsx.
   if (!parsed) {
     const isRunning = status === 'running';
     const Icon = isRunning ? Loader2 : isWrite ? FileText : FilePenLine;

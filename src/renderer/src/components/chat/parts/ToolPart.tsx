@@ -1,6 +1,7 @@
 import { TodoListPart } from './TodoListPart';
 import { DiffPart } from './DiffPart';
 import { ChipBody } from './tool-part/ChipBody';
+import { parseDiffInput } from './diff-utils';
 import type { ToolPartProps } from './tool-part/types';
 
 export type { ToolPartProps };
@@ -29,17 +30,26 @@ export function ToolPart(props: ToolPartProps) {
   
   // Edit / Write get a side-by-side code diff instead of the JSON-chip view —
   // raw `old_string` / `new_string` blobs are unreadable in pre-text form.
+  //
+  // A finalized (done/error) call with no diff ever parseable means the tool
+  // args were malformed and never touched disk — show that via ChipBody's
+  // real error/raw-input instead of DiffPart's permanent loading placeholder.
   if (lowerName === 'edit' || lowerName === 'write') {
-    return (
-      <DiffPart
-        name={props.name}
-        input={props.input}
-        result={props.result}
-        status={props.status}
-        contextDelta={props.contextDelta}
-        contextDeltaGroupSize={props.contextDeltaGroupSize}
-      />
-    );
+    const isFinal = props.status !== 'running';
+    const canRenderDiff = !isFinal || parseDiffInput(props.name, props.input) !== null;
+    if (canRenderDiff) {
+      return (
+        <DiffPart
+          name={props.name}
+          input={props.input}
+          result={props.result}
+          status={props.status}
+          contextDelta={props.contextDelta}
+          contextDeltaGroupSize={props.contextDeltaGroupSize}
+        />
+      );
+    }
+    return <ChipBody {...props} />;
   }
   
   return <ChipBody {...props} />;
