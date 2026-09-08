@@ -6,6 +6,14 @@
  *
  * SHORTCUT_GROUPS drives the Settings → Shortcuts reference panel and keeps
  * the documentation in sync with the actual handlers automatically.
+ *
+ * Groups are ordered roughly by how often an average user hits them: global
+ * navigation and composing first, panels/tools in the middle, then the
+ * situational groups (dialogs, git, terminal) that only apply in a specific
+ * context. Keep new entries next to their nearest sibling by *feature area*,
+ * not by which file implements them — e.g. all session-list shortcuts live
+ * in "Sessions" even though rename is in `SessionRow.tsx` and delete is in
+ * `useKeyboardShortcuts.ts`.
  */
 
 // userAgentData is the modern replacement for the deprecated navigator.platform.
@@ -44,6 +52,49 @@ export interface ShortcutGroup {
 
 export const SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
+    title: 'Global Navigation',
+    shortcuts: [
+      {
+        macKeys: ['⌘', 'S'],
+        winKeys: ['Ctrl', 'S'],
+        label: 'Go to Sessions',
+      },
+      {
+        macKeys: ['⌘', ','],
+        winKeys: ['Ctrl', ','],
+        label: 'Go to Settings',
+      },
+      {
+        macKeys: ['⌘', 'N'],
+        winKeys: ['Ctrl', 'N'],
+        label: 'New session',
+      },
+      {
+        macKeys: ['⌘', '⌫'],
+        winKeys: ['Ctrl', 'Backspace'],
+        label: 'Delete active session',
+        condition: 'Focus not in a text field',
+      },
+    ],
+  },
+  {
+    title: 'Sessions List',
+    shortcuts: [
+      {
+        macKeys: ['↵'],
+        winKeys: ['Enter'],
+        label: 'Commit session rename',
+        condition: 'Inline rename field is focused',
+      },
+      {
+        macKeys: ['Esc'],
+        winKeys: ['Esc'],
+        label: 'Cancel session rename',
+        condition: 'Inline rename field is focused',
+      },
+    ],
+  },
+  {
     title: 'Chat Input',
     shortcuts: [
       {
@@ -64,10 +115,9 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
         condition: 'While agent is running (mid-turn steer)',
       },
       {
-        macKeys: ['Esc'],
-        winKeys: ['Esc'],
-        label: 'Close @mention picker',
-        condition: '@mention menu is open',
+        macKeys: ['⌘', '⇧', 'M'],
+        winKeys: ['Ctrl', 'Shift', 'M'],
+        label: 'Start / stop voice dictation',
       },
       {
         macKeys: ['↑', '↓'],
@@ -82,63 +132,139 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
         condition: '@mention menu is open (also Tab)',
       },
       {
-        macKeys: ['⌘', '⇧', 'M'],
-        winKeys: ['Ctrl', 'Shift', 'M'],
-        label: 'Start / stop voice dictation',
+        macKeys: ['Esc'],
+        winKeys: ['Esc'],
+        label: 'Close @mention picker',
+        condition: '@mention menu is open',
       },
     ],
   },
   {
-    title: 'Navigation',
+    title: 'Search & Find',
     shortcuts: [
       {
-        macKeys: ['⌘', 'S'],
-        winKeys: ['Ctrl', 'S'],
-        label: 'Go to Sessions',
+        macKeys: ['⇧', '⇧'],
+        winKeys: ['Shift', 'Shift'],
+        label: 'Open / close Search Everywhere palette',
+        condition:
+          'Double-tap Shift in <300 ms; any other key resets the sequence. Chat view only.',
       },
       {
-        macKeys: ['⌘', ','],
-        winKeys: ['Ctrl', ','],
-        label: 'Go to Settings',
+        macKeys: ['⌘', 'E'],
+        winKeys: ['Ctrl', 'E'],
+        label: 'Open / close Recent Files palette',
+        condition: 'Chat view only',
+      },
+      {
+        macKeys: ['⌘', 'F'],
+        winKeys: ['Ctrl', 'F'],
+        label: 'Find in chat history',
+        condition:
+          'Chat view; terminal panel is closed (terminal Cmd+F takes priority when panel is open)',
+      },
+      {
+        macKeys: ['↵', '↓'],
+        winKeys: ['Enter', '↓'],
+        label: 'Next match',
+        condition: 'Find bar is open',
+      },
+      {
+        macKeys: ['⇧', '↵'],
+        winKeys: ['Shift', 'Enter'],
+        label: 'Previous match',
+        condition: 'Find bar is open (also ↑)',
+      },
+      {
+        macKeys: ['Esc'],
+        winKeys: ['Esc'],
+        label: 'Close find bar',
+        condition: 'Find bar is open',
       },
     ],
   },
   {
-    title: 'Session Management',
+    title: 'Side Panels',
     shortcuts: [
-      {
-        macKeys: ['⌘', 'N'],
-        winKeys: ['Ctrl', 'N'],
-        label: 'New session',
-      },
-      {
-        macKeys: ['⌘', '⌫'],
-        winKeys: ['Ctrl', 'Backspace'],
-        label: 'Delete active session',
-        condition: 'Focus not in a text field',
-      },
+      { macKeys: ['⌘', 'B'],       winKeys: ['Ctrl', 'B'],             label: 'Open / close file explorer',     condition: 'Filter input auto-focused on open' },
+      { macKeys: ['⌘', '⇧', 'B'],   winKeys: ['Ctrl', 'Shift', 'B'],    label: 'Open / close context panel',     condition: 'Shows available skills, agents, extensions for this session' },
+      { macKeys: ['⌘', 'T'],       winKeys: ['Ctrl', 'T'],             label: 'Open / close terminal panel' },
+      { macKeys: ['↑'],            winKeys: ['↑'],                     label: 'Move selection up',              condition: 'File explorer is open and focused' },
+      { macKeys: ['↓'],            winKeys: ['↓'],                     label: 'Move selection down',            condition: 'File explorer is open and focused' },
+      { macKeys: ['→'],            winKeys: ['→'],                     label: 'Expand folder',                  condition: 'Folder selected' },
+      { macKeys: ['←'],            winKeys: ['←'],                     label: 'Collapse folder',                condition: 'Folder selected' },
+      { macKeys: ['↵'],            winKeys: ['Enter'],                 label: 'Open file',                      condition: 'File selected' },
+      { macKeys: ['⌘', 'F'],       winKeys: ['Ctrl', 'F'],             label: 'Focus filter input',             condition: 'File explorer is open' },
+      { macKeys: ['Esc'],          winKeys: ['Esc'],                   label: 'Close file explorer',            condition: 'File explorer is open' },
+    ],
+  },
+  {
+    title: 'Terminal',
+    shortcuts: [
+      { macKeys: ['⌘', '⇧', 'T'],   winKeys: ['Ctrl', 'Shift', 'T'], label: 'New terminal tab',          condition: 'Terminal panel is open' },
+      { macKeys: ['⌘', '⇧', 'W'],   winKeys: ['Ctrl', 'Shift', 'W'], label: 'Close active terminal tab', condition: 'Terminal panel is open' },
+      { macKeys: ['⌘', '←'],        winKeys: ['Ctrl', '←'],          label: 'Previous terminal tab',     condition: 'Terminal panel is open, focus not in a text field' },
+      { macKeys: ['⌘', '→'],        winKeys: ['Ctrl', '→'],          label: 'Next terminal tab',         condition: 'Terminal panel is open, focus not in a text field' },
       {
         macKeys: ['↵'],
         winKeys: ['Enter'],
-        label: 'Commit session rename',
-        condition: 'Inline rename field is focused',
+        label: 'Commit terminal tab rename',
+        condition: 'Inline tab rename field is focused',
       },
       {
         macKeys: ['Esc'],
         winKeys: ['Esc'],
-        label: 'Cancel session rename',
-        condition: 'Inline rename field is focused',
+        label: 'Cancel terminal tab rename',
+        condition: 'Inline tab rename field is focused',
+      },
+      { macKeys: ['⌘', '⇧', '↑'],   winKeys: ['Ctrl', 'Shift', '↑'], label: 'Expand terminal panel',     condition: 'Terminal panel is open, focus not in a text field' },
+      { macKeys: ['⌘', '⇧', '↓'],   winKeys: ['Ctrl', 'Shift', '↓'], label: 'Shrink terminal panel',     condition: 'Terminal panel is open, focus not in a text field' },
+      { macKeys: ['⌘', 'K'],        winKeys: ['Ctrl', 'K'],          label: 'Clear terminal',            condition: 'Terminal canvas has focus' },
+      { macKeys: ['⌘', 'F'],        winKeys: ['Ctrl', 'F'],          label: 'Find in terminal output',   condition: 'Terminal panel is open, focus not in a text field' },
+    ],
+  },
+  {
+    title: 'Git & Code Review',
+    shortcuts: [
+      {
+        macKeys: ['⌘', 'G'],
+        winKeys: ['Ctrl', 'G'],
+        label: 'Open / close Git diff review modal',
+        condition: 'Chat view only; requires active session + working directory',
+      },
+      {
+        macKeys: ['⌘', '↵'],
+        winKeys: ['Ctrl', 'Enter'],
+        label: 'Submit commit or amend',
+        condition: 'Commit message textarea is focused',
+      },
+      {
+        macKeys: ['⇧', 'Alt', '.'],
+        winKeys: ['Shift', 'Alt', '.'],
+        label: 'Jump to next conflict block',
+        condition: 'Result pane of conflict editor has focus',
+      },
+      {
+        macKeys: ['⇧', 'Alt', ','],
+        winKeys: ['Shift', 'Alt', ','],
+        label: 'Jump to previous conflict block',
+        condition: 'Result pane of conflict editor has focus',
       },
     ],
   },
   {
-    title: 'Permission Prompt',
+    title: 'Approvals & Permissions',
     shortcuts: [
+      {
+        macKeys: ['⌘', '↵'],
+        winKeys: ['Ctrl', 'Enter'],
+        label: 'Approve the pending tool-use / phase request',
+        condition: 'Permission or phase-approval dialog is open',
+      },
       {
         macKeys: ['Esc'],
         winKeys: ['Esc'],
-        label: 'Deny the pending tool-use request',
-        condition: 'Permission dialog is open',
+        label: 'Deny the pending tool-use / phase request',
+        condition: 'Permission or phase-approval dialog is open',
       },
     ],
   },
@@ -159,110 +285,13 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     ],
   },
   {
-    title: 'Git & Code Review',
+    title: 'Browser Control',
     shortcuts: [
       {
-        macKeys: ['⌘', 'G'],
-        winKeys: ['Ctrl', 'G'],
-        label: 'Open / close Git diff review modal',
-        condition: 'Chat view only; requires active session + working directory',
-      },
-      {
-        macKeys: ['⌘', '↵'],
-        winKeys: ['Ctrl', 'Enter'],
-        label: 'Submit commit or amend',
-        condition: 'Commit message textarea is focused',
-      },
-    ],
-  },
-  {
-    title: 'Conflict Resolution',
-    shortcuts: [
-      {
-        macKeys: ['Alt', '↓'],
-        winKeys: ['Alt', '↓'],
-        label: 'Jump to next conflict block',
-        condition: 'Result pane of conflict editor has focus',
-      },
-      {
-        macKeys: ['Alt', '↑'],
-        winKeys: ['Alt', '↑'],
-        label: 'Jump to previous conflict block',
-        condition: 'Result pane of conflict editor has focus',
-      },
-    ],
-  },
-  {
-    title: 'Terminal',
-    shortcuts: [
-      { macKeys: ['⌘', 'T'],       winKeys: ['Ctrl', 'T'],       label: 'Open / close terminal panel' },
-      { macKeys: ['⌘', '⇧', 'T'],   winKeys: ['Ctrl', 'Shift', 'T'], label: 'New terminal tab',          condition: 'Terminal panel is open' },
-      { macKeys: ['⌘', '⇧', 'W'],   winKeys: ['Ctrl', 'Shift', 'W'], label: 'Close active terminal tab', condition: 'Terminal panel is open' },
-      { macKeys: ['⌘', 'K'],        winKeys: ['Ctrl', 'K'],          label: 'Clear terminal',            condition: 'Terminal canvas has focus' },
-      { macKeys: ['⌘', 'F'],        winKeys: ['Ctrl', 'F'],          label: 'Find in terminal output',   condition: 'Terminal panel is open, focus not in a text field' },
-      { macKeys: ['⌘', '←'],        winKeys: ['Ctrl', '←'],          label: 'Previous terminal tab',     condition: 'Terminal panel is open, focus not in a text field' },
-      { macKeys: ['⌘', '→'],        winKeys: ['Ctrl', '→'],          label: 'Next terminal tab',         condition: 'Terminal panel is open, focus not in a text field' },
-      { macKeys: ['⌘', '⇧', '↑'],   winKeys: ['Ctrl', 'Shift', '↑'], label: 'Expand terminal panel',     condition: 'Terminal panel is open, focus not in a text field' },
-      { macKeys: ['⌘', '⇧', '↓'],   winKeys: ['Ctrl', 'Shift', '↓'], label: 'Shrink terminal panel',     condition: 'Terminal panel is open, focus not in a text field' },
-    ],
-  },
-  {
-    title: 'Side Panels',
-    shortcuts: [
-      { macKeys: ['⌘', 'B'],       winKeys: ['Ctrl', 'B'],             label: 'Open / close file explorer',     condition: 'Filter input auto-focused on open' },
-      { macKeys: ['⌘', '⇧', 'B'],   winKeys: ['Ctrl', 'Shift', 'B'],    label: 'Open / close context panel',     condition: 'Shows available skills, agents, extensions for this session' },
-      { macKeys: ['↑'],            winKeys: ['↑'],                     label: 'Move selection up',              condition: 'File explorer is open and focused' },
-      { macKeys: ['↓'],            winKeys: ['↓'],                     label: 'Move selection down',            condition: 'File explorer is open and focused' },
-      { macKeys: ['→'],            winKeys: ['→'],                     label: 'Expand folder',                  condition: 'Folder selected' },
-      { macKeys: ['←'],            winKeys: ['←'],                     label: 'Collapse folder',                condition: 'Folder selected' },
-      { macKeys: ['↵'],            winKeys: ['Enter'],                 label: 'Open file',                      condition: 'File selected' },
-      { macKeys: ['Esc'],          winKeys: ['Esc'],                   label: 'Close file explorer',            condition: 'File explorer is open' },
-      { macKeys: ['⌘', 'F'],       winKeys: ['Ctrl', 'F'],             label: 'Focus filter input',             condition: 'File explorer is open' },
-    ],
-  },
-  {
-    title: 'Chat Navigation',
-    shortcuts: [
-      {
-        macKeys: ['⌘', 'F'],
-        winKeys: ['Ctrl', 'F'],
-        label: 'Find in chat history',
-        condition:
-          'Chat view; terminal panel is closed (terminal Cmd+F takes priority when panel is open)',
-      },
-      {
-        macKeys: ['↵'],
-        winKeys: ['Enter'],
-        label: 'Next match',
-        condition: 'Find bar is open',
-      },
-      {
-        macKeys: ['⇧', '↵'],
-        winKeys: ['Shift', 'Enter'],
-        label: 'Previous match',
-        condition: 'Find bar is open',
-      },
-      {
-        macKeys: ['Esc'],
-        winKeys: ['Esc'],
-        label: 'Close find bar',
-        condition: 'Find bar is open',
-      },
-    ],
-  },
-  {
-    title: 'Search',
-    shortcuts: [
-      {
-        macKeys: ['⇧', '⇧'],
-        winKeys: ['Shift', 'Shift'],
-        label: 'Open / close Search Everywhere palette',
-        condition: 'Double-tap Shift in <300 ms; any other key resets the sequence',
-      },
-      {
-        macKeys: ['⌘', 'E'],
-        winKeys: ['Ctrl', 'E'],
-        label: 'Open / close Recent Files palette',
+        macKeys: ['⌘', '⇧', 'R'],
+        winKeys: ['Ctrl', 'Shift', 'R'],
+        label: 'Release agent control of the browser window',
+        condition: 'An agent-controlled browser pane is open and focused',
       },
     ],
   },
