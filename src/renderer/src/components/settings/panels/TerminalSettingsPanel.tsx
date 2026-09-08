@@ -1,11 +1,13 @@
-import { useState } from 'react';
-import { Select, Button } from '@/components/ui';
+import { useEffect, useState } from 'react';
+import { Select } from '@/components/ui';
 import { SettingsCard, SettingsSection, SettingsRow } from '../SettingsPrimitives';
 import {
   getTerminalSettings,
   saveTerminalSettings,
   type TerminalSettings,
 } from '@/lib/terminal-settings';
+
+const AUTO_DETECT_SHELL = '';
 
 // First 3 are bundled with the app — always available on any system.
 // Last 3 are guaranteed system fonts on macOS.
@@ -34,17 +36,26 @@ const SCROLLBACK_OPTIONS = [
 
 export function TerminalSettingsPanel() {
   const [settings, setSettings] = useState<TerminalSettings>(getTerminalSettings);
+  const [shellOptions, setShellOptions] = useState<{ value: string; label: string }[]>([
+    { value: AUTO_DETECT_SHELL, label: 'Auto-detect (system default)' },
+  ]);
+
+  useEffect(() => {
+    void window.api.terminal.listShells().then((shells) => {
+      setShellOptions([
+        { value: AUTO_DETECT_SHELL, label: 'Auto-detect (system default)' },
+        ...shells.map((path) => ({ value: path, label: path })),
+      ]);
+      const current = getTerminalSettings().shell;
+      if (current && !shells.includes(current)) {
+        update({ shell: AUTO_DETECT_SHELL });
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const update = (patch: Partial<TerminalSettings>) =>
     setSettings(saveTerminalSettings(patch));
-
-  const handlePickShell = async () => {
-    const path = await window.api.fs.pickFile({
-      title: 'Select shell executable',
-      defaultPath: '/bin',
-    });
-    if (path) update({ shell: path });
-  };
 
   return (
     <div className="mx-auto max-w-190 px-8 py-10">
@@ -54,24 +65,19 @@ export function TerminalSettingsPanel() {
 
       <SettingsSection title="Shell">
         <SettingsCard>
-          <div className="flex items-center justify-between gap-4 px-4 py-3">
-            <div className="min-w-0">
-              <div className="text-sm font-medium text-fg">Shell</div>
-              <div className="mt-0.5 truncate font-mono text-xs text-fg-subtle">
-                {settings.shell || 'Auto-detect (system default)'}
-              </div>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              {settings.shell && (
-                <Button variant="ghost" onClick={() => update({ shell: '' })}>
-                  Reset
-                </Button>
-              )}
-              <Button variant="outline" onClick={handlePickShell}>
-                Browse…
-              </Button>
-            </div>
-          </div>
+          <SettingsRow
+            label="Shell"
+            description="Only login shells registered on this system can be selected."
+            control={
+              <Select
+                value={settings.shell}
+                onChange={(v) => update({ shell: v })}
+                options={shellOptions}
+                variant="compact"
+                menuWidth={260}
+              />
+            }
+          />
         </SettingsCard>
       </SettingsSection>
 

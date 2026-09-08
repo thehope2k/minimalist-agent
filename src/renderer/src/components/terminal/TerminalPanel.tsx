@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
-import { Search, X, ChevronUp, ChevronDown } from 'lucide-react';
+import { Search, X, ChevronUp, ChevronDown, AlertTriangle } from 'lucide-react';
 import { TabBar } from './terminal-panel/TabBar';
 import { TerminalInstance, type TerminalInstanceHandle } from './terminal-panel/TerminalInstance';
 import { useTerminalManager } from './terminal-panel/useTerminalManager';
@@ -168,6 +168,14 @@ export function TerminalPanel({ isOpen, initialCwd, onClose }: TerminalPanelProp
       />
 
       <div className="relative min-h-0 flex-1 bg-[#0c0c0c] p-1">
+        {manager.error && (
+          <div className="absolute inset-x-0 top-0 z-10 flex items-center gap-2 border-b border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs text-red-300">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+            <span className="min-w-0 flex-1 truncate">{manager.error}</span>
+            <IconButton icon={X} label="Dismiss" onClick={manager.dismissError} />
+          </div>
+        )}
+
         {/* Search bar — floats top-right of the terminal area */}
         {searchOpen && (
           <div className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-lg border border-border bg-panel px-2 py-1.5 shadow-xl">
