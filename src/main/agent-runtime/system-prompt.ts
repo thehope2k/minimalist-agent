@@ -297,7 +297,7 @@ export function getWorkingDirectoryContext(workingDirectory?: string): string {
 export function getScratchDirContext(scratchDir?: string, sessionId?: string): string {
   if (!scratchDir) return '';
   const assetBase = sessionId ? `\n<scratch_asset_base>ma-asset://${sessionId}/</scratch_asset_base>` : '';
-  return `<scratch_directory>${scratchDir}</scratch_directory>${assetBase}`;
+  return `<scratch_directory>${scratchDir}</scratch_directory>${assetBase}\nUse this exact path for throwaway files (quote it if it contains spaces) — do not use /tmp instead.`;
 }
 
 /**
@@ -415,8 +415,9 @@ Be deliberate about where you write files:
   path they named — go in the working directory (or the exact path given).
 - **Everything else you generate** that the user did NOT ask to save as a project
   file (analysis write-ups, notes, scratch scripts, extracted data, one-off
-  intermediates) must NOT be written into the working directory. Put it under the
-  path in \`<scratch_directory>\` instead.
+  intermediates) must NOT be written into the working directory, \`/tmp\`, or any
+  other ad-hoc location. The path in \`<scratch_directory>\` is the only correct
+  place for throwaway output — use it even for quick one-off test scripts.
 - Prefer answering analysis/reports **inline in chat**. If you also save a file,
   add one short line saying where it went.
 

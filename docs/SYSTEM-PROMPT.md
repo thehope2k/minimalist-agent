@@ -21,8 +21,8 @@ The prompt the model sees is **two concatenated pieces**, deliberately split so 
 | **Static system prompt** | `getSystemPrompt()` → `buildSystemPromptAppend()` | Stable across a session    | **Provider-dependent**¹ | Keeps the cache-eligible prefix stable; per-turn churn would defeat it    |
 | **Per-turn prefix**      | `buildPromptPrefix()`                             | Rebuilt every user message | No                      | Holds values that change each turn (clock, cwd, scratch path, extensions) |
 
-Both live in [`src/main/agent/system-prompt.ts`](../src/main/agent/system-prompt.ts). The static piece is passed to the
-backend as the `claude_code` preset's
+Both live in [`src/main/agent-runtime/system-prompt.ts`](../src/main/agent-runtime/system-prompt.ts). The static piece
+is passed to the backend as the `claude_code` preset's
 `systemPrompt.append`; the per-turn prefix is prepended to the user message.
 
 > ¹ **Prompt caching is the provider's, not ours** — there is no `cache_control`
@@ -72,7 +72,7 @@ when the block is present.
 | Assistant body (identity, capabilities, read-first, **skills with global+project scope + reference-doc pointer**, **extensions with correct paths + reference-doc pointer**, images (http(s)-only caveat), mermaid, math (latex/math alias), tables, rich blocks, interaction guidelines, git co-author, web search) | `getAssistantPrompt()`                                           | always                         |                                            ~1,900 |
 | User preferences                                                                                                                                                                                                                                                                                                     | `formatPreferencesForPrompt()` (`storage/preferences.ts`)        | when prefs set                 |                                          ~150–400 |
 | **Project context** — root file content injected eagerly (like Claude Code); sub-package files listed as read-on-demand pointers (monorepo). Walk depth capped at 4.                                                                                                                                                 | `getProjectContextFilesPrompt()`                                 | when AGENTS.md/CLAUDE.md found | ~200–2000 (root content) + ~30–150 (sub pointers) |
-| **Artifact policy** (where to write files)                                                                                                                                                                                                                                                                           | `getArtifactPolicy()`                                            | always                         |                                              ~190 |
+| **Artifact policy** (where to write files; explicitly excludes `/tmp`/ad-hoc paths, not just the working dir — see checklist entry below)                                                                                                                                                                            | `getArtifactPolicy()`                                            | always                         |                                              ~200 |
 | Collaboration guidance                                                                                                                                                                                                                                                                                               | `getCollaborationGuidance(autonomy)` (`collaboration-prompt.ts`) | always                         |                                            ~1,350 |
 | Planning guidance                                                                                                                                                                                                                                                                                                    | `getPlanningGuidance()` (`planning-prompt.ts`)                   | always                         |                                            ~2,450 |
 | Active plan context                                                                                                                                                                                                                                                                                                  | `formatActivePlanContext()` via `getActivePlan()`                | only when a plan is active     |                                          ~100–400 |
@@ -88,7 +88,7 @@ AGENTS.md adds ~200 tokens; a detailed one can add ~2K.
 |-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------|------------------------------------------|-------------------------------------------:|
 | Date/time                                                                                                                                                                                                                               | `getDateTimeContext()`                                    | always                                   |                                        ~50 |
 | Working directory                                                                                                                                                                                                                       | `getWorkingDirectoryContext()`                            | when cwd set                             |                                        ~60 |
-| **Scratch directory** (path + `ma-asset://` base for inline images)                                                                                                                                                                     | `getScratchDirContext()`                                  | when session path known                  |                                        ~40 |
+| **Scratch directory** (path + `ma-asset://` base for inline images + inline reminder not to fall back to `/tmp`)                                                                                                                        | `getScratchDirContext()`                                  | when session path known                  |                                        ~55 |
 | Extensions awareness (one line per enabled extension with its slug, scope, and **resolved absolute `guidePath`**; plus a gated "MCP not active" line when an enabled mcp-backed extension is blocked by consent/secret/connect failure) | `formatExtensionsAwareness()` (`extensions/directive.ts`) | when extensions installed                |                   ~20–25 tok per extension |
 | **Pinned context** (skills the user has pinned to the session — same pattern as `@mention`/`formatSkillDirective`, but persistent every turn)                                                                                           | `buildPinnedContextBlock()` (`agent/system-prompt.ts`)    | when `session.pinnedAssets` is non-empty | ~25 tok per item (flat, path + label only) |
 
@@ -212,6 +212,30 @@ Answer these in the PR/commit description for any prompt change:
 
 If a change can't answer #1 and #2 convincingly, it probably belongs in AGENTS.md or a skill, not the system prompt.
 
+### Artifact policy / scratch directory — checklist answers
+
+The artifact policy names `/tmp` explicitly (not just "the working directory"), and the scratch-directory line carries a
+short inline reminder not to fall back to `/tmp` — added because the real scratch path
+(`app.getPath('userData')/sessions/<id>/scratch`) contains a space on macOS (`Application Support`), which is real
+friction inside a quote-heavy shell one-liner and made `/tmp` the locally-rational escape hatch.
+
+1. **Happens often?** Yes — `/tmp` is a very strong training-data prior for "scratch file"; recurs under any
+   quoting-pressure situation unless named explicitly.
+2. **Cheaper home?** No — inherent tool-use behavior, not project- or skill-specific; belongs at the prompt tier read
+   every turn.
+3. **Replace, don't append.** Edited the existing artifact-policy bullet and scratch-directory line — no new block.
+4. **Static or per-turn?** Both, deliberately: the *policy* (why) stays static; a short *reminder* co-located with the
+   concrete path lives in the per-turn block, since that's structurally closest to the model's attention mid-task (a
+   static policy read once at turn start decays in salience — "lost in the middle").
+5. **Gated?** Scratch-line reminder only renders when `scratchDir` is set (unchanged gating).
+6. **Honest?** Yes — describes actual paths/behavior, no phantom capability.
+7. **Doc updated?** ✔ (this section + inventory rows above).
+
+Not done: a space-free alias path (symlink under `os.tmpdir()`) that would remove the mechanical trigger entirely —
+deferred, needs session-lifecycle symlink management and a Windows fallback.
+
+---
+
 ### Pinned context block — checklist answers
 
 1. **Happens often?** Only when the user explicitly pins something — fully opt-in, gated.
@@ -230,8 +254,8 @@ If a change can't answer #1 and #2 convincingly, it probably belongs in AGENTS.m
 ## 7. Maintenance
 
 - This doc mirrors `getSystemPrompt()` and `buildPromptPrefix()` in
-  [`system-prompt.ts`](../src/main/agent/system-prompt.ts). When you add, remove, or resize a block there, update
-  the [inventory](#2-full-inventory).
+  [`system-prompt.ts`](../src/main/agent-runtime/system-prompt.ts). When you add, remove, or resize a block there,
+  update the [inventory](#2-full-inventory).
 - Sizes are estimates; if you want exact numbers, measure the assembled output at runtime (the prompt is built from live
   state — preferences, cwd, enabled agents/extensions — so it can't be measured statically).
 - Related docs: [`COLLABORATION.md`](./COLLABORATION.md) and
