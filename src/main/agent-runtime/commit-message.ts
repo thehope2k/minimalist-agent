@@ -22,19 +22,33 @@ no follow-up turn. Every character you output becomes part of the commit,
 including mistakes.
 
 === OUTPUT CONTRACT ===
-Reply starts at character 1 with the commit type and ends after the last
-body line. Nothing may precede it (no analysis of the diff, no "Let me...",
-no restating the task) and nothing may follow it (no offers to revise,
-no questions, no sign-off).
+Wrap the commit message between two exact marker lines, with nothing else
+anywhere in your reply — no text before the start marker, no text after the
+end marker:
+
+===COMMIT_MESSAGE_START===
+<type>(<scope>): <description>
+<optional body>
+===COMMIT_MESSAGE_END===
+
+Only the text between the markers is used — it is piped straight into
+"git commit -m". Anything you write outside the markers (analysis of the
+diff, "Let me...", restating the task, offers to revise, questions,
+sign-offs) is silently discarded before it ever reaches git, so don't rely
+on it being read.
 
   BAD:
     Based on the diff, two things changed: auth and caching. Let me write
     a commit that covers both.
 
+    ===COMMIT_MESSAGE_START===
     feat(auth,cache): add token refresh and response caching
+    ===COMMIT_MESSAGE_END===
 
   GOOD:
+    ===COMMIT_MESSAGE_START===
     feat(auth,cache): add token refresh and response caching
+    ===COMMIT_MESSAGE_END===
 
 === FORMAT ===
   <type>(<scope>): <description>   ← max 72 chars, required
@@ -114,6 +128,45 @@ export interface GenerateCommitMessageArgs {
   chatSessionId?: string;
   piAuthProvider?: string;
   cwd?: string;
+  includeCoAuthoredBy?: boolean;
+}
+
+const CO_AUTHORED_BY_TRAILER = 'Co-Authored-By: Minimalist Agent <noreply@minimalist-agent.local>';
+
+/** Matches an actual trailer line ("Co-Authored-By: ..." at the start of a
+ *  line), not just the substring anywhere in the message — a body bullet
+ *  that happens to mention "Co-Authored-By" in prose (e.g. a commit
+ *  documenting this very feature) must not be mistaken for an existing
+ *  trailer and cause the real one to be silently skipped. */
+const CO_AUTHORED_BY_TRAILER_RE = /^Co-Authored-By:/m;
+
+/** Appends the trailer with a blank-line separator, unless already present
+ *  (e.g. an amend re-run whose diff context still includes the prior message). */
+function appendCoAuthoredByTrailer(message: string): string {
+  if (CO_AUTHORED_BY_TRAILER_RE.test(message)) return message;
+  return `${message}\n\n${CO_AUTHORED_BY_TRAILER}`;
+}
+
+/**
+ * Extracts the span between the marker lines the system prompt requires
+ * (`===COMMIT_MESSAGE_START===` / `===COMMIT_MESSAGE_END===`). This is the
+ * primary extraction path: instead of trying to recognize and strip every
+ * possible filler phrasing a model might produce, we simply discard
+ * everything outside the markers — it doesn't matter what the model wrote
+ * there or how it phrased it.
+ *
+ * Takes the LAST pair, not the first: the system prompt's own BAD/GOOD
+ * examples contain two literal marker pairs as illustration. A model that
+ * echoes those examples before giving its real answer (a known LLM failure
+ * mode) would otherwise have its accidental echo of the BAD example matched
+ * instead of the real, later answer.
+ */
+const MARKER_RE = /===COMMIT_MESSAGE_START===\s*\n?([\s\S]*?)\n?\s*===COMMIT_MESSAGE_END===/g;
+
+function extractMarked(raw: string): string | null {
+  const matches = [...raw.matchAll(MARKER_RE)];
+  if (matches.length === 0) return null;
+  return matches[matches.length - 1][1].trim() || null;
 }
 
 /**
@@ -121,20 +174,37 @@ export interface GenerateCommitMessageArgs {
  * multi-line body structure intact (unlike validateTitle, which flattens to
  * one line). Runs a few passes since models sometimes stack fillers
  * ("Sure, here's a commit message: feat: ...").
+ *
+ * Marker extraction (see `extractMarked`) is tried first and, when present,
+ * is the only thing used — the regex/heuristic chain below only exists as a
+ * fallback for a model that ignores the marker instruction outright, so it
+ * doesn't need to be exhaustive.
  */
 function validateCommitMessage(raw: string): string | null {
   let s = raw.trim();
   if (!s) return null;
 
+  const marked = extractMarked(s);
+  if (marked) {
+    s = marked;
+  } else {
+    s = stripCodeFence(s);
+    s = stripWrappingQuotes(s);
+
+    for (let i = 0; i < 3; i++) {
+      const before = s;
+      s = stripLeadingFiller(s);
+      s = stripWrappingQuotes(s);
+      if (s === before) break;
+    }
+
+    s = cutToCommitTypeLine(s);
+  }
+
+  // Even inside the markers, a model may still wrap the message in a code
+  // fence or quotes out of habit — cheap to guard against either way.
   s = stripCodeFence(s);
   s = stripWrappingQuotes(s);
-
-  for (let i = 0; i < 3; i++) {
-    const before = s;
-    s = stripLeadingFiller(s);
-    s = stripWrappingQuotes(s);
-    if (s === before) break;
-  }
 
   // Hard cap: 1200 chars (generous for type + body).
   if (s.length > 1200) s = s.slice(0, 1200).trimEnd();
@@ -154,12 +224,39 @@ function stripWrappingQuotes(s: string): string {
   return s;
 }
 
-/** Known leading filler phrases models emit despite the OUTPUT CONTRACT. */
+/**
+ * Fallback-only filler stripper: used when `extractMarked` finds no markers
+ * at all (model ignored the envelope contract). Necessarily incomplete —
+ * that's the whole reason marker extraction is the primary path now instead
+ * of trying to enumerate every phrasing here.
+ */
 const LEADING_FILLER_RE =
   /^(here(?:'s| is)(?: a| the)?(?:\s+(?:suggested|conventional|commit))?\s+(?:commit\s+)?(?:message)?|sure|of course|certainly|ok(?:ay)?|based on (?:the |this )?(?:diff|changes?|staged changes)|looking at (?:the |this )?(?:diff|changes?)|let me (?:write|draft|create|generate)[^.\n]*)\s*[:,.\-—!]?\s*/i;
 
 function stripLeadingFiller(s: string): string {
   return s.replace(LEADING_FILLER_RE, '').trim();
+}
+
+/**
+ * Matches the start of a conventional-commit type line, e.g. "feat(auth): "
+ * or "fix!: ". Anchored to line starts so it can't fire mid-sentence.
+ */
+const COMMIT_TYPE_LINE_RE =
+  /(?:^|\n)[ \t]*(feat|fix|refactor|docs|chore|style|test|perf|build|ci)(\([\w./,\- ]+\))?(!)?:[ \t]/i;
+
+/**
+ * Second-layer fallback (only reached when no markers were found): after
+ * stripLeadingFiller's best effort, cut to the first recognized
+ * conventional-commit type line in case a filler fragment survived (e.g.
+ * "commit:" left over from "Here's the commit:"). No-op once the string
+ * already starts with the type line.
+ */
+function cutToCommitTypeLine(s: string): string {
+  const m = COMMIT_TYPE_LINE_RE.exec(s);
+  if (!m || m.index === undefined) return s;
+  const typeStart = m.index + (m[0].startsWith('\n') ? 1 : 0);
+  if (typeStart <= 0) return s;
+  return s.slice(typeStart).trimStart();
 }
 
 export async function generateCommitMessage(
@@ -169,6 +266,10 @@ export async function generateCommitMessage(
     log.warn('empty diff context');
     return null;
   }
+
+  const includeCoAuthoredBy = args.includeCoAuthoredBy ?? true;
+  const finalize = (msg: string | null): string | null =>
+    msg && includeCoAuthoredBy ? appendCoAuthoredByTrailer(msg) : msg;
 
   let userPrompt: string;
   if (args.userContext) {
@@ -213,7 +314,7 @@ ${args.diffContext}`;
         log.warn(`[local_api] mini_completion error: ${result.error ?? 'empty response'}`);
         return null;
       }
-      return validateCommitMessage(result.text);
+      return finalize(validateCommitMessage(result.text));
     } catch (e) {
       log.warn(`[local_api] threw: ${e instanceof Error ? e.message : String(e)}`);
       return null;
@@ -246,7 +347,7 @@ ${args.diffContext}`;
         log.warn(`[copilot_oauth] mini_completion error: ${result.error ?? 'empty response'}`);
         return null;
       }
-      return validateCommitMessage(result.text);
+      return finalize(validateCommitMessage(result.text));
     } catch (e) {
       log.warn(`[copilot_oauth] threw: ${e instanceof Error ? e.message : String(e)}`);
       return null;
@@ -292,7 +393,7 @@ ${args.diffContext}`;
         break;
       }
     }
-    return validateCommitMessage(collected);
+    return finalize(validateCommitMessage(collected));
   } catch (e) {
     log.warn(`[anthropic] threw: ${e instanceof Error ? e.message : String(e)}`);
     return null;

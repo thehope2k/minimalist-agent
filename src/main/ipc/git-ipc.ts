@@ -82,8 +82,14 @@ export function registerGitIpc(): void {
         const { resolveAuthForSlug } = await import('../auth/resolve');
         const { listConnections } = await import('../storage/connections');
         const { generateCommitMessage } = await import('../agent-runtime/commit-message');
+        const { getCoAuthorPreference } = await import('../storage/preferences');
+        const { findProjectForPath } = await import('../storage/projects');
         const auth = await resolveAuthForSlug(args.connectionSlug);
         const conn = listConnections().find((c) => c.slug === args.connectionSlug);
+        const projectCoAuthor = args.cwd
+          ? findProjectForPath(args.cwd)?.includeCoAuthoredBy
+          : undefined;
+        const includeCoAuthoredBy = projectCoAuthor ?? getCoAuthorPreference();
         return await generateCommitMessage({
           auth,
           diffContext: args.diffContext,
@@ -93,6 +99,7 @@ export function registerGitIpc(): void {
           chatSessionId: args.sessionId,
           piAuthProvider: conn?.piAuthProvider,
           cwd: args.cwd,
+          includeCoAuthoredBy,
         });
       } catch (e) {
         log.error('generateCommitMessage:', e);
