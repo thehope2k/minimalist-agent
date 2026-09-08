@@ -148,16 +148,10 @@ function buildSdkAgentDefinitions(): Record<string, AgentDefinition> | undefined
 }
 
 /** Inject a user message into an in-flight Anthropic turn. */
-export function steerAnthropicTurn(
-  turnId: string,
-  message: string,
-  attachments?: StoredAttachment[],
-): boolean {
+export function steerAnthropicTurn(turnId: string, message: string): boolean {
   const input = inputsByTurnId.get(turnId);
   if (!input) return false;
-  const attachmentsDirective = formatAttachmentsDirective(attachments);
-  const text = [attachmentsDirective, message].filter(Boolean).join('\n\n');
-  input.push(buildPlainUserMessage(text));
+  input.push(buildPlainUserMessage(message));
   return true;
 }
 

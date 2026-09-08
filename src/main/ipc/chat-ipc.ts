@@ -7,6 +7,8 @@ import { steerAnthropicTurn } from '../agent-runtime/backends/anthropic';
 import { steerPiTurn, runPiManualCompact } from '../agent-runtime/backends/pi/agent';
 import { generateTitle } from '../agent-runtime/title';
 import { parseError } from '../agent-runtime/errors';
+import { extractSkillPaths, formatSkillDirective } from '../skills/directive';
+import { formatAttachmentsDirective } from '../agent-runtime/attachments-directive';
 import { getSettings, type PermissionMode, type ThinkingLevel } from '../storage/settings';
 import { listConnections } from '../storage/connections';
 import { maybeRevalidate } from '../storage/model-refresh';
@@ -67,6 +69,8 @@ interface TurnInfo {
   providerType: 'anthropic' | 'pi';
   /** For Pi turns - used to find the right subprocess. */
   chatSessionId?: string;
+  /** Working directory, needed to resolve @slug / @path mentions in steer messages. */
+  cwd?: string;
 }
 const turnInfo = new Map<string, TurnInfo>();
 
@@ -134,6 +138,7 @@ export function registerChatIpc(): void {
       turnInfo.set(req.id, {
         providerType: auth.type === 'copilot_oauth' ? 'pi' : 'anthropic',
         chatSessionId: req.sessionId,
+        cwd: req.cwd,
       });
 
       // On-use revalidation: TTL-gated, fire-and-forget. Keeps an actively
@@ -205,17 +210,42 @@ export function registerChatIpc(): void {
       if (!info) return { ok: false, reason: 'turn_not_active' };
       if (!args.message.trim() && !args.attachments?.length)
         return { ok: false, reason: 'empty_message' };
+
+      const {
+        skillPaths,
+        extensionGuidePaths,
+        filePaths,
+        folderPaths,
+        cleanMessage,
+        missingSkills,
+        missingFiles,
+      } = extractSkillPaths(args.message, info.cwd);
+      if (missingSkills.length > 0) {
+        return {
+          ok: false,
+          reason: `Mention(s) not found: ${missingSkills.join(', ')}`,
+        };
+      }
+      if (missingFiles.length > 0) {
+        return {
+          ok: false,
+          reason: `File mention(s) not found: ${missingFiles.join(', ')}`,
+        };
+      }
+      const directive = formatSkillDirective(skillPaths, extensionGuidePaths, filePaths, folderPaths);
+      const attachmentsDirective = formatAttachmentsDirective(args.attachments);
+      const message = [directive, attachmentsDirective, cleanMessage].filter(Boolean).join('\n\n');
+
       if (info.providerType === 'pi') {
         if (!info.chatSessionId) return { ok: false, reason: 'no_session' };
         const ok = steerPiTurn({
           chatSessionPath: sessionPath(info.chatSessionId),
           turnId: args.turnId,
-          message: args.message,
-          attachments: args.attachments,
+          message,
         });
         return ok ? { ok: true } : { ok: false, reason: 'subprocess_unavailable' };
       }
-      const ok = steerAnthropicTurn(args.turnId, args.message, args.attachments);
+      const ok = steerAnthropicTurn(args.turnId, message);
       return ok ? { ok: true } : { ok: false, reason: 'turn_not_steerable' };
     },
   );

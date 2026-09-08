@@ -665,16 +665,13 @@ export function steerPiTurn(args: {
   chatSessionPath: string;
   turnId: string;
   message: string;
-  attachments?: StoredAttachment[];
 }): boolean {
   const handle = handles.get(args.chatSessionPath);
   if (!handle || !handle.queues.has(args.turnId)) return false;
-  const attachmentsDirective = formatAttachmentsDirective(args.attachments);
-  const message = [attachmentsDirective, args.message].filter(Boolean).join('\n\n');
   send(handle, {
     type: 'steer',
     turnId: args.turnId,
-    message,
+    message: args.message,
   });
   return true;
 }
