@@ -33,7 +33,13 @@ export function useTerminalManager(): UseTerminalManagerResult {
       if (liveTabs.length === 0) return;
       setState((prev) => ({
         ...prev,
-        tabs: liveTabs.map((t) => ({ tabId: t.tabId, title: t.title, alive: t.alive })),
+        tabs: liveTabs.map((t) => ({
+          tabId:    t.tabId,
+          title:    t.title,
+          alive:    t.alive,
+          exitCode: t.exitCode,
+          cwd:      t.cwd,
+        })),
         activeTabId: liveTabs[liveTabs.length - 1].tabId,
       }));
     });
@@ -48,16 +54,33 @@ export function useTerminalManager(): UseTerminalManagerResult {
       }));
     });
 
-    const unsubExit = window.api.terminal.onExit((tabId) => {
+    const unsubExit = window.api.terminal.onExit((tabId, exitCode) => {
       setState((prev) => ({
         ...prev,
-        tabs: prev.tabs.map((t) => (t.tabId === tabId ? { ...t, alive: false } : t)),
+        tabs: prev.tabs.map((t) => (t.tabId === tabId ? { ...t, alive: false, exitCode } : t)),
       }));
+    });
+
+    // Flag background tabs so switching back to them can surface "something
+    // happened while you were away" without needing to watch every tab at once.
+    const unsubData = window.api.terminal.onData((tabId) => {
+      setState((prev) => {
+        if (tabId === prev.activeTabId) return prev;
+        const idx = prev.tabs.findIndex((t) => t.tabId === tabId);
+        // Bail without a state update once already flagged — otherwise a noisy
+        // background tab (watch mode, `docker logs -f`) re-renders the whole
+        // tab list on every single PTY chunk for its entire lifetime.
+        if (idx === -1 || prev.tabs[idx].hasActivity) return prev;
+        const tabs = [...prev.tabs];
+        tabs[idx] = { ...tabs[idx], hasActivity: true };
+        return { ...prev, tabs };
+      });
     });
 
     return () => {
       unsubTitle();
       unsubExit();
+      unsubData();
     };
   }, []);
 
@@ -67,7 +90,10 @@ export function useTerminalManager(): UseTerminalManagerResult {
       const info = await window.api.terminal.create({ cwd, shell: shell || undefined });
       setState((prev) => ({
         ...prev,
-        tabs:        [...prev.tabs, { tabId: info.tabId, title: info.title, alive: info.alive }],
+        tabs: [
+          ...prev.tabs,
+          { tabId: info.tabId, title: info.title, alive: info.alive, cwd: info.cwd },
+        ],
         activeTabId: info.tabId,
         error:       null,
       }));
@@ -101,7 +127,12 @@ export function useTerminalManager(): UseTerminalManagerResult {
   }, []);
 
   const setActiveTab = useCallback((tabId: string) => {
-    setState((prev) => ({ ...prev, activeTabId: tabId, error: null }));
+    setState((prev) => ({
+      ...prev,
+      activeTabId: tabId,
+      error:       null,
+      tabs:        prev.tabs.map((t) => (t.tabId === tabId ? { ...t, hasActivity: false } : t)),
+    }));
   }, []);
 
   const dismissError = useCallback(() => {

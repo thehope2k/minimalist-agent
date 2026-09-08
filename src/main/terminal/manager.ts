@@ -10,12 +10,16 @@ import { isAllowedShell, resolveSafeCwd, scrubTerminalEnv } from './harden';
 const SCROLLBACK_MAX_BYTES = 2 * 1024 * 1024;
 
 interface TabEntry {
-  pty:    pty.IPty;
-  title:  string;
-  cwd:    string;
-  shell:  string;
-  buffer: string;
-  alive:  boolean;
+  pty:       pty.IPty;
+  title:     string;
+  cwd:       string;
+  shell:     string;
+  buffer:    string;
+  alive:     boolean;
+  // Set once and never cleared — harmless today since create() always
+  // allocates a fresh tabId/TabEntry, but would need resetting if tabId
+  // reuse (rather than a fresh randomUUID() per tab) is ever introduced.
+  exitCode?: number;
 }
 
 class TerminalManager {
@@ -85,6 +89,7 @@ class TerminalManager {
 
     ptyProcess.onExit(({ exitCode }) => {
       entry.alive = false;
+      entry.exitCode = exitCode;
       this.broadcast('terminal:exit', { tabId, exitCode });
     });
 
@@ -115,11 +120,12 @@ class TerminalManager {
   listTabs(): TerminalTabInfo[] {
     return [...this.tabs.entries()].map(([tabId, e]) => ({
       tabId,
-      title: e.title,
-      cwd:   e.cwd,
-      shell: e.shell,
-      pid:   e.pty.pid,
-      alive: e.alive,
+      title:    e.title,
+      cwd:      e.cwd,
+      shell:    e.shell,
+      pid:      e.pty.pid,
+      alive:    e.alive,
+      exitCode: e.exitCode,
     }));
   }
 

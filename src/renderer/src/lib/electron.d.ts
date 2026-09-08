@@ -846,6 +846,7 @@ export interface TerminalTabInfo {
   shell: string;
   pid: number;
   alive: boolean;
+  exitCode?: number;
 }
 
 export interface BrowserPaneState {

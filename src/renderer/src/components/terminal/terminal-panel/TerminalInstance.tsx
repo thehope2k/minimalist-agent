@@ -1,33 +1,13 @@
 import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
+import { AlertTriangle, X } from 'lucide-react';
 import type { Terminal as XTerminal } from '@xterm/xterm';
 import type { FitAddon } from '@xterm/addon-fit';
 import type { SearchAddon } from '@xterm/addon-search';
-import { cn } from '@/lib/utils';
-import { getTerminalSettings } from '@/lib/terminal-settings';
-
-const TERMINAL_THEME = {
-  background:          '#0c0c0c',
-  foreground:          '#e8e8e8',
-  cursor:              '#e8e8e8',
-  cursorAccent:        '#0c0c0c',
-  selectionBackground: 'rgba(255,255,255,0.2)',
-  black:               '#1e1e1e',
-  red:                 '#f14c4c',
-  green:               '#23d18b',
-  yellow:              '#f5f543',
-  blue:                '#3b8eea',
-  magenta:             '#d670d6',
-  cyan:                '#29b8db',
-  white:               '#e5e5e5',
-  brightBlack:         '#666666',
-  brightRed:           '#f14c4c',
-  brightGreen:         '#23d18b',
-  brightYellow:        '#f5f543',
-  brightBlue:          '#3b8eea',
-  brightMagenta:       '#d670d6',
-  brightCyan:          '#29b8db',
-  brightWhite:         '#ffffff',
-};
+import { IconButton } from '@/components/ui';
+import { mountXterm } from './mountXterm';
+import { usePasteGuard } from './usePasteGuard';
+import { PasteConfirmDialog } from './PasteConfirmDialog';
+import { TerminalContextMenu } from './ContextMenu';
 
 export interface TerminalInstanceHandle {
   clear:        () => void;
@@ -36,29 +16,38 @@ export interface TerminalInstanceHandle {
 }
 
 interface TerminalInstanceProps {
-  tabId:    string;
-  isActive: boolean;
-  alive:    boolean;
+  tabId:      string;
+  cwd:        string;
+  isActive:   boolean;
+  alive:      boolean;
+  onOpenPath: (absolutePath: string, lineNumber: number) => void;
 }
 
-interface ContextMenu {
-  x:           number;
-  y:           number;
+interface ContextMenuState {
+  x:            number;
+  y:            number;
   hasSelection: boolean;
 }
 
 export const TerminalInstance = forwardRef<TerminalInstanceHandle, TerminalInstanceProps>(
-  function TerminalInstance({ tabId, isActive, alive }, ref) {
+  function TerminalInstance({ tabId, cwd, isActive, alive, onOpenPath }, ref) {
     const containerRef  = useRef<HTMLDivElement>(null);
     const termRef       = useRef<XTerminal | null>(null);
     const fitRef        = useRef<FitAddon | null>(null);
     const searchRef     = useRef<SearchAddon | null>(null);
     const cleanupRef    = useRef<(() => void) | null>(null);
     const aliveRef      = useRef(alive);
-    const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
+    const cwdRef        = useRef(cwd);
+    const onOpenPathRef = useRef(onOpenPath);
+    const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+    const [pasteGuardInactive, setPasteGuardInactive] = useState(false);
 
-    // Keep aliveRef current without re-mounting the heavy xterm effect.
+    const { pendingPaste, pasteOrConfirm, confirmPaste, cancelPaste } = usePasteGuard(termRef);
+
+    // Keep refs current without re-mounting the heavy xterm effect.
     useEffect(() => { aliveRef.current = alive; }, [alive]);
+    useEffect(() => { cwdRef.current = cwd; }, [cwd]);
+    useEffect(() => { onOpenPathRef.current = onOpenPath; }, [onOpenPath]);
 
     // Expose imperative handles to TerminalPanel.
     useImperativeHandle(ref, () => ({
@@ -72,111 +61,33 @@ export const TerminalInstance = forwardRef<TerminalInstanceHandle, TerminalInsta
       if (!containerRef.current) return;
       let disposed = false;
 
-      void (async () => {
-        const [
-          { Terminal },
-          { FitAddon },
-          { WebLinksAddon },
-          { SearchAddon },
-        ] = await Promise.all([
-          import('@xterm/xterm'),
-          import('@xterm/addon-fit'),
-          import('@xterm/addon-web-links'),
-          import('@xterm/addon-search'),
-        ]);
-        await import('@xterm/xterm/css/xterm.css');
-
-        if (disposed || !containerRef.current) return;
-
-        const settings = getTerminalSettings();
-        const term = new Terminal({
-          fontFamily:    settings.fontFamily,
-          fontSize:      settings.fontSize,
-          scrollback:    settings.scrollback,
-          theme:         TERMINAL_THEME,
-          cursorBlink:   true,
-          allowProposedApi: true,
-        });
-
-        const fitAddon    = new FitAddon();
-        const linksAddon  = new WebLinksAddon((_event, uri) => {
-          void window.api.app.openExternal(uri);
-        });
-        const searchAddon = new SearchAddon();
-
-        term.loadAddon(fitAddon);
-        term.loadAddon(linksAddon);
-        term.loadAddon(searchAddon);
-        term.open(containerRef.current);
-        fitAddon.fit();
-        term.focus();
-
-        termRef.current   = term;
-        fitRef.current    = fitAddon;
-        searchRef.current = searchAddon;
-
-        // Copy-on-select: auto-copy to clipboard whenever the selection changes.
-        const onSelDispose = term.onSelectionChange(() => {
-          const sel = term.getSelection();
-          if (sel) void navigator.clipboard.writeText(sel).catch(() => {});
-        });
-
-        // Replay buffered output.
-        const scrollback = await window.api.terminal.getScrollback(tabId);
-        if (scrollback && !disposed) term.write(scrollback);
-
-        // PTY output → xterm.
-        const unsubData = window.api.terminal.onData((tid, data) => {
-          if (tid === tabId) term.write(data);
-        });
-
-        // Keystrokes → PTY. Use aliveRef so we always read the current value
-        // without re-running this effect (which would tear down and re-mount xterm).
-        const onDataDispose = term.onData((data) => {
-          if (aliveRef.current) void window.api.terminal.write(tabId, data);
-        });
-
-        // Cmd+K — clear terminal (only fires when xterm canvas has focus).
-        term.attachCustomKeyEventHandler((e) => {
-          if (e.type !== 'keydown') return true;
-          if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-            term.clear();
-            return false;
-          }
-          return true;
-        });
-
-        // Resize.
-        let resizeTimer: ReturnType<typeof setTimeout> | null = null;
-        const ro = new ResizeObserver(() => {
-          if (resizeTimer) clearTimeout(resizeTimer);
-          resizeTimer = setTimeout(() => {
-            if (!containerRef.current || disposed) return;
-            const { width, height } = containerRef.current.getBoundingClientRect();
-            if (width === 0 || height === 0) return;
-            fitAddon.fit();
-            void window.api.terminal.resize(tabId, term.cols, term.rows);
-          }, 50);
-        });
-        ro.observe(containerRef.current);
-
+      void mountXterm(containerRef.current, {
+        tabId,
+        getCwd:               () => cwdRef.current,
+        isAlive:              () => aliveRef.current,
+        onOpenPath:           (path, line) => onOpenPathRef.current(path, line),
+        onPasteIntercepted:   (text) => pasteOrConfirm(text),
+        onPasteGuardInactive: () => setPasteGuardInactive(true),
+      }).then((mount) => {
+        if (disposed) {
+          mount.dispose();
+          return;
+        }
+        termRef.current   = mount.term;
+        fitRef.current    = mount.fitAddon;
+        searchRef.current = mount.searchAddon;
         cleanupRef.current = () => {
-          disposed = true;
-          unsubData();
-          onDataDispose.dispose();
-          onSelDispose.dispose();
-          ro.disconnect();
-          if (resizeTimer) clearTimeout(resizeTimer);
-          term.dispose();
+          mount.dispose();
           termRef.current   = null;
           fitRef.current    = null;
           searchRef.current = null;
         };
-      })();
+      });
 
       return () => {
         disposed = true;
         cleanupRef.current?.();
+        cleanupRef.current = null;
       };
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [tabId]);
@@ -213,8 +124,7 @@ export const TerminalInstance = forwardRef<TerminalInstanceHandle, TerminalInsta
 
     const handlePaste = async () => {
       try {
-        const text = await navigator.clipboard.readText();
-        if (text) void window.api.terminal.write(tabId, text);
+        pasteOrConfirm(await navigator.clipboard.readText());
       } catch { /* clipboard permission denied */ }
       closeMenu();
     };
@@ -232,40 +142,35 @@ export const TerminalInstance = forwardRef<TerminalInstanceHandle, TerminalInsta
       >
         <div ref={containerRef} className="h-full w-full" />
 
-        {/* Right-click context menu */}
+        {/* Surfaces the (rare, xterm-upgrade-triggered) case where the
+            multi-line paste safety net couldn't attach — pasting here now
+            behaves like a plain terminal with no confirmation. */}
+        {pasteGuardInactive && (
+          <div className="absolute inset-x-0 top-0 z-10 flex items-center gap-2 border-b border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs text-red-300">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+            <span className="min-w-0 flex-1 truncate">
+              Multi-line paste confirmation is unavailable for this tab — pasted text runs immediately.
+            </span>
+            <IconButton icon={X} label="Dismiss" onClick={() => setPasteGuardInactive(false)} />
+          </div>
+        )}
+
         {contextMenu && (
-          <>
-            {/* Invisible backdrop to close on outside click */}
-            <div className="fixed inset-0 z-40" onClick={closeMenu} />
-            <div
-              className="fixed z-50 min-w-[140px] overflow-hidden rounded-lg border border-border bg-panel py-1 shadow-2xl"
-              style={{ left: contextMenu.x, top: contextMenu.y }}
-            >
-              {contextMenu.hasSelection && (
-                <ContextMenuItem label="Copy" onClick={handleCopy} />
-              )}
-              <ContextMenuItem label="Paste" onClick={handlePaste} />
-              <div className="my-1 h-px bg-border/50" />
-              <ContextMenuItem label="Clear" onClick={handleClear} />
-            </div>
-          </>
+          <TerminalContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            hasSelection={contextMenu.hasSelection}
+            onCopy={handleCopy}
+            onPaste={handlePaste}
+            onClear={handleClear}
+            onClose={closeMenu}
+          />
+        )}
+
+        {pendingPaste !== null && (
+          <PasteConfirmDialog text={pendingPaste} onConfirm={confirmPaste} onCancel={cancelPaste} />
         )}
       </div>
     );
   }
 );
-
-function ContextMenuItem({ label, onClick }: { label: string; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'flex w-full items-center px-3 py-1.5 text-left text-sm text-fg',
-        'hover:bg-elevated transition-colors',
-      )}
-    >
-      {label}
-    </button>
-  );
-}

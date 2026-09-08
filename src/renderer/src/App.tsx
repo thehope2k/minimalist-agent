@@ -267,6 +267,7 @@ export default function App() {
                       isOpen={terminalOpen}
                       initialCwd={activeCwd}
                       onClose={toggleTerminal}
+                      onOpenPath={handleOpenFile}
                     />
                   </div>
                 </ResizablePanel>

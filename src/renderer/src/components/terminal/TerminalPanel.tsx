@@ -10,9 +10,10 @@ interface TerminalPanelProps {
   isOpen:     boolean;
   initialCwd: string | undefined;
   onClose:    () => void;
+  onOpenPath: (absolutePath: string, lineNumber: number) => void;
 }
 
-export function TerminalPanel({ isOpen, initialCwd, onClose }: TerminalPanelProps) {
+export function TerminalPanel({ isOpen, initialCwd, onClose, onOpenPath }: TerminalPanelProps) {
   const manager       = useTerminalManager();
   const managerRef    = useRef(manager);
   managerRef.current  = manager;
@@ -207,8 +208,10 @@ export function TerminalPanel({ isOpen, initialCwd, onClose }: TerminalPanelProp
             key={tab.tabId}
             ref={getTabRef(tab.tabId)}
             tabId={tab.tabId}
+            cwd={tab.cwd}
             isActive={tab.tabId === manager.activeTabId && isOpen}
             alive={tab.alive}
+            onOpenPath={onOpenPath}
           />
         ))}
       </div>

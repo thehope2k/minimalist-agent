@@ -67,6 +67,7 @@ function TabChip({
   const inputRef              = useRef<HTMLInputElement>(null);
 
   const displayTitle = tab.customTitle ?? tab.title;
+  const exitedWithError = !tab.alive && typeof tab.exitCode === 'number' && tab.exitCode !== 0;
 
   const startEdit = () => {
     setDraft(tab.customTitle ?? tab.title);
@@ -98,6 +99,7 @@ function TabChip({
           ? 'bg-elevated-2 text-fg ring-1 ring-border-strong'
           : 'text-fg-muted hover:bg-elevated hover:text-fg',
         !tab.alive && 'opacity-60',
+        exitedWithError && 'text-red-400',
         editing && 'cursor-text ring-1 ring-border-strong bg-elevated-2 text-fg',
       )}
     >
@@ -123,6 +125,11 @@ function TabChip({
         <span className="min-w-0 truncate">
           {tab.alive ? displayTitle : `${displayTitle} [exited]`}
         </span>
+      )}
+
+      {/* Dot for background tabs that produced output since last viewed */}
+      {!editing && tab.hasActivity && !isActive && (
+        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
       )}
 
       {/* Hide the close button while editing so it can't be accidentally clicked */}
