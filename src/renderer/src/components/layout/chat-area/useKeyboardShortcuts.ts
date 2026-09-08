@@ -74,6 +74,7 @@ export function useKeyboardShortcuts(
   // Search Everything — Double Shift
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if (!shortcutsEnabled) return;
       if (e.key === 'Shift' && !e.metaKey && !e.ctrlKey && !e.altKey) {
         const now = Date.now();
         const delta = now - lastShiftTs.current;
@@ -90,11 +91,12 @@ export function useKeyboardShortcuts(
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, []);
+  }, [shortcutsEnabled]);
 
   // Recent Files — Cmd+E
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if (!shortcutsEnabled) return;
       if ((e.metaKey || e.ctrlKey) && e.key === 'e' && !e.shiftKey && !e.altKey) {
         e.preventDefault();
         setRecentOpen((v) => !v);
@@ -102,7 +104,7 @@ export function useKeyboardShortcuts(
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, []);
+  }, [shortcutsEnabled]);
 
   // Find in chat — Cmd/Ctrl+F
   //
