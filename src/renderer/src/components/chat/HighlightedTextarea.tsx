@@ -13,6 +13,10 @@
 import { forwardRef, useEffect, useRef, type TextareaHTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 
+// Cap so a long paste can't grow the composer (and its toolbar above it)
+// off-screen — the resting floor instead comes from the `rows` prop below.
+const MAX_HEIGHT_PX = 240;
+
 // Token syntax: plain `@word/path.ts` or backtick-quoted `@\`path with spaces\``.
 // Backtick quoting is used whenever a file or folder name contains whitespace,
 // since the regex boundary is whitespace and a quoted form makes the full path
@@ -31,6 +35,15 @@ interface Props extends TextareaHTMLAttributes<HTMLTextAreaElement> {
 export const HighlightedTextarea = forwardRef<HTMLTextAreaElement, Props>(
   function HighlightedTextareaImpl({ value, onScroll, className, ...rest }, ref) {
     const overlayRef = useRef<HTMLDivElement | null>(null);
+    const innerRef = useRef<HTMLTextAreaElement | null>(null);
+
+    // MessageInput needs the real DOM node for focus/selection (mentions,
+    // voice dictation) — useImperativeHandle would hide it, so mirror both.
+    const setRefs = (node: HTMLTextAreaElement | null) => {
+      innerRef.current = node;
+      if (typeof ref === 'function') ref(node);
+      else if (ref) (ref as React.MutableRefObject<HTMLTextAreaElement | null>).current = node;
+    };
 
     // Sync overlay scroll with the textarea so multi-line text stays aligned.
     const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
@@ -42,15 +55,24 @@ export const HighlightedTextarea = forwardRef<HTMLTextAreaElement, Props>(
       onScroll?.(e);
     };
 
-    // Also sync on value change (e.g. paste), since the scroll handler
-    // doesn't fire if the textarea grew its content but the user hasn't
-    // interacted with the scrollbar yet.
+    // Resting floor for auto-grow — captured once from the natural
+    // `rows`-based height so short drafts don't lose that visual weight,
+    // while longer ones still grow (capped at MAX_HEIGHT_PX, then scroll).
+    const minHeightRef = useRef(0);
     useEffect(() => {
-      const overlay = overlayRef.current;
-      if (!overlay) return;
-      // The textarea's own scrollTop is the source of truth; we read it
-      // via the parent's ref (or fall back to letting React paint and
-      // syncing on next scroll).
+      const ta = innerRef.current;
+      if (!ta) return;
+      if (minHeightRef.current === 0) {
+        // offsetHeight (rendered), not scrollHeight (content) — a restored
+        // draft longer than `rows` would otherwise inflate the floor.
+        minHeightRef.current = ta.offsetHeight;
+      }
+      ta.style.height = 'auto';
+      const next = Math.min(
+        Math.max(ta.scrollHeight, minHeightRef.current),
+        MAX_HEIGHT_PX,
+      );
+      ta.style.height = `${next}px`;
     }, [value]);
 
     return (
@@ -70,12 +92,13 @@ export const HighlightedTextarea = forwardRef<HTMLTextAreaElement, Props>(
           {'\n'}
         </div>
         <textarea
-          ref={ref}
+          ref={setRefs}
           value={value}
           onScroll={handleScroll}
+          style={{ maxHeight: MAX_HEIGHT_PX }}
           className={cn(
             // Real input on top — transparent text, visible caret.
-            'relative resize-none bg-transparent text-transparent caret-fg outline-none',
+            'relative resize-none overflow-y-auto bg-transparent text-transparent caret-fg outline-none',
             'placeholder:text-fg-subtle',
             'disabled:cursor-not-allowed',
             TYPO,

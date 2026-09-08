@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MessageToolbar } from './message-input/MessageToolbar';
 import { StatusFooter } from './message-input/StatusFooter';
@@ -49,6 +50,16 @@ export function MessageInput({
 }: MessageInputProps) {
   const [value, setValue] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // Collapses the composer to a reopen pill.
+  const [collapsed, setCollapsed] = useState(false);
+  // Abort/steer must stay reachable while streaming.
+  useEffect(() => {
+    if (isStreaming) setCollapsed(false);
+  }, [isStreaming]);
+  useEffect(() => {
+    setCollapsed(false);
+  }, [sessionId]);
 
   // Model picker — resolves connection/model from overrides, defaults
   const {
@@ -118,6 +129,10 @@ export function MessageInput({
 
   // Pending message injection (e.g. from phase action buttons)
   usePendingMessage(pendingMessage, onPendingMessageConsumed, setValue, textareaRef);
+  // Needs a visible textarea to focus and land the text in.
+  useEffect(() => {
+    if (pendingMessage) setCollapsed(false);
+  }, [pendingMessage]);
 
   // Voice dictation — on-device transcription inserted at cursor
   const voice = useVoiceDictation(textareaRef, value, setValue);
@@ -254,123 +269,136 @@ export function MessageInput({
     <>
       <StatusFooter lastCompaction={lastCompaction} isStreaming={isStreaming} />
 
-      <div className="mx-auto w-full max-w-240">
-        <MessageToolbar
-          permissionMode={permissionMode}
-          onChangePermissionMode={onChangePermissionMode}
-          autonomyLevel={autonomyLevel}
-          onChangeAutonomyLevel={onChangeAutonomyLevel}
-          thinkingLevel={thinkingLevel}
-          onChangeThinkingLevel={onChangeThinkingLevel}
-          isStreaming={isStreaming}
-          sessionId={sessionId}
-          title={title}
-          messages={messages}
-          connection={connection}
-          model={model}
-          onManualCompact={onManualCompact}
-        />
-
-        <div
-          onDrop={onDrop}
-          onDragOver={onDragOver}
-          onDragEnter={onDragEnter}
-          onDragLeave={onDragLeave}
-          className={cn(
-            'rounded-xl border bg-elevated/60 shadow-sm transition-colors',
-            dragging ? 'border-accent' : 'border-border',
-          )}
-        >
-          <AttachmentSection
-            attachments={attachments}
-            loadingCount={loadingCount}
-            supportsVision={supportsVision}
-            onRemove={removeAttachment}
-            onUpdate={updateAttachment}
-          />
-
-          {visionNotice && (
-            <div className="border-b border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-300/90">
-              {visionNotice}
-            </div>
-          )}
-
-          {error && (
-            <div className="border-b border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs text-red-300">
-              {error}
-            </div>
-          )}
-
-          {voice.error && (
-            <div className="border-b border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs text-red-300">
-              {voice.error}
-            </div>
-          )}
-
-          {voice.modelStatus === 'downloading' && (
-            <div className="border-b border-border bg-elevated/60 px-3 py-1.5 text-xs text-fg-muted">
-              Downloading on-device voice model…
-              {voice.downloadProgress?.totalBytes
-                ? ` ${Math.round((voice.downloadProgress.downloadedBytes / voice.downloadProgress.totalBytes) * 100)}%`
-                : ''}
-            </div>
-          )}
-
-          <MessageTextarea
-            textareaRef={textareaRef}
-            value={value}
-            onChange={(e) => {
-              setValue(e.target.value);
-              requestAnimationFrame(recomputeMention);
-            }}
-            onKeyDown={onKeyDown}
-            onPaste={onPaste}
-            onBlur={() => {
-              setTimeout(resetMention, 120);
-            }}
-            disabled={!connection}
-            placeholder={
-              connection
-                ? 'Ask anything…'
-                : 'Add a connection in Settings → AI to start chatting'
-            }
-            mention={mention}
-            mentionHandleRef={mentionHandleRef}
-            skills={skills}
-            extensions={extensions}
-            cwd={cwd}
-            onMentionSelect={insertMention}
-            onMentionClose={resetMention}
-          />
-
-          <InputActions
+      {collapsed ? (
+        <div className="mx-auto flex w-full max-w-240 justify-center pb-3">
+          <button
+            onClick={() => setCollapsed(false)}
+            className="flex items-center gap-1.5 rounded-full border border-border bg-panel px-3 py-1.5 text-xs text-fg-muted shadow-md transition-colors hover:bg-elevated hover:text-fg"
+          >
+            <ChevronUp className="h-3.5 w-3.5" />
+            Show composer
+          </button>
+        </div>
+      ) : (
+        <div className="mx-auto w-full max-w-240">
+          <MessageToolbar
+            permissionMode={permissionMode}
+            onChangePermissionMode={onChangePermissionMode}
+            autonomyLevel={autonomyLevel}
+            onChangeAutonomyLevel={onChangeAutonomyLevel}
+            thinkingLevel={thinkingLevel}
+            onChangeThinkingLevel={onChangeThinkingLevel}
             isStreaming={isStreaming}
-            canSend={canSend}
-            canSteer={canSteer}
+            sessionId={sessionId}
+            title={title}
+            messages={messages}
             connection={connection}
             model={model}
-            data={data}
-            cwd={cwd}
-            onChangeCwd={onChangeCwd}
-            cwdLocked={cwdLocked}
-            supportsVision={supportsVision}
-            hasUnsendableImages={hasUnsendableImages}
-            onPickFiles={handlePickFiles}
-            onTriggerMention={triggerMentionFromButton}
-            onPickerChange={(slug, modelId) =>
-              setPickerOverride({ slug, modelId })
-            }
-            onSend={handleSend}
-            onAbort={onAbort}
-            onSteer={() => void handleSteer()}
-            voiceRecording={voice.recording}
-            voiceStarting={voice.starting}
-            voiceTranscribing={voice.transcribing}
-            voiceModelStatus={voice.modelStatus}
-            onToggleVoice={handleToggleVoice}
+            onManualCompact={onManualCompact}
+            onMinimize={() => setCollapsed(true)}
           />
+
+          <div
+            onDrop={onDrop}
+            onDragOver={onDragOver}
+            onDragEnter={onDragEnter}
+            onDragLeave={onDragLeave}
+            className={cn(
+              'rounded-xl border bg-elevated/60 shadow-sm transition-colors',
+              dragging ? 'border-accent' : 'border-border',
+            )}
+          >
+            <AttachmentSection
+              attachments={attachments}
+              loadingCount={loadingCount}
+              supportsVision={supportsVision}
+              onRemove={removeAttachment}
+              onUpdate={updateAttachment}
+            />
+
+            {visionNotice && (
+              <div className="border-b border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-300/90">
+                {visionNotice}
+              </div>
+            )}
+
+            {error && (
+              <div className="border-b border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs text-red-300">
+                {error}
+              </div>
+            )}
+
+            {voice.error && (
+              <div className="border-b border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs text-red-300">
+                {voice.error}
+              </div>
+            )}
+
+            {voice.modelStatus === 'downloading' && (
+              <div className="border-b border-border bg-elevated/60 px-3 py-1.5 text-xs text-fg-muted">
+                Downloading on-device voice model…
+                {voice.downloadProgress?.totalBytes
+                  ? ` ${Math.round((voice.downloadProgress.downloadedBytes / voice.downloadProgress.totalBytes) * 100)}%`
+                  : ''}
+              </div>
+            )}
+
+            <MessageTextarea
+              textareaRef={textareaRef}
+              value={value}
+              onChange={(e) => {
+                setValue(e.target.value);
+                requestAnimationFrame(recomputeMention);
+              }}
+              onKeyDown={onKeyDown}
+              onPaste={onPaste}
+              onBlur={() => {
+                setTimeout(resetMention, 120);
+              }}
+              disabled={!connection}
+              placeholder={
+                connection
+                  ? 'Ask anything…'
+                  : 'Add a connection in Settings → AI to start chatting'
+              }
+              mention={mention}
+              mentionHandleRef={mentionHandleRef}
+              skills={skills}
+              extensions={extensions}
+              cwd={cwd}
+              onMentionSelect={insertMention}
+              onMentionClose={resetMention}
+            />
+
+            <InputActions
+              isStreaming={isStreaming}
+              canSend={canSend}
+              canSteer={canSteer}
+              connection={connection}
+              model={model}
+              data={data}
+              cwd={cwd}
+              onChangeCwd={onChangeCwd}
+              cwdLocked={cwdLocked}
+              supportsVision={supportsVision}
+              hasUnsendableImages={hasUnsendableImages}
+              onPickFiles={handlePickFiles}
+              onTriggerMention={triggerMentionFromButton}
+              onPickerChange={(slug, modelId) =>
+                setPickerOverride({ slug, modelId })
+              }
+              onSend={handleSend}
+              onAbort={onAbort}
+              onSteer={() => void handleSteer()}
+              voiceRecording={voice.recording}
+              voiceStarting={voice.starting}
+              voiceTranscribing={voice.transcribing}
+              voiceModelStatus={voice.modelStatus}
+              onToggleVoice={handleToggleVoice}
+            />
+          </div>
         </div>
-      </div>
+      )}
     </>
   );
 }

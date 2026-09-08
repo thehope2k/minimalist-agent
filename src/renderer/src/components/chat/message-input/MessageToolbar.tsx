@@ -3,7 +3,7 @@ import { ThinkingLevelButton } from '../ThinkingLevelButton';
 import { SessionInfoButton } from '../SessionInfoButton';
 import { ContextBadge } from '../ContextBadge';
 import { IconButton } from '@/components/ui';
-import { ArchiveIcon } from 'lucide-react';
+import { ArchiveIcon, ChevronDown } from 'lucide-react';
 import { snapshot, resolveCompactionSettings } from '@/lib/connections';
 import type { PermissionMode, ThinkingLevel, ConnectionMeta } from '@/lib/electron';
 import type { ChatMessage } from '@/lib/chat';
@@ -29,6 +29,7 @@ type Props = {
     connectionSlug: string,
     customInstructions?: string,
   ) => Promise<{ ok: boolean; reason?: string }>;
+  onMinimize?: () => void;
 };
 
 export function MessageToolbar({
@@ -45,6 +46,7 @@ export function MessageToolbar({
   connection,
   model,
   onManualCompact,
+  onMinimize,
 }: Props) {
   const supportsReasoning =
     !!connection && !!model &&
@@ -94,6 +96,16 @@ export function MessageToolbar({
         />
       )}
       <SessionInfoButton sessionId={sessionId} title={title} messages={messages} />
+      {onMinimize && (
+        // Disabled while streaming so abort/steer stay reachable.
+        <IconButton
+          icon={ChevronDown}
+          label="Minimize composer"
+          title="Minimize composer"
+          disabled={isStreaming}
+          onClick={onMinimize}
+        />
+      )}
     </div>
   );
 }
