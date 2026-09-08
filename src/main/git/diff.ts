@@ -58,13 +58,17 @@ function detectLanguage(relativePath: string): string {
   return EXT_TO_LANGUAGE[ext] ?? 'plaintext';
 }
 
-async function getHeadContent(repoRoot: string, relativePath: string): Promise<string> {
+async function getRefContent(repoRoot: string, ref: string, relativePath: string): Promise<string> {
   const { stdout } = await execFileAsync(
     'git',
-    ['-C', repoRoot, 'show', `HEAD:${relativePath}`],
+    ['-C', repoRoot, 'show', `${ref}:${relativePath}`],
     { timeout: 10_000, maxBuffer: 10 * 1024 * 1024 },
   );
   return stdout;
+}
+
+async function getHeadContent(repoRoot: string, relativePath: string): Promise<string> {
+  return getRefContent(repoRoot, 'HEAD', relativePath);
 }
 
 function readDiskContent(absolutePath: string): string {
@@ -105,6 +109,42 @@ export async function getFileDiff(
   }
 
   if (original === '\0BINARY' || modified === '\0BINARY') {
+    return {
+      original: '(binary file — diff not available)',
+      modified: '(binary file — diff not available)',
+      language: 'plaintext',
+    };
+  }
+
+  return { original, modified, language };
+}
+
+/**
+ * Diff for a single file as it changed in HEAD (the commit being amended),
+ * i.e. HEAD^:path vs HEAD:path — read-only, unrelated to the working tree.
+ */
+export async function getCommitFileDiff(
+  repoRoot: string,
+  relativePath: string,
+  oldPath: string | undefined,
+  status: string,
+): Promise<GitFileDiff> {
+  const language = detectLanguage(relativePath);
+  let original = '';
+  let modified = '';
+
+  if (status === 'A') {
+    modified = await getRefContent(repoRoot, 'HEAD', relativePath).catch(() => '');
+  } else if (status === 'D') {
+    original = await getRefContent(repoRoot, 'HEAD^', oldPath ?? relativePath).catch(() => '');
+  } else {
+    [original, modified] = await Promise.all([
+      getRefContent(repoRoot, 'HEAD^', oldPath ?? relativePath).catch(() => ''),
+      getRefContent(repoRoot, 'HEAD', relativePath).catch(() => ''),
+    ]);
+  }
+
+  if (original.includes('\0') || modified.includes('\0')) {
     return {
       original: '(binary file — diff not available)',
       modified: '(binary file — diff not available)',

@@ -1,6 +1,7 @@
-import { CommitPanel } from '../CommitPanel';
+import { CommitPanel, type AmendPreview } from '../CommitPanel';
 import { GitFileList } from '../GitFileList';
 import type { GitFileEntry, GitRepo } from '../types';
+import type { LastCommitFileEntry } from '../git-util';
 
 interface GitLeftPanelProps {
   statusLoading: boolean;
@@ -18,9 +19,14 @@ interface GitLeftPanelProps {
   stagedRepos: string[];
   onCommit: (message: string, amend: boolean) => Promise<void>;
   onFetchLastMessage: () => Promise<string | null>;
+  onFetchLastFiles: () => Promise<string | null>;
   onGenerateMessage: (amend: boolean) => Promise<string | null>;
   committing: boolean;
   error: string | null;
+  onAmendPreviewChange: (preview: AmendPreview | null) => void;
+  amendPreview: AmendPreview | null;
+  selectedAmendFile: LastCommitFileEntry | null;
+  onSelectAmendFile: (file: LastCommitFileEntry) => void;
 }
 
 export function GitLeftPanel(props: GitLeftPanelProps) {
@@ -40,9 +46,14 @@ export function GitLeftPanel(props: GitLeftPanelProps) {
     stagedRepos,
     onCommit,
     onFetchLastMessage,
+    onFetchLastFiles,
     onGenerateMessage,
     committing,
     error,
+    onAmendPreviewChange,
+    amendPreview,
+    selectedAmendFile,
+    onSelectAmendFile,
   } = props;
 
   if (statusLoading && !repos.length) return <div className="flex h-full items-center justify-center"><span className="text-xs text-fg-subtle">Loading…</span></div>;
@@ -62,6 +73,9 @@ export function GitLeftPanel(props: GitLeftPanelProps) {
           onToggleStage={onToggleStage}
           onToggleRepoStage={onToggleRepoStage}
           hunkStates={hunkStates}
+          amendPreview={amendPreview}
+          selectedAmendFile={selectedAmendFile}
+          onSelectAmendFile={onSelectAmendFile}
         />
       </div>
       <CommitPanel
@@ -70,9 +84,11 @@ export function GitLeftPanel(props: GitLeftPanelProps) {
         stagedRepos={stagedRepos}
         onCommit={onCommit}
         onFetchLastMessage={onFetchLastMessage}
+        onFetchLastFiles={onFetchLastFiles}
         onGenerateMessage={onGenerateMessage}
         committing={committing}
         error={error}
+        onAmendPreviewChange={onAmendPreviewChange}
       />
     </>
   );

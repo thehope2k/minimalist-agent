@@ -931,6 +931,12 @@ const api = {
     lastCommitMessage: (repoRoot: string) => ipcRenderer.invoke('git:lastCommitMessage', repoRoot),
     branchName: (repoRoot: string) => ipcRenderer.invoke('git:branchName', repoRoot),
     lastCommitFiles: (repoRoot: string) => ipcRenderer.invoke('git:lastCommitFiles', repoRoot),
+    lastCommitFileDiff: (args: {
+      repoRoot: string;
+      relativePath: string;
+      oldPath?: string;
+      status: string;
+    }) => ipcRenderer.invoke('git:lastCommitFileDiff', args),
     lastCommitDiff: (repoRoot: string) => ipcRenderer.invoke('git:lastCommitDiff', repoRoot),
     generateCommitMessage: (args: {
       connectionSlug: string;

@@ -67,6 +67,20 @@ export function registerGitIpc(): void {
     return getLastCommitFiles(repoRoot);
   });
 
+  ipcMain.handle(
+    'git:lastCommitFileDiff',
+    async (
+      _e,
+      args: { repoRoot: string; relativePath: string; oldPath?: string; status: string },
+    ) => {
+      const empty = { original: '', modified: '', language: 'plaintext' };
+      // Read-back of committed content — same C5 concern as git:diff, confine to known roots.
+      if (!isWithinAllowedRoots(args.repoRoot)) return empty;
+      const { getCommitFileDiff } = await import('../git/diff');
+      return getCommitFileDiff(args.repoRoot, args.relativePath, args.oldPath, args.status);
+    },
+  );
+
   ipcMain.handle('git:lastCommitDiff', async (_e, repoRoot: string) => {
     const { getLastCommitDiff } = await import('../git/commit');
     return getLastCommitDiff(repoRoot);

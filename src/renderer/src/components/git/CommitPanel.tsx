@@ -4,9 +4,16 @@
 // Cmd+Enter submits. "Amend" checkbox pre-fills the last commit message
 // and runs git commit --amend.
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Check, Loader2, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { parseLastCommitFiles, type LastCommitFileEntry } from './git-util';
+
+export interface AmendPreview {
+  /** First line of the commit being amended — fixed at fetch time, unaffected by textarea edits. */
+  subject: string | null;
+  files: LastCommitFileEntry[];
+}
 
 interface CommitPanelProps {
   stagedCount: number;
@@ -14,9 +21,12 @@ interface CommitPanelProps {
   stagedRepos: string[];
   onCommit: (message: string, amend: boolean) => Promise<void>;
   onFetchLastMessage: () => Promise<string | null>;
+  onFetchLastFiles: () => Promise<string | null>;
   onGenerateMessage: (amend: boolean, userContext?: string) => Promise<string | null>;
   committing: boolean;
   error: string | null;
+  /** Reports the commit-being-amended (subject + files) so the file tree above can render it inline. */
+  onAmendPreviewChange?: (preview: AmendPreview | null) => void;
 }
 
 export function CommitPanel({
@@ -25,17 +35,28 @@ export function CommitPanel({
   stagedRepos,
   onCommit,
   onFetchLastMessage,
+  onFetchLastFiles,
   onGenerateMessage,
   committing,
   error,
+  onAmendPreviewChange,
 }: CommitPanelProps) {
   const [message, setMessage] = useState('');
   const [amend, setAmend] = useState(false);
   const [fetchingAmend, setFetchingAmend] = useState(false);
+  const [lastFiles, setLastFiles] = useState<LastCommitFileEntry[] | null>(null);
+  const [lastSubject, setLastSubject] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const savedMessageRef = useRef('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (!onAmendPreviewChange) return;
+    onAmendPreviewChange(
+      amend && lastFiles && lastFiles.length > 0 ? { subject: lastSubject, files: lastFiles } : null,
+    );
+  }, [amend, lastFiles, lastSubject, onAmendPreviewChange]);
 
   const canCommit = stagedCount > 0 && message.trim().length > 0 && !committing && !generating;
 
@@ -65,6 +86,8 @@ export function CommitPanel({
       setMessage('');
       savedMessageRef.current = '';
       setAmend(false);
+      setLastFiles(null);
+      setLastSubject(null);
     });
   };
 
@@ -79,18 +102,28 @@ export function CommitPanel({
     const next = !amend;
     setAmend(next);
     if (next) {
-      // Checking: save current message, then pre-fill with last commit.
+      // Checking: save current message, then pre-fill with last commit
+      // (message + the files it touched, for reference while amending).
       savedMessageRef.current = message;
       setFetchingAmend(true);
       try {
-        const lastMsg = await onFetchLastMessage();
-        if (lastMsg) setMessage(lastMsg);
+        const [lastMsg, lastFilesRaw] = await Promise.all([
+          onFetchLastMessage(),
+          onFetchLastFiles(),
+        ]);
+        if (lastMsg) {
+          setMessage(lastMsg);
+          setLastSubject(lastMsg.split('\n', 1)[0]?.trim() || null);
+        }
+        setLastFiles(lastFilesRaw ? parseLastCommitFiles(lastFilesRaw) : null);
       } finally {
         setFetchingAmend(false);
       }
     } else {
       // Unchecking: restore the message that was there before.
       setMessage(savedMessageRef.current);
+      setLastFiles(null);
+      setLastSubject(null);
     }
     textareaRef.current?.focus();
   };

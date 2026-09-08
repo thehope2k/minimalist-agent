@@ -15,7 +15,7 @@ import type * as MonacoType from 'monaco-editor';
 import { FilePlus, Trash2, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { GitFileDiff, LineChange } from './types';
-import { registerAppMonacoTheme, APP_MONACO_COLORS } from '@/lib/monaco-setup';
+import { registerAppMonacoTheme } from '@/lib/monaco-setup';
 
 const DiffEditor = lazy(() =>
   import('@monaco-editor/react').then((m) => ({ default: m.DiffEditor })),
@@ -34,10 +34,9 @@ interface GitDiffViewProps {
   onDiffComputed?: (changes: LineChange[]) => void;
   /** Forces a clean Monaco remount when the file changes (prevents TextModel disposed race). */
   fileKey?: string;
+  /** Set to false to hide/disable the hunk-staging glyphs — used for read-only historical diffs. */
+  hunksInteractive?: boolean;
 }
-
-// THEME_COLORS kept locally for the diff-specific gutter colours used below.
-const THEME_COLORS = APP_MONACO_COLORS;
 
 const EDITOR_OPTIONS: MonacoType.editor.IDiffEditorConstructionOptions = {
   readOnly: true,
@@ -77,6 +76,7 @@ export function GitDiffView({
   onToggleHunk,
   onDiffComputed,
   fileKey,
+  hunksInteractive = true,
 }: GitDiffViewProps) {
   const editorRef  = useRef<MonacoType.editor.IStandaloneDiffEditor | null>(null);
   const monacoRef  = useRef<typeof MonacoType | null>(null);
@@ -94,7 +94,7 @@ export function GitDiffView({
     const monaco = monacoRef.current;
     const editor = editorRef.current;
     const col    = decoRef.current;
-    if (!monaco || !editor || !col || changes.length === 0) {
+    if (!monaco || !editor || !col || changes.length === 0 || !hunksInteractive) {
       col?.clear();
       return;
     }
@@ -106,7 +106,6 @@ export function GitDiffView({
     const decorations: MonacoType.editor.IModelDeltaDecoration[] = changes.map((c, i) => {
       // For pure deletions (modEnd=0), use the anchor line in modified.
       const line    = c.modifiedStartLineNumber || 1;
-      const endLine = c.modifiedEndLineNumber > 0 ? c.modifiedEndLineNumber : line;
       const staged  = allStaged || stagedHunks.has(i);
       return {
         range: new monaco.Range(line, 1, line, 1),  // first line only — one icon per hunk
@@ -119,7 +118,7 @@ export function GitDiffView({
       };
     });
     col.set(decorations);
-  }, [changes, stagedHunks]);
+  }, [changes, stagedHunks, hunksInteractive]);
 
   const handleBeforeMount = useCallback((monaco: typeof MonacoType) => {
     monacoRef.current = monaco;

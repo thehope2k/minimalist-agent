@@ -1257,6 +1257,13 @@ export interface AppApi {
     lastCommitMessage: (repoRoot: string) => Promise<string | null>;
     branchName: (repoRoot: string) => Promise<string | null>;
     lastCommitFiles: (repoRoot: string) => Promise<string | null>;
+    /** Read-only diff of a single file as it changed in HEAD (the commit being amended). */
+    lastCommitFileDiff: (args: {
+      repoRoot: string;
+      relativePath: string;
+      oldPath?: string;
+      status: string;
+    }) => Promise<GitFileDiff>;
     lastCommitDiff: (repoRoot: string) => Promise<string | null>;
     generateCommitMessage: (args: {
       connectionSlug: string;

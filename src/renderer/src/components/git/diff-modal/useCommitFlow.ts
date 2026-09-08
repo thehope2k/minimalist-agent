@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import type { GitRepo, GitFileEntry } from '../types';
-import { applySelectedHunks } from '../git-util';
+import { applySelectedHunks, resolveAmendRepoRoot } from '../git-util';
 import { buildDiffContext } from '../git-generate';
 import type { DiffCaches, PartialContentRefs } from './types';
 import { emitPetEvent } from '@/lib/pet-events';
@@ -131,14 +131,22 @@ export function useCommitFlow(
     [repos, stagedPaths, cwd, connectionSlug, model, sessionId],
   );
 
+  const resolveRepoRoot = useCallback(() => {
+    return resolveAmendRepoRoot(repos, stagedPaths, cwd);
+  }, [repos, stagedPaths, cwd]);
+
   const handleFetchLastMessage = useCallback(async () => {
-    const repoRoot =
-      repos.find((r) => r.files.some((f) => stagedPaths.has(f.absolutePath)))?.root ??
-      repos[0]?.root ??
-      cwd;
+    const repoRoot = resolveRepoRoot();
     if (!repoRoot) return null;
     return window.api.git.lastCommitMessage(repoRoot);
-  }, [repos, stagedPaths, cwd]);
+  }, [resolveRepoRoot]);
+
+  /** Raw "M src/foo.ts\nA src/bar.ts" name-status string for the commit being amended. */
+  const handleFetchLastFiles = useCallback(async () => {
+    const repoRoot = resolveRepoRoot();
+    if (!repoRoot) return null;
+    return window.api.git.lastCommitFiles(repoRoot);
+  }, [resolveRepoRoot]);
 
   return {
     committing,
@@ -146,5 +154,6 @@ export function useCommitFlow(
     handleCommit,
     handleGenerateMessage,
     handleFetchLastMessage,
+    handleFetchLastFiles,
   };
 }

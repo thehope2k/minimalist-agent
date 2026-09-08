@@ -9,7 +9,8 @@
 //   - All files checked by default; uncheck a file to exclude it entirely.
 //   - On commit: staged files are committed via git hash-object + update-index.
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { GitCommitHorizontal, Loader2 } from 'lucide-react';
 import { ExpandModal } from '@/components/ui';
 import { GitDiffView } from './GitDiffView';
 import { ConflictView } from './ConflictView';
@@ -24,8 +25,10 @@ import { useGitStatus } from './diff-modal/useGitStatus';
 import { useFileSelection } from './diff-modal/useFileSelection';
 import { useStagingState } from './diff-modal/useStagingState';
 import { useCommitFlow } from './diff-modal/useCommitFlow';
+import { resolveAmendRepoRoot, type LastCommitFileEntry } from './git-util';
+import type { AmendPreview } from './CommitPanel';
 import type { GitDiffModalProps, DiffCaches, PartialContentRefs } from './diff-modal/types';
-import type { LineChange } from './types';
+import type { GitFileDiff, GitFileEntry, LineChange } from './types';
 
 export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }: GitDiffModalProps) {
   const { repos, branchesByRepo, statusError, statusLoading, loadStatus } = useGitStatus(cwd);
@@ -52,6 +55,28 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
   const allFiles = useMemo(() => repos.flatMap((r) => r.files), [repos]);
   const { selected, setSelected, diff } = useFileSelection(allFiles, diffCaches);
 
+  // ── Amend preview: the commit being amended + a click-through read-only diff ──
+  const [amendPreview, setAmendPreview] = useState<AmendPreview | null>(null);
+  const [selectedAmendFile, setSelectedAmendFile] = useState<LastCommitFileEntry | null>(null);
+  const [amendFileDiff, setAmendFileDiff] = useState<GitFileDiff | null>(null);
+  const [amendFileLoading, setAmendFileLoading] = useState(false);
+
+  useEffect(() => {
+    if (!amendPreview) {
+      setSelectedAmendFile(null);
+      setAmendFileDiff(null);
+    }
+  }, [amendPreview]);
+
+  const handleSelectFile = useCallback(
+    (file: GitFileEntry) => {
+      setSelectedAmendFile(null);
+      setAmendFileDiff(null);
+      setSelected(file);
+    },
+    [setSelected],
+  );
+
   const {
     stagedPaths,
     setStagedPaths,
@@ -63,6 +88,28 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
     handleToggleHunk,
     hunkStates,
   } = useStagingState(lineChangesCacheRef, partialContentRefs);
+
+  const handleSelectAmendFile = useCallback(
+    (file: LastCommitFileEntry) => {
+      const repoRoot = resolveAmendRepoRoot(repos, stagedPaths, cwd);
+      if (!repoRoot) return;
+      setSelected(null);
+      setSelectedAmendFile(file);
+      setAmendFileDiff(null);
+      setAmendFileLoading(true);
+      window.api.git
+        .lastCommitFileDiff({
+          repoRoot,
+          relativePath: file.path,
+          oldPath: file.oldPath,
+          status: file.status,
+        })
+        .then(setAmendFileDiff)
+        .catch(() => setAmendFileDiff(null))
+        .finally(() => setAmendFileLoading(false));
+    },
+    [repos, stagedPaths, cwd, setSelected],
+  );
 
   // ── Merge / conflict state ───────────────────────────────────────────────
   const repoRoots = useMemo(() => repos.map((r) => r.root), [repos]);
@@ -119,8 +166,14 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
   });
 
   // ── Commit flow ──────────────────────────────────────────────────────────
-  const { committing, commitError, handleCommit, handleGenerateMessage, handleFetchLastMessage } =
-    useCommitFlow(
+  const {
+    committing,
+    commitError,
+    handleCommit,
+    handleGenerateMessage,
+    handleFetchLastMessage,
+    handleFetchLastFiles,
+  } = useCommitFlow(
       repos,
       stagedPaths,
       stagedHunks,
@@ -243,7 +296,7 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
             repos={repos}
             branchesByRepo={branchesByRepo}
             selected={selected}
-            onSelect={setSelected}
+            onSelect={handleSelectFile}
             stagedPaths={stagedPaths}
             onToggleStage={handleToggleFile}
             onToggleRepoStage={handleToggleRepo}
@@ -253,14 +306,44 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
             stagedRepos={stagedRepos}
             onCommit={handleCommit}
             onFetchLastMessage={handleFetchLastMessage}
+            onFetchLastFiles={handleFetchLastFiles}
             onGenerateMessage={handleGenerateMessage}
             committing={committing}
             error={commitError}
+            onAmendPreviewChange={setAmendPreview}
+            amendPreview={amendPreview}
+            selectedAmendFile={selectedAmendFile}
+            onSelectAmendFile={handleSelectAmendFile}
           />
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col bg-panel">
-          {selected?.status === 'U' ? (
+          {selectedAmendFile ? (
+            <>
+              <div className="flex shrink-0 items-center gap-2 border-b border-border/60 bg-elevated/40 px-3 py-1.5">
+                <GitCommitHorizontal className="h-3.5 w-3.5 shrink-0 text-fg-subtle" strokeWidth={1.75} />
+                <span className="text-[11px] font-medium text-fg-subtle">
+                  Read-only — already part of the commit being amended
+                </span>
+              </div>
+              <div className="min-h-0 flex-1">
+                {amendFileLoading ? (
+                  <div className="flex h-full items-center justify-center">
+                    <Loader2 className="h-5 w-5 animate-spin text-fg-subtle" strokeWidth={1.5} />
+                  </div>
+                ) : (
+                  <GitDiffView
+                    diff={amendFileDiff}
+                    splitView={splitView}
+                    changes={[]}
+                    stagedHunks={undefined}
+                    onToggleHunk={() => {}}
+                    hunksInteractive={false}
+                  />
+                )}
+              </div>
+            </>
+          ) : selected?.status === 'U' ? (
             <ConflictView
               key={selected.absolutePath}
               file={selected}

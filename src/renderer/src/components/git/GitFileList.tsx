@@ -6,9 +6,10 @@
 // "what changed" review.
 
 import { useEffect, useRef, useState } from 'react';
-import { AlertTriangle, Check, ChevronDown, ChevronRight, FolderGit2, Minus } from 'lucide-react';
+import { AlertTriangle, Check, ChevronDown, ChevronRight, FolderGit2, GitCommitHorizontal, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { GitFileEntry, GitFileStatus, GitRepo } from './types';
+import type { AmendPreview } from './CommitPanel';
 
 interface GitFileListProps {
   repos: GitRepo[];
@@ -20,6 +21,11 @@ interface GitFileListProps {
   onToggleRepoStage: (repo: GitRepo) => void;
   /** Optional per-file hunk staging info for indeterminate state. */
   hunkStates?: Map<string, { staged: number; total: number }>;
+  /** Files touched by the commit being amended — shown as a muted, read-only group below current changes. */
+  amendPreview?: AmendPreview | null;
+  /** Currently viewed amend-preview file, if any (mutually exclusive with `selected`). */
+  selectedAmendFile?: { path: string } | null;
+  onSelectAmendFile?: (file: AmendPreview['files'][number]) => void;
 }
 
 const STATUS_STYLES: Record<GitFileStatus, {
@@ -78,7 +84,7 @@ function splitPath(relativePath: string): { dir: string; name: string } {
   };
 }
 
-export function GitFileList({ repos, branchesByRepo, selected, onSelect, stagedPaths, onToggleStage, onToggleRepoStage, hunkStates }: GitFileListProps) {
+export function GitFileList({ repos, branchesByRepo, selected, onSelect, stagedPaths, onToggleStage, onToggleRepoStage, hunkStates, amendPreview, selectedAmendFile, onSelectAmendFile }: GitFileListProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [collapsedRoots, setCollapsedRoots] = useState<Set<string>>(new Set());
 
@@ -113,7 +119,7 @@ export function GitFileList({ repos, branchesByRepo, selected, onSelect, stagedP
     return () => el.removeEventListener('keydown', handler);
   }, [visibleFiles, selected, onSelect]);
 
-  if (repos.length === 0) {
+  if (repos.length === 0 && !(amendPreview && amendPreview.files.length > 0)) {
     return (
       <div className="flex h-full items-center justify-center p-6">
         <p className="text-center text-xs text-fg-subtle">No uncommitted changes</p>
@@ -288,6 +294,62 @@ export function GitFileList({ repos, branchesByRepo, selected, onSelect, stagedP
         </div>
         );
       })}
+
+      {/* ── Commit being amended — read-only, muted, shown separately from current changes ── */}
+      {amendPreview && amendPreview.files.length > 0 && (
+        <div>
+          <div
+            className={cn(
+              'sticky top-0 z-10 flex items-center gap-2 bg-app px-3 py-2.5',
+              repos.length > 0 && 'border-t border-border',
+            )}
+            title="This commit will be amended with the staged changes above"
+          >
+            <GitCommitHorizontal className="h-3.5 w-3.5 shrink-0 text-fg-subtle" strokeWidth={1.75} />
+            <div className="min-w-0 flex-1">
+              <span className="block truncate text-[13px] font-semibold text-fg-subtle">
+                {amendPreview.subject ?? 'Commit being amended'}
+              </span>
+            </div>
+            <span className="shrink-0 rounded bg-elevated px-1.5 py-0.5 text-[10px] tabular-nums text-fg-subtle">
+              {amendPreview.files.length}
+            </span>
+          </div>
+          {amendPreview.files.map((f, i) => {
+            const { dir, name } = splitPath(f.path);
+            const isSelected = selectedAmendFile?.path === f.path;
+            const s = STATUS_STYLES[f.status];
+            return (
+              <button
+                key={`${f.path}-${i}`}
+                type="button"
+                onClick={() => onSelectAmendFile?.(f)}
+                className={cn(
+                  'flex w-full items-center gap-2.5 py-2 pr-3 text-left transition-colors',
+                  'focus-visible:outline-none',
+                  isSelected
+                    ? 'border-l-2 border-accent bg-accent/10 pl-[26px]'
+                    : 'border-l-2 border-transparent pl-[26px] hover:bg-elevated',
+                )}
+              >
+                <span className={cn('shrink-0 rounded px-1.5 py-0.5 font-mono text-[11px] font-bold leading-none', s.badgeClasses)}>
+                  {s.label}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className={cn('block truncate font-mono text-[13px] font-medium', s.nameClasses)}>
+                    {f.oldPath ? `${f.oldPath.split('/').pop()} \u2192 ${name}` : name}
+                  </span>
+                  {dir && (
+                    <span className="block truncate font-mono text-[11px] text-fg-subtle">
+                      {dir}
+                    </span>
+                  )}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

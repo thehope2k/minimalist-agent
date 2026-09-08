@@ -9,7 +9,7 @@
 // All line numbers are 1-indexed.
 
 import type * as MonacoType from 'monaco-editor';
-import type { LineChange } from './types';
+import type { GitFileStatus, GitRepo, LineChange } from './types';
 
 export function applySelectedHunks(
   originalContent: string,
@@ -84,6 +84,48 @@ export function hunkLabel(c: LineChange): string {
   if (added > 0 && removed > 0) return `+${added} -${removed}`;
   if (added > 0) return `+${added}`;
   return `-${removed}`;
+}
+
+/** Picks the repo root relevant to an amend action — the one with staged files, or the first repo. */
+export function resolveAmendRepoRoot(
+  repos: GitRepo[],
+  stagedPaths: Set<string>,
+  cwd: string | null,
+): string | null {
+  return (
+    repos.find((r) => r.files.some((f) => stagedPaths.has(f.absolutePath)))?.root ??
+    repos[0]?.root ??
+    cwd ??
+    null
+  );
+}
+
+export interface LastCommitFileEntry {
+  status: GitFileStatus;
+  path: string;
+  /** Set for renames (status 'R') — the path before the rename. */
+  oldPath?: string;
+}
+
+/**
+ * Parses the tab-separated `git show --name-status` output returned by
+ * `getLastCommitFiles`, e.g. "M\tsrc/foo.ts\nR100\told.ts\tnew.ts".
+ */
+export function parseLastCommitFiles(raw: string): LastCommitFileEntry[] {
+  const known = new Set(['M', 'A', 'D', 'R']);
+  return raw
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [rawStatus, ...paths] = line.split('\t');
+      const code = rawStatus[0];
+      if (paths.length === 2) {
+        return { status: 'R' as GitFileStatus, path: paths[1], oldPath: paths[0] };
+      }
+      const status = (known.has(code) ? code : 'M') as GitFileStatus;
+      return { status, path: paths[0] ?? line };
+    });
 }
 
 /** Line range label for a hunk, e.g. "L5" or "L5-8". */
