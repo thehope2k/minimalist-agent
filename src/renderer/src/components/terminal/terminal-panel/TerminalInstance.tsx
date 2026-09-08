@@ -2,12 +2,21 @@ import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 're
 import { AlertTriangle, X } from 'lucide-react';
 import type { Terminal as XTerminal } from '@xterm/xterm';
 import type { FitAddon } from '@xterm/addon-fit';
-import type { SearchAddon } from '@xterm/addon-search';
+import type { SearchAddon, ISearchDecorationOptions } from '@xterm/addon-search';
 import { IconButton } from '@/components/ui';
 import { mountXterm } from './mountXterm';
 import { usePasteGuard } from './usePasteGuard';
 import { PasteConfirmDialog } from './PasteConfirmDialog';
 import { TerminalContextMenu } from './ContextMenu';
+
+const SEARCH_DECORATIONS: ISearchDecorationOptions = {
+  matchBackground:               '#4a3d0f',
+  matchBorder:                   '#f5f543',
+  matchOverviewRuler:            '#f5f543',
+  activeMatchBackground:         '#6b5514',
+  activeMatchBorder:             '#ffb347',
+  activeMatchColorOverviewRuler: '#ffb347',
+};
 
 export interface TerminalInstanceHandle {
   clear:        () => void;
@@ -52,8 +61,10 @@ export const TerminalInstance = forwardRef<TerminalInstanceHandle, TerminalInsta
     // Expose imperative handles to TerminalPanel.
     useImperativeHandle(ref, () => ({
       clear: () => termRef.current?.clear(),
-      findNext: (query, opts) => searchRef.current?.findNext(query, opts) ?? false,
-      findPrevious: (query, opts) => searchRef.current?.findPrevious(query, opts) ?? false,
+      findNext: (query, opts) =>
+        searchRef.current?.findNext(query, { ...opts, decorations: SEARCH_DECORATIONS }) ?? false,
+      findPrevious: (query, opts) =>
+        searchRef.current?.findPrevious(query, { ...opts, decorations: SEARCH_DECORATIONS }) ?? false,
     }), []);
 
     // Mount xterm once per tabId.
