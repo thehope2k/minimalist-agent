@@ -74,20 +74,28 @@ function ReleaseRow({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-elevated/40"
+        className={cn(
+          'flex w-full gap-3 px-4 py-3 text-left transition-colors hover:bg-elevated/40',
+          open ? 'items-start' : 'items-center',
+        )}
       >
         <ChevronDown
           className={cn(
-            'h-3.5 w-3.5 shrink-0 text-fg-subtle transition-transform',
+            'mt-0.5 h-3.5 w-3.5 shrink-0 text-fg-subtle transition-transform',
             !open && '-rotate-90',
           )}
           strokeWidth={2}
         />
-        <span className="rounded-md border border-border/60 bg-elevated/60 px-1.5 py-0.5 font-mono text-[11px] text-fg">
+        <span className="shrink-0 rounded-md border border-border/60 bg-elevated/60 px-1.5 py-0.5 font-mono text-[11px] text-fg">
           v{entry.version}
         </span>
         {entry.intro && (
-          <span className="min-w-0 flex-1 truncate text-sm font-medium text-fg">
+          <span
+            className={cn(
+              'min-w-0 flex-1 text-sm font-medium text-fg',
+              open ? 'whitespace-normal' : 'truncate',
+            )}
+          >
             {entry.intro}
           </span>
         )}
