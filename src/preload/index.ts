@@ -1020,12 +1020,14 @@ const api = {
     downloadModel: (): Promise<'ready' | 'not-downloaded'> =>
       ipcRenderer.invoke('voice:downloadModel'),
 
-    startSession: (): Promise<void> => ipcRenderer.invoke('voice:startSession'),
+    startSession: (token: string): Promise<void> =>
+      ipcRenderer.invoke('voice:startSession', token),
 
-    pushChunk: (samples: Float32Array): Promise<string[]> =>
-      ipcRenderer.invoke('voice:pushChunk', samples),
+    pushChunk: (token: string, samples: Float32Array): Promise<string[]> =>
+      ipcRenderer.invoke('voice:pushChunk', token, samples),
 
-    endSession: (): Promise<string[]> => ipcRenderer.invoke('voice:endSession'),
+    endSession: (token: string): Promise<string[]> =>
+      ipcRenderer.invoke('voice:endSession', token),
 
     onDownloadProgress: (
       cb: (progress: { downloadedBytes: number; totalBytes: number | null }) => void,

@@ -10,9 +10,15 @@ const log = createLogger('voice-session');
 // See https://k2-fsa.github.io/sherpa/onnx/faqs/index.html
 const ENABLE_EXTERNAL_BUFFER = false;
 
-// Assumes a single BrowserWindow / MessageInput at a time — not enforced
-// elsewhere in the app. A second concurrent session resets this one.
-let sessionActive = false;
+type ActiveSession = { token: string; startedAt: number };
+let active: ActiveSession | null = null;
+
+class ForeignVoiceSessionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ForeignVoiceSessionError';
+  }
+}
 
 async function drainDetectedSegments(): Promise<string[]> {
   const vad = getVad();
@@ -28,26 +34,40 @@ async function drainDetectedSegments(): Promise<string[]> {
   return texts;
 }
 
-export function startVoiceSession(): void {
-  if (sessionActive) {
-    log.warn('startVoiceSession called while a session was already active \u2014 resetting.');
+export function startVoiceSession(token: string): void {
+  if (active) {
+    log.warn('startVoiceSession: rejecting — another session is already active.', {
+      activeToken: active.token,
+      requestedToken: token,
+      activeAgeMs: Date.now() - active.startedAt,
+    });
+    throw new ForeignVoiceSessionError(
+      'Another window or tab is already dictating. Stop that session first.',
+    );
   }
   getVad().reset();
-  sessionActive = true;
+  active = { token, startedAt: Date.now() };
 }
 
-export async function pushVoiceChunk(samples: Float32Array): Promise<string[]> {
-  if (!sessionActive) {
+export async function pushVoiceChunk(token: string, samples: Float32Array): Promise<string[]> {
+  if (!active) {
     throw new Error('No active voice dictation session.');
+  }
+  if (active.token !== token) {
+    log.warn('pushVoiceChunk: rejecting chunk from a foreign/stale session token.', {
+      activeToken: active.token,
+      requestedToken: token,
+    });
+    throw new ForeignVoiceSessionError('This dictation session is no longer active.');
   }
   getVad().acceptWaveform(samples);
   return drainDetectedSegments();
 }
 
-export async function endVoiceSession(): Promise<string[]> {
-  if (!sessionActive) return [];
+export async function endVoiceSession(token: string): Promise<string[]> {
+  if (!active || active.token !== token) return [];
   getVad().flush();
   const texts = await drainDetectedSegments();
-  sessionActive = false;
+  active = null;
   return texts;
 }

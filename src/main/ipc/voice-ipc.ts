@@ -20,12 +20,16 @@ export function registerVoiceIpc(): void {
     return getVoiceModelStatus();
   });
 
-  ipcMain.handle('voice:startSession', () => startVoiceSession());
+  ipcMain.handle('voice:startSession', (_e, token: string) => startVoiceSession(token));
 
   ipcMain.handle(
     'voice:pushChunk',
-    async (_e, samples: Float32Array): Promise<string[]> => pushVoiceChunk(samples),
+    async (_e, token: string, samples: Float32Array): Promise<string[]> =>
+      pushVoiceChunk(token, samples),
   );
 
-  ipcMain.handle('voice:endSession', async (): Promise<string[]> => endVoiceSession());
+  ipcMain.handle(
+    'voice:endSession',
+    async (_e, token: string): Promise<string[]> => endVoiceSession(token),
+  );
 }

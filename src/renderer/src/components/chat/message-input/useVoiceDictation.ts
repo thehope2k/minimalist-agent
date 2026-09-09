@@ -19,6 +19,14 @@ export type VoiceDownloadProgress = {
   totalBytes: number | null;
 };
 
+type Phase =
+  | { kind: 'idle' }
+  | { kind: 'starting' }
+  | { kind: 'recording'; token: string }
+  | { kind: 'stopping' };
+
+type AbortOptions = { flushFinal: boolean };
+
 export function useVoiceDictation(
   textareaRef: React.RefObject<HTMLTextAreaElement | null>,
   value: string,
@@ -26,10 +34,16 @@ export function useVoiceDictation(
 ) {
   const [modelStatus, setModelStatus] = useState<VoiceModelStatus>('unknown');
   const [downloadProgress, setDownloadProgress] = useState<VoiceDownloadProgress | null>(null);
-  const [recording, setRecording] = useState(false);
-  const [starting, setStarting] = useState(false);
-  const [transcribing, setTranscribing] = useState(false);
+  const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
   const [error, setError] = useState<string | null>(null);
+
+  const phaseRef = useRef(phase);
+  phaseRef.current = phase;
+
+  const transition = (next: Phase) => {
+    phaseRef.current = next;
+    setPhase(next);
+  };
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -38,15 +52,12 @@ export function useVoiceDictation(
   const valueRef = useRef(value);
   valueRef.current = value;
 
-  // Mirrors `recording` state so start/stop guards never act on a stale
-  // closure captured by a caller (e.g. a keyboard-shortcut effect) that
-  // hasn't re-subscribed since the last render.
-  const recordingRef = useRef(false);
-  recordingRef.current = recording;
   // Guards against a fast double-click starting two overlapping
   // ensureModelReady()/getUserMedia() calls before React commits the
-  // 'downloading'/recording state.
+  // 'starting'/'recording' phase.
   const startInFlightRef = useRef(false);
+  const suppressInsertRef = useRef(false);
+  const cancelStartRef = useRef(false);
 
   // Native-rate audio accumulates here between flushes; once it crosses
   // flushThresholdRef (computed from the mic's actual sample rate), it's
@@ -69,6 +80,7 @@ export function useVoiceDictation(
   useEffect(() => window.api.voice.onDownloadProgress(setDownloadProgress), []);
 
   const insertTranscript = (text: string) => {
+    if (suppressInsertRef.current) return;
     const trimmed = text.trim();
     if (!trimmed) return;
 
@@ -93,27 +105,28 @@ export function useVoiceDictation(
     });
   };
 
-  const enqueueChunk = (chunk: Float32Array) => {
+  const enqueueChunk = (token: string, chunk: Float32Array) => {
     sendChainRef.current = sendChainRef.current
-      .then(() => window.api.voice.pushChunk(chunk))
+      .then(() => window.api.voice.pushChunk(token, chunk))
       .then((texts) => {
         if (texts.length === 0) return;
         receivedSpeechRef.current = true;
         for (const text of texts) insertTranscript(text);
       })
       .catch((e) => {
+        if (suppressInsertRef.current) return; // already aborting elsewhere — don't surface a race as a user-facing error
         setError(e instanceof Error ? e.message : 'Transcription failed.');
       });
   };
 
-  const flushNativeBuffer = () => {
+  const flushNativeBuffer = (token: string) => {
     const chunks = nativeChunksRef.current;
     nativeChunksRef.current = [];
     nativeBufferedSamplesRef.current = 0;
     if (chunks.length === 0 || !downsamplerRef.current) return;
 
     const resampled = downsamplerRef.current.push(concatFloat32(chunks));
-    if (resampled.length > 0) enqueueChunk(resampled);
+    if (resampled.length > 0) enqueueChunk(token, resampled);
   };
 
   const teardownAudioGraph = () => {
@@ -127,18 +140,28 @@ export function useVoiceDictation(
     streamRef.current = null;
   };
 
-  const stopRecording = async () => {
-    if (!recordingRef.current) return;
+  const abortDictation = async ({ flushFinal }: AbortOptions): Promise<void> => {
+    const current = phaseRef.current;
+    if (current.kind !== 'recording') return;
+    const { token } = current;
+
+    if (!flushFinal) suppressInsertRef.current = true;
+
     teardownAudioGraph();
     audioContextRef.current = null;
-    setRecording(false);
+    transition({ kind: 'stopping' });
 
-    flushNativeBuffer();
+    flushNativeBuffer(token);
     await sendChainRef.current;
 
-    setTranscribing(true);
+    if (!flushFinal) {
+      releaseSessionToken(token);
+      transition({ kind: 'idle' });
+      return;
+    }
+
     try {
-      const finalTexts = await window.api.voice.endSession();
+      const finalTexts = await window.api.voice.endSession(token);
       if (finalTexts.length > 0) {
         receivedSpeechRef.current = true;
         for (const text of finalTexts) insertTranscript(text);
@@ -149,9 +172,11 @@ export function useVoiceDictation(
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Transcription failed.');
     } finally {
-      setTranscribing(false);
+      transition({ kind: 'idle' });
     }
   };
+
+  const stopRecording = () => abortDictation({ flushFinal: true });
 
   const ensureModelReady = async (): Promise<boolean> => {
     if (modelStatus === 'ready') return true;
@@ -168,19 +193,46 @@ export function useVoiceDictation(
     }
   };
 
+  const releaseSessionToken = (token: string) => {
+    void window.api.voice.endSession(token).catch(() => {});
+  };
+
   const startRecording = async () => {
-    if (startInFlightRef.current || recordingRef.current) return;
+    if (startInFlightRef.current || phaseRef.current.kind !== 'idle') return;
     startInFlightRef.current = true;
-    setStarting(true);
+    cancelStartRef.current = false;
+    transition({ kind: 'starting' });
     setError(null);
 
     let stream: MediaStream | null = null;
     let context: AudioContext | null = null;
+    const token = crypto.randomUUID();
     try {
-      if (!(await ensureModelReady())) return;
-      await window.api.voice.startSession();
+      if (!(await ensureModelReady())) {
+        transition({ kind: 'idle' });
+        return;
+      }
+      if (cancelStartRef.current) {
+        transition({ kind: 'idle' });
+        return;
+      }
+      await window.api.voice.startSession(token);
 
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (cancelStartRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        releaseSessionToken(token);
+        transition({ kind: 'idle' });
+        return;
+      }
+
+      stream.getTracks().forEach((track) => {
+        track.onended = () => {
+          setError('Microphone disconnected.');
+          void abandonRecording();
+        };
+      });
+
       context = new AudioContext();
       await context.audioWorklet.addModule(
         new URL('./voice-capture-processor.js', import.meta.url),
@@ -196,12 +248,13 @@ export function useVoiceDictation(
       downsamplerRef.current = createStreamingDownsampler(context.sampleRate, TARGET_SAMPLE_RATE);
       sendChainRef.current = Promise.resolve();
       receivedSpeechRef.current = false;
+      suppressInsertRef.current = false;
 
       worklet.port.onmessage = (event: MessageEvent<Float32Array>) => {
         nativeChunksRef.current.push(event.data);
         nativeBufferedSamplesRef.current += event.data.length;
         if (nativeBufferedSamplesRef.current >= flushThresholdRef.current) {
-          flushNativeBuffer();
+          flushNativeBuffer(token);
         }
       };
 
@@ -213,29 +266,57 @@ export function useVoiceDictation(
       audioContextRef.current = context;
       sourceRef.current = source;
       workletRef.current = worklet;
-      setRecording(true);
+
+      if (cancelStartRef.current) {
+        teardownAudioGraph();
+        audioContextRef.current = null;
+        releaseSessionToken(token);
+        transition({ kind: 'idle' });
+        return;
+      }
+      transition({ kind: 'recording', token });
     } catch (e) {
       // Anything failing after getUserMedia() must not leave the mic hot —
       // stop tracks/close the context here rather than only surfacing an error.
       stream?.getTracks().forEach((track) => track.stop());
       void context?.close();
+      releaseSessionToken(token);
       setError(e instanceof Error ? e.message : 'Microphone access failed.');
+      transition({ kind: 'idle' });
     } finally {
       startInFlightRef.current = false;
-      setStarting(false);
     }
   };
 
-  useEffect(() => () => teardownAudioGraph(), []);
+  useEffect(
+    () => () => {
+      void abandonRecording();
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  const abandonRecording = (): Promise<void> => {
+    if (phaseRef.current.kind === 'starting') {
+      cancelStartRef.current = true;
+      return Promise.resolve();
+    }
+    if (phaseRef.current.kind === 'stopping') {
+      suppressInsertRef.current = true;
+      return Promise.resolve();
+    }
+    return abortDictation({ flushFinal: false });
+  };
 
   return {
-    recording,
-    starting,
-    transcribing,
+    recording: phase.kind === 'recording',
+    starting: phase.kind === 'starting',
+    transcribing: phase.kind === 'stopping',
     modelStatus,
     downloadProgress,
     error,
     startRecording,
     stopRecording,
+    abandonRecording,
   };
 }

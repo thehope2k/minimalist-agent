@@ -1326,9 +1326,9 @@ export interface AppApi {
   voice: {
     getModelStatus: () => Promise<'ready' | 'not-downloaded'>;
     downloadModel: () => Promise<'ready' | 'not-downloaded'>;
-    startSession: () => Promise<void>;
-    pushChunk: (samples: Float32Array) => Promise<string[]>;
-    endSession: () => Promise<string[]>;
+    startSession: (token: string) => Promise<void>;
+    pushChunk: (token: string, samples: Float32Array) => Promise<string[]>;
+    endSession: (token: string) => Promise<string[]>;
     /** Returns an unsubscribe function. */
     onDownloadProgress: (
       cb: (progress: { downloadedBytes: number; totalBytes: number | null }) => void,

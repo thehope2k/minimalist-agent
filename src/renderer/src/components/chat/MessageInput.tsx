@@ -144,6 +144,18 @@ export function MessageInput({
     }
   };
 
+  const voiceActiveRef = useRef(voice.recording || voice.starting || voice.transcribing);
+  voiceActiveRef.current = voice.recording || voice.starting || voice.transcribing;
+  const abandonRecordingRef = useRef(voice.abandonRecording);
+  abandonRecordingRef.current = voice.abandonRecording;
+  const prevSessionIdRef = useRef(sessionId);
+  useEffect(() => {
+    if (prevSessionIdRef.current !== sessionId) {
+      prevSessionIdRef.current = sessionId;
+      if (voiceActiveRef.current) void abandonRecordingRef.current();
+    }
+  }, [sessionId]);
+
   // Cmd/Ctrl+Shift+M — global voice-dictation toggle. Guard conditions match
   // the mic button's disabled state exactly. Registered once; refs (not a
   // dependency array) keep the handler reading current values without
@@ -184,6 +196,7 @@ export function MessageInput({
 
   const handleSend = () => {
     if (!canSend || !connection || !model) return;
+    if (voice.recording || voice.starting || voice.transcribing) void voice.abandonRecording();
     const outgoing = sendableAttachments(attachments);
     if (!value.trim() && outgoing.length === 0) return;
     onSend({
@@ -203,6 +216,7 @@ export function MessageInput({
 
   const handleSteer = async () => {
     if (!canSteer || !streamingTurnId || !onSteer) return;
+    if (voice.recording || voice.starting || voice.transcribing) void voice.abandonRecording();
     const text = value.trim();
     const pendingAttachments = attachments;
     const outgoing = sendableAttachments(pendingAttachments);
