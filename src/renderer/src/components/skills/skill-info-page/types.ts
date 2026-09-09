@@ -4,8 +4,8 @@ import type { SeedSubmit } from '@/App';
 export type SkillInfoPageProps = {
   skill: LoadedSkill | null;
   onClose?: () => void;
-  /** Routes Edit submissions to a fresh chat. */
   onStartChatWithSubmission?: (submit: SeedSubmit) => void;
+  onOpenFile: (absolutePath: string, lineNumber: number) => void;
 };
 
 export interface KeyValueRow {

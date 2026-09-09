@@ -3,6 +3,7 @@ export interface FileViewModalProps {
   /** 1-based line to scroll to (grep results). 1 = top. */
   lineNumber: number;
   onClose: () => void;
+  onOpenFile: (absolutePath: string, lineNumber: number) => void;
 }
 
 export type ViewerType =

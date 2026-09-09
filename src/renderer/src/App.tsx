@@ -243,6 +243,7 @@ export default function App() {
                             onPinnedChange={() => { void reloadSessions(); }}
                             onStartChatWithSubmission={startSessionWithSubmission}
                             onClose={toggleContextPanel}
+                            onOpenFile={handleOpenFile}
                           />
                         )}
                       </div>
@@ -281,6 +282,7 @@ export default function App() {
             absolutePath={viewFile.absolutePath}
             lineNumber={viewFile.lineNumber}
             onClose={() => setViewFile(null)}
+            onOpenFile={handleOpenFile}
           />
         )}
 

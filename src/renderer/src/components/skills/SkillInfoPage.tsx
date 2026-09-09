@@ -16,6 +16,7 @@ export function SkillInfoPage({
   skill,
   onClose,
   onStartChatWithSubmission,
+  onOpenFile,
 }: SkillInfoPageProps) {
   if (!skill) return <EmptyView />;
 
@@ -54,6 +55,7 @@ export function SkillInfoPage({
             skill={skill}
             onEdit={() => handleEdit('instructions')}
             disabled={!onStartChatWithSubmission}
+            onOpenFile={onOpenFile}
           />
         </div>
       </div>

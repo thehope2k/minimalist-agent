@@ -98,6 +98,7 @@ export function MainContent({
           skill={activeSkill}
           onClose={onSkillClose}
           onStartChatWithSubmission={startSessionWithSubmission}
+          onOpenFile={onOpenFile}
         />
       )}
 
@@ -106,6 +107,7 @@ export function MainContent({
           agent={activeAgent}
           onClose={onAgentClose}
           onStartChatWithSubmission={startSessionWithSubmission}
+          onOpenFile={onOpenFile}
         />
       )}
 
@@ -113,6 +115,7 @@ export function MainContent({
         <ExtensionInfoPage
           extension={activeExtension}
           onClose={onExtensionClose}
+          onOpenFile={onOpenFile}
         />
       )}
     </>

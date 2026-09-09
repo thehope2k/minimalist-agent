@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { FileText, Code } from 'lucide-react';
 import { CopyButton, CopyImageButton, ExpandModal } from '@/components/ui';
+import { CwdContext } from '@/contexts/CwdContext';
+import { FileOpenerProvider } from '@/contexts/FileOpenerContext';
 import { useFileContent } from './file-view-modal/useFileContent';
 import { CodeViewer, Spinner, ErrorMsg } from './file-view-modal/CodeViewer';
 import { JsonViewer } from './file-view-modal/JsonViewer';
@@ -11,6 +13,7 @@ import {
   getMimeType,
   getMonacoLanguage,
   basename,
+  dirname,
 } from './file-view-modal/file-utils';
 import type { FileViewModalProps } from './file-view-modal/types';
 
@@ -22,6 +25,7 @@ export function FileViewModal({
   absolutePath,
   lineNumber,
   onClose,
+  onOpenFile,
 }: FileViewModalProps) {
   const viewerType = useMemo(() => getViewerType(absolutePath), [absolutePath]);
   const [showSource, setShowSource] = useState(false);
@@ -121,8 +125,12 @@ export function FileViewModal({
   })();
 
   return (
-    <ExpandModal title={title} onClose={onClose} className="w-[95vw] h-[90vh]">
-      {body}
-    </ExpandModal>
+    <CwdContext.Provider value={dirname(absolutePath)}>
+      <FileOpenerProvider onOpenFile={onOpenFile}>
+        <ExpandModal title={title} onClose={onClose} className="w-[95vw] h-[90vh]">
+          {body}
+        </ExpandModal>
+      </FileOpenerProvider>
+    </CwdContext.Provider>
   );
 }

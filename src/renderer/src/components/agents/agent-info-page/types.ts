@@ -6,6 +6,7 @@ export type AgentInfoPageProps = {
   agent: LoadedAgent | null;
   onClose: () => void;
   onStartChatWithSubmission?: (submit: SeedSubmit) => void;
+  onOpenFile: (absolutePath: string, lineNumber: number) => void;
 };
 
 export interface KeyValueRow {

@@ -9,6 +9,7 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import remarkRehype from 'remark-rehype';
 import rehypeRaw from 'rehype-raw';
+import rehypeSlug from 'rehype-slug';
 import rehypeSanitize from 'rehype-sanitize';
 import rehypeKatex from 'rehype-katex';
 import { toHtml } from 'hast-util-to-html';
@@ -33,6 +34,7 @@ const processor = unified()
   .use(remarkMath, MATH_OPTIONS)
   .use(remarkRehype, { allowDangerousHtml: true })
   .use(rehypeRaw)
+  .use(rehypeSlug)
   .use(rehypeSanitize, MARKDOWN_SANITIZE_SCHEMA)
   .use(rehypeKatex);
 

@@ -12,6 +12,7 @@ export function AgentInfoPage({
   agent,
   onClose,
   onStartChatWithSubmission,
+  onOpenFile,
 }: AgentInfoPageProps) {
   if (!agent) return <EmptyView />;
 
@@ -43,6 +44,7 @@ export function AgentInfoPage({
             agent={agent}
             onEdit={() => handleEdit('instructions')}
             disabled={!onStartChatWithSubmission}
+            onOpenFile={onOpenFile}
           />
         </div>
       </div>

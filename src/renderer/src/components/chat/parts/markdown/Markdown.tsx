@@ -4,6 +4,7 @@ import type { PluggableList } from 'unified';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeRaw from 'rehype-raw';
+import rehypeSlug from 'rehype-slug';
 import rehypeSanitize from 'rehype-sanitize';
 import rehypeKatex from 'rehype-katex';
 import { MARKDOWN_SANITIZE_SCHEMA } from '@/lib/markdown-sanitize-schema';
@@ -26,6 +27,9 @@ import { MarkdownLink } from './MarkdownLink';
  *   + remark-math      ($$...$$ block math, disabled single-$ to keep
  *                       currency strings like $100 as plain text)
  *   + rehype-raw       (parse inline HTML from the model into the tree)
+ *   + rehype-slug      (assign a GitHub-style `id` to every heading, so
+ *                       in-document TOC links like `[x](#some-heading)`
+ *                       have something to scroll to — see MarkdownLink)
  *   + rehype-sanitize  (strip script/iframe/object/form/on /etc. — the
  *                       model is untrusted and renderer XSS = IPC RCE)
  *   + rehype-katex     (render math nodes to HTML via KaTeX — trusted
@@ -56,6 +60,7 @@ const REMARK_PLUGINS: PluggableList = [remarkGfm, [remarkMath, MATH_OPTIONS]];
 // (but trusted) output isn't stripped. See markdown-sanitize-schema.ts for the schema.
 const REHYPE_PLUGINS_WITH_RAW_HTML: PluggableList = [
   rehypeRaw,
+  rehypeSlug,
   [rehypeSanitize, MARKDOWN_SANITIZE_SCHEMA],
   rehypeKatex,
 ];
@@ -66,6 +71,7 @@ const REHYPE_PLUGINS_WITH_RAW_HTML: PluggableList = [
 // line. Skipping rehype-raw avoids that: unrecognized tag-shaped text is
 // never parsed into a real node, so it's simply omitted, not mangled.
 const REHYPE_PLUGINS_NO_RAW_HTML: PluggableList = [
+  rehypeSlug,
   [rehypeSanitize, MARKDOWN_SANITIZE_SCHEMA],
   rehypeKatex,
 ];
@@ -91,10 +97,10 @@ function extractText(children: ReactNode): string {
 // ── Component map ────────────────────────────────────────────────────────────
 const COMPONENTS: Components = {
   // Headings — let globals.css typography do the heavy lifting.
-  h1: ({ children }) => <h1>{children}</h1>,
-  h2: ({ children }) => <h2>{children}</h2>,
-  h3: ({ children }) => <h3>{children}</h3>,
-  h4: ({ children }) => <h4>{children}</h4>,
+  h1: ({ id, children }) => <h1 id={id}>{children}</h1>,
+  h2: ({ id, children }) => <h2 id={id}>{children}</h2>,
+  h3: ({ id, children }) => <h3 id={id}>{children}</h3>,
+  h4: ({ id, children }) => <h4 id={id}>{children}</h4>,
 
   a: MarkdownLink,
 

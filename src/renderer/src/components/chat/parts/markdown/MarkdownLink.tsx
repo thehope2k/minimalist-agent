@@ -1,11 +1,17 @@
-// `file:` links and bare paths (no scheme at all) get resolved+opened in-app
-// (viewer or reveal-in-Finder) via fileOpener instead of being handed to
-// shell.openExternal. `file:` survives sanitize only via the explicit
-// allowance in markdown-sanitize-schema.ts — see that file for why it's safe
-// despite `file:` being a blocked scheme for shell.openExternal itself
-// (url-safety.ts remains the fallback gate if fileOpener is unavailable).
-// Every genuine external scheme (http, mailto, vscode, ...) keeps the
-// original openExternal path unchanged.
+// Three kinds of href, each with its own click handling:
+//   - `#anchor`   — same-document heading link (TOC-style). Scrolled to
+//                   in-page; never touches the fileOpener or shell.openExternal.
+//   - file/bare path — resolved+opened in-app (viewer or reveal-in-Finder) via
+//                   fileOpener. `file:` survives sanitize only via the explicit
+//                   allowance in markdown-sanitize-schema.ts — see that file for
+//                   why it's safe despite `file:` being a blocked scheme for
+//                   shell.openExternal itself (url-safety.ts remains the
+//                   fallback gate if fileOpener is unavailable).
+//   - everything else — a genuine external scheme (http, mailto, vscode, ...),
+//                   classified client-side before ever reaching shell.openExternal
+//                   (see openExternalWithFeedback) so a dangerous/malformed URL
+//                   never round-trips through IPC to produce Electron's raw
+//                   "Error invoking remote method ..." wrapper text.
 
 import { useEffect, useRef, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { defaultUrlTransform } from 'react-markdown';
@@ -14,6 +20,7 @@ import { useCwd } from '@/contexts/CwdContext';
 import { useFileOpener } from '@/contexts/FileOpenerContext';
 import { fileUrlToPath } from '@/lib/reference-resolver';
 import { useTransientFeedback } from '@/hooks/useTransientFeedback';
+import { classifyExternalUrl, formatBlockedUrlError } from '../../../../../../shared/url-safety';
 
 const log = createLogger('markdown-link');
 
@@ -22,6 +29,20 @@ const log = createLogger('markdown-link');
 // these, and `new URL(...)` on it throws rather than yielding a URL whose
 // protocol we could classify — it is never a genuine external link.
 const URL_SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i;
+
+/** Scrolls to the heading `id` a same-document `#anchor` link points at (rehype-slug assigns these). */
+function scrollToAnchor(rawId: string): boolean {
+  let id = rawId;
+  try {
+    id = decodeURIComponent(rawId);
+  } catch (err) {
+    log.debug('anchor id is not valid percent-encoding, using raw:', err);
+  }
+  const target = document.getElementById(id);
+  if (!target) return false;
+  target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  return true;
+}
 
 export function MarkdownLink({ href, children }: { href?: string; children?: ReactNode }) {
   const [feedback, flash, dismiss] = useTransientFeedback();
@@ -61,15 +82,25 @@ export function MarkdownLink({ href, children }: { href?: string; children?: Rea
   // reopens the app's dev server URL in Chrome" bug that no JS-level
   // handler can prevent, since a modifier/middle-click bypasses our onClick
   // entirely and there's nothing left to classify at that point.
+  const isAnchor = href != null && href.startsWith('#') && href.length > 1;
   const filePath = href ? fileUrlToPath(href) : null;
-  const isFileReference = href != null && (filePath !== null || !URL_SCHEME_RE.test(href));
+  const isFileReference =
+    href != null && !isAnchor && (filePath !== null || !URL_SCHEME_RE.test(href));
   const safeHref = href ? defaultUrlTransform(href) : '';
 
-  if (!href || (!isFileReference && !safeHref)) {
+  if (!href || (!isAnchor && !isFileReference && !safeHref)) {
     return <span className="text-fg-muted">{children}</span>;
   }
 
   const onClick = (e: ReactMouseEvent<HTMLAnchorElement>) => {
+    if (isAnchor) {
+      // Same-document heading link: always handled in-page, never a file
+      // lookup or an external navigation.
+      e.preventDefault();
+      if (!scrollToAnchor(href.slice(1))) flash('Section not found in this document.');
+      return;
+    }
+
     if (isFileReference) {
       // `file:` links (and bare paths) have no meaningful new-tab/new-window
       // behavior, so unlike http(s) links, letting modifier/middle-clicks
@@ -93,7 +124,20 @@ export function MarkdownLink({ href, children }: { href?: string; children?: Rea
     openExternalWithFeedback(href);
   };
 
+  // Classifies client-side first so a dangerous/malformed URL never makes the
+  // round trip through `shell:openExternal` — that IPC handler throwing wraps
+  // the message in Electron's own "Error invoking remote method ..." prefix,
+  // which would otherwise leak straight into this feedback tooltip. The IPC
+  // handler keeps the same check independently (url-safety.ts) as the actual
+  // security boundary; this is purely to fail with a clean message.
   function openExternalWithFeedback(url: string) {
+    const classification = classifyExternalUrl(url);
+    if (classification.kind === 'dangerous') {
+      const msg = formatBlockedUrlError(classification);
+      log.warn('blocked:', msg);
+      flash(msg);
+      return;
+    }
     window.api.app.openExternal(url).catch((err: unknown) => {
       const msg = err instanceof Error ? err.message : String(err);
       log.warn('blocked:', msg);

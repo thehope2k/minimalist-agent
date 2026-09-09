@@ -9,7 +9,7 @@ import { SecretsSection } from './extension-info-page/SecretsSection';
 import { useExtensionActions } from './extension-info-page/useExtensionActions';
 import type { ExtensionInfoPageProps } from './extension-info-page/types';
 
-export function ExtensionInfoPage({ extension, onClose }: ExtensionInfoPageProps) {
+export function ExtensionInfoPage({ extension, onClose, onOpenFile }: ExtensionInfoPageProps) {
   if (!extension) return <EmptyView />;
 
   const { copied, copySlug } = useExtensionActions(extension);
@@ -35,7 +35,7 @@ export function ExtensionInfoPage({ extension, onClose }: ExtensionInfoPageProps
 
           <SecretsSection extension={extension} />
 
-          <GuideSection extension={extension} />
+          <GuideSection extension={extension} onOpenFile={onOpenFile} />
 
           <ConfigSection extension={extension} />
         </div>

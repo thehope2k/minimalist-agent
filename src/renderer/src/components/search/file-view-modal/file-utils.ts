@@ -5,6 +5,12 @@ export function basename(p: string): string {
   return p.split('/').pop() ?? p;
 }
 
+/** Parent directory of a file path — used as the base for resolving relative markdown links inside it. */
+export function dirname(p: string): string {
+  const idx = Math.max(p.lastIndexOf('/'), p.lastIndexOf('\\'));
+  return idx > 0 ? p.slice(0, idx) : '/';
+}
+
 export function extname(p: string): string {
   const base = basename(p);
   const dot = base.lastIndexOf('.');

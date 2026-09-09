@@ -24,10 +24,10 @@ interface ContextPanelProps {
   sessionId: string | null;
   cwd?: string;
   pinnedAssets?: string[];
-  /** Called after pin/unpin so the parent can reload session meta */
   onPinnedChange?: () => void;
   onStartChatWithSubmission?: (submit: SeedSubmit) => void;
   onClose?: () => void;
+  onOpenFile: (absolutePath: string, lineNumber: number) => void;
 }
 
 export function ContextPanel({
@@ -37,6 +37,7 @@ export function ContextPanel({
   onPinnedChange,
   onStartChatWithSubmission,
   onClose,
+  onOpenFile,
 }: ContextPanelProps) {
   const [newDialog, setNewDialog] = useState<'skill' | 'extension' | null>(null);
   const [projectSkillsDir, setProjectSkillsDir] = useState<string | undefined>();
@@ -208,6 +209,7 @@ export function ContextPanel({
               skill={detail.item}
               onClose={() => setDetail(null)}
               onStartChatWithSubmission={onStartChatWithSubmission}
+              onOpenFile={onOpenFile}
             />
           </div>
         </ExpandModal>
@@ -218,6 +220,7 @@ export function ContextPanel({
             <ExtensionInfoPage
               extension={detail.item}
               onClose={() => setDetail(null)}
+              onOpenFile={onOpenFile}
             />
           </div>
         </ExpandModal>
