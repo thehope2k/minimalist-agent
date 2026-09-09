@@ -5,6 +5,40 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.28.0] — 2026-09-09
+
+Git amend preview and co-author trailers, terminal upgrades, a collapsible composer, and bug fixes.
+
+### Added
+
+**Git**
+
+- Amending a commit now shows a read-only diff preview of the commit being amended, separated visually from the current staged changes, so you can see exactly what you're about to change.
+- Commit messages are now extracted more reliably via explicit start/end markers (with the old heuristics kept as a fallback), and you can opt in to appending a "Co-Authored-By: Minimalist Agent" trailer, configurable per-project or globally.
+
+**Terminal**
+
+- Search matches in the terminal find bar are now highlighted, with the active match visually distinguished.
+- Terminal tabs track each shell's working directory and exit status — clicking a file path in the output opens it at the right line, and a crashed shell is flagged in red. Background tabs also show an activity dot when they produce output while unviewed, and accidental multi-line pastes now prompt a confirmation dialog.
+- The shell picker in Terminal settings is now a dropdown of shells actually detected on your system (falling back to auto-detect if a saved shell disappears), and failed tab creation now surfaces a dismissible error banner instead of failing silently.
+
+**Composer**
+
+- The message composer's auto-grow height is now capped so a long paste can no longer push the toolbar off-screen, and a new minimize toggle lets you collapse the composer, reopening automatically when streaming starts or a new message needs a place to land.
+
+### Changed
+
+- The keyboard shortcuts reference is reorganized by feature area (global/composing shortcuts first, situational groups like dialogs/git/terminal last) and now lists previously-missing entries such as chat find-bar navigation and phase approval/deny bindings.
+
+### Fixed
+
+- The What's New dialog no longer truncates a long entry title when expanded.
+- Chat keyboard shortcuts (double-shift and recent-files) now properly respect the shortcuts-enabled setting instead of continuing to fire when disabled.
+- Steering an in-progress response now resolves `@skill` and `@path` mentions the same way a normal message does, instead of silently dropping them.
+- The agent no longer occasionally saves scratch files to `/tmp` instead of the project's scratch directory.
+
+---
+
 ## [1.27.1] — 2026-09-08
 
 Bug fixes for the new chat message grouping.
