@@ -745,13 +745,20 @@ export function useChat(
     turnIdToSession.current.delete(stream.turnId);
     syncStreamingIds();
 
-    // Finalise the assistant bubble in memory: clear the spinner and stamp
-    // a stop reason so the UI shows the aborted state rather than a ghost
-    // message with no content.
     const current = messagesBySession.current.get(sid) ?? [];
     const updated = current.map((m) =>
       m.id === stream.turnId
-        ? { ...m, isStreaming: false, stopReason: 'aborted', durationMs: m.createdAt != null ? Date.now() - m.createdAt : undefined }
+        ? {
+            ...m,
+            isStreaming: false,
+            stopReason: 'aborted',
+            durationMs: m.createdAt != null ? Date.now() - m.createdAt : undefined,
+            parts: m.parts.map((p) =>
+              p.kind === 'tool' && p.status === 'running'
+                ? { ...p, status: 'error' as const, result: { content: 'Aborted by user', isError: true } }
+                : p,
+            ),
+          }
         : m,
     );
     messagesBySession.current.set(sid, updated);
