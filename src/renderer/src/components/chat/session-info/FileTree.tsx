@@ -48,7 +48,7 @@ function DirNode({
   node: Extract<SessionFileNode, { kind: 'dir' }>;
   depth: number;
 }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(depth < 2);
   return (
     <div>
       <button
