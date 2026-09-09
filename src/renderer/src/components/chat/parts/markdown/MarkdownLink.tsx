@@ -69,19 +69,12 @@ export function MarkdownLink({ href, children }: { href?: string; children?: Rea
     };
   }, [feedback, dismiss]);
 
-  // No href at all (genuinely empty in the source markdown, e.g. `[text]()`),
-  // or a href whose scheme react-markdown's own `defaultUrlTransform` refuses
-  // to carry into a real DOM attribute (javascript:/data:/vbscript:/blob:/etc
-  // — everything outside its hardcoded https?|ircs?|mailto|xmpp allowlist,
-  // and *not* something we handle ourselves as a file reference below).
-  // Render inert text rather than a real `<a target="_blank">` in either
-  // case: a real anchor whose actual DOM href resolves to "" still has a
-  // native click action that navigates to the *current page's own URL*,
-  // which Electron's window-open handler then treats as a safe external
-  // link and opens in the system browser — a broken-looking "link click
-  // reopens the app's dev server URL in Chrome" bug that no JS-level
-  // handler can prevent, since a modifier/middle-click bypasses our onClick
-  // entirely and there's nothing left to classify at that point.
+  // Render inert text instead of a real <a target="_blank"> when href is
+  // missing or unresolvable: a real anchor with an empty resolved href still
+  // has a native click action that navigates to the *current page's own URL*,
+  // which Electron's window-open handler then treats as a legitimate external
+  // link and opens in the system browser. No JS-level onClick can prevent this
+  // since modifier/middle-clicks bypass it entirely.
   const isAnchor = href != null && href.startsWith('#') && href.length > 1;
   const filePath = href ? fileUrlToPath(href) : null;
   const isFileReference =
@@ -91,6 +84,8 @@ export function MarkdownLink({ href, children }: { href?: string; children?: Rea
   if (!href || (!isAnchor && !isFileReference && !safeHref)) {
     return <span className="text-fg-muted">{children}</span>;
   }
+
+  const linkTitle = isAnchor ? undefined : isFileReference ? `Open: ${filePath ?? href}` : safeHref;
 
   const onClick = (e: ReactMouseEvent<HTMLAnchorElement>) => {
     if (isAnchor) {
@@ -155,6 +150,7 @@ export function MarkdownLink({ href, children }: { href?: string; children?: Rea
         href={safeHref}
         target="_blank"
         rel="noopener noreferrer"
+        title={linkTitle}
         onClick={onClick}
         className="text-accent underline-offset-2 hover:underline"
       >
