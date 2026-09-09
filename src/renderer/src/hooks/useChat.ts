@@ -774,23 +774,17 @@ export function useChat(
     }
   }, []);
 
-  /**
-   * Re-run the *current session's* last failed turn with the same
-   * connection / model / cwd. Drops the trailing failed user+assistant
-   * pair from memory and disk so the new turn slots in cleanly.
-   */
-  const retry = useCallback(
-    async (fallback?: {
-      connection: ConnectionMeta;
-      model: string;
-      cwd?: string;
-      maxTurns?: number;
-      permissionMode: PermissionMode;
-    }) => {
-      const sid = activeSessionIdRef.current;
-      if (!sid) return;
-      if (streamingBySession.current.has(sid)) return;
-
+  const retryImpl = useCallback(
+    async (
+      sid: string,
+      fallback?: {
+        connection: ConnectionMeta;
+        model: string;
+        cwd?: string;
+        maxTurns?: number;
+        permissionMode: PermissionMode;
+      },
+    ) => {
       const last = lastSendBySession.current.get(sid);
       if (last) {
         // Hot path: retry within the same app run.
@@ -923,6 +917,79 @@ export function useChat(
       });
     },
     [send],
+  );
+
+  const retry = useCallback(
+    async (fallback?: {
+      connection: ConnectionMeta;
+      model: string;
+      cwd?: string;
+      maxTurns?: number;
+      permissionMode: PermissionMode;
+    }) => {
+      const sid = activeSessionIdRef.current;
+      if (!sid) return;
+      if (streamingBySession.current.has(sid)) return;
+
+      try {
+        await retryImpl(sid, fallback);
+      } catch (e) {
+        log.error('retry() failed:', e);
+        const errMsg = e instanceof Error ? e.message : String(e);
+        const errInfo: AgentError = {
+          code: 'unknown_error',
+          title: 'Retry failed',
+          message:
+            'Could not restart the turn. Check the diagnostics below and try again.',
+          canRetry: true,
+          originalError: errMsg,
+        };
+        const errBubble: ChatMessage = {
+          id: newId(),
+          role: 'assistant',
+          parts: [],
+          isStreaming: false,
+          errorInfo: errInfo,
+          error: errMsg,
+        };
+        let next: ChatMessage[];
+        try {
+          const disk = await loadFullSession(sid);
+          next = disk
+            ? [...disk.messages.map(chatFromStored), errBubble]
+            : [errBubble];
+        } catch {
+          next = [...(messagesBySession.current.get(sid) ?? []), errBubble];
+        }
+        messagesBySession.current.set(sid, next);
+        void appendMessage(sid, chatToStored(errBubble)).catch((persistErr) => {
+          log.warn(
+            'Failed to persist "Retry failed" bubble — a reload may not show it:',
+            persistErr,
+          );
+        });
+        streamingBySession.current.delete(sid);
+        for (const [turnId, mappedSid] of turnIdToSession.current) {
+          if (mappedSid === sid) turnIdToSession.current.delete(turnId);
+        }
+        const staleLast = lastSendBySession.current.get(sid);
+        if (staleLast) {
+          lastSendBySession.current.set(sid, {
+            args: staleLast.args,
+            assistantId: errBubble.id,
+          });
+        } else {
+          lastSendBySession.current.delete(sid);
+        }
+        syncStreamingIds();
+        if (sid === activeSessionIdRef.current) {
+          setMessages(next);
+          setIsStreaming(false);
+          setStreamingTurnId(null);
+        }
+      }
+    },
+    [retryImpl],
   );
 
   // Hot-path retry — true when the visible session has captured SendArgs
