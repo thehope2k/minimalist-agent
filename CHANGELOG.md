@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.29.0] — 2026-09-09
+
+Quality of life improvements: manage connections more easily and follow in-app doc links.
+
+### Added
+
+**Connections**
+
+- Connections can now be renamed (via menu item or double-click) and reordered by drag-and-drop, with the list updating instantly instead of waiting on a round-trip.
+
+**Documentation links**
+
+- File links and same-document `#anchor` links inside agent, skill, and extension docs (system prompts, instructions, guides) now open in-app instead of falling back to the OS, and headings get GitHub-style ids to support anchor navigation.
+
+---
+
 ## [1.28.0] — 2026-09-09
 
 Git amend preview and co-author trailers, terminal upgrades, a collapsible composer, and bug fixes.
