@@ -8,6 +8,8 @@ import {
   getCredential,
   getDefaultSlug,
   listConnections,
+  renameConnection,
+  reorderConnections,
   saveConnection,
   setDefaultSlug,
 } from '../storage/connections';
@@ -37,6 +39,12 @@ export function registerConnectionsIpc(): void {
       saveConnection(payload.meta, payload.credential);
     },
   );
+  ipcMain.handle('connections:rename', (_e, args: { slug: string; name: string }) => {
+    renameConnection(args.slug, args.name);
+  });
+  ipcMain.handle('connections:reorder', (_e, slugs: string[]) => {
+    reorderConnections(slugs);
+  });
   ipcMain.handle('connections:delete', (_e, slug: string) => {
     deleteConnection(slug);
   });

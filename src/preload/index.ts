@@ -642,6 +642,10 @@ const api = {
       ipcRenderer.invoke('connections:save', { meta, credential }),
     delete: (slug: string): Promise<void> =>
       ipcRenderer.invoke('connections:delete', slug),
+    rename: (slug: string, name: string): Promise<void> =>
+      ipcRenderer.invoke('connections:rename', { slug, name }),
+    reorder: (slugs: string[]): Promise<void> =>
+      ipcRenderer.invoke('connections:reorder', slugs),
     getCredential: (slug: string): Promise<Credential | null> =>
       ipcRenderer.invoke('connections:getCredential', slug),
     isEncryptionAvailable: (): Promise<boolean> =>

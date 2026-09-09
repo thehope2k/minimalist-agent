@@ -169,6 +169,52 @@ export function updateConnectionModels(
   return next;
 }
 
+const MAX_CONNECTION_NAME_LENGTH = 100;
+
+/**
+ * Change a connection's display name. `name` is cosmetic — identity is the
+ * slug — so nothing else needs to be rewritten. Returns the updated meta, or
+ * null if the connection no longer exists.
+ *
+ * Trims/caps here rather than trusting the caller: the IPC handler is a public
+ * surface, and an empty or unbounded name would render as a blank, unclickable
+ * row in the picker with no way to fix it from the UI.
+ */
+export function renameConnection(
+  slug: string,
+  name: string,
+): ConnectionMeta | null {
+  const trimmed = name.trim().slice(0, MAX_CONNECTION_NAME_LENGTH);
+  if (!trimmed) return null;
+  const d = load(SCHEMA);
+  const idx = d.connections.findIndex((c) => c.slug === slug);
+  if (idx === -1) return null;
+  const next = { ...d.connections[idx], name: trimmed };
+  d.connections[idx] = next;
+  save(SCHEMA, d);
+  return next;
+}
+
+/**
+ * Persist a user-defined display order. The stored array order *is* the order;
+ * unknown slugs are ignored and any connection missing from `slugs` (added
+ * concurrently) is appended, so a stale client can't drop a connection.
+ */
+export function reorderConnections(slugs: string[]): ConnectionMeta[] {
+  const d = load(SCHEMA);
+  const remaining = new Map(d.connections.map((c) => [c.slug, c]));
+  const ordered: ConnectionMeta[] = [];
+  for (const slug of slugs) {
+    const conn = remaining.get(slug);
+    if (!conn) continue;
+    ordered.push(conn);
+    remaining.delete(slug);
+  }
+  d.connections = ordered.concat([...remaining.values()]);
+  save(SCHEMA, d);
+  return d.connections;
+}
+
 export function deleteConnection(slug: string): void {
   const d = load(SCHEMA);
   d.connections = d.connections.filter((c) => c.slug !== slug);

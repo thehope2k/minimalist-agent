@@ -4,6 +4,8 @@ import {
   DEFAULT_MAX_TURNS,
   deleteConnection,
   refreshConnectionModels,
+  renameConnection,
+  reorderConnections,
   setDefaultConnection,
   setDefaultModel,
   setDefaultPermissionMode,
@@ -12,7 +14,7 @@ import {
 } from '@/lib/connections';
 import { useAiData } from '@/hooks/useAiData';
 import type { ConnectionMeta, PermissionMode, ThinkingLevel } from '@/lib/electron';
-import { Button, Input, Select } from '@/components/ui';
+import { Button, Input, Select, SortableList } from '@/components/ui';
 import { AddConnectionDialog } from '../AddConnectionDialog';
 import {
   SettingsCard,
@@ -25,6 +27,9 @@ import { ContextFileNamesRow } from '../ai-panel/ContextFileNamesRow';
 import { CompactionSection } from '../ai-panel/CompactionSection';
 
 const THINKING_LEVELS: ThinkingLevel[] = ['off', 'low', 'medium', 'high', 'xhigh', 'max'];
+
+/** Stable identity for SortableList — must not be an inline arrow (memo churn). */
+const getConnectionId = (conn: ConnectionMeta): string => conn.slug;
 
 /** Mirrors main's model-refresh.isRefreshable: only providers with a live catalog. */
 function isRefreshable(conn: ConnectionMeta): boolean {
@@ -143,30 +148,37 @@ export function AIPanel() {
               </div>
             </SettingsCard>
           ) : (
-            connections.map((c) => (
-              <ConnectionRow
-                key={c.slug}
-                conn={c}
-                isDefault={c.slug === (defaultSlug ?? defaultConn?.slug)}
-                onMakeDefault={() => {
-                  void setDefaultConnection(c.slug);
-                  const stillValid = c.models.some(
-                    (m) => m.id === data?.settings.defaultModel,
-                  );
-                  if (!stillValid) void setDefaultModel(c.defaultModel);
-                }}
-                onDelete={() => {
-                  if (confirm(`Delete connection "${c.name}"?`)) {
-                    void deleteConnection(c.slug);
+            <SortableList
+              items={connections}
+              getId={getConnectionId}
+              onReorder={(next) => void reorderConnections(next.map((c) => c.slug))}
+              className="space-y-2"
+              renderItem={(c, dragHandle) => (
+                <ConnectionRow
+                  conn={c}
+                  dragHandle={dragHandle}
+                  isDefault={c.slug === (defaultSlug ?? defaultConn?.slug)}
+                  onMakeDefault={() => {
+                    void setDefaultConnection(c.slug);
+                    const stillValid = c.models.some(
+                      (m) => m.id === data?.settings.defaultModel,
+                    );
+                    if (!stillValid) void setDefaultModel(c.defaultModel);
+                  }}
+                  onRename={(name) => void renameConnection(c.slug, name)}
+                  onDelete={() => {
+                    if (confirm(`Delete connection "${c.name}"?`)) {
+                      void deleteConnection(c.slug);
+                    }
+                  }}
+                  onTest={() => void testConnection(c)}
+                  onReauth={() => setReauthSlug(c.slug)}
+                  onRefreshModels={
+                    isRefreshable(c) ? () => void refreshModels(c) : undefined
                   }
-                }}
-                onTest={() => void testConnection(c)}
-                onReauth={() => setReauthSlug(c.slug)}
-                onRefreshModels={
-                  isRefreshable(c) ? () => void refreshModels(c) : undefined
-                }
-              />
-            ))
+                />
+              )}
+            />
           )}
         </div>
       </SettingsSection>

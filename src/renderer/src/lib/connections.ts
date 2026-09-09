@@ -118,6 +118,37 @@ export async function deleteConnection(slug: string): Promise<void> {
   await reload();
 }
 
+/** Eager cache update so the row doesn't flash the old name during the IPC round-trip. */
+export async function renameConnection(slug: string, name: string): Promise<void> {
+  if (cache) {
+    cache = {
+      ...cache,
+      connections: cache.connections.map((c) =>
+        c.slug === slug ? { ...c, name } : c,
+      ),
+    };
+    notify();
+  }
+  await window.api.connections.rename(slug, name);
+  await reload();
+}
+
+/**
+ * Persist a new display order. The cache is updated eagerly so the dragged row
+ * doesn't snap back to its old position while the IPC round-trip settles.
+ */
+export async function reorderConnections(slugs: string[]): Promise<void> {
+  if (cache) {
+    const bySlug = new Map(cache.connections.map((c) => [c.slug, c]));
+    const ordered = slugs.flatMap((s) => bySlug.get(s) ?? []);
+    const rest = cache.connections.filter((c) => !slugs.includes(c.slug));
+    cache = { ...cache, connections: ordered.concat(rest) };
+    notify();
+  }
+  await window.api.connections.reorder(slugs);
+  await reload();
+}
+
 /**
  * Force-refresh a connection's model catalog. On success the main process
  * broadcasts `connections:changed`, which reloads the cache; we also reload
