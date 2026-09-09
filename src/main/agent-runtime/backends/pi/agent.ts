@@ -32,6 +32,7 @@ import {resolvePiServerPath} from './spawn-utils';
 import type {StoredAttachment} from '../../../storage/sessions';
 import type {AgentChatEvent} from '../../events';
 import {parseError} from '../../errors';
+import type {AgentError} from '../../errors';
 import {buildPromptPrefix, buildSystemPromptAppend,} from '../../system-prompt';
 import {extractSkillPaths, formatSkillDirective} from '../../../skills/directive';
 import {formatAttachmentsDirective} from '../../attachments-directive';
@@ -112,6 +113,18 @@ export interface PiMiniCompletionRequest {
 /** Per-chat-session subprocess. */
 const handles = new Map<string, SubprocessHandle>();
 
+
+function forceRetireHandle(key: string, handle: SubprocessHandle, error: AgentError): void {
+  for (const q of handle.queues.values()) {
+    q.push({ type: 'error', error });
+    q.finish();
+  }
+  handle.queues.clear();
+  handle.permissionContext.clear();
+  killSubprocess(handle);
+  if (handles.get(key) === handle) handles.delete(key);
+}
+
 function reapStuckHandle(key: string, handle: SubprocessHandle, idleMs: number): void {
   const operation = handle.currentOperation;
   const stuckOn = operation ? ` while running "${operation}"` : '';
@@ -119,26 +132,16 @@ function reapStuckHandle(key: string, handle: SubprocessHandle, idleMs: number):
     `Subprocess for session ${handle.chatSessionId} silent for ${Math.round(idleMs / 1000)}s${stuckOn} ` +
       `with ${handle.queues.size} turn(s) in flight — force-recovering.`,
   );
-  for (const q of handle.queues.values()) {
-    q.push({
-      type: 'error',
-      error: {
-        code: 'network_error',
-        title: 'Turn timed out',
-        message:
-          'This turn stopped responding and was reset automatically after ' +
-          `${Math.round(TURN_IDLE_TIMEOUT_MS / 60_000)} minute(s) of silence — usually a stalled network ` +
-          'connection. Send your message again.',
-        canRetry: true,
-        originalError: `watchdog: no subprocess activity for ${Math.round(idleMs / 1000)}s${stuckOn}`,
-      },
-    });
-    q.finish();
-  }
-  handle.queues.clear();
-  handle.permissionContext.clear();
-  killSubprocess(handle);
-  if (handles.get(key) === handle) handles.delete(key);
+  forceRetireHandle(key, handle, {
+    code: 'network_error',
+    title: 'Turn timed out',
+    message:
+      'This turn stopped responding and was reset automatically after ' +
+      `${Math.round(TURN_IDLE_TIMEOUT_MS / 60_000)} minute(s) of silence — usually a stalled network ` +
+      'connection. Send your message again.',
+    canRetry: true,
+    originalError: `watchdog: no subprocess activity for ${Math.round(idleMs / 1000)}s${stuckOn}`,
+  });
 }
 
 setInterval(() => {
@@ -172,6 +175,17 @@ function ensureSubprocess(
 ): SubprocessHandle {
   const key = req.chatSessionPath;
   const existing = handles.get(key);
+  if (existing && !existing.child.killed && existing.connectionSlug !== req.connectionSlug) {
+    forceRetireHandle(key, existing, {
+      code: 'network_error',
+      title: 'Connection changed',
+      message: 'The connection changed while this turn was still running, so it was interrupted. Send your message again.',
+      canRetry: true,
+    });
+    const fresh = spawnSubprocess(req, systemPrompt);
+    handles.set(key, fresh);
+    return fresh;
+  }
   if (existing && !existing.child.killed) {
     // If the model changed, notify the running subprocess.
     if (req.model && req.model !== existing.currentModel) {
