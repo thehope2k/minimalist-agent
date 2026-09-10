@@ -58,6 +58,7 @@ export type MessageInputProps = {
   /** Most recent SDK compaction event (for the transient notice). */
   lastCompaction: CompactionNotice | null;
   projectDefaultConnectionSlug?: string;
+  projectDefaultModel?: string;
   sessionConnectionSlug?: string;
   sessionModel?: string;
   loadedSessionPickId?: string | null;

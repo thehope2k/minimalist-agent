@@ -11,6 +11,7 @@ import type { ModelPick } from './types';
 export function useModelPicker(
   sessionId: string | null,
   projectDefaultConnectionSlug: string | undefined,
+  projectDefaultModel: string | undefined,
   sessionConnectionSlug: string | undefined,
   sessionModel: string | undefined,
   loadedSessionPickId: string | null | undefined,
@@ -66,6 +67,7 @@ export function useModelPicker(
       ((pickerOverride?.slug === connection.slug
         ? connection.models.find((m) => m.id === pickerOverride.modelId)?.id
         : null) ??
+        connection.models.find((m) => m.id === projectDefaultModel)?.id ??
         connection.models.find((m) => m.id === data?.settings.defaultModel)
           ?.id ??
         connection.defaultModel)) ||

@@ -42,6 +42,9 @@ export function ProjectEditDialog({ project, onClose }: ProjectEditDialogProps) 
   const slugMissing =
     !!project?.defaultConnectionSlug &&
     !connections.some((c) => c.slug === project.defaultConnectionSlug);
+  const selectedConnection = connections.find(
+    (connection) => connection.slug === defaultConnectionSlug,
+  );
 
   const isNew = project === null;
   const canSave = name.trim().length > 0 && rootPath.trim().length > 0;
@@ -62,7 +65,11 @@ export function ProjectEditDialog({ project, onClose }: ProjectEditDialogProps) 
         defaultPermissionMode: defaultPermissionMode || undefined,
         defaultConnectionSlug: defaultConnectionSlug || undefined,
         defaultAutonomyLevel: defaultAutonomyLevel === '' ? undefined : defaultAutonomyLevel,
-        defaultModel: defaultModel || undefined,
+        defaultModel: selectedConnection?.models.some(
+          (model) => model.id === defaultModel,
+        )
+          ? defaultModel
+          : undefined,
         includeCoAuthoredBy:
           includeCoAuthoredBy === '' ? undefined : includeCoAuthoredBy === 'true',
       };
@@ -182,31 +189,19 @@ export function ProjectEditDialog({ project, onClose }: ProjectEditDialogProps) 
           </Field>
 
           <Field
-            label="Default model"
-            hint="Model to use for new sessions in this project. Falls back to connection's default or global default."
-          >
-            <Select
-              value={defaultModel}
-              onChange={(v) => setDefaultModel(v)}
-              options={[
-                { value: '', label: 'Use connection/global default' },
-                ...connections.flatMap((c) =>
-                  c.models.map((m) => ({
-                    value: m.id,
-                    label: `${c.name}: ${m.name}`,
-                  })),
-                ),
-              ]}
-            />
-          </Field>
-
-          <Field
             label="Default connection"
             hint="Sessions in this project use this connection's default model. Falls back to the global default if missing."
           >
             <Select
               value={defaultConnectionSlug}
-              onChange={(v) => setDefaultConnectionSlug(v)}
+              onChange={(v) => {
+                setDefaultConnectionSlug(v);
+                if (!connections.find((connection) => connection.slug === v)?.models.some(
+                  (model) => model.id === defaultModel,
+                )) {
+                  setDefaultModel('');
+                }
+              }}
               options={[
                 { value: '', label: 'Use global default' },
                 ...connections.map((c) => ({
@@ -221,6 +216,31 @@ export function ProjectEditDialog({ project, onClose }: ProjectEditDialogProps) 
                       },
                     ]
                   : []),
+              ]}
+            />
+          </Field>
+
+          <Field
+            label="Default model"
+            hint={
+              selectedConnection
+                ? `Choose a model from ${selectedConnection.name}.`
+                : 'Select a default connection first.'
+            }
+          >
+            <Select
+              value={defaultModel}
+              onChange={(v) => setDefaultModel(v)}
+              disabled={!selectedConnection}
+              placeholder="Select a connection first"
+              menuWidth={360}
+              options={[
+                { value: '', label: 'Use connection default' },
+                ...(selectedConnection?.models.map((model) => ({
+                  value: model.id,
+                  label: model.name,
+                  description: model.id,
+                })) ?? []),
               ]}
             />
           </Field>

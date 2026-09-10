@@ -25,6 +25,7 @@ export function useSessionSync(
   const [autonomyLevel, setAutonomyLevel] = useState<number>(50);
   const [thinkingLevel, setThinkingLevel] = useState<ThinkingLevel>('medium');
   const [projectDefaultConnectionSlug, setProjectDefaultConnectionSlug] = useState<string>('');
+  const [projectDefaultModel, setProjectDefaultModel] = useState<string>('');
   const [sessionConnectionSlug, setSessionConnectionSlug] = useState<string>('');
   const [sessionModel, setSessionModel] = useState<string>('');
   const [loadedSessionPickId, setLoadedSessionPickId] = useState<string | null>(null);
@@ -83,6 +84,7 @@ export function useSessionSync(
         d.thinkingLevel ?? aiData?.settings.defaultThinking ?? 'medium',
       );
       setProjectDefaultConnectionSlug(projForFresh?.defaultConnectionSlug ?? '');
+      setProjectDefaultModel(projForFresh?.defaultModel ?? '');
       setSessionConnectionSlug('');
       setSessionModel('');
       setLoadedSessionPickId(null);
@@ -119,6 +121,7 @@ export function useSessionSync(
         data.meta.thinkingLevel ?? aiData?.settings.defaultThinking ?? 'medium',
       );
       setProjectDefaultConnectionSlug(project?.defaultConnectionSlug ?? '');
+      setProjectDefaultModel(project?.defaultModel ?? '');
       setSessionConnectionSlug(data.meta.connectionSlug ?? '');
       setSessionModel(data.meta.model ?? '');
       setLoadedSessionPickId(data.meta.id);
@@ -157,6 +160,7 @@ export function useSessionSync(
       setAutonomyLevel(auto);
       autonomyLevelRef.current = auto;
       setProjectDefaultConnectionSlug(proj?.defaultConnectionSlug ?? '');
+      setProjectDefaultModel(proj?.defaultModel ?? '');
 
       // Persist into the draft so the picks survive switching slots and don't
       // get clobbered by the fresh-session default-tracking effect below.
@@ -240,6 +244,7 @@ export function useSessionSync(
     thinkingLevel,
     setThinkingLevel,
     projectDefaultConnectionSlug,
+    projectDefaultModel,
     sessionConnectionSlug,
     sessionModel,
     loadedSessionPickId,

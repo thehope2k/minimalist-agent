@@ -42,6 +42,7 @@ export function MessageInput({
   messages,
   lastCompaction,
   projectDefaultConnectionSlug,
+  projectDefaultModel,
   sessionConnectionSlug,
   sessionModel,
   loadedSessionPickId,
@@ -71,6 +72,7 @@ export function MessageInput({
   } = useModelPicker(
     sessionId,
     projectDefaultConnectionSlug,
+    projectDefaultModel,
     sessionConnectionSlug,
     sessionModel,
     loadedSessionPickId,

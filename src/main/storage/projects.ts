@@ -93,6 +93,9 @@ export function createProject(input: ProjectInput): Project {
     color: input.color,
     defaultPermissionMode: input.defaultPermissionMode,
     defaultConnectionSlug: input.defaultConnectionSlug,
+    defaultAutonomyLevel: input.defaultAutonomyLevel,
+    defaultModel: input.defaultModel,
+    includeCoAuthoredBy: input.includeCoAuthoredBy,
     createdAt: now,
     updatedAt: now,
   };

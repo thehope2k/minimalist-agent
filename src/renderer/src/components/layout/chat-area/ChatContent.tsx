@@ -31,6 +31,7 @@ type Props = {
   title: string;
   lastCompaction: CompactionNotice | null;
   projectDefaultConnectionSlug: string;
+  projectDefaultModel: string;
   sessionConnectionSlug: string;
   sessionModel: string;
   loadedSessionPickId: string | null;
@@ -72,6 +73,7 @@ export function ChatContent({
   title,
   lastCompaction,
   projectDefaultConnectionSlug,
+  projectDefaultModel,
   sessionConnectionSlug,
   sessionModel,
   loadedSessionPickId,
@@ -185,6 +187,7 @@ export function ChatContent({
                 messages={messages}
                 lastCompaction={lastCompaction}
                 projectDefaultConnectionSlug={projectDefaultConnectionSlug || undefined}
+                projectDefaultModel={projectDefaultModel || undefined}
                 sessionConnectionSlug={sessionConnectionSlug || undefined}
                 sessionModel={sessionModel || undefined}
                 loadedSessionPickId={loadedSessionPickId}

@@ -77,6 +77,7 @@ export function ChatArea({
     thinkingLevel,
     setThinkingLevel,
     projectDefaultConnectionSlug,
+    projectDefaultModel,
     sessionConnectionSlug,
     sessionModel,
     loadedSessionPickId,
@@ -219,6 +220,7 @@ export function ChatArea({
           title={title}
           lastCompaction={lastCompaction}
           projectDefaultConnectionSlug={projectDefaultConnectionSlug}
+          projectDefaultModel={projectDefaultModel}
           sessionConnectionSlug={sessionConnectionSlug}
           sessionModel={sessionModel}
           loadedSessionPickId={loadedSessionPickId}
