@@ -5,6 +5,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.32.0] — 2026-09-10
+
+Project organization improvements and safer session keyboard shortcuts.
+
+### Added
+
+**Projects**
+
+- Projects can now be reordered by drag-and-drop in Settings, with your preferred order saved for future sessions.
+
+### Changed
+
+- The project switcher now lives in the sessions panel, keeping project selection alongside the sessions it contains.
+
+### Fixed
+
+- The session deletion shortcut now only works from session-list views, preventing accidental deletion while working elsewhere in the app.
+
+---
+
 ## [1.31.0] — 2026-09-10
 
 OpenAI support and more reliable project defaults for new chat sessions.
