@@ -8,9 +8,6 @@ export interface TopBarProps {
   onViewChange: (v: View) => void;
   onToggleSidebar: () => void;
   sidebarCollapsed: boolean;
-  projectFilter: ProjectFilter;
-  onProjectFilterChange: (f: ProjectFilter) => void;
-  onManageProjects: () => void;
   terminalOpen: boolean;
   onToggleTerminal: () => void;
 }

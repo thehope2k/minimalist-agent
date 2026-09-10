@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { useHasNewSessionDraft } from '@/hooks/useHasNewSessionDraft';
 import type { ProjectFilter, View } from './TopBar';
 import { projectFilterLabel } from './top-bar/project-filter';
+import { ProjectSwitcher } from './top-bar/ProjectSwitcher';
 import { SessionRow } from './sessions-panel/SessionRow';
 import { groupByDate } from './sessions-panel/utils';
 import { Circle } from 'lucide-react';
@@ -16,6 +17,8 @@ type Props = {
   view: View;
   activeId?: string | null;
   projectFilter: ProjectFilter;
+  onProjectFilterChange: (filter: ProjectFilter) => void;
+  onManageProjects: () => void;
   onSelect: (id: string) => void;
   onActiveDeleted?: () => void;
   onNewSession?: () => void;
@@ -31,6 +34,8 @@ export function SessionsPanel({
   view,
   activeId,
   projectFilter,
+  onProjectFilterChange,
+  onManageProjects,
   onSelect,
   onActiveDeleted,
   onNewSession,
@@ -50,12 +55,21 @@ export function SessionsPanel({
     view === 'archived' ? 'Archived' : projectFilterLabel(projectFilter, projects);
 
   const showProjectDot = view !== 'archived' && projectFilter === 'all';
+  const headerTitle = view === 'all' ? (
+    <ProjectSwitcher
+      value={projectFilter}
+      onChange={onProjectFilterChange}
+      onManage={onManageProjects}
+    />
+  ) : (
+    <h2 className="text-[15px] font-semibold text-fg">{heading}</h2>
+  );
 
   if (sessions === null) {
     return (
       <section className="flex h-full w-full flex-col bg-panel">
         <header className="flex h-10 shrink-0 items-center border-b border-border px-3">
-          <h2 className="text-[15px] font-semibold text-fg">{heading}</h2>
+          {headerTitle}
         </header>
         <div className="px-3 py-6 text-center text-xs text-fg-subtle">Loading…</div>
       </section>
@@ -116,7 +130,7 @@ export function SessionsPanel({
       {/* Normal header */}
       {!selectMode && !searchMode && (
         <header className="flex h-10 shrink-0 items-center justify-between border-b border-border px-3">
-          <h2 className="text-[15px] font-semibold text-fg">{heading}</h2>
+          {headerTitle}
           <div className="flex items-center gap-1">
             <IconButton icon={Search} label="Search sessions" size="sm" onClick={openSearch} />
             {items.length > 0 && (

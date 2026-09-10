@@ -119,12 +119,6 @@ export default function App() {
           onViewChange={setView}
           onToggleSidebar={toggleSidebar}
           sidebarCollapsed={sidebarCollapsed}
-          projectFilter={projectFilter}
-          onProjectFilterChange={setProjectFilter}
-          onManageProjects={() => {
-            setView('settings');
-            setSettingsCategory('projects');
-          }}
           terminalOpen={terminalOpen}
           onToggleTerminal={toggleTerminal}
         />
@@ -164,6 +158,11 @@ export default function App() {
                   onSessionSelect={setActiveSessionId}
                   onActiveSessionDeleted={() => setActiveSessionId(null)}
                   projectFilter={projectFilter}
+                  onProjectFilterChange={setProjectFilter}
+                  onManageProjects={() => {
+                    setView('settings');
+                    setSettingsCategory('projects');
+                  }}
                   onNewSession={handleNewSession}
                   onResumeNewSession={handleResumeNewSession}
                   streamingSessionIds={streamingSessionIds}

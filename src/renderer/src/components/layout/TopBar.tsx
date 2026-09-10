@@ -1,29 +1,24 @@
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { IconButton } from '../ui';
 import { ViewTabs } from './top-bar/ViewTabs';
-import { ProjectSwitcher } from './top-bar/ProjectSwitcher';
 import { ActionButtons } from './top-bar/ActionButtons';
 import type { TopBarProps } from './top-bar/types';
 
 export type { View, ProjectFilter } from './top-bar/types';
 
 /**
- * Top navigation bar — view tabs, project filtering, terminal toggle.
- * Orchestrates sidebar toggle, project switching, and navigation.
+ * Top navigation bar — view tabs and terminal controls.
  */
 export function TopBar({
   view,
   onViewChange,
   onToggleSidebar,
   sidebarCollapsed,
-  projectFilter,
-  onProjectFilterChange,
-  onManageProjects,
   terminalOpen,
   onToggleTerminal,
 }: TopBarProps) {
   return (
-    <div className="titlebar-drag flex h-12 shrink-0 items-center gap-1 bg-app px-2">
+    <div className="titlebar-drag relative flex h-12 shrink-0 items-center gap-1 bg-app px-2">
       {/* macOS traffic-light spacer */}
       <div className="w-17 shrink-0" />
 
@@ -37,15 +32,9 @@ export function TopBar({
 
       <div className="w-2" />
 
-      {view === 'all' && (
-        <ProjectSwitcher
-          value={projectFilter}
-          onChange={onProjectFilterChange}
-          onManage={onManageProjects}
-        />
-      )}
-
-      <ViewTabs view={view} onViewChange={onViewChange} />
+      <div className="absolute left-1/2 -translate-x-1/2">
+        <ViewTabs view={view} onViewChange={onViewChange} />
+      </div>
 
       <div className="flex-1" />
 

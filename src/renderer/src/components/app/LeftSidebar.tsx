@@ -25,6 +25,8 @@ type Props = {
   onSessionSelect: (id: string | null) => void;
   onActiveSessionDeleted: () => void;
   projectFilter: ProjectFilter;
+  onProjectFilterChange: (filter: ProjectFilter) => void;
+  onManageProjects: () => void;
   onNewSession: () => void;
   onResumeNewSession: () => void;
   streamingSessionIds: ReadonlySet<string>;
@@ -52,6 +54,8 @@ export function LeftSidebar({
   onSessionSelect,
   onActiveSessionDeleted,
   projectFilter,
+  onProjectFilterChange,
+  onManageProjects,
   onNewSession,
   onResumeNewSession,
   streamingSessionIds,
@@ -101,6 +105,8 @@ export function LeftSidebar({
       view={view}
       activeId={activeSessionId}
       projectFilter={projectFilter}
+      onProjectFilterChange={onProjectFilterChange}
+      onManageProjects={onManageProjects}
       onSelect={onSessionSelect}
       onActiveDeleted={onActiveSessionDeleted}
       onNewSession={onNewSession}
