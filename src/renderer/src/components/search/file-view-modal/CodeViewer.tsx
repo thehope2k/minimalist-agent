@@ -24,6 +24,7 @@ const MONACO_OPTIONS: MonacoType.editor.IStandaloneEditorConstructionOptions = {
   contextmenu: false,
   scrollbar: { verticalScrollbarSize: 8, horizontalScrollbarSize: 8 },
   quickSuggestions: false,
+  stickyScroll: { enabled: false },
 };
 
 export function CodeViewer({

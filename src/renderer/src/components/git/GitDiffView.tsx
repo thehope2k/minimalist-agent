@@ -52,6 +52,7 @@ const EDITOR_OPTIONS: MonacoType.editor.IDiffEditorConstructionOptions = {
   ignoreTrimWhitespace: false,
   renderIndicators: true,
   quickSuggestions: false,
+  stickyScroll: { enabled: false },
 };
 
 // Options for the plain single-panel view (new / deleted files).
@@ -66,6 +67,7 @@ const PLAIN_EDITOR_OPTIONS: MonacoType.editor.IStandaloneEditorConstructionOptio
   wordWrap: 'off',
   lineNumbers: 'on',
   quickSuggestions: false,
+  stickyScroll: { enabled: false },
 };
 
 export function GitDiffView({

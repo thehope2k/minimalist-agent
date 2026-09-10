@@ -713,6 +713,8 @@ const api = {
       patch: Partial<Omit<SessionMeta, 'id' | 'createdAt'>>,
     ): Promise<SessionMeta> =>
       ipcRenderer.invoke('sessions:updateMeta', id, patch),
+    truncateFrom: (id: string, firstDroppedId: string): Promise<number> =>
+      ipcRenderer.invoke('sessions:truncateFrom', id, firstDroppedId),
     delete: (id: string): Promise<void> =>
       ipcRenderer.invoke('sessions:delete', id),
     branch: (

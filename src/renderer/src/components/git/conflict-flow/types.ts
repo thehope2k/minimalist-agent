@@ -1,4 +1,4 @@
-import type { ConflictContent, GitFileEntry } from '../types';
+import type { GitFileEntry } from '../types';
 import type * as MonacoType from 'monaco-editor';
 import type { Root } from 'react-dom/client';
 
@@ -26,6 +26,7 @@ export const SHARED_OPTIONS: MonacoType.editor.IDiffEditorConstructionOptions = 
   ignoreTrimWhitespace: false,
   renderIndicators: true,
   quickSuggestions: false,
+  stickyScroll: { enabled: false },
 };
 
 export const RESULT_OPTIONS: MonacoType.editor.IStandaloneEditorConstructionOptions = {
@@ -37,4 +38,5 @@ export const RESULT_OPTIONS: MonacoType.editor.IStandaloneEditorConstructionOpti
   wordWrap: 'off',
   lineNumbers: 'on',
   quickSuggestions: false,
+  stickyScroll: { enabled: false },
 };
