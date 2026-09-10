@@ -5,6 +5,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.30.0] — 2026-09-10
+
+Quality of life improvements and several stability fixes for chat, voice dictation, and the agent runtime.
+
+### Added
+
+- Rendered markdown links now show the resolved target (file path or URL) as a hover tooltip.
+
+### Fixed
+
+- Aborting a response no longer leaves running tool calls stuck with a spinner forever — they're now marked as errored ("Aborted by user").
+- Voice dictation sessions are now scoped with per-session tokens, preventing a stale or foreign session from pushing audio chunks or stealing control, and abandon cleanly if the input unmounts or the chat session changes mid-recording.
+- The file tree no longer auto-expands deeply nested folders by default, only the first two levels.
+- If retrying a failed message itself fails, the chat now recovers gracefully instead of getting stuck mid-turn.
+- Sticky scroll headers in Monaco-based diff and code viewers no longer float over and obscure content.
+- Switching connections mid-turn now retires the stale agent subprocess and spawns a fresh one instead of reusing a mismatched one.
+
+---
+
 ## [1.29.0] — 2026-09-09
 
 Quality of life improvements: manage connections more easily and follow in-app doc links.
