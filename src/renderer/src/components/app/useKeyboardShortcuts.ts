@@ -97,8 +97,9 @@ export function useKeyboardShortcuts(
         return;
       }
 
-      // Cmd+Delete — delete active session
+      // Cmd+Delete — delete active session (session-list views only)
       if (e.key === 'Backspace' && !e.shiftKey && !e.altKey) {
+        if (view !== 'all' && view !== 'archived') return;
         const sid = activeSessionIdRef.current;
         if (!sid) return;
         if (isTextInput(e)) return;
