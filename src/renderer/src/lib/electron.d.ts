@@ -1080,6 +1080,7 @@ export interface AppApi {
   projects: {
     list: () => Promise<Project[]>;
     create: (input: ProjectInput) => Promise<Project>;
+    reorder: (ids: string[]) => Promise<void>;
     update: (
       id: string,
       patch: Partial<Omit<Project, 'id' | 'createdAt'>>,

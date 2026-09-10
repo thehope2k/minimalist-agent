@@ -105,6 +105,21 @@ export function createProject(input: ProjectInput): Project {
   return proj;
 }
 
+export function reorderProjects(ids: string[]): void {
+  const all = readAll();
+  if (ids.length !== all.length || new Set(ids).size !== all.length) {
+    throw new Error('Project order must include every project exactly once.');
+  }
+
+  const projectsById = new Map(all.map((project) => [project.id, project]));
+  const ordered = ids.map((id) => projectsById.get(id));
+  if (ordered.some((project) => !project)) {
+    throw new Error('Project order contains an unknown project.');
+  }
+
+  writeAll(ordered as Project[]);
+}
+
 export function updateProject(
   id: string,
   patch: Partial<Omit<Project, 'id' | 'createdAt'>>,

@@ -4,6 +4,7 @@ import {
   createProject,
   deleteProject,
   listProjects,
+  reorderProjects,
   type Project,
   type ProjectInput,
   updateProject,
@@ -16,6 +17,7 @@ export function registerProjectsIpc(): void {
     'projects:create',
     (_e, input: ProjectInput): Project => createProject(input),
   );
+  ipcMain.handle('projects:reorder', (_e, ids: string[]): void => reorderProjects(ids));
   ipcMain.handle(
     'projects:update',
     (_e, id: string, patch: Partial<Omit<Project, 'id' | 'createdAt'>>):

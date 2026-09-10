@@ -1,3 +1,4 @@
+import type { DragHandleProps } from '@/components/ui';
 import type { PermissionMode, Project } from '@/lib/electron';
 
 export const COLOR_PALETTE = [
@@ -18,6 +19,7 @@ export interface ProjectEditDialogProps {
 
 export interface ProjectListItemProps {
   project: Project;
+  dragHandle: DragHandleProps;
   sessionCount: number;
   connectionLabel: (slug: string) => string;
   permissionLabel: (mode: PermissionMode) => string;

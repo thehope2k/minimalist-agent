@@ -50,6 +50,11 @@ export async function createProject(input: ProjectInput): Promise<Project> {
   return proj;
 }
 
+export async function reorderProjects(ids: string[]): Promise<void> {
+  await window.api.projects.reorder(ids);
+  await reload();
+}
+
 export async function updateProject(
   id: string,
   patch: Partial<Omit<Project, 'id' | 'createdAt'>>,

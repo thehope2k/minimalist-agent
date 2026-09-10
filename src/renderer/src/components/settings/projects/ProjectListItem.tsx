@@ -1,5 +1,5 @@
 import { Pencil, Trash2 } from 'lucide-react';
-import { IconButton } from '@/components/ui';
+import { DragHandle, IconButton } from '@/components/ui';
 import { ProjectChip } from './ProjectChip';
 import type { ProjectListItemProps } from './types';
 
@@ -8,6 +8,7 @@ import type { ProjectListItemProps } from './types';
  */
 export function ProjectListItem({
   project: p,
+  dragHandle,
   sessionCount,
   connectionLabel,
   permissionLabel,
@@ -15,7 +16,8 @@ export function ProjectListItem({
   onDelete,
 }: ProjectListItemProps) {
   return (
-    <li className="flex items-center gap-3 px-4 py-3">
+    <div className="flex items-center gap-3 px-4 py-3">
+      <DragHandle dragHandle={dragHandle} className="-ml-1.5 shrink-0" />
       <span
         className="h-3 w-3 shrink-0 rounded-full"
         style={{ backgroundColor: p.color ?? 'var(--color-accent)' }}
@@ -95,6 +97,6 @@ export function ProjectListItem({
           onClick={() => onDelete(p)}
         />
       </div>
-    </li>
+    </div>
   );
 }

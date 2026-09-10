@@ -752,6 +752,7 @@ const api = {
     list: (): Promise<Project[]> => ipcRenderer.invoke('projects:list'),
     create: (input: ProjectInput): Promise<Project> =>
       ipcRenderer.invoke('projects:create', input),
+    reorder: (ids: string[]): Promise<void> => ipcRenderer.invoke('projects:reorder', ids),
     update: (
       id: string,
       patch: Partial<Omit<Project, 'id' | 'createdAt'>>,
