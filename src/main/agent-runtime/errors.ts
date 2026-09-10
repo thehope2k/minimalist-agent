@@ -101,14 +101,14 @@ const ERROR_DEFINITIONS: Record<ErrorCode, ErrorDef> = {
   rate_limited: {
     title: 'Rate limited',
     message:
-      'Anthropic rate-limited this request. Wait a few seconds and retry.',
+      'The provider rate-limited this request. Wait a few seconds and retry.',
     canRetry: true,
     retryDelayMs: 5000,
   },
   service_error: {
     title: 'Service error',
     message:
-      'The Anthropic API returned a server error. This usually resolves on its own.',
+      'The provider API returned a server error. This usually resolves on its own.',
     canRetry: true,
     retryDelayMs: 2000,
   },
@@ -135,7 +135,7 @@ const ERROR_DEFINITIONS: Record<ErrorCode, ErrorDef> = {
   model_no_tool_support: {
     title: 'Model does not support tools',
     message:
-      'The selected model does not support tool/function calling, which the agent requires. Pick a tool-capable Claude model.',
+      'The selected model does not support tool/function calling, which the agent requires. Pick a different, tool-capable model.',
     canRetry: false,
   },
   invalid_model: {
@@ -166,7 +166,7 @@ const ERROR_DEFINITIONS: Record<ErrorCode, ErrorDef> = {
   provider_error: {
     title: 'Provider error',
     message:
-      'Anthropic is reporting a transient provider issue. Retry in a moment.',
+      'The provider is reporting a transient issue. Retry in a moment.',
     canRetry: true,
     retryDelayMs: 5000,
   },
@@ -184,7 +184,7 @@ const ERROR_DEFINITIONS: Record<ErrorCode, ErrorDef> = {
   execution_error: {
     title: 'Model errored during execution',
     message:
-      'Anthropic reported an internal failure mid-turn. Partial output (if any) is preserved above.',
+      'The provider reported an internal failure mid-turn. Partial output (if any) is preserved above.',
     canRetry: true,
     retryDelayMs: 1000,
   },
@@ -348,7 +348,14 @@ export function parseError(error: unknown): AgentError {
     // Pi/Copilot phrasing for subscription-tier issues.
     lower.includes('subscription required') ||
     lower.includes('quota exceeded') ||
-    lower.includes('copilot subscription')
+    lower.includes('copilot subscription') ||
+    // OpenAI-style quota/credit exhaustion — arrives as a 429, but it's a
+    // billing issue, not a transient rate limit, so it must be checked
+    // before the generic 429 branch below.
+    lower.includes('insufficient_quota') ||
+    lower.includes('credit_balance_exhausted') ||
+    lower.includes('no credits remaining') ||
+    lower.includes('you exceeded your current quota')
   ) {
     return buildError('billing_error', original);
   }

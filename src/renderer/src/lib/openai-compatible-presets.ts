@@ -49,6 +49,47 @@ function m(
 
 export const OPENAI_COMPATIBLE_PRESETS: OpenAICompatiblePreset[] = [
   {
+    id: 'openai',
+    name: 'OpenAI',
+    blurb: 'GPT / o-series models directly from platform.openai.com.',
+    baseUrl: 'https://api.openai.com/v1',
+    keyUrl: 'https://platform.openai.com/api-keys',
+    keyHint: 'Keys start with "sk-".',
+    keyPrefix: 'sk-',
+    models: [
+      m('gpt-5.1', 'GPT-5.1', {
+        contextWindow: 400_000,
+        description: 'Flagship reasoning + coding model',
+        supportsVision: true,
+        supportsReasoning: true,
+        maxOutputTokens: 32_768,
+        category: 'powerful',
+      }),
+      m('gpt-5.1-mini', 'GPT-5.1 Mini', {
+        contextWindow: 400_000,
+        description: 'Smaller, faster, cheaper GPT-5.1',
+        supportsVision: true,
+        supportsReasoning: true,
+        maxOutputTokens: 32_768,
+        category: 'versatile',
+      }),
+      m('o4-mini', 'o4-mini', {
+        contextWindow: 200_000,
+        description: 'Compact reasoning model',
+        supportsReasoning: true,
+        maxOutputTokens: 16_384,
+        category: 'versatile',
+      }),
+      m('gpt-4.1', 'GPT-4.1', {
+        contextWindow: 1_047_576,
+        description: 'Long-context general purpose',
+        supportsVision: true,
+        maxOutputTokens: 32_768,
+        category: 'versatile',
+      }),
+    ],
+  },
+  {
     id: 'stepfun',
     name: 'StepFun',
     blurb: 'Step series — agent-focused multimodal models (阶跃星辰).',
