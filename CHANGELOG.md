@@ -5,6 +5,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.31.0] — 2026-09-10
+
+OpenAI support and more reliable project defaults for new chat sessions.
+
+### Added
+
+- OpenAI is now available as a connection preset, with GPT-5.1, GPT-5.1 Mini, o4-mini, and GPT-4.1 ready to configure with an API key.
+
+### Changed
+
+- Project default-model choices are scoped to the selected default connection, and newly created sessions now consistently use them.
+- Provider errors now use provider-neutral guidance, and exhausted OpenAI credits are identified as billing issues instead of temporary rate limits.
+
+---
+
 ## [1.30.0] — 2026-09-10
 
 Quality of life improvements and several stability fixes for chat, voice dictation, and the agent runtime.
