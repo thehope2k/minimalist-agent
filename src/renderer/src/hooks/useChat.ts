@@ -1018,12 +1018,9 @@ export function useChat(
     getPlanForMessage: plan.getPlanForMessage,
     showPhaseApproval: plan.showPhaseApproval,
     phaseAwaitingApproval: plan.phaseAwaitingApproval,
-    showPlanRevision: plan.showPlanRevision,
-    latestRevision: plan.latestRevision,
     planError: plan.planError,
     setShowPhaseApproval: plan.setShowPhaseApproval,
     setPhaseAwaitingApproval: plan.setPhaseAwaitingApproval,
-    setShowPlanRevision: plan.setShowPlanRevision,
     setPlanError: plan.setPlanError,
   };
 }

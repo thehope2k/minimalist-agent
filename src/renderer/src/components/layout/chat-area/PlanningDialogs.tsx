@@ -1,7 +1,6 @@
 import { PhaseApprovalDialog } from '@/components/chat/PhaseApprovalDialog';
-import { PlanRevisionNotification } from '@/components/chat/PlanRevisionNotification';
 import { PlanErrorNotification } from '@/components/chat/PlanErrorNotification';
-import type { Phase, PlanRevision, Plan } from '@/lib/electron';
+import type { Phase, Plan } from '@/lib/electron';
 
 type PlanError = {
   message: string;
@@ -11,17 +10,12 @@ type PlanError = {
 };
 
 type Props = {
-  sessionId: string | null;
   showPhaseApproval: boolean;
   phaseAwaitingApproval: Phase | null;
-  showPlanRevision: boolean;
-  latestRevision: PlanRevision | null;
   planError: PlanError | null;
-  activePlan: any;
-  activeSessionId: string | null;
+  activePlan: Plan | null;
   onApprovePhase: (notes?: string) => Promise<void>;
   onDenyPhase: (reason?: string) => Promise<void>;
-  onDismissRevision: () => void;
   onRetryPhase: () => Promise<void>;
   onSkipPhase: () => Promise<void>;
   onCancelPlan: () => Promise<void>;
@@ -29,17 +23,12 @@ type Props = {
 };
 
 export function PlanningDialogs({
-  sessionId,
   showPhaseApproval,
   phaseAwaitingApproval,
-  showPlanRevision,
-  latestRevision,
   planError,
   activePlan,
-  activeSessionId,
   onApprovePhase,
   onDenyPhase,
-  onDismissRevision,
   onRetryPhase,
   onSkipPhase,
   onCancelPlan,
@@ -55,12 +44,6 @@ export function PlanningDialogs({
         />
       )}
 
-      {showPlanRevision && latestRevision && (
-        <PlanRevisionNotification
-          revision={latestRevision}
-          onDismiss={onDismissRevision}
-        />
-      )}
 
       {planError && activePlan && (
         <PlanErrorNotification

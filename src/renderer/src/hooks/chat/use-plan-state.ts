@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createLogger } from '@/lib/logger';
 import type { ChatMessage } from '@/lib/chat';
-import type { Phase, Plan, PlanRevision } from '@/lib/electron';
+import type { Phase, Plan } from '@/lib/electron';
 
 const log = createLogger('useChat:plan');
 
@@ -20,8 +20,6 @@ export function usePlanState(activeSessionId: string | null, deps: PlanStateStor
   const [activePlan, setActivePlan] = useState<Plan | null>(null);
   const [showPhaseApproval, setShowPhaseApproval] = useState(false);
   const [phaseAwaitingApproval, setPhaseAwaitingApproval] = useState<Phase | null>(null);
-  const [showPlanRevision, setShowPlanRevision] = useState(false);
-  const [latestRevision, setLatestRevision] = useState<PlanRevision | null>(null);
   const [planError, setPlanError] = useState<{ message: string; phaseId?: string; recoverable: boolean; suggestedAction?: string } | null>(null);
 
   const activePlanBySession = useRef<Map<string, Plan>>(new Map());
@@ -128,14 +126,8 @@ export function usePlanState(activeSessionId: string | null, deps: PlanStateStor
       setSessionPlan(sid, updated);
     });
 
-    const unsubRevised = window.api.planning.onPlanRevised((sid: string, plan: Plan, revision: PlanRevision) => {
+    const unsubRevised = window.api.planning.onPlanRevised((sid: string, plan: Plan) => {
       setSessionPlan(sid, plan);
-      if (sid === activeSessionIdRef.current) {
-        setLatestRevision(revision);
-        setShowPlanRevision(true);
-        // Auto-hide revision notification after 10 seconds
-        setTimeout(() => setShowPlanRevision(false), 10000);
-      }
     });
 
     const unsubCompleted = window.api.planning.onPlanCompleted((sid: string, planId: string) => {
@@ -212,12 +204,9 @@ export function usePlanState(activeSessionId: string | null, deps: PlanStateStor
     getPlanForMessage,
     showPhaseApproval,
     phaseAwaitingApproval,
-    showPlanRevision,
-    latestRevision,
     planError,
     setShowPhaseApproval,
     setPhaseAwaitingApproval,
-    setShowPlanRevision,
     setPlanError,
     /** Repaints activePlan from cache for a given session id — call this
      *  synchronously alongside message-state updates on every session

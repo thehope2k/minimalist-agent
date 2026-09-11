@@ -8,19 +8,16 @@ import { useEffect, useState } from 'react';
 import { PlanHeader } from './plan-progress/PlanHeader';
 import { PhaseCard } from './plan-progress/PhaseCard';
 import { ActionButtons } from './plan-progress/ActionButtons';
-import { RevisionPopover } from './plan-progress/RevisionPopover';
 import type { PlanProgressProps } from './plan-progress/types';
 
 export function PlanProgress({ sessionId, plan }: PlanProgressProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set());
-  const [showRevisionPopover, setShowRevisionPopover] = useState(false);
 
   // Reset local UI state when this bubble gets a different plan.
   useEffect(() => {
     setCollapsed(false);
     setExpandedPhases(new Set());
-    setShowRevisionPopover(false);
   }, [plan.id]);
 
   if (plan.status === 'cancelled') return null;
@@ -56,17 +53,7 @@ export function PlanProgress({ sessionId, plan }: PlanProgressProps) {
             />
           ))}
 
-          <ActionButtons
-            sessionId={sessionId}
-            plan={plan}
-            onShowRevisions={() => setShowRevisionPopover(!showRevisionPopover)}
-          />
-
-          <RevisionPopover
-            plan={plan}
-            open={showRevisionPopover}
-            onClose={() => setShowRevisionPopover(false)}
-          />
+          <ActionButtons sessionId={sessionId} plan={plan} />
         </div>
       )}
     </div>

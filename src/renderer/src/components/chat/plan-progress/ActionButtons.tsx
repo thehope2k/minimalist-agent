@@ -1,55 +1,51 @@
-import { RefreshCw, X } from 'lucide-react';
+import { Check, X } from 'lucide-react';
+import { Button } from '@/components/ui';
 import type { Plan } from '@/lib/electron';
+import { RevisionPopover } from './RevisionPopover';
 
 interface ActionButtonsProps {
   sessionId: string;
   plan: Plan;
-  onShowRevisions: () => void;
 }
 
-export function ActionButtons({
-  sessionId,
-  plan,
-  onShowRevisions,
-}: ActionButtonsProps) {
+export function ActionButtons({ sessionId, plan }: ActionButtonsProps) {
+  const hasRevisions = plan.version > 1 && plan.revisions.length > 0;
+
   const handleCancel = async () => {
     if (confirm('Cancel this plan? Execution will stop.')) {
       await window.api.planning.cancelPlan(sessionId);
     }
   };
 
-  if (plan.status !== 'active') {
-    if (plan.status === 'completed') {
-      return (
-        <div className="pt-2 mt-2 border-t border-border/50 text-xs text-green-600 dark:text-green-400 font-medium">
-          ✓ Plan completed
-        </div>
-      );
-    }
+  if (plan.status !== 'active' && plan.status !== 'completed' && !hasRevisions) {
     return null;
   }
 
   return (
-    <div className="flex gap-1.5 pt-2 mt-2 border-t border-border/50 relative">
-      <button
-        onClick={handleCancel}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded hover:bg-elevated-2 text-fg-muted hover:text-fg transition-colors"
-        aria-label="Cancel plan"
-      >
-        <X className="h-3 w-3" />
-        Cancel
-      </button>
+    <div className="mt-2 flex min-h-8 items-center gap-1.5 border-t border-border/50 pt-2">
+      {plan.status === 'completed' && (
+        <div className="flex items-center gap-1.5 px-1 text-xs font-medium text-green-600 dark:text-green-400">
+          <Check className="h-3.5 w-3.5" />
+          Plan completed
+        </div>
+      )}
 
-      {/* Revision Badge - Show if plan was revised */}
-      {plan.version > 1 && plan.revisions.length > 0 && (
-        <button
-          onClick={onShowRevisions}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded hover:bg-accent/20 border border-accent/30 bg-accent/10 text-accent transition-colors"
-          aria-label="View revision details"
+      {plan.status === 'active' && (
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={X}
+          onClick={handleCancel}
+          aria-label="Cancel plan"
         >
-          <RefreshCw className="h-3 w-3" />
-          <span>Revised (v{plan.version})</span>
-        </button>
+          Cancel
+        </Button>
+      )}
+
+      {hasRevisions && (
+        <div className="ml-auto">
+          <RevisionPopover plan={plan} />
+        </div>
       )}
     </div>
   );

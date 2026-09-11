@@ -53,12 +53,9 @@ export function ChatArea({
     getPlanForMessage,
     showPhaseApproval,
     phaseAwaitingApproval,
-    showPlanRevision,
-    latestRevision,
     planError,
     setShowPhaseApproval,
     setPhaseAwaitingApproval,
-    setShowPlanRevision,
     setPlanError,
   } = useChat(sessionId, newSessionDefaultProjectId);
 
@@ -256,17 +253,12 @@ export function ChatArea({
       />
 
       <PlanningDialogs
-        sessionId={sessionId}
         showPhaseApproval={showPhaseApproval}
         phaseAwaitingApproval={phaseAwaitingApproval}
-        showPlanRevision={showPlanRevision}
-        latestRevision={latestRevision}
         planError={planError}
         activePlan={activePlan}
-        activeSessionId={activeSessionId}
         onApprovePhase={onApprovePhase}
         onDenyPhase={onDenyPhase}
-        onDismissRevision={() => setShowPlanRevision(false)}
         onRetryPhase={onRetryPhase}
         onSkipPhase={onSkipPhase}
         onCancelPlan={onCancelPlan}
