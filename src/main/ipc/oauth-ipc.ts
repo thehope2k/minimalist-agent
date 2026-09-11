@@ -154,7 +154,7 @@ export function registerOAuthIpc(): void {
   ipcMain.handle('chatgpt:getModels', async (): Promise<ModelDef[]> => {
     const { getBuiltinModels } = await import('@earendil-works/pi-ai/providers/all');
     const raw = getBuiltinModels('openai-codex') as Array<{
-      id: string; name: string; contextWindow: number;
+      id: string; name: string; contextWindow: number; reasoning?: boolean;
     }>;
     return raw
       .sort((a, b) => b.id.localeCompare(a.id))
@@ -164,6 +164,7 @@ export function registerOAuthIpc(): void {
         shortName: m.name,
         description: 'Codex',
         contextWindow: m.contextWindow ?? 272_000,
+        supportsReasoning: m.reasoning,
       }));
   });
 }
