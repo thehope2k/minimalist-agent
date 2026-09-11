@@ -10,7 +10,7 @@
 // so redaction still happens upstream in the renderer generator. The link is
 // the secret; ids are 10 random chars.
 
-import { APP_USER_AGENT } from '../oauth/claude-config';
+import { APP_USER_AGENT } from '../app-info';
 
 const BASE = 'https://brewpage.app';
 // Unlisted namespace shared by all installs. Privacy comes from the random id,

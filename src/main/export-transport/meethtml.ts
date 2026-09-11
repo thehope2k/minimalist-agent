@@ -8,7 +8,7 @@
 //   POST   /api/v1/publish          → { url, slug, expires_at, edit_token }
 //   DELETE /api/v1/pages/:slug      + X-Edit-Token: <token>
 
-import { APP_USER_AGENT } from '../oauth/claude-config';
+import { APP_USER_AGENT } from '../app-info';
 import type { PublishInput, PublishResult, RevokeInput } from './brewpage';
 
 const BASE = 'https://api.meethtml.com';
