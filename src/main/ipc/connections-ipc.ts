@@ -140,6 +140,9 @@ export function registerConnectionsIpc(): void {
     }
     const credential = getCredential(connection.slug);
     if (!credential || credential.type !== 'codemie_sso') {
+      log.warn(
+        `CodeMie budget lookup: no usable credential for "${connection.slug}" (present=${Boolean(credential)}, type=${credential?.type ?? 'none'}).`,
+      );
       return { error: 'No CodeMie SSO session is stored for this connection.' };
     }
     try {

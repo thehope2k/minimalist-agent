@@ -7,7 +7,15 @@ type State =
   | { status: 'error'; message: string };
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
+// Errors (often transient — e.g. a freshly-created SSO session not yet
+// propagated to the analytics endpoint) shouldn't stick around as long as a
+// successful read; retry them quickly instead of freezing the UI for 5 min.
+const ERROR_CACHE_TTL_MS = 15 * 1000;
 const cache = new Map<string, { budget: CodeMieBudget | { error: string }; fetchedAt: number }>();
+
+function ttlFor(budget: CodeMieBudget | { error: string }): number {
+  return 'error' in budget ? ERROR_CACHE_TTL_MS : CACHE_TTL_MS;
+}
 
 function formatReset(value: string | undefined): string | null {
   if (!value || Number.isNaN(Date.parse(value))) return null;
@@ -28,7 +36,7 @@ export function CodeMieBudgetBar({ connectionSlug }: { connectionSlug: string })
 
   useEffect(() => {
     const cached = cache.get(connectionSlug);
-    if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+    if (cached && Date.now() - cached.fetchedAt < ttlFor(cached.budget)) {
       setState('error' in cached.budget ? { status: 'error', message: cached.budget.error } : { status: 'ready', budget: cached.budget });
       return;
     }
