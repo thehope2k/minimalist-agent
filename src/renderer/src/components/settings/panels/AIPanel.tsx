@@ -182,13 +182,13 @@ export function AIPanel() {
       </SettingsSection>
 
       <SettingsSection
-        title="New Chat Defaults"
-        subtitle="Settings for new chats when no workspace override is set."
+        title="New Session Defaults"
+        subtitle="Settings for new sessions when no workspace override is set."
       >
         <SettingsCard>
           <SettingsRow
             label="Connection"
-            description="API connection for new chats"
+            description="API connection for new sessions"
             control={
               connections.length === 0 ? (
                 <Button variant="link" onClick={() => setDialogOpen(true)}>
@@ -207,7 +207,7 @@ export function AIPanel() {
           <SettingsDivider />
           <SettingsRow
             label="Model"
-            description="AI model for new chats"
+            description="AI model for new sessions"
             control={
               availableModels.length === 0 ? (
                 <span className="text-sm text-fg-subtle">—</span>
@@ -224,7 +224,7 @@ export function AIPanel() {
           <SettingsDivider />
           <SettingsRow
             label="Thinking"
-            description="Reasoning depth for new chats"
+            description="Reasoning depth for new sessions"
             control={
               <Select
                 variant="compact"
@@ -241,11 +241,11 @@ export function AIPanel() {
         </SettingsCard>
       </SettingsSection>
 
-      <SettingsSection title="Agent" subtitle="Tool-loop bound and prompt customization for new chats.">
+      <SettingsSection title="Agent" subtitle="Tool-loop bound and prompt customization for new sessions.">
         <SettingsCard>
           <SettingsRow
             label="Default permission mode"
-            description="Plan = read-only research · Auto = intelligent execution with autonomy control. Applied to brand-new chats; switch per-session above the composer."
+            description="Plan = read-only research · Auto = intelligent execution with autonomy control. Applied to brand-new sessions; switch per-session above the composer."
             control={
               <Select
                 variant="compact"
