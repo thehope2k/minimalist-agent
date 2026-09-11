@@ -128,18 +128,12 @@ export function InputActions({
           <>
             <CopilotQuotaPill
               connectionSlug={connection.slug}
-              isCopilot={
-                connection.providerType === 'pi' &&
-                connection.piAuthProvider === 'github-copilot'
-              }
+              isCopilot={connection.providerType === 'github-copilot'}
               isStreaming={isStreaming}
             />
             <ChatGptQuotaPill
               connectionSlug={connection.slug}
-              isChatGpt={
-                connection.providerType === 'pi' &&
-                connection.piAuthProvider === 'openai-codex'
-              }
+              isChatGpt={connection.providerType === 'openai-codex'}
               isStreaming={isStreaming}
             />
             <CodeMieBudgetPill

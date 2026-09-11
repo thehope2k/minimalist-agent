@@ -7,7 +7,7 @@ import { withTimeout } from '../../shared/with-timeout';
 import { withOperation } from './operation-tracker';
 import { send } from './transport';
 import { state, sessionTag } from './state';
-import type { MsgAuthRefreshRequest, MsgAuthRefreshResult, MsgInit, MsgTokenUpdate } from '../agent-runtime/backends/pi/protocol';
+import type { MsgAuthRefreshRequest, MsgAuthRefreshResult, MsgInit, MsgTokenUpdate } from '../agent-runtime/pi/protocol';
 
 const log = createLogger('pi-server');
 
@@ -135,7 +135,7 @@ export class InMemoryCredentialStore implements CredentialStore {
 export async function writeAuthCredential(
   store: InMemoryCredentialStore,
   provider: string,
-  cred: MsgInit['piAuth']['credential'] | MsgTokenUpdate['credential'],
+  cred: MsgInit['auth']['credential'] | MsgTokenUpdate['credential'],
 ): Promise<void> {
   if (cred.type === 'oauth') {
     store.set(provider, toOAuthCredential(cred));

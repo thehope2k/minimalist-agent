@@ -3,8 +3,6 @@ import { X } from 'lucide-react';
 import type { ConnectionMeta } from '@/lib/electron';
 import { IconButton } from '@/components/ui';
 import { ChooseScreen } from './connection-flow/ChooseScreen';
-import { ApiKeyForm } from './connection-flow/ApiKeyForm';
-import { ClaudeOAuthForm } from './connection-flow/ClaudeOAuthForm';
 import { CopilotFlow } from './connection-flow/CopilotFlow';
 import { ChatGptFlow } from './connection-flow/ChatGptFlow';
 import { LocalModelFlow } from './connection-flow/LocalModelFlow';
@@ -27,17 +25,12 @@ type Props = {
 };
 
 function inferKind(meta: ConnectionMeta): ConnectionKind {
-  if (meta.providerType === 'pi' && meta.piAuthProvider === 'github-copilot') {
-    return 'github-copilot';
-  }
-  if (meta.providerType === 'pi' && meta.piAuthProvider === 'openai-codex') {
-    return 'chatgpt';
-  }
+  if (meta.providerType === 'github-copilot') return 'github-copilot';
+  if (meta.providerType === 'openai-codex') return 'chatgpt';
   if (meta.providerType === 'local') return 'local';
   if (meta.providerType === 'openai-compatible') return 'openai-compatible';
   if (meta.providerType === 'codemie-sso') return 'codemie-sso';
-  if (meta.authType === 'oauth') return 'claude-max';
-  return 'other';
+  throw new Error(`Unsupported connection provider: ${meta.providerType}`);
 }
 
 export function AddConnectionDialog({
@@ -52,7 +45,6 @@ export function AddConnectionDialog({
   if (!open) return null;
 
   const handleClose = () => {
-    void window.api?.claudeOAuth.cancel();
     setKind(null);
     onClose();
   };
@@ -85,8 +77,6 @@ export function AddConnectionDialog({
         />
 
         {activeKind === null && <ChooseScreen onPick={setKind} />}
-        {activeKind === 'other' && <ApiKeyForm {...flowProps} />}
-        {activeKind === 'claude-max' && <ClaudeOAuthForm {...flowProps} />}
         {activeKind === 'github-copilot' && <CopilotFlow {...flowProps} />}
         {activeKind === 'chatgpt' && <ChatGptFlow {...flowProps} />}
         {activeKind === 'local' && <LocalModelFlow {...flowProps} />}

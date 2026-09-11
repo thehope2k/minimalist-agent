@@ -53,7 +53,7 @@ export function MessageToolbar({
     (connection.models.find((m) => m.id === model)?.supportsReasoning ?? false);
 
   const canManualCompact =
-    !!onManualCompact && !!connection && connection.providerType !== 'anthropic' && messages.length > 0;
+    !!onManualCompact && !!connection && messages.length > 0;
 
   const activeModelDef = connection?.models.find((m) => m.id === model);
   const contextWindow = activeModelDef?.contextWindow ?? DEFAULT_CONTEXT_WINDOW;

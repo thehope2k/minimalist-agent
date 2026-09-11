@@ -2,17 +2,17 @@
 // config-level status `extensions:mcp.status` IPC reports) — cached so the
 // panel reflects live connect failures, and forwarded to the renderer.
 import { BrowserWindow } from 'electron';
-import { recordPiMcpStatus } from '../../../../extensions/mcp-config';
-import { createLogger } from '../../../../logger';
+import { recordMcpStatus } from '../../../extensions/mcp-config';
+import { createLogger } from '../../../logger';
 import type { SubprocessHandle } from '../subprocess-handle';
 import type { MsgMcpStatus } from '../protocol';
 
-const log = createLogger('pi');
+const log = createLogger('chat-runtime');
 
 export function handleMcpStatus(msg: MsgMcpStatus, handle: SubprocessHandle): void {
   const sessionId = msg.sessionId ?? handle.chatSessionId;
   const servers = msg.servers;
-  recordPiMcpStatus(servers);
+  recordMcpStatus(servers);
   for (const s of servers) {
     if (s.ok) {
       log.info(`MCP ${s.slug} connected (${s.toolCount ?? 0} tool(s))`);

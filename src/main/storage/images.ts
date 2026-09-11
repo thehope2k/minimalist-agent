@@ -1,9 +1,9 @@
-// Image processing for attachments: validation, resize for the Anthropic API,
-// thumbnail generation. Backed by sharp.
+// Image processing for attachments: validation, resize for vision-model
+// upload limits, thumbnail generation. Backed by sharp.
 
 import sharp from 'sharp';
 
-/** Anthropic Vision API limits. */
+/** Vision API image limits (conservative defaults shared across providers). */
 export const IMAGE_LIMITS = {
   /** Hard max bytes for a single image. */
   MAX_SIZE: 5 * 1024 * 1024,
@@ -40,7 +40,7 @@ export interface ResizeResult {
 }
 
 /**
- * Resize/compress an image so it fits Anthropic's per-image limits.
+ * Resize/compress an image so it fits vision-model per-image upload limits.
  *
  * Strategy:
  *   1. If max edge > OPTIMAL_EDGE (1568px), scale down.

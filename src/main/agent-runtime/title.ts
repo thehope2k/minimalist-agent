@@ -1,24 +1,16 @@
-// One-shot LLM call to summarize a session into a short title.
-//
-//   Anthropic connections → @anthropic-ai/claude-agent-sdk one-turn query
-//   Pi/Copilot connections  → Pi subprocess mini_completion RPC
-//
-// Defaults to Haiku 4.5 for Anthropic and a small Pi-known mini model
-// for Copilot. Returns null on any error so the caller falls back to
-// the renderer-side heuristic title.
+// One-shot mini-completion RPC to summarize a session into a short title.
+// Returns null on any error so the caller falls back to the renderer-side
+// heuristic title.
 
-import {query, type SDKMessage} from '@anthropic-ai/claude-agent-sdk';
-import {getDefaultOptions, locateClaudeCli} from './options';
-import type {AnthropicAuth, ResolvedAuth} from './runner';
-import {runPiMiniCompletion} from './backends/pi/agent';
-import {sessionPath} from '../storage/sessions';
-import {listConnections} from '../storage/connections';
-import {createLogger} from '../logger';
+import { runMiniCompletion } from './pi/agent';
+import type { ResolvedAuth } from './auth';
+import { sessionPath } from '../storage/sessions';
+import { listConnections } from '../storage/connections';
+import { createLogger } from '../logger';
 
 const log = createLogger('title');
 
-const ANTHROPIC_HAIKU = 'claude-haiku-4-5-20251001';
-const PI_DEFAULT_MINI = 'claude-haiku-4.5';
+const DEFAULT_TITLE_MODEL = 'claude-haiku-4.5';
 const TITLE_MAX_TOKENS = 256;
 const TITLE_MAX_WORDS = 7;
 
@@ -37,15 +29,13 @@ interface TitleSample {
 export interface GenerateTitleArgs {
   auth: ResolvedAuth;
   messages: TitleSample[];
-  /** Override the title model. Defaults are provider-specific. */
+  /** Override the title model. Defaults to the connection's default model. */
   model?: string;
-  /** Required when auth is `copilot_oauth` — used by the Pi subprocess. */
+  /** Connection slug used by the agent subprocess. */
   connectionSlug?: string;
-  /** Required when auth is `copilot_oauth` — anchors the Pi session log. */
+  /** Anchors the runtime session log. */
   chatSessionId?: string;
-  /** Required when auth is `copilot_oauth` — identifies the Pi sub-provider. */
-  piAuthProvider?: string;
-  /** Optional cwd hint for the Pi subprocess. */
+  /** Optional cwd hint for the agent subprocess. */
   cwd?: string;
 }
 
@@ -90,135 +80,43 @@ export function validateTitle(raw: string): string | null {
   return s || null;
 }
 
-/**
- * Run a one-turn no-tools LLM call to generate a title. Provider-aware:
- *   anthropic              → Claude SDK
- *   copilot                → Pi mini_completion RPC
- *   local / openai-compat  → Pi mini_completion RPC (custom endpoint)
- */
+/** Run a one-turn, no-tools mini-completion to generate a title. */
 export async function generateTitle(args: GenerateTitleArgs): Promise<string | null> {
   const sample = pickSample(args.messages);
   if (!sample.trim()) return null;
+  if (!args.connectionSlug || !args.chatSessionId) return null;
 
   // Custom endpoints (local Ollama / OpenAI-compatible) register a single
   // model — the session model. The title must reuse that exact id, so we
   // fall back to the connection's default model when none is supplied.
-  if (args.auth.type === 'local_api') {
-    if (!args.connectionSlug || !args.chatSessionId) return null;
-    const model =
-      args.model ??
-      listConnections().find((c) => c.slug === args.connectionSlug)?.defaultModel;
-    if (!model) return null;
-    try {
-      const result = await runPiMiniCompletion({
-        connectionSlug: args.connectionSlug,
-        auth: args.auth,
-        chatSessionId: args.chatSessionId,
-        chatSessionPath: sessionPath(args.chatSessionId),
-        cwd: args.cwd,
-        model,
-        systemPrompt: SYSTEM_PROMPT,
-        userPrompt: sample,
-        maxTokens: TITLE_MAX_TOKENS,
-      });
-      if (result.error) {
-        log.warn(`[custom] mini_completion error: ${result.error}`);
-        return null;
-      }
-      if (!result.text) return null;
-      return validateTitle(result.text);
-    } catch (e) {
-      log.warn(
-        `[custom] threw: ${e instanceof Error ? e.message : String(e)}`,
-      );
-      return null;
-    }
-  }
-
-  if (args.auth.type === 'copilot_oauth') {
-    if (!args.connectionSlug || !args.chatSessionId) return null;
-    try {
-      const model =
-        args.model ??
-        listConnections().find((c) => c.slug === args.connectionSlug)?.defaultModel ??
-        PI_DEFAULT_MINI;
-      const result = await runPiMiniCompletion({
-        connectionSlug: args.connectionSlug,
-        auth: args.auth,
-        piAuthProvider: (args.piAuthProvider ?? 'github-copilot') as import('./backends/pi/protocol').PiAuthProvider,
-        chatSessionId: args.chatSessionId,
-        chatSessionPath: sessionPath(args.chatSessionId),
-        cwd: args.cwd,
-        model,
-        systemPrompt: SYSTEM_PROMPT,
-        userPrompt: sample,
-        maxTokens: TITLE_MAX_TOKENS,
-      });
-      if (result.error) {
-        log.warn(`[pi] mini_completion error: ${result.error}`);
-        return null;
-      }
-      if (!result.text) return null;
-      return validateTitle(result.text);
-    } catch (e) {
-      log.warn(
-        `[pi] threw: ${e instanceof Error ? e.message : String(e)}`,
-      );
-      return null;
-    }
-  }
-
-  // Anthropic path.
-  if (!locateClaudeCli()) return null;
-  if (
-    args.auth.type !== 'anthropic_api_key' &&
-    args.auth.type !== 'anthropic_oauth'
-  ) {
-    return null;
-  }
-  const anthropicAuth: AnthropicAuth = args.auth;
-
-  const options = {
-    ...getDefaultOptions({ envOverrides: envForAnthropicAuth(anthropicAuth) }),
-    model: args.model ?? ANTHROPIC_HAIKU,
-    maxTurns: 1,
-    permissionMode: 'bypassPermissions' as const,
-    tools: [],
-    systemPrompt: SYSTEM_PROMPT,
-    settingSources: [] as Array<'user' | 'project' | 'local'>,
-    includePartialMessages: false,
-    stderr: () => {},
-  };
+  const model =
+    args.model ??
+    listConnections().find((c) => c.slug === args.connectionSlug)?.defaultModel ??
+    (args.auth.type === 'oauth' ? DEFAULT_TITLE_MODEL : undefined);
+  if (!model) return null;
 
   try {
-    let collected = '';
-    for await (const msg of query({
-      prompt: sample,
-      options,
-    }) as AsyncIterable<SDKMessage>) {
-      if (msg.type === 'assistant') {
-        const content = msg.message?.content;
-        if (Array.isArray(content)) {
-          for (const block of content) {
-            if (block && (block as { type?: string }).type === 'text') {
-              collected += (block as { text?: string }).text ?? '';
-            }
-          }
-        }
-      } else if (msg.type === 'result') {
-        break;
-      }
+    const result = await runMiniCompletion({
+      connectionSlug: args.connectionSlug,
+      auth: args.auth,
+      chatSessionId: args.chatSessionId,
+      chatSessionPath: sessionPath(args.chatSessionId),
+      cwd: args.cwd,
+      model,
+      systemPrompt: SYSTEM_PROMPT,
+      userPrompt: sample,
+      maxTokens: TITLE_MAX_TOKENS,
+    });
+    if (result.error) {
+      log.warn(`mini_completion error: ${result.error}`);
+      return null;
     }
-    return validateTitle(collected);
-  } catch {
+    if (!result.text) return null;
+    return validateTitle(result.text);
+  } catch (e) {
+    log.warn(`threw: ${e instanceof Error ? e.message : String(e)}`);
     return null;
   }
-}
-
-function envForAnthropicAuth(auth: AnthropicAuth): Record<string, string> {
-  return auth.type === 'anthropic_api_key'
-    ? { ANTHROPIC_API_KEY: auth.apiKey }
-    : { CLAUDE_CODE_OAUTH_TOKEN: auth.accessToken };
 }
 
 function pickSample(messages: TitleSample[]): string {

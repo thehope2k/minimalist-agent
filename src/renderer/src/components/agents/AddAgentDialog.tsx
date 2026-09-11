@@ -209,7 +209,6 @@ description: "One sentence — what this agent does. The model uses this to deci
 tools: [Read, Grep, Find]   # optional — restrict from: Read Write Edit Bash Grep Find Ls WebFetch WebSearch Agent
 maxTurns: 10                # optional — default 10
 permissionMode: plan        # optional — "plan" (no mutations) or "auto" (intelligent autonomy)
-effort: low                 # optional — Anthropic only: low | medium | high
 icon: "🔍"                  # optional — emoji or URL
 ---
 

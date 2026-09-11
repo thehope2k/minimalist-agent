@@ -1,11 +1,11 @@
 // Global tracking of spawned sub-agent subprocesses + resource limits
 // (max concurrency, max runtime, stale-handle reaping, shutdown).
-import { createLogger } from '../../../../../shared/sub-logger';
+import { createLogger } from '../../../../shared/sub-logger';
 import type { SpawnedAgentHandle } from './types';
 import { removeAgentWorktree, cleanupAllWorktrees } from './worktree-stub';
 import { send } from './transport';
 
-const log = createLogger('pi-agent-tool');
+const log = createLogger('agent-tool');
 
 /** All active agent handles across all parent sessions. */
 const activeHandles = new Map<string, SpawnedAgentHandle>();

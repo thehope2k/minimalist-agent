@@ -53,9 +53,7 @@ export type RefreshResult = RefreshOk | RefreshErr;
 
 /** Providers whose catalog we can re-fetch live. */
 export function isRefreshable(meta: ConnectionMeta): boolean {
-  if (meta.providerType === 'pi' && meta.piAuthProvider === 'github-copilot') {
-    return true;
-  }
+  if (meta.providerType === 'github-copilot') return true;
   return meta.providerType === 'openai-compatible' || meta.providerType === 'local' || meta.providerType === 'codemie-sso';
 }
 
@@ -100,7 +98,7 @@ async function fetchForProvider(
   const cred = getCredential(meta.slug);
 
   // ---- Copilot: authoritative tier-filtered list (replace, drop retired) ---
-  if (meta.providerType === 'pi' && meta.piAuthProvider === 'github-copilot') {
+  if (meta.providerType === 'github-copilot') {
     if (!cred || cred.type !== 'oauth' || !cred.refreshToken) {
       return { error: 'No GitHub refresh token stored for this connection.' };
     }

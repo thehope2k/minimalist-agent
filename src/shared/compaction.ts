@@ -1,5 +1,5 @@
 // Window-relative compaction tuning — resolves fraction-of-context-window
-// settings into the absolute token counts the pi SDK's compaction trigger
+// settings into the absolute token counts the Pi SDK's compaction trigger
 // expects (`contextTokens > contextWindow - reserveTokens`). Electron-free:
 // shared by the renderer (settings UI, context badge), main (agent.ts), and
 // the pi-server subprocess (actual session construction) so all three derive

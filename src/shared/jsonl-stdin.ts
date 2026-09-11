@@ -1,6 +1,6 @@
 // Shared helper for writing newline-delimited JSON to a child process's stdin.
 //
-// Both the main-process Pi backend (agent.ts) and the in-subprocess Agent tool
+// Both the main-process chat runtime (agent.ts) and the in-subprocess Agent tool
 // (agent-tool.ts) spawn child processes and speak JSONL over stdin. This is the
 // one writer for both. It's electron-free, so each bundle inlines its own copy
 // (the pi-server bundle must not pull in electron).

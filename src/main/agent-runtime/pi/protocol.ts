@@ -1,4 +1,4 @@
-// JSONL wire format between main process (PiAgent) and the Pi subprocess.
+// JSONL wire format between the main-process chat runtime and the subprocess.
 //
 // One discriminated union per direction; each message is encoded as a
 // single line of JSON on stdin/stdout.
@@ -7,30 +7,30 @@
 // subprocess entrypoint. It must remain dependency-free (no Electron,
 // no Pi SDK imports — only types).
 
-import type { AgentChatEvent } from '../../events';
-import type { CompactionTuning } from '../../../../shared/compaction';
+import type { AgentChatEvent } from '../events';
+import type { CompactionTuning } from '../../../shared/compaction';
 
 /* ============================================================ */
 /*  Shared shapes                                                */
 /* ============================================================ */
 
-import type { PiAuthProvider } from '../../../../shared/pi-types';
-export type { PiAuthProvider };
+import type { ModelProvider } from '../../../shared/provider-types';
+export type { ModelProvider };
 
 /** Credential shape handed to the subprocess via `init` / `token_update`. */
-export type PiCredential =
+export type RuntimeCredential =
   | { type: 'oauth'; access: string; refresh: string; expires?: number }
   | { type: 'api_key'; key: string };
 
-export interface PiAuth {
-  provider: PiAuthProvider | 'openai';
-  credential: PiCredential;
+export interface RuntimeAuth {
+  provider: ModelProvider;
+  credential: RuntimeCredential;
 }
 
 /** Permission modes as the renderer expresses them. */
-export type PiPermissionMode = 'plan' | 'auto';
+export type PermissionMode = 'plan' | 'auto';
 
-export type PiThinkingLevel =
+export type ThinkingLevel =
   | 'off'
   | 'low'
   | 'medium'
@@ -45,7 +45,7 @@ export type PiThinkingLevel =
  * are already decrypted main-side, since the subprocess can't read the secret
  * store.
  */
-export type PiMcpServerConfig =
+export type McpServerConfig =
   | {
       slug: string;
       transport: 'stdio';
@@ -83,20 +83,15 @@ export interface MsgInit {
   visionSupported?: boolean;
   /** Mini model used for title gen / call_llm defaults. */
   miniModel?: string;
-  thinkingLevel: PiThinkingLevel;
-  providerType: 'pi';
-  authType: 'oauth' | 'api_key';
-  piAuthProvider: PiAuthProvider | 'openai';
+  thinkingLevel: ThinkingLevel;
   /** Initial credential — refreshed mid-flight via `token_update`. */
-  piAuth: PiAuth;
+  auth: RuntimeAuth;
   /** Initial permission mode. */
-  permissionMode: PiPermissionMode;
+  permissionMode: PermissionMode;
   /** Session autonomy level (0-100) for intelligent collaboration. */
   autonomyLevel?: number;
   /** Pre-rendered system prompt (preferences + project context + skills). */
   systemPrompt: string;
-  /** Resume an existing Pi session if one is stored. */
-  resumePiSessionId?: string;
   /** Base URL for custom/local endpoints (e.g. http://localhost:11434 or https://api.stepfun.ai/v1). */
   baseUrl?: string;
   /** Custom endpoint protocol — required when baseUrl is set. */
@@ -137,7 +132,7 @@ export interface MsgInit {
    * Secrets are pre-decrypted main-side. The subprocess spawns/connects a
    * client per entry and exposes their tools as `mcp__<slug>__<tool>`.
    */
-  mcpServers?: PiMcpServerConfig[];
+  mcpServers?: McpServerConfig[];
   /** App-level compaction tuning (see AiSettings.compactionSettings). Resolved
    *  into absolute reserveTokens/keepRecentTokens against the active model's
    *  contextWindow inside pi-server, not here. */
@@ -169,7 +164,7 @@ export interface MsgAbort {
 
 export interface MsgTokenUpdate {
   type: 'token_update';
-  credential: PiCredential;
+  credential: RuntimeCredential;
 }
 
 export interface MsgPreToolUseResponse {
@@ -198,12 +193,12 @@ export interface MsgSetModel {
 
 export interface MsgSetThinkingLevel {
   type: 'set_thinking_level';
-  level: PiThinkingLevel;
+  level: ThinkingLevel;
 }
 
 export interface MsgSetPermissionMode {
   type: 'set_permission_mode';
-  mode: PiPermissionMode;
+  mode: PermissionMode;
 }
 
 export interface MsgMiniCompletion {
@@ -279,7 +274,7 @@ export type SubprocessInbound =
 export interface MsgReady {
   type: 'ready';
   /** Pi-assigned session id (used for resume on next run). */
-  piSessionId: string | null;
+  runtimeSessionId: string | null;
 }
 
 /**
@@ -338,7 +333,7 @@ export interface MsgLlmQueryResult {
 
 export interface MsgSessionIdUpdate {
   type: 'session_id_update';
-  piSessionId: string;
+  runtimeSessionId: string;
 }
 
 export interface MsgAuthRefreshRequest {

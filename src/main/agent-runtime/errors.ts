@@ -2,14 +2,9 @@
 // render with a title, a body message, an optional retry hint, and the
 // raw underlying error for debugging.
 //
-// Modeled after the comprehensive harness pattern: classify SDK errors
-// (HTTP status codes, keyword matches, result-message subtypes) into a
+// Classifies backend errors (HTTP status codes, keyword matches) into a
 // stable `ErrorCode` set so the UI can display friendly copy without
 // needing to special-case raw strings.
-
-import type {
-  SDKResultError,
-} from '@anthropic-ai/claude-agent-sdk';
 
 export type ErrorCode =
   | 'invalid_api_key'
@@ -48,7 +43,7 @@ export interface AgentError {
    * never a default. UI shows a live countdown when this is present.
    */
   retryAfterMs?: number;
-  /** Raw SDK / underlying error for the diagnostics expander. */
+  /** Raw underlying error for the diagnostics expander. */
   originalError?: string;
 }
 
@@ -95,7 +90,7 @@ const ERROR_DEFINITIONS: Record<ErrorCode, ErrorDef> = {
   expired_oauth_token: {
     title: 'Session expired',
     message:
-      'Your Claude OAuth session has expired. Re-authenticate from Settings → AI.',
+      'Your OAuth session has expired. Re-authenticate from Settings → AI.',
     canRetry: false,
   },
   rate_limited: {
@@ -299,7 +294,7 @@ function extractErrorMessages(error: unknown): string {
  * so e.g. "tool not supported" doesn't get swallowed by "model".
  */
 export function parseError(error: unknown): AgentError {
-  // Special case: AbortError from the SDK / our AbortController.
+  // Special case: AbortError from the backend / our AbortController.
   if (
     error instanceof Error &&
     (error.name === 'AbortError' || /aborted|cancell?ed/i.test(error.message))
@@ -436,7 +431,7 @@ export function parseError(error: unknown): AgentError {
     return buildError('image_too_large', original);
   }
 
-  // SDK subprocess crash — try to be a bit smart based on hints.
+  // Subprocess crash — try to be a bit smart based on hints.
   if (lower.includes('exited with code') || lower.includes('process exited')) {
     if (lower.includes('api') || lower.includes('key') || lower.includes('credential')) {
       return buildError('invalid_api_key', original);
@@ -463,7 +458,7 @@ export function parseError(error: unknown): AgentError {
     });
   }
 
-  // HTTP/2 connection terminated by the Copilot gateway. The pi SDK
+  // HTTP/2 connection terminated by the Copilot gateway. The Pi SDK
   // auto-retries these internally; this classifier handles the case where
   // all retries are exhausted and the final "terminated" error surfaces.
   if (
@@ -504,38 +499,4 @@ export function parseError(error: unknown): AgentError {
   }
 
   return buildError('unknown_error', original);
-}
-
-/* ---------- SDK result-message error subtypes ------------------- */
-
-const RESULT_SUBTYPE_TO_CODE: Record<SDKResultError['subtype'], ErrorCode> = {
-  error_max_turns: 'max_turns_exceeded',
-  error_max_budget_usd: 'budget_exceeded',
-  error_max_structured_output_retries: 'structured_output_retries_exhausted',
-  error_during_execution: 'execution_error',
-};
-
-/**
- * Build an AgentError from an SDK `result` message with a non-success
- * subtype. The result message also carries `num_turns` and an optional
- * `errors[]` array — we splice both into the body so the user has
- * something concrete to act on.
- */
-export function summarizeSdkResultError(r: SDKResultError): AgentError {
-  const code = RESULT_SUBTYPE_TO_CODE[r.subtype] ?? 'unknown_error';
-  const def = ERROR_DEFINITIONS[code];
-
-  const extras: string[] = [];
-  if (typeof r.num_turns === 'number') extras.push(`turns: ${r.num_turns}`);
-  if (r.errors?.length) extras.push(r.errors.join('; '));
-  const suffix = extras.length ? ` (${extras.join(' — ')})` : '';
-
-  return {
-    code,
-    title: def.title,
-    message: `${def.message}${suffix}`,
-    canRetry: def.canRetry,
-    retryDelayMs: def.retryDelayMs,
-    originalError: `result.subtype=${r.subtype}; stop_reason=${r.stop_reason ?? 'null'}`,
-  };
 }

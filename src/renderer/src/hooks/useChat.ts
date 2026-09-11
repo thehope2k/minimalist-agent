@@ -59,7 +59,7 @@ export function useChat(
     messagesBySession,
     streamingBySession,
     turnIdToSession,
-    sdkSessionIdBySession,
+    runtimeSessionIdBySession,
     titleBySession,
     lastSendBySession,
     seenCompactionEvents,
@@ -196,8 +196,8 @@ export function useChat(
         void replaceLastMessage(sessionId, stored);
       }
       messagesBySession.current.set(sessionId, msgs);
-      if (data.meta.sdkSessionId) {
-        sdkSessionIdBySession.current.set(sessionId, data.meta.sdkSessionId);
+      if (data.meta.runtimeSessionId) {
+        runtimeSessionIdBySession.current.set(sessionId, data.meta.runtimeSessionId);
       }
       titleBySession.current.set(sessionId, data.meta.title);
       setMessages(msgs);
@@ -364,8 +364,8 @@ export function useChat(
             if (!stored.content) stored.content = partsToContent(final.parts);
             void replaceLastMessage(sid, stored);
             if (evt.sessionId) {
-              sdkSessionIdBySession.current.set(sid, evt.sessionId);
-              void updateSessionMeta(sid, { sdkSessionId: evt.sessionId });
+              runtimeSessionIdBySession.current.set(sid, evt.sessionId);
+              void updateSessionMeta(sid, { runtimeSessionId: evt.sessionId });
             }
             if (evt.type === 'turn_done' && !final.errorInfo) {
               void maybeAutoGenerateTitle(sid);
@@ -538,7 +538,6 @@ export function useChat(
           model,
           prompt: promptForAgent,
           cwd,
-          resumeSessionId: sdkSessionIdBySession.current.get(sid),
           permissionMode,
           sessionId: sid,
           attachments: stored.length > 0 ? stored : undefined,
@@ -688,7 +687,7 @@ export function useChat(
     [],
   );
 
-  /** Manually triggers compaction outside of any turn (Pi backend only). */
+  /** Manually triggers compaction outside of any turn. */
   const triggerManualCompaction = useCallback(
     async (
       connectionSlug: string,
@@ -1004,21 +1003,15 @@ export function useChat(
   return {
     messages,
     isStreaming,
-    /** turnId of the in-flight send for the visible session — null when idle. */
     streamingTurnId,
-    /** Every session id with an in-flight turn, including non-visible ones. */
     streamingSessionIds,
     activeSessionId,
     send,
     abort,
     retry,
-    /** Mid-turn steer; appends a visible "Injected" user bubble on success. */
     steer,
-    /** Manually trigger the SDK's compaction outside of any turn (Pi backend only). */
     triggerManualCompaction,
-    /** True iff the visible session has a failed turn we can replay. */
     canRetry,
-    /** Most recent compaction event (or null) — UI auto-fades it. */
     lastCompaction,
     // Planning workflow state
     activePlan: plan.activePlan,

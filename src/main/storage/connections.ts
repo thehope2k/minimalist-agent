@@ -18,10 +18,8 @@ import {
   setCredential,
 } from './credentials';
 
-export type ProviderType = 'anthropic' | 'pi' | 'local' | 'openai-compatible' | 'codemie-sso';
-export type AuthType = 'api_key' | 'oauth';
-import type { PiAuthProvider } from '../../shared/pi-types';
-export type { PiAuthProvider };
+import type { OAuthProvider, ProviderType } from '../../shared/provider-types';
+export type { ProviderType };
 
 export interface ModelDef {
   id: string;
@@ -43,8 +41,6 @@ export interface ConnectionMeta {
   slug: string;
   name: string;
   providerType: ProviderType;
-  authType: AuthType;
-  piAuthProvider?: PiAuthProvider;
   baseUrl?: string;
   presetId?: string;
   codeMieProject?: string;
@@ -88,18 +84,45 @@ function migrateV3toV4(prev: unknown): ConnectionsData {
   const data = (prev ?? {}) as ConnectionsData;
   return {
     ...data,
-    connections: (data.connections ?? []).map((c) => {
+    connections: (data.connections ?? []).map((connection) => {
+      const legacy = connection as Omit<typeof connection, 'providerType'> & {
+        providerType: ProviderType | 'pi';
+        piAuthProvider?: OAuthProvider;
+      };
       const isCopilot =
-        c.providerType === 'pi' && c.piAuthProvider === 'github-copilot';
-      if (!isCopilot) return c;
-      return { ...c, modelsFetchedAt: 0 };
+        legacy.providerType === 'github-copilot' ||
+        (legacy.providerType === 'pi' && legacy.piAuthProvider === 'github-copilot');
+      if (!isCopilot) return connection;
+      return { ...connection, modelsFetchedAt: 0 };
+    }),
+  };
+}
+
+function migrateV4toV5(prev: unknown): ConnectionsData {
+  type LegacyConnection = Omit<ConnectionMeta, 'providerType'> & {
+    providerType: ProviderType | 'pi';
+    piAuthProvider?: OAuthProvider;
+    authType?: 'api_key' | 'oauth';
+  };
+  const data = (prev ?? {}) as Omit<ConnectionsData, 'connections'> & {
+    connections?: LegacyConnection[];
+  };
+  return {
+    ...data,
+    connections: (data.connections ?? []).map((connection) => {
+      const { piAuthProvider, authType: _authType, ...rest } = connection;
+      if (rest.providerType !== 'pi') return rest as ConnectionMeta;
+      return {
+        ...rest,
+        providerType: piAuthProvider ?? 'github-copilot',
+      };
     }),
   };
 }
 
 const SCHEMA: FileSchema<ConnectionsData> = {
   path: Paths.connections(),
-  currentVersion: 4,
+  currentVersion: 5,
   defaultValue: { connections: [] },
   migrations: [
     // index 0: v0 (legacy/unset) → v1. Identity passthrough.
@@ -111,6 +134,9 @@ const SCHEMA: FileSchema<ConnectionsData> = {
     // index 3: v3 → v4 — zero modelsFetchedAt for Copilot connections to
     // force a re-fetch and correct the bad supportsVision values.
     migrateV3toV4,
+    // index 4: v4 → v5 — flatten the old pi + piAuthProvider pair into one
+    // concrete providerType discriminator.
+    migrateV4toV5,
   ],
 };
 

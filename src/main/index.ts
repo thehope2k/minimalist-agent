@@ -19,7 +19,7 @@ import {
   registerAssetProtocolHandler,
 } from './protocols/asset-protocol';
 
-import { isWorktreeSupported } from './agent-runtime/backends/pi/worktree-manager';
+import { isWorktreeSupported } from './agent-runtime/pi/worktree-manager';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -355,10 +355,10 @@ app.on('will-quit', () => {
   cleanupPower();
   terminalManager.killAll();
   void import('./browser/browser-pane-manager').then((m) => m.browserPaneManager.destroyAll());
-  // Best-effort SIGTERM/KILL to any running Pi subprocesses so they don't
+  // Best-effort SIGTERM/KILL to running chat subprocesses so they don't
   // outlive the parent.
-  void import('./agent-runtime/backends/pi/agent').then((m) => m.shutdownAllPiSubprocesses());
+  void import('./agent-runtime/pi/agent').then((m) => m.shutdownAllChatSubprocesses());
   void import('./codemie/proxy').then((m) => m.stopCodeMieProxies());
   // Kill any active agent sub-subprocesses.
-  void import('./agent-runtime/backends/pi/agent-tool').then((m) => m.shutdownAllAgentSubprocesses());
+  void import('./agent-runtime/pi/agent-tool').then((m) => m.shutdownAllAgentSubprocesses());
 });

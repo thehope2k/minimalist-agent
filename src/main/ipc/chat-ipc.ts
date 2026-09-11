@@ -3,14 +3,12 @@ import type { StoredAttachment } from '../storage/sessions';
 import { sessionPath, loadSession } from '../storage/sessions';
 import { resolveAuthForSlug } from '../auth/resolve';
 import { runAgentChat } from '../agent-runtime/runner';
-import { steerAnthropicTurn } from '../agent-runtime/backends/anthropic';
-import { steerPiTurn, runPiManualCompact } from '../agent-runtime/backends/pi/agent';
+import { steerTurn, runManualCompact } from '../agent-runtime/pi/agent';
 import { generateTitle } from '../agent-runtime/title';
 import { parseError } from '../agent-runtime/errors';
 import { extractSkillPaths, formatSkillDirective } from '../skills/directive';
 import { formatAttachmentsDirective } from '../agent-runtime/attachments-directive';
 import { getSettings, type PermissionMode, type ThinkingLevel } from '../storage/settings';
-import { listConnections } from '../storage/connections';
 import { maybeRevalidate } from '../storage/model-refresh';
 import type { EngagementRequest, EngagementResponse } from '../../shared/collaboration-types';
 
@@ -18,17 +16,15 @@ export interface ChatSendRequest {
   /** Caller-provided id used to correlate streamed events to a UI message. */
   id: string;
   /**
-   * Connection slug - main resolves it into a fresh `AnthropicAuth`
+   * Connection slug - main resolves it into a fresh, ready-to-use auth
    * server-side (refreshing OAuth tokens if needed). The renderer never
    * touches the access token directly. See `src/main/auth/resolve.ts`.
    */
   connectionSlug: string;
   model: string;
   prompt: string;
-  /** Working directory for the SDK subprocess. */
+  /** Working directory for the agent subprocess. */
   cwd?: string;
-  /** Resume the SDK session for multi-turn continuity. */
-  resumeSessionId?: string;
   /** Permission mode for this turn ('plan' | 'auto'). */
   permissionMode?: PermissionMode;
   /**
@@ -60,12 +56,11 @@ async function withAbortable(
 }
 
 /**
- * Per-turn routing info so `chat:steer` knows which backend to call.
+ * Per-turn routing info so `chat:steer` knows which subprocess to target.
  * Cleared in the same `finally` that clears inFlight.
  */
 interface TurnInfo {
-  providerType: 'anthropic' | 'pi';
-  /** For Pi turns - used to find the right subprocess. */
+  /** Used to find the right subprocess. */
   chatSessionId?: string;
   /** Working directory, needed to resolve @slug / @path mentions in steer messages. */
   cwd?: string;
@@ -134,7 +129,6 @@ export function registerChatIpc(): void {
       }
 
       turnInfo.set(req.id, {
-        providerType: auth.type === 'copilot_oauth' ? 'pi' : 'anthropic',
         chatSessionId: req.sessionId,
         cwd: req.cwd,
       });
@@ -161,14 +155,12 @@ export function registerChatIpc(): void {
       for await (const chunk of runAgentChat({
         auth,
         connectionSlug: req.connectionSlug,
-        piAuthProvider: listConnections().find((c) => c.slug === req.connectionSlug)?.piAuthProvider,
         turnId: req.id,
         chatSessionId: req.sessionId,
         model: req.model,
         prompt: req.prompt,
         attachments: req.attachments,
         cwd: req.cwd,
-        resumeSessionId: req.resumeSessionId,
         permissionMode: req.permissionMode,
         thinkingLevel,
         askCollaboration,
@@ -233,17 +225,13 @@ export function registerChatIpc(): void {
       const attachmentsDirective = formatAttachmentsDirective(args.attachments);
       const message = [directive, attachmentsDirective, cleanMessage].filter(Boolean).join('\n\n');
 
-      if (info.providerType === 'pi') {
-        if (!info.chatSessionId) return { ok: false, reason: 'no_session' };
-        const ok = steerPiTurn({
-          chatSessionPath: sessionPath(info.chatSessionId),
-          turnId: args.turnId,
-          message,
-        });
-        return ok ? { ok: true } : { ok: false, reason: 'subprocess_unavailable' };
-      }
-      const ok = steerAnthropicTurn(args.turnId, message);
-      return ok ? { ok: true } : { ok: false, reason: 'turn_not_steerable' };
+      if (!info.chatSessionId) return { ok: false, reason: 'no_session' };
+      const ok = steerTurn({
+        chatSessionPath: sessionPath(info.chatSessionId),
+        turnId: args.turnId,
+        message,
+      });
+      return ok ? { ok: true } : { ok: false, reason: 'subprocess_unavailable' };
     },
   );
 
@@ -261,25 +249,8 @@ export function registerChatIpc(): void {
       event,
       args: { turnId: string; sessionId: string; connectionSlug: string; customInstructions?: string },
     ): Promise<void> => {
-      const conn = listConnections().find((c) => c.slug === args.connectionSlug);
-      if (conn?.providerType === 'anthropic') {
-        if (!event.sender.isDestroyed()) {
-          event.sender.send('chat:event', {
-            id: args.turnId,
-            type: 'error',
-            error: {
-              code: 'unknown_error',
-              title: 'Not supported',
-              message: 'Manual compaction is only available for Pi-backed connections (GitHub Copilot, local, OpenAI-compatible).',
-              canRetry: false,
-            },
-          });
-        }
-        return;
-      }
-
       await withAbortable(args.turnId, async (signal) => {
-        for await (const chunk of runPiManualCompact({
+        for await (const chunk of runManualCompact({
           chatSessionPath: sessionPath(args.sessionId),
           turnId: args.turnId,
           customInstructions: args.customInstructions,
@@ -306,14 +277,12 @@ export function registerChatIpc(): void {
       },
     ): Promise<string | null> => {
       const auth = await resolveAuthForSlug(args.connectionSlug);
-      const connMeta = listConnections().find((c) => c.slug === args.connectionSlug);
       return generateTitle({
         auth,
         messages: args.messages,
         model: args.model,
         connectionSlug: args.connectionSlug,
         chatSessionId: args.sessionId,
-        piAuthProvider: connMeta?.piAuthProvider,
         cwd: args.cwd,
       });
     },

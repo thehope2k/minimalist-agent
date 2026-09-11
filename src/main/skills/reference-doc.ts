@@ -6,9 +6,9 @@ This guide explains how to create, edit, and validate skills in Minimalist Agent
 
 ## What Are Skills?
 
-Skills are reusable instruction sets that extend Claude's behavior for specific
-tasks. They use the **same SKILL.md format as the Claude Code SDK**, so a skill
-written for any Claude-powered tool works here as-is.
+Skills are reusable instruction sets that extend the agent's behavior for
+specific tasks. They follow the portable \`SKILL.md\` convention, so a skill
+written for another SKILL.md-compatible tool works here as-is.
 
 **Key facts:**
 - Skills live in two scopes:
@@ -93,7 +93,7 @@ Invalid: \`Commit\`, \`sql_explainer\`, \`-leading-hyphen\`, \`a..b\`
 
 ## Body Conventions
 
-The body becomes part of Claude's instructions whenever the user invokes the
+The body becomes part of the agent's instructions whenever the user invokes the
 skill. Treat it like a small system prompt scoped to one task.
 
 - **Be specific.** "Format the diff in conventional-commits style" beats
@@ -102,7 +102,7 @@ skill. Treat it like a small system prompt scoped to one task.
 - **Set boundaries.** Note things the agent should NOT do.
 - **Keep it focused.** One skill = one capability. Composing two unrelated
   flows in one skill makes both worse.
-- **Use the agent's voice.** "When invoked, you …" reads naturally to Claude.
+- **Use the agent's voice.** "When invoked, you …" reads naturally as an instruction.
 
 ## Creating a Skill
 

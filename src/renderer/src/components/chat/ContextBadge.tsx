@@ -15,7 +15,7 @@ type Props = {
  * occupancy (input + output + cache_read + cache_create of the most recent
  * completed round) vs its context window.
  *
- * This deliberately mirrors the pi SDK's own compaction trigger
+ * This deliberately mirrors the Pi SDK's own compaction trigger
  * (`calculateContextTokens` in @earendil-works/pi-coding-agent) token for
  * token: input+output+cacheRead+cacheWrite from the last round is exactly
  * what the SDK compares against `contextWindow - reserveTokens` to decide

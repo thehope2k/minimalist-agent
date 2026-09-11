@@ -1,9 +1,8 @@
 // Resolve a connection slug into fresh, ready-to-use auth for a backend.
 //
 // Branches on the connection's `providerType`:
-//   anthropic → returns AnthropicApiKeyAuth | AnthropicOAuthAuth
-//   pi        → returns CopilotOAuthAuth (today the only Pi sub-provider)
-//   local / openai-compatible → returns LocalApiAuth (baseUrl + optional key)
+//   github-copilot / openai-codex → returns ResolvedOAuthAuth
+//   local / openai-compatible / codemie-sso → returns ResolvedApiAuth
 //
 // OAuth tokens are refreshed if within their 5-minute expiry buffer.
 // A per-slug mutex coalesces concurrent refreshes so concurrent sends on
@@ -13,7 +12,6 @@
 // Lives in main, never the renderer — the access token never crosses the
 // IPC boundary back to JS once it has been refreshed.
 
-import { isExpired, refreshTokens } from '../oauth/claude-flow';
 import {
   isExpired as isCopilotExpired,
   refreshCopilotTokens,
@@ -33,7 +31,7 @@ import {
   listConnections,
   type ConnectionMeta,
 } from '../storage/connections';
-import type { ResolvedAuth } from '../agent-runtime/backends/types';
+import type { ResolvedAuth } from '../agent-runtime/auth';
 import { createLogger } from '../logger';
 import { ensureCodeMieProxy } from '../codemie/proxy';
 import { raceAbort, withDeadline } from '../../shared/with-timeout';
@@ -119,7 +117,8 @@ export async function resolveAuthForSlug(slug: string, signal?: AbortSignal, cal
       throw new Error('CodeMie SSO session has expired. Sign in again from Settings → AI.');
     }
     return {
-      type: 'local_api',
+      type: 'api',
+      provider: 'codemie-sso',
       baseUrl: await ensureCodeMieProxy(slug, {
         targetBaseUrl: conn.baseUrl,
         cookies: cred.cookies,
@@ -131,7 +130,8 @@ export async function resolveAuthForSlug(slug: string, signal?: AbortSignal, cal
 
   if (conn.providerType === 'local' || conn.providerType === 'openai-compatible') {
     return {
-      type: 'local_api',
+      type: 'api',
+      provider: conn.providerType,
       baseUrl: conn.baseUrl?.replace(/\/+$/, '') ?? 'http://localhost:11434',
       // Remote OpenAI-compatible providers authenticate with a Bearer key;
       // local Ollama/LM Studio need none.
@@ -142,93 +142,29 @@ export async function resolveAuthForSlug(slug: string, signal?: AbortSignal, cal
     };
   }
 
-  if (conn.providerType === 'pi') {
-    if (cred.type !== 'oauth') {
-      throw new Error(
-        `Connection "${slug}" is a Pi/Copilot connection but its credential is not OAuth. Re-authenticate from Settings → AI.`,
-      );
-    }
-    if (conn.piAuthProvider === 'openai-codex') {
-      const fresh = await ensureFreshChatGptOAuth(slug, cred, signal, callerTag);
-      return {
-        type: 'copilot_oauth',
-        accessToken: fresh.accessToken,
-        refreshToken: fresh.refreshToken,
-        expiresAt: fresh.expiresAt,
-      };
-    }
-    const fresh = await ensureFreshCopilotOAuth(slug, cred, signal, callerTag);
+  if (cred.type !== 'oauth') {
+    throw new Error(
+      `Connection "${slug}" is a Pi/Copilot connection but its credential is not OAuth. Re-authenticate from Settings → AI.`,
+    );
+  }
+  if (conn.providerType === 'openai-codex') {
+    const fresh = await ensureFreshChatGptOAuth(slug, cred, signal, callerTag);
     return {
-      type: 'copilot_oauth',
+      type: 'oauth',
+      provider: 'openai-codex',
       accessToken: fresh.accessToken,
       refreshToken: fresh.refreshToken,
       expiresAt: fresh.expiresAt,
     };
   }
-
-  // anthropic
-  if (cred.type === 'api_key') {
-    return { type: 'anthropic_api_key', apiKey: cred.apiKey };
-  }
-  if (cred.type !== 'oauth') {
-    throw new Error(`Connection "${slug}" has an invalid credential type. Re-authenticate from Settings → AI.`);
-  }
-  const fresh = await ensureFreshAnthropicOAuth(slug, cred, signal, callerTag);
-  return { type: 'anthropic_oauth', accessToken: fresh.accessToken };
-}
-
-/* --------------------------- Anthropic OAuth ---------------------------- */
-
-async function ensureFreshAnthropicOAuth(
-  slug: string,
-  cred: OAuthCred,
-  signal?: AbortSignal,
-  callerTag?: string,
-): Promise<OAuthCred> {
-  if (!isExpired(cred.expiresAt)) return cred;
-
-  if (!cred.refreshToken) {
-    throw new Error(
-      'Claude OAuth session expired and no refresh token is available. Re-authenticate from Settings → AI.',
-    );
-  }
-
-  return guardedRefresh(slug, `Claude OAuth refresh for ${slug}${callerTag ? ` [${callerTag}]` : ''}`, () =>
-    performAnthropicRefresh(slug, cred), signal,
-  );
-}
-
-async function performAnthropicRefresh(
-  slug: string,
-  cred: OAuthCred,
-): Promise<OAuthCred> {
-  try {
-    const fresh = await refreshTokens(cred.refreshToken!);
-    const next: Credential = {
-      type: 'oauth',
-      accessToken: fresh.accessToken,
-      refreshToken: fresh.refreshToken ?? cred.refreshToken,
-      expiresAt: fresh.expiresAt,
-      scopes: fresh.scopes ?? cred.scopes,
-    };
-    setCredential(slug, next);
-    return next;
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    if (
-      /invalid_grant|invalid_refresh_token|refresh token (?:not found|invalid)/i.test(
-        msg,
-      )
-    ) {
-      log.warn(`Claude OAuth refresh rejected for ${slug} — clearing credential (forced re-auth):`, msg);
-      try { deleteCredential(slug); } catch { /* best effort */ }
-      throw new Error(
-        `Claude OAuth session expired and could not be refreshed (${msg}). Sign in again from Settings → AI.`,
-      );
-    }
-    log.error(`Claude OAuth token refresh failed for ${slug}:`, msg);
-    throw new Error(`Token refresh failed: ${msg}`);
-  }
+  const fresh = await ensureFreshCopilotOAuth(slug, cred, signal, callerTag);
+  return {
+    type: 'oauth',
+    provider: 'github-copilot',
+    accessToken: fresh.accessToken,
+    refreshToken: fresh.refreshToken,
+    expiresAt: fresh.expiresAt,
+  };
 }
 
 /* --------------------------- Copilot OAuth ------------------------------ */

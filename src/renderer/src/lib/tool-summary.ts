@@ -38,15 +38,7 @@ function stripCdPrefix(cmd: string): string {
   return cmd.replace(/^cd\s+(?:'[^']*'|"[^"]*"|\S+)\s*&&\s*/, '');
 }
 
-/**
- * Return a 1-line summary of the call (or '' if we can't make a useful one).
- * Names match the Claude Agent SDK built-in tool set; unknown tool names
- * fall through to a generic JSON-keys fallback.
- */
-/**
- * Normalise tool names so Anthropic's PascalCase ('Write') and Pi's
- * lowercase ('write') both match the same case statements below.
- */
+/** Normalise tool-name casing and aliases before matching them below. */
 export function canonicalToolName(name: string): string {
   switch (name.toLowerCase()) {
     case 'read': return 'Read';
@@ -67,6 +59,7 @@ export function canonicalToolName(name: string): string {
   }
 }
 
+/** Return a one-line summary, or an empty string when none is useful. */
 export function summarizeToolCall(name: string, input: unknown, cwd?: string): string {
   const o = asObj(input) ?? {};
 

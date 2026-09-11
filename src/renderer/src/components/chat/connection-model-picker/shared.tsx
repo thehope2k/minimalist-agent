@@ -4,21 +4,19 @@
 import { BrandMark as ConnectionBrandMark } from '../../settings/connection-flow/shared';
 import type { ConnectionMeta } from '@/lib/electron';
 
-export type ProviderCategory = 'anthropic' | 'copilot' | 'chatgpt' | 'local' | 'openai-compatible' | 'codemie-sso' | 'other';
+export type ProviderCategory = 'copilot' | 'chatgpt' | 'local' | 'openai-compatible' | 'codemie-sso' | 'other';
 
 export function categorize(conn: ConnectionMeta): ProviderCategory {
-  if (conn.providerType === 'pi' && conn.piAuthProvider === 'github-copilot') return 'copilot';
-  if (conn.providerType === 'pi' && conn.piAuthProvider === 'openai-codex') return 'chatgpt';
+  if (conn.providerType === 'github-copilot') return 'copilot';
+  if (conn.providerType === 'openai-codex') return 'chatgpt';
   if (conn.providerType === 'local') return 'local';
   if (conn.providerType === 'openai-compatible') return 'openai-compatible';
   if (conn.providerType === 'codemie-sso') return 'codemie-sso';
-  if (conn.providerType === 'anthropic') return 'anthropic';
   return 'other';
 }
 
 export function categoryHeader(c: ProviderCategory): string {
   switch (c) {
-    case 'anthropic': return 'Anthropic';
     case 'copilot':   return 'GitHub Copilot';
     case 'chatgpt':   return 'ChatGPT';
     case 'local':     return 'Local';

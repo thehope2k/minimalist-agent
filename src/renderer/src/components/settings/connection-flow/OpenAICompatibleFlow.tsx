@@ -139,7 +139,6 @@ export function OpenAICompatibleFlow({ onBack, onClose, onSaved, editingMeta }: 
             slug: generateSlug(name),
             name: name.trim(),
             providerType: 'openai-compatible',
-            authType: 'api_key',
             baseUrl: url,
             presetId,
             defaultModel: effectiveModel,

@@ -152,7 +152,7 @@ To restrict which of the server's tools the agent may call, set
 \`permissions.blockedTools\` to the bare tool names (no \`mcp__<slug>__\`
 prefix) that should never be called — e.g. destructive ones. Everything not
 listed stays callable; omit the field entirely to allow every tool the
-server exposes. Enforced identically on both backends.
+server exposes. Enforcement happens in the agent runtime.
 
 ## Secrets
 
@@ -290,13 +290,11 @@ When the answer to either question is genuinely unclear or the trade-off is
 non-trivial (e.g. an official MCP server exists *and* the CLI works fine),
 the agent should ask the user rather than default.
 
-> **Both backends.** MCP servers are spawned on demand and their tools reach
-> the agent on both backends: the Claude Agent SDK spawns them for
-> Anthropic-backed sessions, and the Pi subprocess connects them for Pi-backed
-> sessions. Tools appear as \`mcp__<slug>__<tool>\`. A server that fails to
+> **MCP servers.** They are spawned on demand by the agent subprocess and their
+> tools reach the agent as \`mcp__<slug>__<tool>\`. A server that fails to
 > start (or exceeds the connect budget) is skipped without blocking the
 > session; its tools are simply absent that run. Required secrets and user
-> consent are enforced identically on both backends.
+> consent are enforced the same way regardless of connection type.
 
 ## Consent
 

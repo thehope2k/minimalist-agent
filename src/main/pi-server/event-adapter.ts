@@ -3,21 +3,20 @@
 // Lives in the subprocess so main never has to import Pi types.:
 //   - Coalesce streaming text deltas; suppress duplicate text_complete
 //   - Track tool name by toolCallId for end-event correlation
-//   - Normalize tool arg field names to match Claude Code's UI conventions
-//     (so Read/Write/Edit/etc. render with the same chip labels)
+//   - Normalize tool argument shapes for the renderer's tool components
 
 import type { AgentSessionEvent } from '@earendil-works/pi-coding-agent';
 import type { AgentChatEvent, AgentUsage, SubagentProgressUpdate } from '../agent-runtime/events';
 import { parseError } from '../agent-runtime/errors';
 
-interface PiUsage {
+interface NormalizedUsage {
   input?: number;
   output?: number;
   cacheRead?: number;
   cacheWrite?: number;
 }
 
-function toAgentUsage(u: PiUsage): AgentUsage {
+function toAgentUsage(u: NormalizedUsage): AgentUsage {
   return {
     inputTokens: u.input ?? 0,
     outputTokens: u.output ?? 0,
@@ -31,13 +30,12 @@ function hasAnyUsage(u: AgentUsage): boolean {
 }
 
 /**
- * The Pi-backend equivalent of the Claude SDK's aggregate `result.usage`.
- * `messages` is a fresh array allocated per run()/continue() call in
- * pi-agent-core's agent-loop (never the whole session history), so summing
- * it here can't double-count across turns.
+ * Aggregate usage for one Pi run. `messages` is a fresh array allocated per
+ * run()/continue() call in pi-agent-core's agent loop (never the whole session
+ * history), so summing it here cannot double-count across turns.
  */
-function sumRunUsage(messages: { role?: string; usage?: PiUsage }[]): AgentUsage | undefined {
-  const total: Required<PiUsage> = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+function sumRunUsage(messages: { role?: string; usage?: NormalizedUsage }[]): AgentUsage | undefined {
+  const total: Required<NormalizedUsage> = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
   for (const m of messages) {
     if (m.role !== 'assistant' || !m.usage) continue;
     total.input += m.usage.input ?? 0;
@@ -72,12 +70,12 @@ function reset(): void {
 }
 
 /**
- * Normalize Pi tool arg shapes to the field names the Claude Code UI
- * already expects. This keeps the renderer ignorant of the backend.
+ * Normalize Pi tool argument shapes to the field names the UI expects.
+ * This keeps runtime-specific shapes out of the renderer.
  *
- *   Pi `path`              ↔ Claude Code `file_path`   (Read/Write/Edit)
- *   Pi `edits[].oldText`   ↔ Claude Code `old_string`  (Edit, single entry)
- *   Pi `edits[].newText`   ↔ Claude Code `new_string`  (Edit, single entry)
+ *   Pi `path`              ↔ UI `file_path`   (Read/Write/Edit)
+ *   Pi `edits[].oldText`   ↔ UI `old_string`  (Edit, single entry)
+ *   Pi `edits[].newText`   ↔ UI `new_string`  (Edit, single entry)
  *
  * Multi-entry `edits[]` arrays are left as-is; DiffPart.tsx handles them
  * natively via the array branch in parseDiffInput.
@@ -106,7 +104,7 @@ function normalizeArgs(toolName: string, args: unknown): unknown {
     : { ...(args as Record<string, unknown>) };
 
   // Pi edit: edits[] with a single entry → flatten to old_string / new_string
-  // so callers that only know the Claude Code flat format still work.
+  // for renderer helpers that consume the flat format.
   // Multi-entry arrays are kept; DiffPart handles them with its own branch.
   if (
     toolName.toLowerCase() === 'edit' &&
@@ -257,7 +255,7 @@ function debug(event: AgentSessionEvent): void {
   }
 }
 
-export function adaptPiEvent(event: AgentSessionEvent): AgentChatEvent[] {
+export function adaptAgentEvent(event: AgentSessionEvent): AgentChatEvent[] {
   debug(event);
   const out: AgentChatEvent[] = [];
   const t = (event as { type: string }).type;
@@ -357,7 +355,7 @@ export function adaptPiEvent(event: AgentSessionEvent): AgentChatEvent[] {
       // the latest round's usage is the true current context footprint
       // (cacheRead grows as history accumulates), so the renderer overwrites
       // on each `assistant_usage`.
-      const u = (msg as { usage?: PiUsage }).usage;
+      const u = (msg as { usage?: NormalizedUsage }).usage;
       if (u) {
         const usage = toAgentUsage(u);
         if (hasAnyUsage(usage)) out.push({ type: 'assistant_usage', usage });
@@ -435,16 +433,12 @@ export function adaptPiEvent(event: AgentSessionEvent): AgentChatEvent[] {
     }
 
     case 'agent_end': {
-      // Use 'end_turn' (the Anthropic convention for a normal stop) so the
-      // renderer's showStopBadge check (!== 'end_turn') doesn't render an
-      // amber badge on every successfully completed Pi turn.
+      // Normalize successful completion to the stop reason expected by the
+      // renderer so it does not show an amber badge for ordinary Pi turns.
       //
-      // Without a turn-level usage aggregate, the Session Usage panel never
-      // counts a Pi-backend turn (it requires `usage`, not just the
-      // per-round `assistant_usage` we already emit from message_end) —
-      // sumRunUsage fills the same role here that the SDK's own
-      // `result.usage` plays for the Claude backend.
-      const runMessages = (event as { messages?: { role?: string; usage?: PiUsage }[] }).messages ?? [];
+      // The Session Usage panel requires a turn-level `usage` aggregate, not
+      // just the per-round `assistant_usage` emitted from message_end.
+      const runMessages = (event as { messages?: { role?: string; usage?: NormalizedUsage }[] }).messages ?? [];
       out.push({ type: 'turn_done', stopReason: 'end_turn', usage: sumRunUsage(runMessages) });
       return out;
     }

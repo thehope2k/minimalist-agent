@@ -2,7 +2,7 @@
 // PlanManager: cache updates (agent/plan-cache.ts, queried by
 // `planning:getActivePlan` IPC) + renderer notification for each event type.
 import { BrowserWindow } from 'electron';
-import { getActivePlan as getCachedPlan, updatePlanCache } from '../../../plan-cache';
+import { getActivePlan as getCachedPlan, updatePlanCache } from '../../plan-cache';
 import type { SubprocessHandle } from '../subprocess-handle';
 
 function broadcast(type: string, payload: Record<string, unknown>): void {

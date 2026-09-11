@@ -22,12 +22,10 @@ The prompt the model sees is **two concatenated pieces**, deliberately split so 
 | **Per-turn prefix**      | `buildPromptPrefix()`                             | Rebuilt every user message | No                      | Holds values that change each turn (clock, cwd, scratch path, extensions) |
 
 Both live in [`src/main/agent-runtime/system-prompt.ts`](../src/main/agent-runtime/system-prompt.ts). The static piece
-is passed to the backend as the `claude_code` preset's
-`systemPrompt.append`; the per-turn prefix is prepended to the user message.
+is appended to the per-turn prefix and passed to the agent runtime; the per-turn prefix is prepended to the user message.
 
 > ¹ **Prompt caching is the provider's, not ours** — there is no `cache_control`
-> in this codebase. The **Anthropic backend** (SDK, `claude_code` preset) caches
-> the system prompt. The **Pi backend** depends on the upstream model: OpenAI /
+> in this codebase. Caching depends on the upstream model behind Pi: OpenAI /
 > Codex auto-cache long prefixes, GitHub Copilot and local servers may not cache
 > at all. The static/per-turn split still helps **everywhere** — it preserves
 > cache hits where they exist and isolates per-turn churn regardless.
@@ -71,7 +69,7 @@ when the block is present.
 | Environment marker                                                                                                                                                                                                                                                                                                   | `getEnvironmentMarker()`                                         | always                         |                                               ~30 |
 | Assistant body (identity, capabilities, read-first, **skills with global+project scope + reference-doc pointer**, **extensions with correct paths + reference-doc pointer**, images (http(s)-only caveat), mermaid, math (latex/math alias), tables, rich blocks, interaction guidelines, git co-author, web search) | `getAssistantPrompt()`                                           | always                         |                                            ~1,900 |
 | User preferences                                                                                                                                                                                                                                                                                                     | `formatPreferencesForPrompt()` (`storage/preferences.ts`)        | when prefs set                 |                                          ~150–400 |
-| **Project context** — root file content injected eagerly (like Claude Code); sub-package files listed as read-on-demand pointers (monorepo). Walk depth capped at 4.                                                                                                                                                 | `getProjectContextFilesPrompt()`                                 | when AGENTS.md/CLAUDE.md found | ~200–2000 (root content) + ~30–150 (sub pointers) |
+| **Project context** — root file content injected eagerly; sub-package files listed as read-on-demand pointers (monorepo). Walk depth capped at 4.                                                                                                                                                 | `getProjectContextFilesPrompt()`                                 | when AGENTS.md/CLAUDE.md found | ~200–2000 (root content) + ~30–150 (sub pointers) |
 | **Artifact policy** (where to write files; explicitly excludes `/tmp`/ad-hoc paths, not just the working dir — see checklist entry below)                                                                                                                                                                            | `getArtifactPolicy()`                                            | always                         |                                              ~200 |
 | Collaboration guidance                                                                                                                                                                                                                                                                                               | `getCollaborationGuidance(autonomy)` (`collaboration-prompt.ts`) | always                         |                                            ~1,350 |
 | Planning guidance                                                                                                                                                                                                                                                                                                    | `getPlanningGuidance()` (`planning-prompt.ts`)                   | always                         |                                            ~2,450 |
@@ -110,10 +108,10 @@ request. The model reads the file when it needs to apply the instructions (one t
 `@mention`. Cost is flat: ~25 tokens per pinned item regardless of content length (name, description, and the resolved
 absolute file path — the model never has to reconstruct the path itself from the tier convention).
 
-### A third tier: backend-level directives (outside these two assembly points)
+### A third tier: runtime-level directives (outside these two assembly points)
 
 `formatSkillDirective()` and `formatAttachmentsDirective()` sit outside
-`getSystemPrompt()`/`buildPromptPrefix()` — each backend builds and joins them into the user message directly, rather
+`getSystemPrompt()`/`buildPromptPrefix()` — the runtime joins them into the user message directly, rather
 than through the shared assembly functions above. Attachments are never inlined or sent as native content blocks; the
 model gets a reference (path + type) and reads it itself with its own tools. See `agent/attachments-directive.ts` for
 the exact format.
@@ -169,8 +167,8 @@ Three costs, in priority order:
    must stay lean.
 2. **Maintenance.** Each block is one more thing to keep true as the app changes. Stale prompt text is worse than no
    text (it actively misleads the model).
-3. **Tokens / $.** Mitigated *where the provider caches prompts* (Anthropic SDK; OpenAI/Codex automatically) — you then
-   pay for the stable prefix roughly once per cache window. On backends without prompt caching (GitHub Copilot, local
+3. **Tokens / $.** Mitigated *where the upstream model behind Pi caches prompts* (OpenAI/Codex automatically) — you
+   then pay for the stable prefix roughly once per cache window. With providers that do not offer prompt caching (GitHub Copilot, local
    servers) you pay per turn — but the whole prompt is still <2% of a 200K context, so context-window pressure is
    negligible either way.
 

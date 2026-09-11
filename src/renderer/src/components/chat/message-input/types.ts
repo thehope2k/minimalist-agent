@@ -43,7 +43,7 @@ export type MessageInputProps = {
    * input clears optimistically and re-fills only on a non-ok result.
    */
   onSteer?: (message: string, attachments: DraftAttachment[]) => Promise<{ ok: boolean; reason?: string }>;
-  /** Manually trigger compaction outside of any turn (Pi backend only). */
+  /** Manually trigger compaction outside of any turn. */
   onManualCompact?: (
     connectionSlug: string,
     customInstructions?: string,

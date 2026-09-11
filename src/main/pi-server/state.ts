@@ -20,8 +20,8 @@ import type {
   MsgEvent,
   MsgInit,
   MsgPreToolUseResponse,
-  PiPermissionMode,
-} from '../agent-runtime/backends/pi/protocol';
+  PermissionMode,
+} from '../agent-runtime/pi/protocol';
 import type { LoadedAgent } from '../agents/types';
 import type { PlanManager } from '../agent-runtime/planning/manager';
 import type { ResolvedCompactionSettings } from '../../shared/compaction';
@@ -49,7 +49,7 @@ export interface State {
   visionSupported?: boolean;
   /** True when the session targets a user-configured custom endpoint (local/OpenAI-compatible). Set once in handleInit; thinking level is pinned to 'minimal' for these. */
   hasCustomEndpoint?: boolean;
-  permissionMode: PiPermissionMode;
+  permissionMode: PermissionMode;
   autonomyLevel: number;
   currentTurnId?: string;
   /** Effective compaction settings resolved at session construction (and
@@ -57,7 +57,7 @@ export interface State {
    *  model's contextWindow). */
   compactionSettings?: ResolvedCompactionSettings;
   /** The turn's terminal `turn_done`, buffered until session.prompt() settles.
-   *  The pi SDK runs auto-compaction in its post-`agent_end` lifecycle, so the
+   *  The Pi SDK runs auto-compaction in its post-`agent_end` lifecycle, so the
    *  compaction events arrive after `agent_end`. We hold `turn_done` (which
    *  closes the per-turn channel) until the prompt fully settles, so those
    *  compaction events still reach the renderer. Flushed in handlePrompt. */
@@ -84,9 +84,9 @@ export interface State {
   shuttingDown?: boolean;
   /** OTel span + context for the in-flight turn; child spans nest under it. */
   turnSpan?: Span;
-  /** Last `sdkSessionId` pushed to main via `session_id_update` — avoids
+  /** Last `runtimeSessionId` pushed to main via `session_id_update` — avoids
    *  redundant sends when the underlying transcript file hasn't rotated. */
-  lastSentSdkSessionId?: string;
+  lastSentRuntimeSessionId?: string;
   turnContext?: Context;
   /** OTel span for the in-flight provider/model request (one per assistant
    *  message; a tool loop produces several per turn). */

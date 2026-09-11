@@ -1,20 +1,20 @@
 // Turn lifecycle: subprocess `ready`, watchdog operation labels, per-turn
 // event forwarding, and fatal subprocess-level errors.
-import { parseError } from '../../../errors';
-import { updateSessionMeta } from '../../../../storage/sessions';
-import { createLogger } from '../../../../logger';
+import { parseError } from '../../errors';
+import { updateSessionMeta } from '../../../storage/sessions';
+import { createLogger } from '../../../logger';
 import type { SubprocessHandle } from '../subprocess-handle';
 import type { MsgEvent, MsgReady } from '../protocol';
 
-const log = createLogger('pi');
+const log = createLogger('chat-runtime');
 
 /** Persists the Pi SDK's transcript-file id on session meta, stable for a
  *  session's lifetime unless an extension forks/rotates it mid-conversation. */
-export function persistPiSessionId(chatSessionId: string, piSessionId: string): void {
+export function persistRuntimeSessionId(chatSessionId: string, runtimeSessionId: string): void {
   try {
-    updateSessionMeta(chatSessionId, { sdkSessionId: piSessionId });
+    updateSessionMeta(chatSessionId, { runtimeSessionId: runtimeSessionId });
   } catch (e) {
-    log.error('failed to persist piSessionId:', e);
+    log.error('failed to persist runtimeSessionId:', e);
   }
 }
 
@@ -23,7 +23,7 @@ export function handleReady(
   handle: SubprocessHandle,
   resolveReady: () => void,
 ): void {
-  if (msg.piSessionId) persistPiSessionId(handle.chatSessionId, msg.piSessionId);
+  if (msg.runtimeSessionId) persistRuntimeSessionId(handle.chatSessionId, msg.runtimeSessionId);
   resolveReady();
 }
 

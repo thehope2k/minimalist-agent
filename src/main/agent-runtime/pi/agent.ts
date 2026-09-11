@@ -1,4 +1,4 @@
-// Main-process Pi backend.
+// Main-process chat runtime.
 //
 // Owns the per-chat-session subprocess that runs `@earendil-works/pi-coding-agent`.
 // Bridges JSONL events to the AgentChatEvent stream and handles OAuth refresh
@@ -23,32 +23,32 @@
 //   error so the UI offers a one-click retry.
 
 import {spawn} from 'node:child_process';
-import {resolveExtensionEnv} from '../../../extensions/env-resolver';
-import {buildResolvedMcpServers} from '../../../extensions/mcp-config';
+import {resolveExtensionEnv} from '../../extensions/env-resolver';
+import {buildResolvedMcpServers} from '../../extensions/mcp-config';
 import {createInterface} from 'node:readline';
 import {app} from 'electron';
 import {join} from 'node:path';
 import {resolvePiServerPath} from './spawn-utils';
-import type {StoredAttachment} from '../../../storage/sessions';
-import type {AgentChatEvent} from '../../events';
-import {parseError} from '../../errors';
-import type {AgentError} from '../../errors';
-import {buildPromptPrefix, buildSystemPromptAppend,} from '../../system-prompt';
-import {extractSkillPaths, formatSkillDirective} from '../../../skills/directive';
-import {formatAttachmentsDirective} from '../../attachments-directive';
-import type {PermissionMode} from '../../permissions';
-import type {CopilotOAuthAuth, LocalApiAuth} from '../types';
-import type {CollaborationAsk} from '../../../../shared/collaboration-types';
-import {listConnections} from '../../../storage/connections';
-import {telemetryEnv} from '../../../storage/telemetry';
-import {loadAllAgents} from '../../../agents/storage';
-import {getSettings} from '../../../storage/settings';
-import {createLogger} from '../../../logger';
-import {TURN_IDLE_TIMEOUT_MS, WATCHDOG_SWEEP_MS} from '../../../../shared/timeouts';
+import type {StoredAttachment} from '../../storage/sessions';
+import type {AgentChatEvent} from '../events';
+import {parseError} from '../errors';
+import type {AgentError} from '../errors';
+import {buildPromptPrefix, buildSystemPromptAppend,} from '../system-prompt';
+import {extractSkillPaths, formatSkillDirective} from '../../skills/directive';
+import {formatAttachmentsDirective} from '../attachments-directive';
+import type {PermissionMode} from '../permissions';
+import type {ResolvedAuth} from '../auth';
+import type {CollaborationAsk} from '../../../shared/collaboration-types';
+import {listConnections} from '../../storage/connections';
+import {telemetryEnv} from '../../storage/telemetry';
+import {loadAllAgents} from '../../agents/storage';
+import {getSettings} from '../../storage/settings';
+import {createLogger} from '../../logger';
+import {TURN_IDLE_TIMEOUT_MS, WATCHDOG_SWEEP_MS} from '../../../shared/timeouts';
 import {EventQueue, send, type SubprocessHandle} from './subprocess-handle';
 import {dispatchOutbound} from './outbound';
 
-const log = createLogger('pi');
+const log = createLogger('chat-runtime');
 import type {
   MsgInit,
   MsgLlmQueryResult,
@@ -58,8 +58,7 @@ import type {
   MsgPrompt,
   MsgSetModel,
   MsgSetThinkingLevel,
-  PiAuthProvider,
-  PiThinkingLevel,
+  ThinkingLevel,
   SubprocessOutbound,
 } from './protocol';
 
@@ -67,11 +66,10 @@ import type {
 /*  Public types                                                 */
 /* ============================================================ */
 
-export interface PiChatRequest {
+export interface ChatRequest {
   /** Connection slug — needed by the resolver for mid-session token refresh. */
   connectionSlug: string;
-  auth: CopilotOAuthAuth | LocalApiAuth;
-  piAuthProvider?: PiAuthProvider;
+  auth: ResolvedAuth;
   /** Renderer-side message id. */
   turnId: string;
   /** Our chat session id. */
@@ -82,7 +80,7 @@ export interface PiChatRequest {
   prompt: string;
   attachments?: StoredAttachment[];
   cwd?: string;
-  thinkingLevel?: PiThinkingLevel;
+  thinkingLevel?: ThinkingLevel;
   permissionMode?: PermissionMode;
   /** Collaboration callback for intelligent engagement tools. */
   askCollaboration?: CollaborationAsk;
@@ -93,10 +91,9 @@ export interface PiChatRequest {
   signal?: AbortSignal;
 }
 
-export interface PiMiniCompletionRequest {
+export interface MiniCompletionRequest {
   connectionSlug: string;
-  auth: CopilotOAuthAuth | LocalApiAuth;
-  piAuthProvider?: PiAuthProvider;
+  auth: ResolvedAuth;
   chatSessionId: string;
   chatSessionPath: string;
   cwd?: string;
@@ -170,7 +167,7 @@ function resolveVisionSupported(connectionSlug: string, modelId: string): boolea
 }
 
 function ensureSubprocess(
-  req: PiChatRequest,
+  req: ChatRequest,
   systemPrompt: string,
 ): SubprocessHandle {
   const key = req.chatSessionPath;
@@ -217,10 +214,11 @@ function ensureSubprocess(
 }
 
 /** Spawns a subprocess without registering it in the shared `handles` map — use for calls that must not touch a session's live connection. */
-function spawnSubprocess(req: PiChatRequest, systemPrompt: string): SubprocessHandle {
+function spawnSubprocess(req: ChatRequest, systemPrompt: string): SubprocessHandle {
   const key = req.chatSessionPath;
-  const piServer = resolvePiServerPath(app.getAppPath());
-  const child = spawn(process.execPath, [piServer], {
+  const modelProvider = req.auth.type === 'api' ? 'openai' : req.auth.provider;
+  const serverPath = resolvePiServerPath(app.getAppPath());
+  const child = spawn(process.execPath, [serverPath], {
     stdio: ['pipe', 'pipe', 'pipe'],
     env: {
       ...process.env,
@@ -286,7 +284,7 @@ function spawnSubprocess(req: PiChatRequest, systemPrompt: string): SubprocessHa
     stderrBuffer,
     chatSessionId: req.chatSessionId,
     connectionSlug: req.connectionSlug,
-    piAuthProvider: req.piAuthProvider,
+    provider: modelProvider,
     currentModel: req.model,
     currentThinkingLevel: req.thinkingLevel ?? 'medium',
     askCollaboration: req.askCollaboration,
@@ -339,18 +337,18 @@ function spawnSubprocess(req: PiChatRequest, systemPrompt: string): SubprocessHa
     }
   });
 
-  const isLocal = req.auth.type === 'local_api';
-  const localAuth = isLocal ? (req.auth as LocalApiAuth) : undefined;
-  const baseUrl = localAuth?.baseUrl;
+  const isApi = req.auth.type === 'api';
+  const apiAuth = req.auth.type === 'api' ? req.auth : undefined;
+  const baseUrl = apiAuth?.baseUrl;
 
   // For custom endpoints, derive protocol + capabilities from the connection
   // meta and the model the turn actually uses. Local Ollama needs the qwen
   // enable_thinking hack; remote OpenAI-compatible providers don't.
   let customEndpoint: MsgInit['customEndpoint'];
-  if (isLocal) {
+  if (isApi) {
     const meta = listConnections().find((c) => c.slug === req.connectionSlug);
     const modelDef = meta?.models.find((m) => m.id === req.model);
-    const isOpenAICompat = meta?.providerType === 'openai-compatible' || meta?.providerType === 'codemie-sso';
+    const isOpenAICompat = req.auth.provider !== 'local';
     customEndpoint = {
       api: 'openai-completions' as const,
       supportsImages: modelDef?.supportsVision ?? false,
@@ -362,6 +360,20 @@ function spawnSubprocess(req: PiChatRequest, systemPrompt: string): SubprocessHa
   }
 
   const compactionSettings = getSettings().compactionSettings;
+  const runtimeAuth: MsgInit['auth'] = req.auth.type === 'api'
+    ? {
+        provider: 'openai',
+        credential: { type: 'api_key', key: req.auth.apiKey ?? 'local' },
+      }
+    : {
+        provider: req.auth.provider,
+        credential: {
+          type: 'oauth',
+          access: req.auth.accessToken,
+          refresh: req.auth.refreshToken ?? '',
+          expires: req.auth.expiresAt,
+        },
+      };
 
   const init: MsgInit = {
     type: 'init',
@@ -371,20 +383,7 @@ function spawnSubprocess(req: PiChatRequest, systemPrompt: string): SubprocessHa
     model: req.model,
     visionSupported: resolveVisionSupported(req.connectionSlug, req.model),
     thinkingLevel: req.thinkingLevel ?? 'medium',
-    providerType: 'pi',
-    authType: 'oauth',
-    piAuthProvider: req.piAuthProvider ?? 'github-copilot',
-    piAuth: isLocal
-      ? { provider: 'openai', credential: { type: 'api_key', key: localAuth?.apiKey ?? 'local' } }
-      : {
-          provider: req.piAuthProvider!,
-          credential: {
-            type: 'oauth',
-            access: (req.auth as CopilotOAuthAuth).accessToken,
-            refresh: (req.auth as CopilotOAuthAuth).refreshToken ?? '',
-            expires: (req.auth as CopilotOAuthAuth).expiresAt,
-          },
-        },
+    auth: runtimeAuth,
     ...(baseUrl ? { baseUrl, customEndpoint } : {}),
     permissionMode: (req.permissionMode ?? 'auto') as MsgInit['permissionMode'],
     autonomyLevel: req.autonomyLevel,
@@ -408,8 +407,8 @@ function spawnSubprocess(req: PiChatRequest, systemPrompt: string): SubprocessHa
 /*  Public API: chat turn                                        */
 /* ============================================================ */
 
-export async function* runPiChat(
-  req: PiChatRequest,
+export async function* runChat(
+  req: ChatRequest,
 ): AsyncGenerator<AgentChatEvent> {
   // Compute append for subprocess init. May be empty on the very first turn
   // of a new session if initSessionState hasn't completed yet (race with the
@@ -420,7 +419,7 @@ export async function* runPiChat(
     sessionId: req.chatSessionId,
     userMessage: req.prompt,
     authType: req.auth.type,
-    piAuthProvider: req.piAuthProvider,
+    provider: req.auth.provider,
     model: req.model,
     autonomyLevel: req.autonomyLevel,
   });
@@ -431,7 +430,7 @@ export async function* runPiChat(
     pinnedAssets: req.pinnedAssets,
   });
 
-  // Resolve `@slug` / `@path` mentions exactly as the Anthropic backend does.
+  // Resolve `@slug` / `@path` mentions.
   const { skillPaths, extensionGuidePaths, filePaths, folderPaths, cleanMessage, missingSkills, missingFiles } =
     extractSkillPaths(req.prompt, req.cwd);
   if (missingSkills.length > 0) {
@@ -477,7 +476,7 @@ export async function* runPiChat(
     sessionId: req.chatSessionId,
     userMessage: req.prompt,
     authType: req.auth.type,
-    piAuthProvider: req.piAuthProvider,
+    provider: req.auth.provider,
     model: req.model,
     autonomyLevel: req.autonomyLevel,
   });
@@ -537,10 +536,10 @@ export async function* runPiChat(
 /**
  * Triggers manual compaction via the persistent Pi subprocess for this chat
  * session, streaming compaction_start/compaction_end events through a
- * synthetic per-turn `EventQueue`, like {@link runPiChat} does for a real
+ * synthetic per-turn `EventQueue`, like {@link runChat} does for a real
  * turn. Requires a live subprocess for this session.
  */
-export async function* runPiManualCompact(req: {
+export async function* runManualCompact(req: {
   chatSessionPath: string;
   turnId: string;
   customInstructions?: string;
@@ -600,13 +599,12 @@ export async function* runPiManualCompact(req: {
 /*  Public API: mini completion (title gen / cheap one-shots)    */
 /* ============================================================ */
 
-export async function runPiMiniCompletion(
-  req: PiMiniCompletionRequest,
+export async function runMiniCompletion(
+  req: MiniCompletionRequest,
 ): Promise<{ text?: string; error?: string }> {
-  const piReq: PiChatRequest = {
+  const chatReq: ChatRequest = {
     connectionSlug: req.connectionSlug,
     auth: req.auth,
-    piAuthProvider: req.piAuthProvider,
     turnId: 'mini',
     chatSessionId: req.chatSessionId,
     chatSessionPath: req.chatSessionPath,
@@ -623,7 +621,7 @@ export async function runPiMiniCompletion(
 
   let handle: SubprocessHandle;
   try {
-    handle = wouldHijackLiveModel ? spawnSubprocess(piReq, '') : ensureSubprocess(piReq, '');
+    handle = wouldHijackLiveModel ? spawnSubprocess(chatReq, '') : ensureSubprocess(chatReq, '');
     await handle.ready;
   } catch (e) {
     return { error: e instanceof Error ? e.message : String(e) };
@@ -675,7 +673,7 @@ function killSubprocess(handle: SubprocessHandle): void {
  * subprocess was found for the chat session; false otherwise (e.g. the
  * turn already completed).
  */
-export function steerPiTurn(args: {
+export function steerTurn(args: {
   chatSessionPath: string;
   turnId: string;
   message: string;
@@ -694,7 +692,7 @@ export function steerPiTurn(args: {
 /*  Cleanup                                                       */
 /* ============================================================ */
 
-export function shutdownAllPiSubprocesses(): void {
+export function shutdownAllChatSubprocesses(): void {
   for (const handle of handles.values()) {
     killSubprocess(handle);
   }

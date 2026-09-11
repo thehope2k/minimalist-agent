@@ -85,7 +85,7 @@ requestBrowserTool() ──JSONL──▶ browser_tool_request ──▶ execute
 ```
 
 That round trip isn't new machinery — it reuses the same JSONL request/response shape already used for
-`auth_refresh_request` and `collaboration_request` (`src/main/agent/backends/pi/protocol.ts` defines the pair as
+`auth_refresh_request` and `collaboration_request` (`src/main/agent-runtime/pi/protocol.ts` defines the pair as
 `MsgBrowserToolRequest` / `MsgBrowserToolResult`). The model calls `browser_tool`
 (`src/main/pi-server/browser-tool.ts`), which runs in the pi-server subprocess and can't import `electron` at all — it
 just ships the command string across the wire and waits for a result.

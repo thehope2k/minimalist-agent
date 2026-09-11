@@ -43,8 +43,7 @@ export function parseDiffInput(name: string, input: unknown): ParsedDiff | null 
     return { filePath, oldValue: '', newValue: content };
   }
 
-  // Edit — Claude Code SDK uses top-level old_string / new_string (single pair).
-  // Pi SDK uses an edits[] array of { oldText, newText } replacements.
+  // Edit — Pi SDK uses an edits[] array of { oldText, newText } replacements.
   if (Array.isArray(o.edits) && o.edits.length > 0) {
     const edits = o.edits as Array<{ oldText?: unknown; newText?: unknown }>;
     const SEP = '\n\n// ─── next edit ───\n\n';
@@ -54,7 +53,9 @@ export function parseDiffInput(name: string, input: unknown): ParsedDiff | null 
     return { filePath, oldValue, newValue };
   }
 
-  // Claude Code flat format
+  // Legacy flat single-edit format (event-adapter.ts flattens a
+  // single-entry edits[] array into old_string/new_string for callers
+  // that only know the flat shape).
   if (typeof o.old_string === 'string' || typeof o.new_string === 'string') {
     const oldValue = typeof o.old_string === 'string' ? o.old_string : '';
     const newValue = typeof o.new_string === 'string' ? o.new_string : '';

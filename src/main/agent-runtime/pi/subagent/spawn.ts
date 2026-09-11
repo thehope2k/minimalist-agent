@@ -4,9 +4,9 @@
 import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import type { AgentToolUpdateCallback } from '@earendil-works/pi-coding-agent';
-import type { LoadedAgent } from '../../../../agents/types';
-import type { AgentChatEvent, SubagentProgressUpdate } from '../../../events';
-import { createLogger } from '../../../../../shared/sub-logger';
+import type { LoadedAgent } from '../../../agents/types';
+import type { AgentChatEvent, SubagentProgressUpdate } from '../../events';
+import { createLogger } from '../../../../shared/sub-logger';
 import type { MsgEvent, SubprocessOutbound } from '../protocol';
 import type { AgentToolContext, SpawnedAgentHandle } from './types';
 import {
@@ -19,7 +19,7 @@ import {
   MAX_CONCURRENT_AGENTS,
 } from './handle-registry';
 
-const log = createLogger('pi-agent-tool');
+const log = createLogger('agent-tool');
 
 export function emitSubagentUpdate(
   onUpdate: AgentToolUpdateCallback<unknown> | undefined,

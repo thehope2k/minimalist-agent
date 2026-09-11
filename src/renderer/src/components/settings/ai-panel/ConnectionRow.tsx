@@ -15,7 +15,6 @@ import { BrandMark } from '../connection-flow/shared';
 import { compactNumber } from '@/components/chat/message-list/utils';
 import { CopilotQuotaBar } from '../CopilotQuotaBar';
 import { ChatGptQuotaBar } from '../ChatGptQuotaBar';
-import { ClaudeUsageBar } from '../ClaudeUsageBar';
 import { CodeMieBudgetBar } from '../CodeMieBudgetBar';
 import {
   Badge,
@@ -64,8 +63,12 @@ export function ConnectionRow({
     onRename(trimmed);
   };
 
-  const reauthLabel = conn.authType === 'oauth' ? 'Reconnect' : 'Update API key';
-  const reauthIcon = conn.authType === 'oauth' ? LogIn : KeyRound;
+  const reconnects =
+    conn.providerType === 'github-copilot' ||
+    conn.providerType === 'openai-codex' ||
+    conn.providerType === 'codemie-sso';
+  const reauthLabel = reconnects ? 'Reconnect' : 'Update API key';
+  const reauthIcon = reconnects ? LogIn : KeyRound;
 
   const items: Array<MenuItem | 'separator'> = [
     { label: 'Rename', icon: Pencil, onSelect: startRename },
@@ -164,14 +167,11 @@ export function ConnectionRow({
             </Popover.Portal>
           </Popover.Root>
         </div>
-        {conn.providerType === 'pi' && conn.piAuthProvider === 'github-copilot' && (
+        {conn.providerType === 'github-copilot' && (
           <CopilotQuotaBar connectionSlug={conn.slug} />
         )}
-        {conn.providerType === 'pi' && conn.piAuthProvider === 'openai-codex' && (
+        {conn.providerType === 'openai-codex' && (
           <ChatGptQuotaBar connectionSlug={conn.slug} />
-        )}
-        {conn.providerType === 'anthropic' && conn.authType === 'oauth' && (
-          <ClaudeUsageBar connectionSlug={conn.slug} />
         )}
         {conn.providerType === 'codemie-sso' && (
           <CodeMieBudgetBar connectionSlug={conn.slug} />

@@ -31,7 +31,7 @@ const getConnectionId = (conn: ConnectionMeta): string => conn.slug;
 
 /** Mirrors main's model-refresh.isRefreshable: only providers with a live catalog. */
 function isRefreshable(conn: ConnectionMeta): boolean {
-  if (conn.providerType === 'pi' && conn.piAuthProvider === 'github-copilot') return true;
+  if (conn.providerType === 'github-copilot') return true;
   return conn.providerType === 'openai-compatible' || conn.providerType === 'local' || conn.providerType === 'codemie-sso';
 }
 
@@ -265,7 +265,7 @@ export function AIPanel() {
 
       <SettingsSection
         title="Context & Compaction"
-        subtitle="Tuning for the Pi backend's automatic conversation summarization (GitHub Copilot, local, OpenAI-compatible connections). Ignored for Anthropic. Percentages are resolved against whichever model is active in a chat."
+        subtitle="Tune automatic conversation summarization. Percentages are resolved against whichever model is active in a chat."
       >
         <CompactionSection settings={settings} />
       </SettingsSection>

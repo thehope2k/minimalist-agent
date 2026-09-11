@@ -3,19 +3,20 @@
 // `SubprocessHandle` without importing agent.ts's spawn/lifecycle logic.
 import type { ChildProcess } from 'node:child_process';
 import type { Interface as ReadlineInterface } from 'node:readline';
-import { createLogger } from '../../../logger';
-import { writeJsonLine } from '../../../../shared/jsonl-stdin';
-import type { AgentChatEvent } from '../../events';
-import type { PermissionMode } from '../../permissions';
-import type { CollaborationAsk } from '../../../../shared/collaboration-types';
+import { createLogger } from '../../logger';
+import { writeJsonLine } from '../../../shared/jsonl-stdin';
+import type { AgentChatEvent } from '../events';
+import type { PermissionMode } from '../permissions';
+import type { CollaborationAsk } from '../../../shared/collaboration-types';
 import type {
   MsgLlmQueryResult,
   MsgMiniCompletionResult,
-  PiThinkingLevel,
+  ThinkingLevel,
+  ModelProvider,
   SubprocessInbound,
 } from './protocol';
 
-const log = createLogger('pi');
+const log = createLogger('chat-runtime');
 
 /* ============================================================ */
 /*  Async event queue                                             */
@@ -78,14 +79,14 @@ export interface SubprocessHandle {
   chatSessionId: string;
   /** Connection slug, captured at spawn so refresh can mutex per-slug. */
   connectionSlug: string;
-  /** Sub-provider (e.g. 'github-copilot' | 'openai-codex') for error messages. */
-  piAuthProvider?: string;
+  /** Model provider used for auth refresh and diagnostics. */
+  provider: ModelProvider;
   /** True while a token refresh is in progress for this handle. */
   refreshing?: boolean;
   /** Model ID currently active in the subprocess. */
   currentModel?: string;
   /** Thinking level currently active in the subprocess. */
-  currentThinkingLevel?: PiThinkingLevel;
+  currentThinkingLevel?: ThinkingLevel;
   /** Collaboration callback to show engagement dialogs. */
   askCollaboration?: CollaborationAsk;
   /** Count of in-flight collaboration_request calls awaiting a human response

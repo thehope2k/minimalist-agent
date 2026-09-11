@@ -1,12 +1,12 @@
 // Intelligent collaboration engagement (RequestDecision/Preference/Approval/
 // Guidance/Feedback): forwards the subprocess's request to the renderer via
 // the `askCollaboration` callback registered on the handle at spawn time.
-import { createLogger } from '../../../../logger';
+import { createLogger } from '../../../logger';
 import { send, type SubprocessHandle } from '../subprocess-handle';
 import type { MsgCollaborationRequest } from '../protocol';
-import type { EngagementRequest } from '../../../../../shared/collaboration-types';
+import type { EngagementRequest } from '../../../../shared/collaboration-types';
 
-const log = createLogger('pi');
+const log = createLogger('chat-runtime');
 
 export function handleCollaborationRequest(msg: MsgCollaborationRequest, handle: SubprocessHandle): void {
   if (!handle.askCollaboration) {

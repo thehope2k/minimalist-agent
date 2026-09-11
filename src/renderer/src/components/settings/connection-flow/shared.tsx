@@ -1,4 +1,4 @@
-import { ArrowLeft, Monitor, Plug, Sparkles } from 'lucide-react';
+import { ArrowLeft, Monitor, Plug } from 'lucide-react';
 import { IconButton } from '@/components/ui';
 import type { ConnectionMeta } from '@/lib/electron';
 
@@ -36,12 +36,6 @@ export function Actions({ children }: { children: React.ReactNode }) {
 
 /* Brand marks — specific to the connection picker */
 
-export function AnthropicMark() {
-  return (
-    <Sparkles className="h-4 w-4 text-orange-400" strokeWidth={1.75} aria-hidden />
-  );
-}
-
 export function OpenAIMark() {
   return (
     <svg viewBox="0 0 24 24" className="h-4 w-4 text-fg-muted" fill="currentColor" aria-hidden>
@@ -77,10 +71,9 @@ export function GithubMark() {
 }
 
 /** Provider-aware icon for a connection — use anywhere a connection needs a logo. */
-export function BrandMark({ conn }: { conn: Pick<ConnectionMeta, 'providerType' | 'piAuthProvider'> }) {
-  if (conn.providerType === 'anthropic') return <AnthropicMark />;
-  if (conn.providerType === 'pi' && conn.piAuthProvider === 'github-copilot') return <GithubMark />;
-  if (conn.providerType === 'pi' && conn.piAuthProvider === 'openai-codex') return <OpenAIMark />;
+export function BrandMark({ conn }: { conn: Pick<ConnectionMeta, 'providerType'> }) {
+  if (conn.providerType === 'github-copilot') return <GithubMark />;
+  if (conn.providerType === 'openai-codex') return <OpenAIMark />;
   if (conn.providerType === 'local') {
     return <Monitor className="h-4 w-4 text-fg-muted" strokeWidth={1.75} />;
   }

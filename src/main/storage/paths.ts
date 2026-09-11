@@ -9,8 +9,7 @@
 //   ├── credentials.enc            ← Encrypted api keys / OAuth tokens
 //   ├── backups/
 //   ├── logs/
-//   ├── sessions/
-//   └── claude-config/
+//   └── sessions/
 //
 //   ~/.minimalist-agent/  — user-owned portable config (versionable, dotfile-syncable)
 //   ├── agents/            ← global agent definitions  (migrated from userData/agents/)
@@ -106,15 +105,6 @@ export const Paths = {
   },
   extensionSecrets: () => join(root(), 'extension-secrets.enc'),
   extensionConsents: () => join(root(), 'extension-consents.json'),
-  // Sandboxed CLAUDE_CONFIG_DIR for the agent SDK's native binary. We
-  // write `.credentials.json` here per-turn so OAuth users don't need a
-  // system-wide `claude /login`. Kept under userData so it survives
-  // cache wipes and stays scoped to this app.
-  claudeConfigDir: () => {
-    const dir = join(root(), 'claude-config');
-    mkdirSync(dir, { recursive: true });
-    return dir;
-  },
 } as const;
 
 export const MIGRATION_BACKUP_RETENTION = 10;

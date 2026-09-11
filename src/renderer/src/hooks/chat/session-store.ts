@@ -15,7 +15,7 @@ export interface SessionStore {
   /** turnId → the app session id it belongs to (routes incoming events). */
   turnIdToSession: React.MutableRefObject<Map<string, string>>;
   /** App session id → the Pi SDK's resumable session id, once known. */
-  sdkSessionIdBySession: React.MutableRefObject<Map<string, string>>;
+  runtimeSessionIdBySession: React.MutableRefObject<Map<string, string>>;
   /** App session id → cached session title (avoids a disk round trip per render). */
   titleBySession: React.MutableRefObject<Map<string, string | undefined>>;
   /** App session id → the args + assistant message id of its last `send()`, for retry. */
@@ -28,7 +28,7 @@ export function useSessionStore(): SessionStore {
   const messagesBySession = useRef<Map<string, ChatMessage[]>>(new Map());
   const streamingBySession = useRef<Map<string, { turnId: string }>>(new Map());
   const turnIdToSession = useRef<Map<string, string>>(new Map());
-  const sdkSessionIdBySession = useRef<Map<string, string>>(new Map());
+  const runtimeSessionIdBySession = useRef<Map<string, string>>(new Map());
   const titleBySession = useRef<Map<string, string | undefined>>(new Map());
   const lastSendBySession = useRef<Map<string, { args: SendArgs; assistantId: string }>>(
     new Map(),
@@ -39,7 +39,7 @@ export function useSessionStore(): SessionStore {
     messagesBySession,
     streamingBySession,
     turnIdToSession,
-    sdkSessionIdBySession,
+    runtimeSessionIdBySession,
     titleBySession,
     lastSendBySession,
     seenCompactionEvents,

@@ -81,7 +81,7 @@ const webFetchSchema = Type.Object({
   url: Type.String({ description: 'Absolute URL to fetch (http/https).' }),
 });
 
-export function createPiWebFetchTool(): ToolDefinition<typeof webFetchSchema, unknown> {
+export function createWebFetchTool(): ToolDefinition<typeof webFetchSchema, unknown> {
   return defineTool({
     name: 'web_fetch',
     label: 'Fetch web page',
@@ -192,7 +192,7 @@ function parseDuckDuckGoHtml(html: string, max: number): SearchHit[] {
   return results;
 }
 
-export function createPiWebSearchTool(): ToolDefinition<typeof webSearchSchema, unknown> {
+export function createWebSearchTool(): ToolDefinition<typeof webSearchSchema, unknown> {
   return defineTool({
     name: 'web_search',
     label: 'Web search',

@@ -2,16 +2,16 @@
 // send the `init` message (model/auth/worktree/system-prompt setup), then
 // the `prompt` message and wait for task completion or timeout.
 import { mkdirSync } from 'node:fs';
-import type { LoadedAgent } from '../../../../agents/types';
-import { createLogger } from '../../../../../shared/sub-logger';
-import { injectTraceContext } from '../../../../../shared/otel';
-import { subagentDir } from '../../../../../shared/subagent-storage';
+import type { LoadedAgent } from '../../../agents/types';
+import { createLogger } from '../../../../shared/sub-logger';
+import { injectTraceContext } from '../../../../shared/otel';
+import { subagentDir } from '../../../../shared/subagent-storage';
 import {
   resolveAgentModel,
   isValidModelId,
   getModelValidationError,
   SESSION_DEFAULT_MODEL,
-} from '../../../../../shared/agent-models';
+} from '../../../../shared/agent-models';
 import type { MsgInit, MsgPrompt } from '../protocol';
 import type { AgentToolContext, SpawnedAgentHandle } from './types';
 import { createAgentWorktree } from './worktree-stub';
@@ -19,14 +19,14 @@ import { send } from './transport';
 import { buildAgentSystemPrompt, mapAgentPermissionMode } from './prompt';
 import { killHandle, MAX_AGENT_RUNTIME_MINUTES } from './handle-registry';
 
-const log = createLogger('pi-agent-tool');
+const log = createLogger('agent-tool');
 
 export async function initializeAgent(
   handle: SpawnedAgentHandle,
   agent: LoadedAgent,
   ctx: AgentToolContext,
 ): Promise<void> {
-  const auth = await ctx.getAuth();
+  const credential = await ctx.getCredential();
 
   // Build agent-specific system prompt
   const systemPrompt = buildAgentSystemPrompt(agent);
@@ -72,18 +72,7 @@ export async function initializeAgent(
     cwd: agentCwd, // Use worktree path for complete isolation
     model,
     thinkingLevel: 'low' as const, // Agents should be focused and fast
-    providerType: 'pi',
-    authType: 'oauth',
-    piAuthProvider: ctx.piAuthProvider,
-    piAuth: {
-      provider: ctx.piAuthProvider,
-      credential: {
-        type: 'oauth',
-        access: auth.access,
-        refresh: auth.refresh ?? '',
-        expires: auth.expires ?? Date.now() + 30 * 60 * 1000,
-      },
-    },
+    auth: { provider: ctx.provider, credential },
     ...(ctx.baseUrl ? {
       baseUrl: ctx.baseUrl,
       customEndpoint: ctx.customEndpoint

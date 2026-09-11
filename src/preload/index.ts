@@ -70,7 +70,6 @@ interface ChatSendRequest {
   model: string;
   prompt: string;
   cwd?: string;
-  resumeSessionId?: string;
   permissionMode?: PermissionMode;
   sessionId?: string;
 }
@@ -224,13 +223,6 @@ interface CopilotQuota {
   fallback: boolean;
 }
 
-interface ClaudeUsageEntry {
-  rateLimitType: 'five_hour' | 'seven_day' | 'seven_day_opus' | 'seven_day_sonnet' | 'overage';
-  utilization: number;
-  resetsAt?: number;
-  status: 'allowed' | 'allowed_warning' | 'rejected';
-}
-
 interface ChatGptRateLimitWindow {
   usedPercent: number;
   windowMinutes: number | null;
@@ -254,14 +246,12 @@ interface ModelDef {
 }
 
 
-type PiAuthProvider = import('../shared/pi-types').PiAuthProvider;
+type ProviderType = import('../shared/provider-types').ProviderType;
 
 interface ConnectionMeta {
   slug: string;
   name: string;
-  providerType: 'anthropic' | 'pi' | 'local' | 'openai-compatible' | 'codemie-sso';
-  authType: 'api_key' | 'oauth';
-  piAuthProvider?: PiAuthProvider;
+  providerType: ProviderType;
   baseUrl?: string;
   presetId?: string;
   codeMieProject?: string;
@@ -359,7 +349,7 @@ interface SessionMeta {
   id: string;
   title: string;
   workingDirectory?: string;
-  sdkSessionId?: string;
+  runtimeSessionId?: string;
   archived: boolean;
   createdAt: number;
   lastMessageAt: number;
@@ -457,19 +447,6 @@ const api = {
     reveal: (): Promise<void> => ipcRenderer.invoke('logs:reveal'),
     read: (): Promise<string> => ipcRenderer.invoke('logs:read'),
   },
-  claudeOAuth: {
-    start: (): Promise<{ ok: true; url: string }> =>
-      ipcRenderer.invoke('claude-oauth:start'),
-    cancel: (): Promise<void> => ipcRenderer.invoke('claude-oauth:cancel'),
-    exchange: (
-      code: string,
-    ): Promise<{
-      accessToken: string;
-      refreshToken?: string;
-      expiresAt?: number;
-      scopes?: string[];
-    }> => ipcRenderer.invoke('claude-oauth:exchange', code),
-  },
   copilotOAuth: {
     start: (): Promise<{
       accessToken: string;
@@ -509,12 +486,6 @@ const api = {
       args: { connectionSlug: string },
     ): Promise<ChatGptQuota | { error: string }> =>
       ipcRenderer.invoke('chatgpt:fetchQuota', args),
-  },
-  claude: {
-    fetchUsage: (
-      args: { connectionSlug: string },
-    ): Promise<ClaudeUsageEntry[] | { error: string }> =>
-      ipcRenderer.invoke('claude:fetchUsage', args),
   },
   copilot: {
     fetchModels: (

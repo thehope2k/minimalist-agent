@@ -19,9 +19,8 @@ export function ToolPart(props: ToolPartProps) {
   // view loses the structure of what's actually a list of tasks. We split
   // here (rather than branching inside `ChipBody`) so each branch's hook
   // call order stays stable across re-renders.
-  // Tool names arrive in different cases depending on the backend
-  // (Anthropic: `Write`/`Edit`/`TodoWrite`; Pi: `write`/`edit`).
-  // Compare case-insensitively so both reach the dedicated renderers.
+  // Tool-name casing can vary, so compare case-insensitively to ensure each
+  // built-in tool reaches its dedicated renderer.
   const lowerName = props.name.toLowerCase();
   
   if (lowerName === 'todowrite') {

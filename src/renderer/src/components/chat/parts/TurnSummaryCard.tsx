@@ -96,7 +96,7 @@ function mergeOps(
   if (ops.length === 1) return ops[0].parsed;
 
   // Multiple edit patches: join with the separator so ReactDiffViewer shows
-  // each hunk in context — same SEP the Pi edits[] parser already uses.
+  // each hunk in context — same separator the edits[] parser already uses.
   return {
     filePath,
     oldValue: ops.map((o) => o.parsed.oldValue).join(EDIT_SEP),

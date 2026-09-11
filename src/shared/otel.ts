@@ -5,7 +5,7 @@
 // bundled into `out/main/pi-server.js` which runs under ELECTRON_RUN_AS_NODE.
 //
 // Configuration comes entirely from `MA_OTEL_*` environment variables, set by
-// the parent process (`agent/backends/pi/agent.ts`) from the persisted
+// the parent process (`agent-runtime/pi/agent.ts`) from the persisted
 // telemetry settings. When tracing is disabled (the default) every helper is a
 // cheap no-op: `getTracer()` returns the API's built-in no-op tracer because no
 // provider is registered, so instrumented code pays effectively nothing.

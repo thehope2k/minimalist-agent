@@ -1,17 +1,14 @@
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { SessionManager, type SessionEntry, collectEntriesForBranchSummary, generateBranchSummary } from '@earendil-works/pi-coding-agent';
 import type { Model, Api } from '@earendil-works/pi-ai';
-import { forkSession as forkClaudeSession } from '@anthropic-ai/claude-agent-sdk';
-import { findClaudeSessionFile } from '../agent-runtime/backends/anthropic';
 import { createLogger } from '../logger';
 
 const log = createLogger('session-fork');
 
-export interface ForkSdkSessionInput {
-  providerType: string | undefined;
+export interface ForkSessionTranscriptInput {
   parentSessionDir: string;
-  parentSdkSessionId: string | undefined;
+  parentRuntimeSessionId: string | undefined;
   newSessionDir: string;
   cutoffMs: number;
   /** When set, the abandoned tail is summarized and attached to the new
@@ -24,23 +21,9 @@ export interface ForkSdkSessionInput {
   };
 }
 
-/** Forks the parent's SDK-owned transcript up to `cutoffMs`, returning the
- *  new session's SDK session id to persist, or undefined when there's
- *  nothing to persist (Pi) or nothing could be forked. */
-export async function forkSdkSession(input: ForkSdkSessionInput): Promise<string | undefined> {
-  if (input.providerType === 'pi') {
-    await forkPiTranscript(input);
-    return undefined;
-  }
-  if (input.providerType === 'anthropic' && input.parentSdkSessionId) {
-    return forkAnthropicSession(input.parentSdkSessionId, input.cutoffMs);
-  }
-  return undefined;
-}
-
-function findPiTranscriptFile(sessionDir: string, sdkSessionId: string): string | undefined {
+function findTranscriptFile(sessionDir: string, runtimeSessionId: string): string | undefined {
   if (!existsSync(sessionDir)) return undefined;
-  const fileName = readdirSync(sessionDir).find((f) => f.endsWith(`_${sdkSessionId}.jsonl`));
+  const fileName = readdirSync(sessionDir).find((f) => f.endsWith(`_${runtimeSessionId}.jsonl`));
   return fileName ? join(sessionDir, fileName) : undefined;
 }
 
@@ -53,15 +36,15 @@ function lastEntryIdBefore(entries: readonly SessionEntry[], cutoffMs: number): 
   return lastId;
 }
 
-function forkPiTranscript(input: ForkSdkSessionInput): Promise<void> {
-  if (!input.parentSdkSessionId) {
-    log.warn(`no sdkSessionId recorded for parent session at ${input.parentSessionDir}`);
+export function forkSessionTranscript(input: ForkSessionTranscriptInput): Promise<void> {
+  if (!input.parentRuntimeSessionId) {
+    log.warn(`no runtimeSessionId recorded for parent session at ${input.parentSessionDir}`);
     return Promise.resolve();
   }
 
-  const transcriptFile = findPiTranscriptFile(input.parentSessionDir, input.parentSdkSessionId);
+  const transcriptFile = findTranscriptFile(input.parentSessionDir, input.parentRuntimeSessionId);
   if (!transcriptFile) {
-    log.warn(`no Pi transcript matching sdkSessionId ${input.parentSdkSessionId} in ${input.parentSessionDir}`);
+    log.warn(`no transcript matching runtimeSessionId ${input.parentRuntimeSessionId} in ${input.parentSessionDir}`);
     return Promise.resolve();
   }
 
@@ -72,14 +55,14 @@ function forkPiTranscript(input: ForkSdkSessionInput): Promise<void> {
     if (!leafId) {
       log.warn(
         `no entries before cutoff (${new Date(input.cutoffMs).toISOString()}) in ${transcriptFile} — ` +
-          'branch will start with an empty SDK transcript',
+          'branch will start with an empty agent transcript',
       );
       return Promise.resolve();
     }
 
-    return forkPiTranscriptWithSummaryOrCutoff(manager, oldLeafId, leafId, input.summarizer);
+    return forkTranscriptWithSummaryOrCutoff(manager, oldLeafId, leafId, input.summarizer);
   } catch (e) {
-    log.error('failed to fork Pi transcript:', e);
+    log.error('failed to fork transcript:', e);
     return Promise.resolve();
   }
 }
@@ -90,11 +73,11 @@ function forkPiTranscript(input: ForkSdkSessionInput): Promise<void> {
  * `leafId`). `createBranchedSession` must run before `branchWithSummary`,
  * since it repoints the manager at the new isolated file.
  */
-async function forkPiTranscriptWithSummaryOrCutoff(
+async function forkTranscriptWithSummaryOrCutoff(
   manager: SessionManager,
   oldLeafId: string | null,
   leafId: string,
-  summarizer: ForkSdkSessionInput['summarizer'],
+  summarizer: ForkSessionTranscriptInput['summarizer'],
 ): Promise<void> {
   let summaryText: string | undefined;
   let summaryDetails: unknown;
@@ -127,45 +110,5 @@ async function forkPiTranscriptWithSummaryOrCutoff(
   manager.createBranchedSession(leafId);
   if (summaryText) {
     manager.branchWithSummary(leafId, summaryText, summaryDetails, false, summaryUsage);
-  }
-}
-
-function lastClaudeMessageUuidBefore(transcriptPath: string, cutoffMs: number): string | undefined {
-  const lines = readFileSync(transcriptPath, 'utf-8').split('\n').filter((l) => l.trim());
-  let lastUuid: string | undefined;
-  for (const line of lines) {
-    const entry = JSON.parse(line) as { uuid?: unknown; timestamp?: unknown };
-    if (typeof entry.uuid !== 'string' || typeof entry.timestamp !== 'string') continue;
-    if (Date.parse(entry.timestamp) >= cutoffMs) break;
-    lastUuid = entry.uuid;
-  }
-  return lastUuid;
-}
-
-async function forkAnthropicSession(
-  parentSdkSessionId: string,
-  cutoffMs: number,
-): Promise<string | undefined> {
-  const sourcePath = findClaudeSessionFile(parentSdkSessionId);
-  if (!sourcePath) {
-    log.warn(`no Claude transcript found for sdkSessionId ${parentSdkSessionId}`);
-    return undefined;
-  }
-
-  let upToMessageId: string | undefined;
-  try {
-    upToMessageId = lastClaudeMessageUuidBefore(sourcePath, cutoffMs);
-  } catch (e) {
-    log.error('failed to read Claude transcript:', e);
-    return undefined;
-  }
-  if (!upToMessageId) return undefined;
-
-  try {
-    const { sessionId } = await forkClaudeSession(parentSdkSessionId, { upToMessageId });
-    return sessionId;
-  } catch (e) {
-    log.error('failed to fork Claude session:', e);
-    return undefined;
   }
 }

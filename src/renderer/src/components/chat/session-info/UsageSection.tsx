@@ -6,7 +6,7 @@ interface UsageSectionProps {
 
 /**
  * Exact token usage for the session — sums the per-turn `usage` numbers
- * Anthropic returns on every `result` message. No estimation.
+ * the backend returns on every assistant turn. No estimation.
  */
 export function UsageSection({ messages }: UsageSectionProps) {
   let inputTotal = 0;

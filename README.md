@@ -2,7 +2,7 @@
 
 **A focused AI coding agent for software engineers who value simplicity.**
 
-Chat with Claude, GitHub Copilot, ChatGPT, CodeMie, or local models through a clean desktop interface. Full tool access,
+Work with GitHub Copilot, ChatGPT, CodeMie, or local models through a clean desktop interface. Full tool access,
 intelligent collaboration, built-in terminal, git integration, and powerful search — all without the bloat.
 
 ---
@@ -27,8 +27,6 @@ it's the design. If something doesn't earn its keep, it doesn't make the cut.
 
 ### AI Connections
 
-- **Anthropic API key** — direct `sk-ant-` key;
-- **Claude Pro / Max OAuth** — browser PKCE flow, token auto-refresh
 - **GitHub Copilot** — device-flow OAuth; live model discovery (Claude, GPT-5, GPT-5.1, and more); Copilot quota display
 - **ChatGPT Plus / Codex** — browser OAuth; live model discovery via Pi SDK; full permission modes and tool streaming
 - **OpenAI-compatible providers** — StepFun, DeepSeek, Moonshot, Together AI, Groq, OpenRouter, xAI, or any custom
@@ -39,13 +37,13 @@ it's the design. If something doesn't earn its keep, it doesn't make the cut.
 
 ### Agent Runtime
 
-- **Full toolset** — Read, Write, Edit, Bash, Grep, Glob, WebFetch, WebSearch, Task via the `claude_code` SDK preset
+- **Full toolset** — Read, Write, Edit, Bash, Grep, Glob, WebFetch, WebSearch, Agent — Pi's own built-in tool set
 - **In-app browser (`browser_tool`)** — drive a real, visible Chromium window (one per session) to navigate, click, fill
   forms, screenshot, and read console/JS output on a running app
 - **Multi-phase planning** — complex tasks broken into phases with progress tracking, per-phase approval, and plan
   revision based on discoveries
 - **Phase-level approval workflow** — configure when phases require approval based on risk level and autonomy settings
-- **Subagents** — Task tool for Anthropic connections spawns subagents within a turn; parallel execution with git
+- **Subagents** — Agent tool spawns subagents within a turn; parallel execution with git
   worktree isolation
 - **Permission modes** — Plan (read-only) · Approve (require approval per phase) · Auto (intelligent execution with
   autonomy slider)
@@ -128,7 +126,6 @@ the [Releases page](https://github.com/thehope2k/minimalist-agent/releases).
 
 1. **Launch the app** (see macOS Gatekeeper note below if blocked)
 2. **Add a connection** — Settings → Connections
-    - **Anthropic** — Paste your API key or sign in with Claude Pro/Max
     - **GitHub Copilot** — Sign in via device flow
     - **ChatGPT** — Sign in via browser OAuth
     - **OpenAI-compatible** — Choose a preset (StepFun, DeepSeek, Moonshot, Together AI, Groq, OpenRouter, xAI) or enter
@@ -172,7 +169,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development guide.
 - Electron + electron-vite
 - React 18 + TypeScript
 - Tailwind CSS v4
-- `@anthropic-ai/claude-agent-sdk` + `@earendil-works/pi-coding-agent` (Anthropic, GitHub Copilot, ChatGPT Plus,
+- `@earendil-works/pi-coding-agent` (GitHub Copilot, ChatGPT Plus,
   CodeMie, OpenAI-compatible providers)
 - xterm.js + node-pty (terminal)
 - Monaco Editor (git diff / file viewer)
@@ -183,7 +180,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development guide.
 
 ## Why Minimalist Agent?
 
-- **Multi-provider** — switch between Anthropic, GitHub Copilot, ChatGPT, CodeMie, and local models from one interface
+- **Multi-provider** — switch between GitHub Copilot, ChatGPT, CodeMie, and local models from one interface
 - **Developer-first** — built-in terminal, git diff viewer, file explorer, and powerful search
 - **Intelligent collaboration** — adjustable autonomy from "ask me everything" to "just get it done"
 - **Planning workflow** — break down complex tasks into phases with approval and revision

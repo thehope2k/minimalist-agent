@@ -76,7 +76,6 @@ export function LocalModelFlow({ onBack, onClose, onSaved, editingMeta }: FlowPr
             slug: generateSlug(name),
             name: name.trim(),
             providerType: 'local',
-            authType: 'api_key',
             baseUrl: effectiveUrl,
             defaultModel: model,
             models: modelDefs,

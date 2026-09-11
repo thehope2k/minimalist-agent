@@ -1,8 +1,8 @@
-// Pi backend Agent tool — spawns specialized sub-agents to handle focused tasks.
+// Agent tool — spawns specialized sub-agents to handle focused tasks.
 //
-// Unlike Anthropic (native SDK support), Pi doesn't have built-in agent spawning.
-// This tool creates nested Pi sessions with agent-specific system prompts and
-// tool restrictions, then collects and formats the results.
+// The Pi SDK has no built-in agent spawning, so this tool creates nested
+// sessions with agent-specific system prompts and tool restrictions, then
+// collects and formats the results.
 //
 // PARALLEL EXECUTION SAFETY:
 // - Each invocation gets a unique session ID (timestamp + random)
@@ -19,8 +19,8 @@
 
 import { Type } from 'typebox';
 import { defineTool, type ToolDefinition } from '@earendil-works/pi-coding-agent';
-import { createLogger } from '../../../../shared/sub-logger';
-import type { LoadedAgent } from '../../../agents/types';
+import { createLogger } from '../../../shared/sub-logger';
+import type { LoadedAgent } from '../../agents/types';
 import type { AgentToolContext, SpawnedAgentHandle } from './subagent/types';
 import { cleanupOrphanedWorktrees } from './subagent/worktree-stub';
 import {
@@ -37,7 +37,7 @@ import { removeAgentWorktree } from './subagent/worktree-stub';
 export { shutdownAllAgentSubprocesses } from './subagent/handle-registry';
 export type { AgentToolContext } from './subagent/types';
 
-const log = createLogger('pi-agent-tool');
+const log = createLogger('agent-tool');
 
 /** Track if we've done orphaned cleanup this session (lazy, once per app run). */
 let orphanedCleanupDone = false;
@@ -47,7 +47,7 @@ const agentToolSchema = Type.Object({
   task: Type.String({ description: 'Clear description of what the agent should do. Be specific about requirements and constraints.' }),
 });
 
-export function createPiAgentTool(ctx: AgentToolContext): ToolDefinition<typeof agentToolSchema, unknown> {
+export function createAgentTool(ctx: AgentToolContext): ToolDefinition<typeof agentToolSchema, unknown> {
   return defineTool({
     name: 'Agent',
     label: 'Spawn sub-agent',

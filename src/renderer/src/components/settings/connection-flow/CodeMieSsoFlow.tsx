@@ -90,7 +90,6 @@ export function CodeMieSsoFlow({ onBack, onClose, onSaved, editingMeta }: FlowPr
           slug: generateSlug(name),
           name: name.trim(),
           providerType: 'codemie-sso',
-          authType: 'oauth',
           baseUrl: normalizeUrl(baseUrl),
           codeMieProject: project,
           codeMieIntegrationId: integrationId || undefined,

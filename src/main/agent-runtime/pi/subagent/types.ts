@@ -1,8 +1,8 @@
-// Shared types for the Pi sub-agent tool (agent-tool.ts and siblings).
+// Shared types for the sub-agent tool (agent-tool.ts and siblings).
 import type { ChildProcess } from 'node:child_process';
 import type { Interface as ReadlineInterface } from 'node:readline';
-import type { LoadedAgent } from '../../../../agents/types';
-import type { PiAuthProvider } from '../protocol';
+import type { LoadedAgent } from '../../../agents/types';
+import type { ModelProvider, RuntimeCredential } from '../protocol';
 
 // Duplicated from worktree-manager.ts to avoid importing it (and its
 // electron-aware logger) into the pi-server subprocess. See worktree-stub.ts.
@@ -23,10 +23,10 @@ export interface AgentToolContext {
   piServerPath: string;
   /** Available agents (pre-loaded by main process). */
   availableAgents: LoadedAgent[];
-  /** Auth provider (github-copilot | openai-codex). */
-  piAuthProvider: PiAuthProvider;
-  /** Auth credential resolver. */
-  getAuth: () => Promise<{ access: string; refresh?: string; expires?: number }>;
+  /** Model provider inherited from the parent session. */
+  provider: ModelProvider;
+  /** Runtime credential resolver. */
+  getCredential: () => Promise<RuntimeCredential>;
   /** Base URL for custom endpoints (optional). */
   baseUrl?: string;
   /** Custom endpoint config (optional). */

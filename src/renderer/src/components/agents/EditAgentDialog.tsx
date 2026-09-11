@@ -187,7 +187,6 @@ Frontmatter fields reference:
 - \`tools\` (optional) — array from: Read Write Edit Bash Grep Find Ls WebFetch WebSearch Agent
 - \`maxTurns\` (optional) — number, default 10
 - \`permissionMode\` (optional) — "plan" (no mutations) or "auto" (intelligent autonomy)
-- \`effort\` (optional) — Anthropic only: low | medium | high
 - \`icon\` (optional) — emoji or URL
 
 Read the file back to confirm it looks correct, then briefly summarize what you changed.

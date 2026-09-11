@@ -136,7 +136,7 @@ See [`.worktreeinclude.example`](./.worktreeinclude.example) for a complete temp
 
 Each agent logs its isolated workspace:
 ```
-[pi-agent-tool:agent-abc123] Running in isolated worktree: /path/to/worktree
+[agent-tool:agent-abc123] Running in isolated worktree: /path/to/worktree
 ```
 
 ### After Completion
@@ -229,5 +229,6 @@ The feature is complete and ready for production use.
 
 ## For Contributors
 
-Core implementation: `src/main/agent/backends/pi/worktree-manager.ts`  
+Core implementation: `src/main/agent-runtime/pi/worktree-manager.ts`
+
 Developer guidance: See **Agent worktree isolation** section in `AGENTS.md`

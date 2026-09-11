@@ -1,7 +1,7 @@
 # Architecture
 
-Design record for the core agent pipeline. Describes how the main process integrates the Claude Agent SDK, normalizes
-events, and wires them to the renderer.
+Design record for the core agent pipeline. Describes how the main process integrates the Pi coding-agent subprocess,
+normalizes events, and wires them to the renderer.
 
 ---
 
@@ -15,104 +15,70 @@ Preload (typed IPC bridge)
     │  ipcMain.handle / ipcRenderer.invoke
     ▼
 Main process
-    ├─ agent/runner.ts          ← dispatcher (Anthropic vs Pi backend)
-    ├─ agent/backends/
-    │   ├─ anthropic.ts         ← @anthropic-ai/claude-agent-sdk
-    │   └─ pi/agent.ts          ← Pi subprocess (GitHub Copilot / ChatGPT Plus)
-    ├─ openai-compatible/      ← remote model discovery + auth for OpenAI-compatible endpoints
-    ├─ agent/events.ts          ← SDKMessage → AgentChatEvent adapter
-    ├─ agent/options.ts         ← subprocess env, cli.js resolution
-    └─ agent/system-prompt.ts   ← system prompt assembly
+    ├─ agent-runtime/runner.ts        ← public chat entry point
+    ├─ agent-runtime/pi/agent.ts      ← owns the Pi subprocess (GitHub Copilot / ChatGPT Plus / OpenAI-compatible / CodeMie)
+    ├─ agent-runtime/auth.ts          ← ResolvedAuth shapes produced by auth/resolve.ts
+    ├─ openai-compatible/            ← remote model discovery + auth for OpenAI-compatible endpoints
+    ├─ agent-runtime/events.ts        ← AgentChatEvent type definitions (shared shape)
+    ├─ pi-server/event-adapter.ts    ← Pi SDK event → AgentChatEvent adapter (runs inside the subprocess)
+    └─ agent-runtime/system-prompt.ts ← system prompt assembly
 ```
 
 ---
 
-## SDK options
+## Agent runtime (GitHub Copilot / ChatGPT Plus / OpenAI-compatible / CodeMie)
 
-`agent/options.ts` builds the `Options` object passed to `query()`:
-
-- `ensureClaudeConfig()` — repairs `~/.claude.json` corruption (BOM, empty file, stale `.backup`, `.corrupted.*`) before
-  the subprocess starts.
-- `buildClaudeSubprocessEnv(overrides?)` — merges auth env vars on top of
-  `process.env`; strips Bedrock routing vars to prevent accidental routing.
-- `getDefaultOptions()` — sets `executable: 'node'`, adds `--env-file=/dev/null`
-  (defends against Bun's automatic `.env` loading in the SDK subprocess), and resolves `pathToClaudeCodeExecutable` to
-  the bundled `cli.js`.
-
-The Anthropic backend assembles:
-
-```ts
-const options: Options = {
-    ...getDefaultOptions({envOverrides: envForAnthropicAuth(req.auth)}),
-    model: req.model,
-    includePartialMessages: true,
-    abortController,
-    maxTurns: req.maxTurns ?? DEFAULT_MAX_TURNS,
-    permissionMode: toSdkPermissionMode(req.permissionMode),  // 'plan' or 'default'
-    tools: {type: 'preset', preset: 'claude_code'},
-    mcpServers: buildSdkMcpServers(),
-    env: resolveExtensionEnv(),
-    systemPrompt: {
-        type: 'preset',
-        preset: 'claude_code',
-        append: buildSystemPromptAppend({cwd: req.cwd}),
-    },
-    settingSources: ['user', 'project', 'local'],
-};
-```
-
----
-
-## Event normalization
-
-`agent/events.ts` maps `SDKMessage` → `AgentChatEvent`:
-
-| SDK message type                                          | → AgentChatEvent                                |
-|-----------------------------------------------------------|-------------------------------------------------|
-| `stream_event` / `content_block_start` (tool_use)         | `tool_start`                                    |
-| `stream_event` / `content_block_delta` (text_delta)       | `text_delta`                                    |
-| `stream_event` / `content_block_delta` (input_json_delta) | `tool_input_delta`                              |
-| `stream_event` / `content_block_delta` (thinking_delta)   | `thinking_delta`                                |
-| `assistant` (text block, no prior delta)                  | `text_complete`                                 |
-| `user` (tool_result blocks)                               | `tool_result`                                   |
-| `result` (success)                                        | `turn_done` with session_id, stop_reason, usage |
-| `result` (non-success subtype)                            | `error`                                         |
-
-Events are forwarded over IPC as `{ id: turnId, ...event }` so the renderer correlates them by turn id.
-
----
-
-## Pi backend (GitHub Copilot / ChatGPT Plus / OpenAI-compatible / CodeMie)
-
-`agent/backends/pi/agent.ts` spawns a Node subprocess running
-`@earendil-works/pi-coding-agent`. Communication is over stdin/stdout as newline-delimited JSON (`SubprocessInbound` /
-`SubprocessOutbound` in
-`protocol.ts`).
+`agent-runtime/pi/agent.ts` spawns a Node subprocess running
+`@earendil-works/pi-coding-agent` (bundled as `out/main/pi-server.js`). Communication is over stdin/stdout as
+newline-delimited JSON (`SubprocessInbound` / `SubprocessOutbound` in `protocol.ts`).
 
 Lifecycle:
 
-1. `init` message — session id, working directory, model, auth, permission mode ('plan' or 'auto'), system prompt
-2. `prompt` messages — user turns
-3. Subprocess emits `event` messages (pre-adapted to `AgentChatEvent`)
-4. `auth_required` from subprocess → main refreshes the Copilot or ChatGPT token and pushes a `token_update` back in
-5. `set_model` / `set_thinking_level` / `set_permission_mode` — live updates without restarting the subprocess
-6. Sessions persist under `<sessionPath>/.pi-sessions/` and are resumed via
-   `resumePiSessionId`
+1. First chat turn lazy-spawns the subprocess under node.
+2. `init` message — session id, working directory, model, auth, permission mode ('plan' or 'auto'), system prompt.
+3. Awaits `ready`.
+4. `prompt` messages — user turns. Subprocess emits `event` messages, pre-adapted to `AgentChatEvent` by
+   `pi-server/event-adapter.ts`, forwarded until `turn_done`/`error`.
+5. `auth_required` from subprocess → main refreshes the Copilot or ChatGPT token via `auth/resolve.ts` (already
+   mutexed) and pushes a `token_update` back in, emitting a typed `expired_oauth_token` error so the UI offers a
+   one-click retry.
+6. `set_model` / `set_thinking_level` / `set_permission_mode` — live updates without restarting the subprocess.
+7. On window close / app quit / abort: sends `shutdown` then SIGKILL fallback.
+8. Sessions persist under `<sessionPath>/.pi-sessions/`.
+
+Execution modes:
+
+- **Plan mode:** Read-only tools (Read, Grep, Find, Ls) allowed, others blocked.
+- **Auto mode:** All tools allowed; agent uses collaboration tools for intelligent engagement (RequestDecision,
+  RequestPreference, RequestApproval, etc.).
 
 For **OpenAI-compatible providers** (StepFun, DeepSeek, Moonshot, Together AI, Groq, OpenRouter, xAI, custom), model
 discovery hits the provider's `/v1/models`
 endpoint from the main process (no CORS), and authentication uses a Bearer API key resolved via `auth/resolve.ts` into
-`LocalApiAuth` (baseUrl + optional key). See [OPENAI-COMPATIBLE.md](OPENAI-COMPATIBLE.md) for the full reference.
+`ResolvedApiAuth` (baseUrl + optional key). See [OPENAI-COMPATIBLE.md](OPENAI-COMPATIBLE.md) for the full reference.
 
-**CodeMie SSO** also resolves to `LocalApiAuth`, but its base URL points to a main-process, localhost-only proxy. The
+**CodeMie SSO** also resolves to `ResolvedApiAuth`, but its base URL points to a main-process, localhost-only proxy. The
 proxy owns the encrypted browser session cookies and injects CodeMie authentication, project, and integration headers
 before forwarding to the tenant API. See [CODEMIE.md](CODEMIE.md).
 
 ---
 
+## Event normalization
+
+`agent-runtime/events.ts` defines the flat `AgentChatEvent` union shared by the Pi event adapter and the renderer's
+`useChat` reducer. The actual Pi SDK → `AgentChatEvent` translation lives in `pi-server/event-adapter.ts` (runs inside
+the subprocess) — it coalesces streaming text deltas, tracks tool names by call id for end-event correlation, and
+normalizes tool arg field names to match the UI's existing conventions (so Read/Write/Edit/etc. render with the same
+chip labels regardless of casing).
+
+Events are forwarded over IPC as `{ id: turnId, ...event }` so the renderer correlates them by turn id.
+
+---
+
 ## System prompt
 
-`agent/system-prompt.ts` assembles the dynamic context block appended to every turn's user message:
+`agent-runtime/system-prompt.ts` assembles two pieces: a static system prompt (`getSystemPrompt()`) and a per-turn
+prefix (`buildPromptPrefix()`) appended to every turn's user message:
 
 - Working directory path and context label
 - Current date/time (authoritative for the agent)
@@ -122,7 +88,7 @@ before forwarding to the tenant API. See [CODEMIE.md](CODEMIE.md).
 - Extension awareness block (installed extensions + guide paths)
 
 Project context files are discovered recursively up to a configurable depth, with a per-directory TTL cache invalidated
-on file-system events.
+on file-system events. See [SYSTEM-PROMPT.md](SYSTEM-PROMPT.md) for the full inventory and the add/change checklist.
 
 ---
 
@@ -132,7 +98,6 @@ on file-system events.
   under `<userData>/credentials.enc`.
 - `auth/resolve.ts` is called at the start of every turn; it refreshes expiring tokens (5-minute buffer) and serialises
   concurrent refreshes for the same connection with a per-slug mutex.
-- Claude OAuth tokens are refreshed with `oauth/claude-flow.ts:refreshTokens()`.
 - ChatGPT Plus/Codex tokens are refreshed with `oauth/chatgpt-flow.ts:refreshChatGptTokens()`.
 - Copilot tokens are refreshed with `oauth/copilot-flow.ts:refreshCopilotTokens()`
   using the stored long-lived GitHub OAuth token.
@@ -145,17 +110,17 @@ on file-system events.
 
 `extensions/` manages installable capability packs. Three variant types:
 
-- **MCP-backed** — spawns an MCP server (stdio or HTTP/SSE) and exposes its tools as `mcp__<slug>__<tool>` on **both
-  backends**. The Anthropic backend wires them into `Options.mcpServers` via `buildSdkMcpServers(cwd?)`; the Pi backend
-  resolves serializable configs with `buildResolvedMcpServers(cwd?)`.
-- **CLI-bound** — injects env vars into the SDK subprocess via
+- **MCP-backed** — spawns an MCP server (stdio or HTTP/SSE) and exposes its tools as `mcp__<slug>__<tool>`. The Pi
+  backend resolves serializable configs with `buildResolvedMcpServers(cwd?)`, and `pi-server/mcp-tools.ts` bridges
+  them into Pi's `customTools: ToolDefinition[]`.
+- **CLI-bound** — injects env vars into the Pi subprocess via
   `resolveExtensionEnv(cwd?)`, enabling bundled CLI tools.
 - **Guide-only** — provides a `guide.md` referenced in the per-turn awareness block.
 
 All three types support two tiers (same priority rules as skills/agents):
 
 | Tier    | Path                                         | Notes                                                                                        |
-|---------|----------------------------------------------|----------------------------------------------------------------------------------------------|
+|---------|-----------------------------------------------|------------------------------------------------------------------------------------------------|
 | User    | `~/.minimalist-agent/extensions/<slug>/`     | `enabled` flag respected; MCP requires consent + keychain secrets                            |
 | Project | `<cwd>/.minimalist-agent/extensions/<slug>/` | Always active (presence = enabled); MCP auto-consented; env refs resolved from `process.env` |
 
@@ -180,7 +145,7 @@ crossing into Pi subprocess via `MsgInit`.
 Skills are resolved from two tiers in priority order:
 
 | Tier    | Location                                         | Scope                               |
-|---------|--------------------------------------------------|-------------------------------------|
+|---------|----------------------------------------------------|--------------------------------------|
 | Project | `<cwd>/.minimalist-agent/skills/<slug>/SKILL.md` | This project only — git-committable |
 | User    | `~/.minimalist-agent/skills/<slug>/SKILL.md`     | All projects — dotfile-syncable     |
 
@@ -201,13 +166,12 @@ Three storage tiers. Priority (highest wins): **project > user > machine**.
   extension-secrets.enc         ← Per-extension encrypted secrets
   extension-consents.json       ← MCP consent state
   logs/
-  claude-config/                ← Sandboxed CLAUDE_CONFIG_DIR for SDK binary
   sessions/
     <id>/
       session.json              ← Metadata (title, model, timestamps, pinnedAssets, ...)
       messages.jsonl            ← Message + parts log (append-only)
       attachments/
-      .pi-sessions/             ← Pi subprocess session state (Copilot backend)
+      .pi-sessions/             ← Pi subprocess session state
 
 ~/.minimalist-agent/            ← user-owned portable config (versionable, dotfile-syncable)
   agents/
@@ -239,8 +203,6 @@ Three storage tiers. Priority (highest wins): **project > user > machine**.
 `<userData>/agents|skills|extensions` → `~/.minimalist-agent/` (idempotent, guarded by a marker file, only written on
 full success). Source dirs in
 `<userData>` are removed after the marker is written — they are never scanned post-migration.
-
----
 
 ## File Explorer
 

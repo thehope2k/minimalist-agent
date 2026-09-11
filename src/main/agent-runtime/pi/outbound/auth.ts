@@ -2,10 +2,10 @@
 // `auth_refresh_request` (subprocess-initiated round trip for a mid-turn
 // refresh), and `auth_required` (subprocess hit an auth failure — refresh
 // once and surface a retry-able error to the active turn, no auto-retry).
-import { resolveAuthForSlug } from '../../../../auth/resolve';
-import { createLogger } from '../../../../logger';
+import { resolveAuthForSlug } from '../../../auth/resolve';
+import { createLogger } from '../../../logger';
 import { send, type SubprocessHandle } from '../subprocess-handle';
-import { persistPiSessionId } from './lifecycle';
+import { persistRuntimeSessionId } from './lifecycle';
 import type {
   MsgAuthRefreshRequest,
   MsgAuthRefreshResult,
@@ -14,10 +14,10 @@ import type {
   MsgTokenUpdate,
 } from '../protocol';
 
-const log = createLogger('pi');
+const log = createLogger('chat-runtime');
 
 export function handleSessionIdUpdate(msg: MsgSessionIdUpdate, handle: SubprocessHandle): void {
-  persistPiSessionId(handle.chatSessionId, msg.piSessionId);
+  persistRuntimeSessionId(handle.chatSessionId, msg.runtimeSessionId);
 }
 
 export async function handleAuthRefreshRequest(msg: MsgAuthRefreshRequest, handle: SubprocessHandle): Promise<void> {
@@ -25,7 +25,7 @@ export async function handleAuthRefreshRequest(msg: MsgAuthRefreshRequest, handl
   try {
     const fresh = await resolveAuthForSlug(handle.connectionSlug, signal, `session=${handle.chatSessionId}`);
     const result: MsgAuthRefreshResult =
-      fresh.type === 'copilot_oauth'
+      fresh.type === 'oauth'
         ? {
             type: 'auth_refresh_result',
             requestId: msg.requestId,
@@ -57,7 +57,7 @@ export async function handleAuthRequired(msg: MsgAuthRequired, handle: Subproces
   handle.refreshing = true;
   try {
     const fresh = await resolveAuthForSlug(handle.connectionSlug, undefined, `session=${handle.chatSessionId}`);
-    if (fresh.type === 'copilot_oauth') {
+    if (fresh.type === 'oauth') {
       const upd: MsgTokenUpdate = {
         type: 'token_update',
         credential: {
@@ -78,7 +78,7 @@ export async function handleAuthRequired(msg: MsgAuthRequired, handle: Subproces
   if (msg.turnId) {
     const q = handle.queues.get(msg.turnId);
     if (q) {
-      const isChatGpt = handle.piAuthProvider === 'openai-codex';
+      const isChatGpt = handle.provider === 'openai-codex';
       q.push({
         type: 'error',
         error: {

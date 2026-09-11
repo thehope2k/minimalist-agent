@@ -1,13 +1,13 @@
 // Pure model-shaping helpers — no subprocess state, no side effects.
 import type { ModelRuntime } from '@earendil-works/pi-coding-agent';
-import type { Api, Model, ThinkingLevel } from '@earendil-works/pi-ai';
-import type { PiThinkingLevel } from '../agent-runtime/backends/pi/protocol';
+import type { Api, Model, ThinkingLevel as ModelThinkingLevel } from '@earendil-works/pi-ai';
+import type { ThinkingLevel } from '../agent-runtime/pi/protocol';
 
 /** Our protocol's level → Pi's accepted set ('minimal'..'max').
  *  'off' has no Pi equivalent → 'minimal'. All other levels pass through
  *  1:1; Pi SDK clamps per model internally (e.g. GPT-5.6 accepts 'max'
  *  natively; older models degrade to their ceiling). */
-export function mapThinkingLevel(level: PiThinkingLevel): ThinkingLevel {
+export function mapThinkingLevel(level: ThinkingLevel): ModelThinkingLevel {
   if (level === 'off') return 'minimal';
   return level;
 }

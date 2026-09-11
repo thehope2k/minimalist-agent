@@ -66,7 +66,7 @@ export type { Logger };
 /**
  * Create a namespaced logger. The scope shows up as `[scope]` in both the
  * console and the on-disk file. Reuse the existing scope names when migrating
- * (`worktree`, `quota`, `pi-agent-tool`, …). Call `.child({ execId })` to bind
+ * (`worktree`, `quota`, `agent-tool`, …). Call `.child({ execId })` to bind
  * structured context to every subsequent line.
  */
 export function createLogger(scope: string): Logger {

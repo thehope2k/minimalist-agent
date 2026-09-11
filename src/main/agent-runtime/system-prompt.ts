@@ -369,36 +369,36 @@ export function getProjectContextFilesPrompt(workingDirectory?: string): string 
  * ===================================================================== */
 
 /**
- * Map auth type + Pi sub-provider onto a human-readable provider string that
+ * Map resolved auth type + provider onto a human-readable provider string that
  * the model uses when asked "what model are you?".
  *
  * Kept intentionally short so it reads naturally inside the prompt.
  */
 export function resolveProviderDescription(
   authType?: string,
-  piAuthProvider?: string,
+  provider?: string,
   model?: string,
 ): string {
   const modelSuffix = model ? ` (${model})` : '';
   switch (authType) {
-    case 'anthropic_api_key':
-    case 'anthropic_oauth':
-      return 'Claude Code (Anthropic)';
-    case 'copilot_oauth':
-      if (piAuthProvider === 'openai-codex') {
+    case 'oauth':
+      if (provider === 'openai-codex') {
         return `ChatGPT / OpenAI${modelSuffix}`;
       }
       return `GitHub Copilot${modelSuffix}`;
-    case 'local_api':
-      return `a local model server${model ? ` — ${model}` : ''}`;
+    case 'api':
+      if (provider === 'codemie-sso') {
+        return `EPAM CodeMie${modelSuffix}`;
+      }
+      return `an OpenAI-compatible model server${model ? ` — ${model}` : ''}`;
     default:
       // Fallback: stay honest but non-specific rather than lie.
-      return 'Claude Code';
+      return 'Pi';
   }
 }
 
 /* ===================================================================== *
- *  Static assistant body (appended to the claude_code preset)
+ *  Static assistant body (appended to the agent system prompt)
  * ===================================================================== */
 
 /**
@@ -441,11 +441,11 @@ function getEnvironmentMarker(): string {
  * come up.
  *
  * @param includeCoAuthoredBy - Whether to include the Co-Authored-By git trailer instruction (default: true)
- * @param providerDescription - Human-readable provider string injected into the identity line (default: 'Claude Code')
+ * @param providerDescription - Human-readable provider string injected into the identity line (default: 'Pi')
  */
 function getAssistantPrompt(
   includeCoAuthoredBy: boolean = true,
-  providerDescription: string = 'Claude Code',
+  providerDescription: string = 'Pi',
 ): string {
   const environmentMarker = getEnvironmentMarker();
 
@@ -455,7 +455,7 @@ You are Minimalist Agent — an AI coding assistant that helps users understand,
 
 **Core capabilities:**
 - **Code** — You are powered by ${providerDescription}, so you can read, write, and edit files; run shell commands; search by content or filename; fetch and search the web; and spawn focused sub-agents for parallel work.
-- **Project awareness** — You read \`AGENTS.md\` / \`CLAUDE.md\` to learn project conventions before making non-trivial changes.
+- **Project awareness** — You read \`AGENTS.md\` / \`CLAUDE.md\` / \`copilot-instructions.md\` , ... to learn project conventions before making non-trivial changes.
 - **Skills** — Reusable instruction files (\`SKILL.md\`) the user can invoke with \`@slug\` to give you specialized behavior on demand.
 - **Extensions** — Installed capabilities (MCP servers, bundled CLIs, or pure usage guides) that expand what you can do beyond the built-in tools.
 - **Images** — Markdown images (\`![](url)\`) render with a click-to-expand, zoom/pan lightbox for \`http://\`/\`https://\` URLs, or for a file in your own scratch directory via \`ma-asset://<sessionId>/<relPath>\` (see the per-turn scratch directory block for the exact base to use). A bare \`data:\` URI \`src\` is silently stripped instead (broken-image icon, no error) — never use one.
@@ -610,14 +610,11 @@ export interface SystemPromptOptions {
    * provider description injected into the identity line so the model
    * correctly answers "what model / provider are you?".
    *
-   * Values: 'anthropic_api_key' | 'anthropic_oauth' | 'copilot_oauth' | 'local_api'
+   * Values: 'oauth' | 'api'
    */
   authType?: string;
-  /**
-   * Pi sub-provider (only meaningful when authType === 'copilot_oauth').
-   * Values: 'github-copilot' | 'openai-codex'
-   */
-  piAuthProvider?: string;
+  /** Resolved model provider used by the runtime. */
+  provider?: string;
   /** Active model ID forwarded for display in the identity line. */
   model?: string;
   /**
@@ -629,8 +626,8 @@ export interface SystemPromptOptions {
 }
 
 /**
- * Get the full system prompt. Returns the static text appended to the
- * `claude_code` system prompt preset via `Options.systemPrompt.append`.
+ * Get the full system prompt. Returns the static text appended per-turn via
+ * `buildPromptPrefix()`.
  *
  * Date/time and working-directory context are NOT included here — they are
  * injected per user message via `buildPromptPrefix()` so the system prompt
@@ -643,7 +640,7 @@ export function getSystemPrompt(opts: SystemPromptOptions = {}): string {
   const userPreferences = preferences ? `\n\n${preferences}` : '';
   const projectContextFiles = getProjectContextFilesPrompt(opts.workingDirectory);
   const artifactPolicy = getArtifactPolicy();
-  const providerDescription = resolveProviderDescription(opts.authType, opts.piAuthProvider, opts.model);
+  const providerDescription = resolveProviderDescription(opts.authType, opts.provider, opts.model);
   const basePrompt = getAssistantPrompt(includeCoAuthoredBy, providerDescription);
 
   // Collaboration system guidance — teaches LLM when to engage user
@@ -690,8 +687,8 @@ ${agentsList}
 }
 
 /**
- * Convenience wrapper used by `claude.ts`. Accepts the working directory
- * under its conventional name and forwards everything else to
+ * Convenience wrapper used by the agent runtime. Accepts the working
+ * directory under its conventional name and forwards everything else to
  * `getSystemPrompt`.
  */
 export function buildSystemPromptAppend(input: {
@@ -701,8 +698,8 @@ export function buildSystemPromptAppend(input: {
   userMessage?: string;
   /** Resolved auth type — forwarded to resolveProviderDescription(). */
   authType?: string;
-  /** Pi sub-provider — forwarded to resolveProviderDescription(). */
-  piAuthProvider?: string;
+  /** Model provider — forwarded to resolveProviderDescription(). */
+  provider?: string;
   /** Active model ID — forwarded to resolveProviderDescription(). */
   model?: string;
   /** User's autonomy level (0-100) — forwarded to collaboration system. */
@@ -714,7 +711,7 @@ export function buildSystemPromptAppend(input: {
     sessionId: input.sessionId,
     userMessage: input.userMessage,
     authType: input.authType,
-    piAuthProvider: input.piAuthProvider,
+    provider: input.provider,
     model: input.model,
     autonomyLevel: input.autonomyLevel,
   });

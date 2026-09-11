@@ -1,4 +1,4 @@
-// Build the `mcpServers` config the Claude SDK expects, drawing from
+// Build resolved MCP server configs for the agent runtime, drawing from
 // enabled mcp-backed extensions. Resolves SecretRef env values from the
 // secret store. Skips extensions whose required secrets aren't set or
 // whose user-consent hasn't been granted.
@@ -14,19 +14,6 @@ import { requiresConsent, resolveEnvValue } from './types';
 import { loadAllExtensions } from './storage';
 import { getSecret } from './secrets';
 import { Paths } from '../storage/paths';
-
-export interface SdkStdioServerConfig {
-  type?: 'stdio';
-  command: string;
-  args?: string[];
-  env?: Record<string, string>;
-}
-export interface SdkHttpServerConfig {
-  type: 'http' | 'sse';
-  url: string;
-  headers?: Record<string, string>;
-}
-export type SdkMcpServerConfig = SdkStdioServerConfig | SdkHttpServerConfig;
 
 /* ---------- consent ---------- */
 
@@ -145,56 +132,12 @@ function resolveEnv(ext: LoadedExtension): Record<string, string> | null {
   return out;
 }
 
-/* ---------- mapping ---------- */
-
-function toSdkConfig(ext: LoadedExtension): SdkMcpServerConfig | null {
-  const mcp = ext.config.mcp;
-  if (!mcp) return null;
-
-  if (mcp.transport === 'stdio') {
-    const cfg: SdkStdioServerConfig = {
-      type: 'stdio',
-      command: mcp.command,
-      args: mcp.args,
-    };
-    if (mcp.envFromBinding) {
-      const env = resolveEnv(ext);
-      if (env === null) return null;
-      if (env) cfg.env = env;
-    }
-    return cfg;
-  }
-
-  return {
-    type: mcp.transport,
-    url: mcp.url,
-    headers: mcp.headers,
-  };
-}
-
-/**
- * Build the `mcpServers` value to pass to `query()`. Includes only enabled
- * mcp-backed extensions whose secrets are set and whose user-consent has
- * been granted.
- */
-export function buildSdkMcpServers(cwd?: string): Record<string, SdkMcpServerConfig> {
-  const out: Record<string, SdkMcpServerConfig> = {};
-  for (const ext of loadAllExtensions(cwd)) {
-    if (!ext.config.mcp) continue;
-    if (!hasConsent(ext)) continue;
-    const cfg = toSdkConfig(ext);
-    if (cfg) out[ext.slug] = cfg;
-  }
-  return out;
-}
-
-/* ---------- Pi backend: resolved, serializable configs ---------- */
+/* ---------- resolved, serializable configs ---------- */
 
 /**
  * A fully-resolved MCP server config, safe to serialize across the
- * main→subprocess JSONL boundary. Unlike `SdkMcpServerConfig` (consumed
- * in-process by the Claude SDK), SecretRef env/headers are already decrypted
- * here, because the Pi subprocess cannot read the secret store.
+ * main→subprocess JSONL boundary. SecretRef env/headers are already
+ * decrypted here, because the agent subprocess cannot read the secret store.
  *
  * Carries `slug` so the subprocess can namespace tools as `mcp__<slug>__<tool>`.
  */
@@ -241,10 +184,10 @@ function toResolvedConfig(ext: LoadedExtension): ResolvedMcpServerConfig | null 
 }
 
 /**
- * Resolved MCP server configs for the Pi backend. Same gating as
- * `buildSdkMcpServers` (enabled + consented + secrets satisfied), but the
- * output is a flat, JSON-serializable array with secrets decrypted — ready to
- * cross into the Pi subprocess via `MsgInit`.
+ * Resolved MCP server configs for the agent runtime. Gated on enabled +
+ * consented + secrets satisfied. Output is a flat, JSON-serializable array
+ * with secrets already decrypted — ready to cross into the agent subprocess
+ * via `MsgInit`.
  */
 export function buildResolvedMcpServers(cwd?: string): ResolvedMcpServerConfig[] {
   const out: ResolvedMcpServerConfig[] = [];
@@ -257,10 +200,10 @@ export function buildResolvedMcpServers(cwd?: string): ResolvedMcpServerConfig[]
   return out;
 }
 
-/* ---------- runtime connection status (Pi backend) ---------- */
+/* ---------- runtime connection status ---------- */
 
 /**
- * Live MCP connection outcome reported by the Pi subprocess, keyed by slug.
+ * Live MCP connection outcome reported by the agent subprocess, keyed by slug.
  * Distinct from the config-level status below: an extension can be fully
  * configured yet fail to connect (bad command, unreachable URL, server crash).
  */
@@ -271,7 +214,7 @@ interface RuntimeMcpStatus {
 }
 const runtimeMcpStatus = new Map<string, RuntimeMcpStatus>();
 
-export function recordPiMcpStatus(
+export function recordMcpStatus(
   servers: Array<{ slug: string; ok: boolean; toolCount?: number; error?: string }>,
 ): void {
   for (const s of servers) {
@@ -280,8 +223,8 @@ export function recordPiMcpStatus(
 }
 
 /**
- * Same as `buildSdkMcpServers` but enumerates extensions that *would* be
- * included if their blockers were resolved — useful for diagnostics.
+ * Enumerates extensions that *would* be included in `buildResolvedMcpServers`
+ * if their blockers were resolved — useful for diagnostics.
  */
 export function listMcpExtensionsStatus(cwd?: string): Array<{
   slug: string;

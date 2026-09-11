@@ -14,7 +14,7 @@ API's no-op tracer).
 | Tracer bootstrap (electron-free)                     | [`src/shared/otel.ts`](../src/shared/otel.ts)                                                        |
 | Span instrumentation                                 | [`src/main/pi-server/index.ts`](../src/main/pi-server/index.ts)                                      |
 | Persisted config (versioned JSON) + `telemetryEnv()` | [`src/main/storage/telemetry.ts`](../src/main/storage/telemetry.ts)                                  |
-| Env hand-off to subprocess                           | [`src/main/agent/backends/pi/agent.ts`](../src/main/agent/backends/pi/agent.ts) (`ensureSubprocess`) |
+| Env hand-off to subprocess                           | [`src/main/agent-runtime/pi/agent.ts`](../src/main/agent-runtime/pi/agent.ts) (`ensureSubprocess`) |
 | IPC (`telemetry:get/save/tracesPath/reveal`)         | [`src/main/ipc/preferences-ipc.ts`](../src/main/ipc/preferences-ipc.ts)                              |
 | Settings UI                                          | `src/renderer/src/components/settings/panels/TelemetryPanel.tsx`                                     |
 

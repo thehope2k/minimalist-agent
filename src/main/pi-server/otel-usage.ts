@@ -12,7 +12,7 @@ import {
 } from '../../shared/otel';
 import { state } from './state';
 
-export interface PiUsage {
+export interface NormalizedUsage {
   input?: number;
   output?: number;
   cacheRead?: number;
@@ -21,7 +21,7 @@ export interface PiUsage {
 }
 
 /** pi-ai normalizes every provider's usage to this shape (types.d.ts:Usage). */
-export function readUsage(usage: unknown): PiUsage {
+export function readUsage(usage: unknown): NormalizedUsage {
   if (!usage || typeof usage !== 'object') return {};
   const u = usage as Record<string, unknown>;
   const num = (v: unknown): number | undefined => (typeof v === 'number' ? v : undefined);
@@ -143,7 +143,7 @@ export async function tracedCompletion<T extends AssistantMsg>(
     async (span) => {
       setAttrs(span, {
         'gen_ai.operation.name': 'chat',
-        'gen_ai.provider.name': state.init?.piAuthProvider,
+        'gen_ai.provider.name': state.init?.auth.provider,
         'gen_ai.request.model': opts.model,
         'gen_ai.request.max_tokens': opts.maxTokens,
         'gen_ai.conversation.id': state.init?.sessionId,

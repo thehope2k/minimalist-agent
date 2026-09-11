@@ -2,13 +2,13 @@
 // (plan-mode read-only guard + extension blocklist) and permission-mode
 // switches (plan → auto) propagated to active turns + session meta.
 import { BrowserWindow } from 'electron';
-import { isMcpToolNameBlocked } from '../../../../extensions/tool-permissions';
-import { updateSessionMeta } from '../../../../storage/sessions';
-import { createLogger } from '../../../../logger';
+import { isMcpToolNameBlocked } from '../../../extensions/tool-permissions';
+import { updateSessionMeta } from '../../../storage/sessions';
+import { createLogger } from '../../../logger';
 import { send, type SubprocessHandle } from '../subprocess-handle';
 import type { MsgPreToolUseRequest } from '../protocol';
 
-const log = createLogger('pi');
+const log = createLogger('chat-runtime');
 
 export function handlePreToolUseRequest(msg: MsgPreToolUseRequest, handle: SubprocessHandle): void {
   const ctx = handle.permissionContext.get(msg.turnId);

@@ -1,7 +1,7 @@
 // Agent-driven browser tool: subprocess asks main to run a browser command
 // against the session's pane (main owns the CDP connection, not the
 // subprocess) and returns the output/screenshot.
-import { executeBrowserToolCommand } from '../../../../browser/browser-tool-runtime';
+import { executeBrowserToolCommand } from '../../../browser/browser-tool-runtime';
 import { send, type SubprocessHandle } from '../subprocess-handle';
 import type { MsgBrowserToolRequest } from '../protocol';
 

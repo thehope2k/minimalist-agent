@@ -1,6 +1,6 @@
 // Pure helper functions: system-prompt construction, permission-mode
 // mapping, and result formatting. No subprocess/state dependencies.
-import type { LoadedAgent } from '../../../../agents/types';
+import type { LoadedAgent } from '../../../agents/types';
 
 export function buildAgentSystemPrompt(agent: LoadedAgent): string {
   const parts: string[] = [];

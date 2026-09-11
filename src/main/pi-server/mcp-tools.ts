@@ -1,8 +1,8 @@
 // MCP-backed extension support for the Pi subprocess.
 //
-// The Pi SDK has no native MCP integration (unlike the Claude Agent SDK's
-// `mcpServers` option) — it only accepts `customTools: ToolDefinition[]`. This
-// module bridges the gap: for each resolved MCP server config (handed down from
+// The Pi SDK has no native MCP integration — it only accepts
+// `customTools: ToolDefinition[]`. This module bridges the gap: for each
+// resolved MCP server config (handed down from
 // main via `MsgInit.mcpServers`, secrets already decrypted), it spawns/connects
 // an MCP client, lists the server's tools, and adapts each into a Pi
 // `ToolDefinition` named `mcp__<slug>__<tool>`.
@@ -25,12 +25,12 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import type { ToolDefinition } from '@earendil-works/pi-coding-agent';
-import type { PiMcpServerConfig } from '../agent-runtime/backends/pi/protocol';
+import type { McpServerConfig } from '../agent-runtime/pi/protocol';
 import { createLogger } from '../../shared/sub-logger';
 import { withTimeout } from '../../shared/with-timeout';
 import { MCP_CALL_CEILING_MS, MCP_CONNECT_CEILING_MS, MCP_POOL_BUDGET_MS } from '../../shared/timeouts';
 
-const log = createLogger('pi-mcp');
+const log = createLogger('mcp');
 
 export interface ConnectMcpOptions {
   connectTimeoutMs?: number;
@@ -41,7 +41,7 @@ export interface ConnectMcpOptions {
 /** Per-server outcome, surfaced to main for status/diagnostics. */
 export interface McpServerDiagnostic {
   slug: string;
-  transport: PiMcpServerConfig['transport'];
+  transport: McpServerConfig['transport'];
   ok: boolean;
   /** Tool count on success. */
   toolCount?: number;
@@ -77,7 +77,7 @@ function stdioEnv(resolved?: Record<string, string>): Record<string, string> | u
   return { ...base, ...resolved };
 }
 
-function buildTransport(cfg: PiMcpServerConfig): Transport {
+function buildTransport(cfg: McpServerConfig): Transport {
   if (cfg.transport === 'stdio') {
     return new StdioClientTransport({
       command: cfg.command,
@@ -206,7 +206,7 @@ function adaptTools(
 /* ============================================================ */
 
 async function connectOne(
-  cfg: PiMcpServerConfig,
+  cfg: McpServerConfig,
   connectTimeoutMs: number,
   callTimeoutMs: number,
 ): Promise<{ client: Client; tools: ToolDefinition<any, any>[]; diagnostic: McpServerDiagnostic }> {
@@ -235,7 +235,7 @@ async function connectOne(
  * client is closed) and reported as failed.
  */
 export async function connectMcpServers(
-  configs: PiMcpServerConfig[] | undefined,
+  configs: McpServerConfig[] | undefined,
   opts: ConnectMcpOptions = {},
 ): Promise<ConnectMcpResult> {
   const result: ConnectMcpResult = { tools: [], clients: [], diagnostics: [] };

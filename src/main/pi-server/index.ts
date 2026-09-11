@@ -3,7 +3,7 @@
 // over stdin/stdout.
 //
 // Built as a SECOND main-process bundle (see `electron.vite.config.ts`)
-// and spawned by `agent/backends/pi/agent.ts` per chat session.
+// and spawned by `agent-runtime/pi/agent.ts` per chat session.
 //
 // Responsibilities:
 //   - Boot a Pi AgentSession with the user's chosen model + system prompt
@@ -65,12 +65,12 @@ configureHttpIdleTimeout(HTTP_IDLE_TIMEOUT_MS);
 
 /** Shared models instance for `completeSimple` calls (title gen, llm_query).
  *  Built-in provider catalog; auth is passed inline via `StreamOptions.apiKey`. */
-const piModels = builtinModels();
-import { adaptPiEvent } from './event-adapter';
-import { createPiWebFetchTool, createPiWebSearchTool } from './web-tools';
-import { createPiBrowserTool } from './browser-tool';
+const modelCatalog = builtinModels();
+import { adaptAgentEvent } from './event-adapter';
+import { createWebFetchTool, createWebSearchTool } from './web-tools';
+import { createBrowserTool } from './browser-tool';
 import { connectMcpServers, closeMcpClients } from './mcp-tools';
-import { createPiAgentTool } from '../agent-runtime/backends/pi/agent-tool';
+import { createAgentTool } from '../agent-runtime/pi/agent-tool';
 import type {
   MsgAuthRequired,
   MsgEvent,
@@ -84,9 +84,10 @@ import type {
   MsgPrompt,
   MsgReady,
   MsgSessionIdUpdate,
-  PiAuthProvider,
+  ModelProvider,
+  RuntimeCredential,
   SubprocessInbound,
-} from '../agent-runtime/backends/pi/protocol';
+} from '../agent-runtime/pi/protocol';
 import { fileURLToPath } from 'node:url';
 import type { LoadedAgent } from '../agents/types';
 import { PlanManager } from '../agent-runtime/planning/manager';
@@ -165,9 +166,9 @@ function buildWrappedTools(
     sessionPath: string;
     piServerPath: string;
     availableAgents: LoadedAgent[];
-    piAuthProvider: string; // Will be validated as PiAuthProvider at runtime
+    provider: ModelProvider;
     sessionModel: string; // Parent session's model for agent resolution
-    getAuth: () => Promise<{ access: string; refresh?: string; expires?: number }>;
+    getCredential: () => Promise<RuntimeCredential>;
     baseUrl?: string;
     customEndpoint?: { api: 'openai-completions' | 'anthropic-messages'; supportsImages?: boolean; contextWindow?: number; maxTokens?: number; reasoning?: boolean; thinkingFormat?: 'qwen' };
     permissionMode: 'plan' | 'auto';
@@ -191,16 +192,15 @@ function buildWrappedTools(
     wrapWithPermissionGate(createLsToolDefinition(cwd)),
     // Web tools — read-only, but still routed through the permission
     // gate so plan/auto modes stay in control.
-    wrapWithPermissionGate(createPiWebFetchTool()),
-    wrapWithPermissionGate(createPiWebSearchTool()),
-    wrapWithPermissionGate(createPiBrowserTool(() => state.init?.sessionId ?? '', requestBrowserTool)),
+    wrapWithPermissionGate(createWebFetchTool()),
+    wrapWithPermissionGate(createWebSearchTool()),
+    wrapWithPermissionGate(createBrowserTool(() => state.init?.sessionId ?? '', requestBrowserTool)),
   ];
 
   // Add Agent tool if we have the necessary context
   if (agentContext) {
-    tools.push(wrapWithPermissionGate(createPiAgentTool({
+    tools.push(wrapWithPermissionGate(createAgentTool({
       ...agentContext,
-      piAuthProvider: agentContext.piAuthProvider as PiAuthProvider,
       cwd,
     })));
   }
@@ -246,7 +246,7 @@ function compactionObservabilityExtension(): InlineExtension {
         const { span } = startSpan('compaction', {
           attributes: {
             'gen_ai.operation.name': 'chat',
-            'gen_ai.provider.name': state.init?.piAuthProvider ?? '',
+            'gen_ai.provider.name': state.init?.auth.provider ?? '',
             'gen_ai.conversation.id': state.init?.sessionId ?? '',
             'gen_ai.request.model': state.model?.id ?? state.init?.model ?? '',
             'minimalist_agent.compaction.reason': event.reason,
@@ -284,8 +284,8 @@ async function handleInit(msg: MsgInit): Promise<void> {
   }));
 
   const credentialStore = new InMemoryCredentialStore();
-  if (msg.piAuth) {
-    await writeAuthCredential(credentialStore, msg.piAuthProvider, msg.piAuth.credential);
+  if (msg.auth) {
+    await writeAuthCredential(credentialStore, msg.auth.provider, msg.auth.credential);
   }
   state.credentialStore = credentialStore;
 
@@ -307,7 +307,7 @@ async function handleInit(msg: MsgInit): Promise<void> {
       ? `${rawBase}/v1`
       : rawBase;
     // Localhost endpoints (Ollama, LM Studio) don’t need auth.
-    const apiKey = isLocalhostUrl(rawBase) ? 'not-needed' : (msg.piAuth?.credential.type === 'api_key' ? msg.piAuth.credential.key : '');
+    const apiKey = isLocalhostUrl(rawBase) ? 'not-needed' : (msg.auth?.credential.type === 'api_key' ? msg.auth.credential.key : '');
     const ce = msg.customEndpoint!;
     modelRegistry.registerProvider('custom-endpoint', {
       baseUrl: apiBase,
@@ -335,7 +335,7 @@ async function handleInit(msg: MsgInit): Promise<void> {
   } else {
     // Resolve the Pi model. Dynamic model ids are passed at runtime so we
     // cast the provider string to its literal type for the typed catalog.
-    model = getBuiltinModel(msg.piAuthProvider as 'github-copilot', msg.model as never);
+    model = getBuiltinModel(msg.auth.provider as 'github-copilot', msg.model as never);
     
     // Validate that the model resolved successfully
     if (!model) {
@@ -343,7 +343,7 @@ async function handleInit(msg: MsgInit): Promise<void> {
       const exampleModels = 'gpt-5.5, gpt-5.4, claude-opus-4.7, claude-sonnet-4.6, gemini-3.5-flash';
       
       fatal(
-        `Failed to resolve model "${msg.model}" for provider "${msg.piAuthProvider}". ` +
+        `Failed to resolve model "${msg.model}" for provider "${msg.auth.provider}". ` +
         `This usually means the model ID is invalid or not supported by this provider. ` +
         `Common models: ${exampleModels}. ` +
         `You can also use "session-default" to inherit the session model. ` +
@@ -370,17 +370,22 @@ async function handleInit(msg: MsgInit): Promise<void> {
     sessionPath: msg.sessionPath,
     piServerPath: PI_SERVER_PATH,
     availableAgents: state.availableAgents,
-    piAuthProvider: msg.piAuthProvider,
+    provider: msg.auth.provider,
     sessionModel: msg.model,  // Pass parent model for session-default resolution
-    getAuth: async () => {
+    getCredential: async (): Promise<RuntimeCredential> => {
       if (!state.credentialStore) throw new Error('Credential store not initialized');
-      const cred = await state.credentialStore.read(msg.piAuthProvider);
+      const cred = await state.credentialStore.read(msg.auth.provider);
       if (cred?.type === 'oauth') {
-        const oc = cred as OAuthCredential;
-        return { access: oc.access, refresh: oc.refresh, expires: oc.expires };
+        const oauth = cred as OAuthCredential;
+        return {
+          type: 'oauth',
+          access: oauth.access,
+          refresh: oauth.refresh ?? '',
+          expires: oauth.expires,
+        };
       }
-      const auth = await state.modelRuntime?.getAuth(msg.piAuthProvider);
-      return { access: auth?.auth.apiKey || '' };
+      const auth = await state.modelRuntime?.getAuth(msg.auth.provider);
+      return { type: 'api_key', key: auth?.auth.apiKey || '' };
     },
     ...(hasCustomEndpoint ? {
       baseUrl: msg.baseUrl,
@@ -463,7 +468,7 @@ async function handleInit(msg: MsgInit): Promise<void> {
 
   const ready: MsgReady = {
     type: 'ready',
-    piSessionId: session.sessionId ?? null,
+    runtimeSessionId: session.sessionId ?? null,
   };
   send(ready);
 }
@@ -496,8 +501,8 @@ function forwardEvent(piEvent: AgentSessionEvent): void {
         });
         setAttrs(span, {
           'gen_ai.operation.name': 'chat',
-          'gen_ai.provider.name': (m as { provider?: string }).provider ?? state.init?.piAuthProvider,
-          'gen_ai.system': state.init?.piAuthProvider, // deprecated alias, kept for older backends
+          'gen_ai.provider.name': (m as { provider?: string }).provider ?? state.init?.auth.provider,
+          'gen_ai.system': state.init?.auth.provider, // deprecated alias, kept for older backends
           'gen_ai.request.model': model,
           'gen_ai.conversation.id': state.init?.sessionId,
           'gen_ai.request.max_tokens': (state.model as { maxTokens?: number } | undefined)?.maxTokens,
@@ -531,9 +536,9 @@ function forwardEvent(piEvent: AgentSessionEvent): void {
   // mid-conversation; re-check after every settled turn to catch that.
   if (t === 'turn_end' || t === 'agent_end') {
     const id = state.session?.sessionId;
-    if (id && id !== state.lastSentSdkSessionId) {
-      state.lastSentSdkSessionId = id;
-      const u: MsgSessionIdUpdate = { type: 'session_id_update', piSessionId: id };
+    if (id && id !== state.lastSentRuntimeSessionId) {
+      state.lastSentRuntimeSessionId = id;
+      const u: MsgSessionIdUpdate = { type: 'session_id_update', runtimeSessionId: id };
       send(u);
     }
   }
@@ -564,7 +569,7 @@ function forwardEvent(piEvent: AgentSessionEvent): void {
   }
 
   // Aborted (user-cancelled) auto-compactions never produce a `compaction`
-  // chat event (see adaptPiEvent's compaction_end case), so the span opened
+  // chat event (see adaptAgentEvent's compaction_end case), so the span opened
   // in compactionObservabilityExtension would otherwise never be closed —
   // catch that here directly off the raw SDK event.
   if (t === 'compaction_end') {
@@ -580,7 +585,7 @@ function forwardEvent(piEvent: AgentSessionEvent): void {
   }
 
   const turnId = state.currentTurnId;
-  const adapted = adaptPiEvent(piEvent);
+  const adapted = adaptAgentEvent(piEvent);
   for (const ev of adapted) {
     // Defer `turn_done`: keep the per-turn channel open so any post-`agent_end`
     // compaction events (emitted by the SDK's post-run lifecycle) are still
@@ -690,14 +695,14 @@ async function handlePrompt(msg: MsgPrompt): Promise<void> {
     attributes: {
       'gen_ai.operation.name': 'invoke_agent',
       'gen_ai.agent.name': 'minimalist-agent',
-      'gen_ai.provider.name': state.init?.piAuthProvider ?? '',
+      'gen_ai.provider.name': state.init?.auth.provider ?? '',
       'gen_ai.conversation.id': state.init?.sessionId ?? '',
       'gen_ai.request.model': state.model?.id ?? state.init?.model ?? '',
       'session.id': state.init?.sessionId ?? '',
       'turn.id': msg.turnId,
       'permission.mode': state.permissionMode,
       'autonomy.level': state.autonomyLevel,
-      'pi.provider': state.init?.piAuthProvider ?? '',
+      'pi.provider': state.init?.auth.provider ?? '',
     },
   });
   state.turnSpan = turnSpan;
@@ -737,7 +742,7 @@ async function handlePrompt(msg: MsgPrompt): Promise<void> {
             type: 'error',
             error: {
               code: 'unknown_error',
-              title: 'Pi runtime error',
+              title: 'Agent runtime error',
               message,
               canRetry: false,
               originalError: message,
@@ -848,7 +853,7 @@ async function handleManualCompact(msg: MsgManualCompact): Promise<void> {
         async (span) => {
           setAttrs(span, {
             'gen_ai.operation.name': 'chat',
-            'gen_ai.provider.name': state.init?.piAuthProvider ?? '',
+            'gen_ai.provider.name': state.init?.auth.provider ?? '',
             'gen_ai.conversation.id': state.init?.sessionId ?? '',
             'gen_ai.request.model': state.model?.id ?? state.init?.model ?? '',
             'minimalist_agent.compaction.reason': 'manual',
@@ -946,12 +951,12 @@ async function handleMiniCompletion(msg: MsgMiniCompletion): Promise<void> {
   try {
     const model = !msg.model || msg.model === state.model?.id
       ? state.model!
-      : getBuiltinModel(state.init.piAuthProvider as 'github-copilot', msg.model as never);
+      : getBuiltinModel(state.init.auth.provider as 'github-copilot', msg.model as never);
 
     if (msg.model && !model) {
       sendMiniError(
         msg.requestId,
-        `Failed to resolve model "${msg.model}" for provider "${state.init.piAuthProvider}". ` +
+        `Failed to resolve model "${msg.model}" for provider "${state.init.auth.provider}". ` +
         `Use a valid model ID or omit the model parameter to use the default.`
       );
       return;
@@ -1022,14 +1027,14 @@ async function handleLlmQuery(msg: MsgLlmQuery): Promise<void> {
     };
     const model = !req.model || req.model === state.model.id
       ? state.model
-      : getBuiltinModel(state.init.piAuthProvider as 'github-copilot', req.model as never);
+      : getBuiltinModel(state.init.auth.provider as 'github-copilot', req.model as never);
     
     // Validate model resolved successfully
     if (req.model && !model) {
       const out: MsgLlmQueryResult = {
         type: 'llm_query_result',
         requestId: msg.requestId,
-        error: `Failed to resolve model "${req.model}" for provider "${state.init.piAuthProvider}".`,
+        error: `Failed to resolve model "${req.model}" for provider "${state.init.auth.provider}".`,
       };
       send(out);
       return;
@@ -1046,7 +1051,7 @@ async function handleLlmQuery(msg: MsgLlmQuery): Promise<void> {
         },
         () =>
           withTimeout(
-            piModels.completeSimple(resolvedModel, {
+            modelCatalog.completeSimple(resolvedModel, {
               systemPrompt: req.systemPrompt,
               messages: [
                 {
@@ -1099,14 +1104,14 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
       if (state.init) {
         try {
           let newModel = getBuiltinModel(
-            state.init.piAuthProvider as 'github-copilot',
+            state.init.auth.provider as 'github-copilot',
             msg.model as never,
           );
           
           // Validate model resolved successfully
           if (!newModel) {
             log.error(
-              `Failed to resolve model "${msg.model}" for provider "${state.init.piAuthProvider}". ` +
+              `Failed to resolve model "${msg.model}" for provider "${state.init.auth.provider}". ` +
               `Model change ignored.`
             );
             return;
@@ -1163,7 +1168,7 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
       if (state.credentialStore && state.init) {
         await writeAuthCredential(
           state.credentialStore,
-          state.init.piAuthProvider,
+          state.init.auth.provider,
           msg.credential,
         );
       }

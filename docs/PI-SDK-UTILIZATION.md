@@ -15,8 +15,8 @@ src/main/pi-server/index.ts
 src/main/pi-server/event-adapter.ts
 src/main/pi-server/mcp-tools.ts
 src/main/pi-server/web-tools.ts
-src/main/agent/backends/pi/agent.ts
-src/main/agent/backends/pi/agent-tool.ts
+src/main/agent-runtime/pi/agent.ts
+src/main/agent-runtime/pi/agent-tool.ts
 src/main/storage/session-fork.ts
 src/main/copilot/models.ts
 src/main/oauth/chatgpt-flow.ts
@@ -98,6 +98,6 @@ half while gaining `context`-event message pruning for free.
 - Prototype migrating permission-gating from the custom protocol to
   `tool_call` hooks.
 - Estimate effort to fold the in-house skills system into pi's native skill loader (or vice versa — formally document
-  why they diverge, if the divergence is intentional, e.g. cross-provider skill sharing with the Anthropic backend).
+  why they diverge, if the divergence is intentional).
 - Evaluate `truncateHead`/`truncateTail`/`formatSize` as a drop-in replacement for `web-tools.ts`'s `clamp()`.
 - Evaluate exposing `SettingsManager` compaction/retry knobs in the app's settings UI.

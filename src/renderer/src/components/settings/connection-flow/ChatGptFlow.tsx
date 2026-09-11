@@ -74,9 +74,7 @@ export function ChatGptFlow({ onBack, onClose, onSaved, editingMeta }: FlowProps
         : {
             slug: generateSlug(name),
             name: name.trim(),
-            providerType: 'pi',
-            authType: 'oauth',
-            piAuthProvider: 'openai-codex',
+            providerType: 'openai-codex',
             defaultModel: finalDefaultModel,
             models,
             createdAt: Date.now(),
@@ -123,8 +121,8 @@ export function ChatGptFlow({ onBack, onClose, onSaved, editingMeta }: FlowProps
             switch to another from the picker.
           </p>
           <p className="text-xs text-fg-subtle">
-            Chat runs through the Pi runtime — permission prompts, plan/ask/auto
-            modes, and tool streaming all behave like Claude.
+            Chat runs through the agent runtime, including permission prompts,
+            plan/auto modes, and tool streaming.
           </p>
           <Button
             variant="primary"

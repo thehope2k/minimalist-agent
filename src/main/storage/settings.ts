@@ -34,8 +34,8 @@ export interface AiSettings {
    * `null` disables auto-cleanup. Defaults to DEFAULT_SESSION_RETENTION_DAYS.
    */
   sessionRetentionDays?: number | null;
-  /** Context compaction tuning for the Pi backend — fractions of the active
-   *  model's contextWindow, resolved per-session in pi-server. */
+  /** Context compaction tuning — fractions of the active model's contextWindow,
+   *  resolved per session by the agent runtime. */
   compactionSettings?: CompactionTuning;
 }
 
@@ -94,11 +94,9 @@ const SCHEMA: FileSchema<AiSettings> = {
       const { reserveTokens: _reserveTokens, keepRecentTokens: _keepRecentTokens, ...migrated } = legacy;
       return { ...settings, compactionSettings: migrated } as AiSettings;
     },
-    // v4 → v5: drops the "Max turns per message" setting — it only ever
-    // bounded the Anthropic backend's tool-use loop (Pi/Copilot/local always
-    // ignored it), which made the control confusing and half-broken. Removed
-    // entirely rather than made Anthropic-only; the SDK call now uses its
-    // own fixed default.
+    // v4 → v5: drops the obsolete "Max turns per message" setting. The Pi
+    // runtime controls its own agent loop and never consumed this value, so
+    // keeping the control would be misleading.
     (prev) => {
       const settings = prev as AiSettings & { maxTurns?: number };
       const { maxTurns: _maxTurns, ...migrated } = settings;

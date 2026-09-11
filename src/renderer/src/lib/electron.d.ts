@@ -1,11 +1,7 @@
 // Types for `window.api` exposed by the preload bridge.
 
-export interface ClaudeTokens {
-  accessToken: string;
-  refreshToken?: string;
-  expiresAt?: number;
-  scopes?: string[];
-}
+import type { ProviderType } from '../../../shared/provider-types';
+export type { ProviderType };
 
 export type ChatRole = 'user' | 'assistant';
 
@@ -113,7 +109,6 @@ export interface ChatSendRequest {
   model: string;
   prompt: string;
   cwd?: string;
-  resumeSessionId?: string;
   permissionMode?: PermissionMode;
   sessionId?: string;
   /** Already-stored attachments for this turn. */
@@ -292,13 +287,6 @@ export interface CopilotQuota {
   fallback: boolean;
 }
 
-export interface ClaudeUsageEntry {
-  rateLimitType: 'five_hour' | 'seven_day' | 'seven_day_opus' | 'seven_day_sonnet' | 'overage';
-  utilization: number;
-  resetsAt?: number;
-  status: 'allowed' | 'allowed_warning' | 'rejected';
-}
-
 export interface ChatGptRateLimitWindow {
   /** Percentage of this window's allowance already used (0–100, can exceed 100). */
   usedPercent: number;
@@ -346,15 +334,10 @@ export interface ModelDef {
 }
 
 
-export type { PiAuthProvider } from '../../../shared/pi-types';
-
 export interface ConnectionMeta {
   slug: string;
   name: string;
-  providerType: 'anthropic' | 'pi' | 'local' | 'openai-compatible' | 'codemie-sso';
-  authType: 'api_key' | 'oauth';
-  /** Required when providerType === 'pi'. */
-  piAuthProvider?: PiAuthProvider;
+  providerType: ProviderType;
   /** Base URL for local model server / custom OpenAI-compatible endpoint. */
   baseUrl?: string;
   /** Preset id for 'openai-compatible' connections (e.g. 'stepfun'); 'custom' for hand-entered. */
@@ -526,7 +509,7 @@ export interface SessionMeta {
   id: string;
   title: string;
   workingDirectory?: string;
-  sdkSessionId?: string;
+  runtimeSessionId?: string;
   archived: boolean;
   createdAt: number;
   lastMessageAt: number;
@@ -889,11 +872,6 @@ export interface AppApi {
     /** Read the tail of the log file (current + previous rotation) as text. */
     read: () => Promise<string>;
   };
-  claudeOAuth: {
-    start: () => Promise<{ ok: true; url: string }>;
-    cancel: () => Promise<void>;
-    exchange: (code: string) => Promise<ClaudeTokens>;
-  };
   copilotOAuth: {
     /**
      * Start the device flow. Resolves once the user has authorized on
@@ -934,12 +912,6 @@ export interface AppApi {
       args: { connectionSlug: string },
     ) => Promise<ChatGptQuota | { error: string }>;
   };
-  claude: {
-    /** Fetch OAuth usage buckets from api.anthropic.com for a Claude OAuth connection. */
-    fetchUsage: (
-      args: { connectionSlug: string },
-    ) => Promise<ClaudeUsageEntry[] | { error: string }>;
-  };
   copilot: {
     /**
      * Fetch the live, tier-filtered Copilot model list. Pass either a
@@ -968,7 +940,7 @@ export interface AppApi {
       message: string,
       attachments?: StoredAttachment[],
     ) => Promise<{ ok: boolean; reason?: string }>;
-    /** Manually triggers compaction outside a turn. Pi backend only. */
+    /** Manually triggers compaction outside a turn. */
     manualCompact: (args: {
       turnId: string;
       sessionId: string;

@@ -44,7 +44,7 @@ interface DiffPartProps {
 }
 
 export function DiffPart({ name, input, result, status, contextDelta, contextDeltaGroupSize }: DiffPartProps) {
-  // Backend-agnostic: Anthropic emits 'Write'/'Edit', Pi emits 'write'/'edit'.
+  // Tool names may vary in case, so match them case-insensitively.
   const isWrite = name.toLowerCase() === 'write';
   const cwd = useCwd();
   const erroredOrFailed = status === 'error' || result?.isError;

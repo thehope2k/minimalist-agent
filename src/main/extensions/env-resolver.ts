@@ -1,8 +1,6 @@
 // Resolve env values for CLI-bound extensions and merge them into a flat
-// record suitable for either:
-//   - Claude SDK `Options.env` (session-wide, inherited by every Bash call)
-//   - The Pi subprocess `spawn(... { env })` (so Bash invocations inside Pi
-//     inherit the same vars)
+// record suitable for the agent subprocess `spawn(... { env })` (so Bash
+// invocations inside Pi inherit the same vars).
 //
 // MCP-backed extensions are intentionally skipped — their `env` is plumbed
 // per-server via the SDK's `mcpServers` config and shouldn't pollute the

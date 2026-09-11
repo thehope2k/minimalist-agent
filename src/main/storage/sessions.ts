@@ -25,7 +25,7 @@ import type { PermissionMode, ThinkingLevel } from './settings';
 import { findProjectForPath } from './projects';
 import { createLogger } from '../logger';
 import { listConnections } from './connections';
-import { forkSdkSession } from './session-fork';
+import { forkSessionTranscript } from './session-fork';
 import { resolveAuthForSlug } from '../auth/resolve';
 import { getBuiltinModel } from '@earendil-works/pi-ai/providers/all';
 import { SUBAGENT_DIR_NAME } from '../../shared/subagent-storage';
@@ -137,8 +137,8 @@ export interface SessionMeta {
   title: string;
   /** Per-session working directory passed to the SDK as `cwd`. */
   workingDirectory?: string;
-  /** SDK's session id from the previous turn — used to resume next turn. */
-  sdkSessionId?: string;
+  /** Runtime transcript id persisted for branching and continuity. */
+  runtimeSessionId?: string;
   archived: boolean;
   createdAt: number;
   /** Bumped on every append. */
@@ -195,7 +195,7 @@ const META_DEFAULT_FACTORY = (): SessionMeta => ({
 function metaSchema(id: string): FileSchema<SessionMeta> {
   return {
     path: join(Paths.sessionsDir(), id, 'session.json'),
-    currentVersion: 11,
+    currentVersion: 12,
     defaultValue: META_DEFAULT_FACTORY(),
     // Index 0 → v0 (legacy/unset). Index 1 → v1 (no usage field).
     // Index 2 → v2 (no permissionMode field). Index 3 → v3 (no projectId).
@@ -229,6 +229,15 @@ function metaSchema(id: string): FileSchema<SessionMeta> {
       (prev) => ({ ...(prev as SessionMeta) }),
       // v10 → v11: adds thinkingLevel (optional field, no-op migration).
       (prev) => ({ ...(prev as SessionMeta) }),
+      // v11 → v12: rename the implementation-specific SDK session field.
+      (prev) => {
+        const legacy = prev as SessionMeta & { sdkSessionId?: string };
+        const { sdkSessionId, ...session } = legacy;
+        return {
+          ...session,
+          ...(sdkSessionId ? { runtimeSessionId: sdkSessionId } : {}),
+        } as SessionMeta;
+      },
     ],
   };
 }
@@ -500,13 +509,13 @@ async function resolveForkSummarizer(
 ): Promise<{ model: Model<Api>; apiKey: string | undefined; headers?: Record<string, string>; env?: Record<string, string> } | undefined> {
   if (!parentMeta.connectionSlug || !parentMeta.model) return undefined;
   const conn = listConnections().find((c) => c.slug === parentMeta.connectionSlug);
-  if (!conn || conn.providerType !== 'pi' || conn.piAuthProvider !== 'github-copilot') return undefined;
+  if (!conn || conn.providerType !== 'github-copilot') return undefined;
 
   try {
     const model = getBuiltinModel('github-copilot', parentMeta.model as never);
     if (!model) return undefined;
     const auth = await resolveAuthForSlug(parentMeta.connectionSlug);
-    if (auth.type !== 'copilot_oauth') return undefined;
+    if (auth.type !== 'oauth') return undefined;
     return { model, apiKey: auth.accessToken };
   } catch (e) {
     log.warn('Failed to resolve fork-with-context summarizer, falling back to a clean cutoff:', e);
@@ -573,22 +582,13 @@ export async function branchSession(
   }
 
   const cutoffMs = parent.messages[cutIdx]!.createdAt;
-  const providerType = parent.meta.connectionSlug
-    ? listConnections().find((c) => c.slug === parent.meta.connectionSlug)?.providerType
-    : undefined;
-
-  const forkedSdkSessionId = await forkSdkSession({
-    providerType,
+  await forkSessionTranscript({
     parentSessionDir: join(Paths.sessionsDir(), parentId),
-    parentSdkSessionId: parent.meta.sdkSessionId,
+    parentRuntimeSessionId: parent.meta.runtimeSessionId,
     newSessionDir: join(Paths.sessionsDir(), id),
     cutoffMs,
     summarizer: options?.withContext ? await resolveForkSummarizer(parent.meta) : undefined,
   });
-  if (forkedSdkSessionId) {
-    meta.sdkSessionId = forkedSdkSessionId;
-    save(metaSchema(id), meta);
-  }
 
   return meta;
 }

@@ -7,7 +7,7 @@ import { createLogger } from '../../shared/sub-logger';
 import { shouldEngage } from '../../shared/autonomy';
 import { state } from './state';
 import { send } from './transport';
-import type { MsgCollaborationRequest, MsgCollaborationResponse } from '../agent-runtime/backends/pi/protocol';
+import type { MsgCollaborationRequest, MsgCollaborationResponse } from '../agent-runtime/pi/protocol';
 
 const log = createLogger('pi-server');
 

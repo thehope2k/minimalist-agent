@@ -7,8 +7,6 @@ import { Actions, ErrorBox, FormShell } from './shared';
 import type { FlowProps } from './types';
 
 // Copilot exposes Claude Sonnet/Haiku, GPT-5, o4-mini, etc. via its proxy.
-// We seed a small list — Pi's model fetcher can replace this once the
-// runtime ships.
 // Curated fallback list — used only if `copilot.fetchModels` fails.
 // Live discovery via the Copilot `/models` endpoint is the source of
 // truth; it returns the user's tier-filtered set.
@@ -124,9 +122,7 @@ export function CopilotFlow({ onBack, onClose, onSaved, editingMeta }: FlowProps
         : {
             slug: generateSlug(name),
             name: name.trim(),
-            providerType: 'pi',
-            authType: 'oauth',
-            piAuthProvider: 'github-copilot',
+            providerType: 'github-copilot',
             defaultModel: finalDefaultModel,
             models,
             createdAt: Date.now(),
@@ -171,9 +167,9 @@ export function CopilotFlow({ onBack, onClose, onSaved, editingMeta }: FlowProps
             in your browser and show you a one-time code to enter.
           </p>
           <p className="text-xs text-fg-subtle">
-            Chat runs through the Pi runtime in a Node subprocess —
-            permission prompts, plan/ask/auto modes, OAuth refresh, and
-            tool streaming all behave like Claude.
+            Chat runs through the agent runtime in a Node subprocess, including
+            permission prompts, plan/ask/auto modes, OAuth refresh, and tool
+            streaming.
           </p>
           <Button
             variant="primary"

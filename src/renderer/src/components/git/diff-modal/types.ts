@@ -5,7 +5,7 @@ export interface GitDiffModalProps {
   onClose: () => void;
   connectionSlug?: string;
   model?: string;
-  /** Active session id — required for Copilot/Pi commit message generation. */
+  /** Active session id — required for AI-generated commit messages. */
   sessionId?: string;
 }
 

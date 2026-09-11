@@ -1,7 +1,7 @@
 // Encrypted per-extension secrets, mirroring `storage/credentials.ts`.
 // Keyed by `<slug>::<keyName>`. The renderer never sees plaintext — it
 // only sets/lists/deletes via IPC. Plaintext is decrypted right before
-// being passed to the Claude SDK as MCP env values.
+// being passed to the agent subprocess as MCP env values.
 
 import { safeStorage } from 'electron';
 import {

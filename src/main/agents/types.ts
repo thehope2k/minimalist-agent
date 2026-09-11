@@ -12,8 +12,6 @@ export interface AgentMetadata {
   maxTurns?: number;
   /** Permission mode for this agent: "plan" (no mutations) or "auto" (intelligent autonomy-based collaboration). */
   permissionMode?: 'plan' | 'auto';
-  /** Optional effort level for Claude SDK (Anthropic only): "low", "medium", "high". */
-  effort?: 'low' | 'medium' | 'high';
   /** Optional icon — emoji or URL only. */
   icon?: string;
 }

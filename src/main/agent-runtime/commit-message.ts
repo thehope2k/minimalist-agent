@@ -1,19 +1,16 @@
 // One-shot AI call to generate a conventional commit message from a diff summary.
-// Reuses generateTitle's provider-aware infrastructure (Anthropic SDK + Pi mini_completion)
-// but with a commit-focused system prompt and larger token budget.
+// Uses the mini-completion RPC with a commit-focused system prompt and
+// larger token budget.
 
-import { query, type SDKMessage } from '@anthropic-ai/claude-agent-sdk';
-import { getDefaultOptions, locateClaudeCli } from './options';
-import type { AnthropicAuth, ResolvedAuth } from './runner';
-import { runPiMiniCompletion } from './backends/pi/agent';
+import { runMiniCompletion } from './pi/agent';
+import type { ResolvedAuth } from './auth';
 import { sessionPath } from '../storage/sessions';
 import { listConnections } from '../storage/connections';
 import { createLogger } from '../logger';
 
 const log = createLogger('commit-message');
 
-const ANTHROPIC_COMMIT_MODEL = 'claude-sonnet-4-6';
-const PI_COMMIT_MODEL       = 'claude-sonnet-4.6';
+const DEFAULT_COMMIT_MODEL = 'claude-sonnet-4.6';
 const COMMIT_MAX_TOKENS = 1500;
 
 const SYSTEM_PROMPT = `You are a git commit message generator. Your entire reply is piped straight
@@ -126,7 +123,6 @@ export interface GenerateCommitMessageArgs {
   model?: string;
   connectionSlug?: string;
   chatSessionId?: string;
-  piAuthProvider?: string;
   cwd?: string;
   includeCoAuthoredBy?: boolean;
 }
@@ -285,123 +281,38 @@ ${args.diffContext}`;
 ${args.diffContext}`;
   }
 
-  // Custom endpoints (local / OpenAI-compatible) reuse the session model.
-  if (args.auth.type === 'local_api') {
-    if (!args.connectionSlug || !args.chatSessionId) {
-      log.warn(`[local_api] missing connectionSlug or chatSessionId`);
-      return null;
-    }
-    const model =
-      args.model ??
-      listConnections().find((c) => c.slug === args.connectionSlug)?.defaultModel;
-    if (!model) {
-      log.warn(`[local_api] no model resolved for connection ${args.connectionSlug}`);
-      return null;
-    }
-    try {
-      const result = await runPiMiniCompletion({
-        connectionSlug: args.connectionSlug,
-        auth: args.auth,
-        chatSessionId: args.chatSessionId,
-        chatSessionPath: sessionPath(args.chatSessionId),
-        cwd: args.cwd,
-        model,
-        systemPrompt: SYSTEM_PROMPT,
-        userPrompt,
-        maxTokens: COMMIT_MAX_TOKENS,
-      });
-      if (result.error || !result.text) {
-        log.warn(`[local_api] mini_completion error: ${result.error ?? 'empty response'}`);
-        return null;
-      }
-      return finalize(validateCommitMessage(result.text));
-    } catch (e) {
-      log.warn(`[local_api] threw: ${e instanceof Error ? e.message : String(e)}`);
-      return null;
-    }
-  }
-
-  if (args.auth.type === 'copilot_oauth') {
-    if (!args.connectionSlug || !args.chatSessionId) {
-      log.warn(`[copilot_oauth] missing connectionSlug or chatSessionId`);
-      return null;
-    }
-    try {
-      const model =
-        args.model ??
-        listConnections().find((c) => c.slug === args.connectionSlug)?.defaultModel ??
-        PI_COMMIT_MODEL;
-      const result = await runPiMiniCompletion({
-        connectionSlug: args.connectionSlug,
-        auth: args.auth,
-        piAuthProvider: (args.piAuthProvider ?? 'github-copilot') as import('./backends/pi/protocol').PiAuthProvider,
-        chatSessionId: args.chatSessionId,
-        chatSessionPath: sessionPath(args.chatSessionId),
-        cwd: args.cwd,
-        model,
-        systemPrompt: SYSTEM_PROMPT,
-        userPrompt,
-        maxTokens: COMMIT_MAX_TOKENS,
-      });
-      if (result.error || !result.text) {
-        log.warn(`[copilot_oauth] mini_completion error: ${result.error ?? 'empty response'}`);
-        return null;
-      }
-      return finalize(validateCommitMessage(result.text));
-    } catch (e) {
-      log.warn(`[copilot_oauth] threw: ${e instanceof Error ? e.message : String(e)}`);
-      return null;
-    }
-  }
-
-  if (!locateClaudeCli()) {
-    log.warn('claude CLI not found');
+  if (!args.connectionSlug || !args.chatSessionId) {
+    log.warn('missing connectionSlug or chatSessionId');
     return null;
   }
-  const authType: string = args.auth.type;
-  if (authType !== 'anthropic_api_key' && authType !== 'anthropic_oauth') {
-    log.warn(`unsupported auth type: ${authType}`);
+  const model =
+    args.model ??
+    listConnections().find((c) => c.slug === args.connectionSlug)?.defaultModel ??
+    (args.auth.type === 'oauth' ? DEFAULT_COMMIT_MODEL : undefined);
+  if (!model) {
+    log.warn(`no model resolved for connection ${args.connectionSlug}`);
     return null;
   }
-
-  const anthropicAuth: AnthropicAuth = args.auth;
-  const options = {
-    ...getDefaultOptions({ envOverrides: envForAnthropicAuth(anthropicAuth) }),
-    model: args.model ?? ANTHROPIC_COMMIT_MODEL,
-    maxTurns: 1,
-    permissionMode: 'bypassPermissions' as const,
-    tools: [],
-    systemPrompt: SYSTEM_PROMPT,
-    settingSources: [] as Array<'user' | 'project' | 'local'>,
-    includePartialMessages: false,
-    stderr: () => {},
-  };
 
   try {
-    let collected = '';
-    for await (const msg of query({ prompt: userPrompt, options }) as AsyncIterable<SDKMessage>) {
-      if (msg.type === 'assistant') {
-        const content = msg.message?.content;
-        if (Array.isArray(content)) {
-          for (const block of content) {
-            if (block && (block as { type?: string }).type === 'text') {
-              collected += (block as { text?: string }).text ?? '';
-            }
-          }
-        }
-      } else if (msg.type === 'result') {
-        break;
-      }
+    const result = await runMiniCompletion({
+      connectionSlug: args.connectionSlug,
+      auth: args.auth,
+      chatSessionId: args.chatSessionId,
+      chatSessionPath: sessionPath(args.chatSessionId),
+      cwd: args.cwd,
+      model,
+      systemPrompt: SYSTEM_PROMPT,
+      userPrompt,
+      maxTokens: COMMIT_MAX_TOKENS,
+    });
+    if (result.error || !result.text) {
+      log.warn(`mini_completion error: ${result.error ?? 'empty response'}`);
+      return null;
     }
-    return finalize(validateCommitMessage(collected));
+    return finalize(validateCommitMessage(result.text));
   } catch (e) {
-    log.warn(`[anthropic] threw: ${e instanceof Error ? e.message : String(e)}`);
+    log.warn(`threw: ${e instanceof Error ? e.message : String(e)}`);
     return null;
   }
-}
-
-function envForAnthropicAuth(auth: AnthropicAuth): Record<string, string> {
-  return auth.type === 'anthropic_api_key'
-    ? { ANTHROPIC_API_KEY: auth.apiKey }
-    : { CLAUDE_CODE_OAUTH_TOKEN: auth.accessToken };
 }

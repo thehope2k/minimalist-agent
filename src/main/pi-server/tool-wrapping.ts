@@ -19,7 +19,7 @@ import type {
   MsgBrowserToolResult,
   MsgPreToolUseRequest,
   MsgPreToolUseResponse,
-} from '../agent-runtime/backends/pi/protocol';
+} from '../agent-runtime/pi/protocol';
 
 export const READ_ONLY_TOOL_NAMES = new Set([
   'read',
@@ -62,7 +62,7 @@ function requestPermission(
   input: unknown,
 ): Promise<MsgPreToolUseResponse> {
   return new Promise((resolve) => {
-    const requestId = `pi_${Date.now().toString(36)}_${Math.random()
+    const requestId = `browser_${Date.now().toString(36)}_${Math.random()
       .toString(36)
       .slice(2, 8)}`;
     state.pendingPermission.set(requestId, { resolve });

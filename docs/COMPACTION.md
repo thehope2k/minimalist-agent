@@ -1,25 +1,22 @@
 # Context Compaction
 
-Compaction — the SDK's summarization of older turns into one entry so the context window doesn't overflow — is treated
+Compaction — summarization of older turns into one entry so the context window doesn't overflow — is treated
 as a **visible lifecycle event**, not backend plumbing: shown while running, inspectable afterward, user-controllable,
 and cost-attributed. Same treatment a tool call gets.
 
-**Pi backend only** (GitHub Copilot / local / OpenAI-compatible). The Claude Agent SDK's compaction is opaque — its
-`compact_boundary` events are consumed for display, but nothing here can configure, hook, or manually trigger it.
-
 ## Where things live
 
-| Concern                                              | File                                                                                        |
-|------------------------------------------------------|---------------------------------------------------------------------------------------------|
-| Event model + Pi/Claude adapters                     | `src/main/agent/events.ts`, `src/main/pi-server/event-adapter.ts`                           |
-| Session settings, manual-trigger handling, OTel span | `src/main/pi-server/index.ts`                                                               |
-| Manual-compact IPC                                   | `src/main/ipc/chat-ipc.ts` (`chat:manualCompact`), `src/main/agent/backends/pi/agent.ts`    |
-| Settings (defaults + shape)                          | `src/main/storage/settings.ts`                                                              |
-| Persisted `compactionMeta`                           | `src/main/storage/sessions.ts`                                                              |
-| Settings UI                                          | `src/renderer/src/components/settings/panels/AIPanel.tsx`                                   |
-| Divider (success + failure states)                   | `src/renderer/src/components/chat/message-list/CompactionDivider.tsx`                       |
-| Manual trigger button + preview badge                | `src/renderer/src/components/chat/message-input/MessageToolbar.tsx`, `.../ContextBadge.tsx` |
-| Fork "with context"                                  | `src/main/storage/session-fork.ts`, `src/main/storage/sessions.ts`                          |
+| Concern                                              | File                                                                                             |
+|------------------------------------------------------|--------------------------------------------------------------------------------------------------|
+| Event model + Pi adapter                             | `src/main/agent-runtime/events.ts`, `src/main/pi-server/event-adapter.ts`                        |
+| Session settings, manual-trigger handling, OTel span | `src/main/pi-server/index.ts`                                                                    |
+| Manual-compact IPC                                   | `src/main/ipc/chat-ipc.ts` (`chat:manualCompact`), `src/main/agent-runtime/pi/agent.ts` |
+| Settings (defaults + shape)                          | `src/main/storage/settings.ts`                                                                   |
+| Persisted `compactionMeta`                           | `src/main/storage/sessions.ts`                                                                   |
+| Settings UI                                          | `src/renderer/src/components/settings/panels/AIPanel.tsx`                                        |
+| Divider (success + failure states)                   | `src/renderer/src/components/chat/message-list/CompactionDivider.tsx`                            |
+| Manual trigger button + preview badge                | `src/renderer/src/components/chat/message-input/MessageToolbar.tsx`, `.../ContextBadge.tsx`      |
+| Fork "with context"                                  | `src/main/storage/session-fork.ts`, `src/main/storage/sessions.ts`                               |
 
 ## Architecture
 
@@ -45,7 +42,7 @@ flowchart TB
 
 ## Design points
 
-**One event model, two backends.** Pi and Claude expose physically different compaction signals; both map into the same
+**One event model.** The Pi subprocess's compaction signals map into one
 internal
 `compaction` event (`status: success | failed`, `trigger`, token counts, optional summary/file lists). `status` is
 always set explicitly by the adapter — never inferred from other fields — so a failed compaction can't render as a
@@ -63,7 +60,7 @@ planning feature has no general-purpose way to signal "don't paraphrase this" ot
 model, misrouted events). This is enforced at the subprocess level, not just by disabling the input in the UI.
 
 **Fork with context.** Branching a session can either hard-cut history at the fork point (default) or attach a generated
-summary of the abandoned tail, reusing the SDK's own branch-summarization machinery. Any failure to summarize falls back
+summary of the abandoned tail, reusing Pi's own branch-summarization machinery. Any failure to summarize falls back
 to a clean cutoff — forking must never fail outright because summarization wasn't available.
 
 ## UI states
@@ -72,7 +69,7 @@ to a clean cutoff — forking must never fail outright because summarization was
   (more urgent — the previous turn nearly failed), and a manual one.
 - **Success** — a divider chip with tokens saved, expandable to the generated summary and touched files.
 - **Failure** — a visually distinct chip with the error message, never the success chip.
-- **Manual trigger** — a toolbar button, disabled for Anthropic connections, empty sessions, and while a turn is
+- **Manual trigger** — a toolbar button, disabled for empty sessions and while a turn is
   streaming.
 
 ## Observability
@@ -91,7 +88,7 @@ turn. See [`OTEL.md`](OTEL.md) for the span model this reuses.
 
 ## Known limitation: mid-turn token bursts can outrun compaction
 
-The SDK checks whether to compact after each completed round within a turn, not continuously. A single round's tool-call
+Pi checks whether to compact after each completed round within a turn, not continuously. A single round's tool-call
 results (large file reads, several parallel tool calls resolving together) can add far more tokens than
 `reserveTokens` accounts for, appended *between* one check and the next request. If that burst is large enough, the very
 next request can jump past both the auto-compact threshold and the model's hard token cap in one hop — the request fails
@@ -116,4 +113,4 @@ any fixed reserve. A structural fix would need one of:
 
 - Per-provider/per-model override of the compaction thresholds.
 - Automatic detection of "important" content beyond plan-tracking state.
-- Any change to the Claude Agent SDK's own compaction behavior.
+- Any change to Pi's own compaction behavior.

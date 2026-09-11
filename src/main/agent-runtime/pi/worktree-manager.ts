@@ -3,7 +3,7 @@
 // Each agent subprocess can run in its own isolated git worktree, preventing
 // file-level resource contention (Maven locks, npm locks, git operations, etc.).
 //
-// Architecture mirrors Claude Code's worktree implementation:
+// Architecture:
 // - Automatic worktree creation per agent execution
 // - Support for .worktreeinclude config (gitignored file copying)
 // - Graceful fallback for non-git repositories
@@ -14,7 +14,7 @@ import { promisify } from 'util';
 import { join, dirname } from 'path';
 import { existsSync, mkdirSync, copyFileSync, readFileSync, statSync, readdirSync, appendFileSync, writeFileSync } from 'fs';
 import { minimatch } from 'minimatch';
-import { createLogger } from '../../../logger';
+import { createLogger } from '../../logger';
 
 const log = createLogger('worktree');
 

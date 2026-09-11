@@ -1,5 +1,4 @@
 import { ipcMain, shell } from 'electron';
-import { clearLoginState, exchangeCode, prepareLoginUrl } from '../oauth/claude-flow';
 import {
   cancelLogin as cancelCopilotLogin,
   type CopilotTokens,
@@ -17,26 +16,9 @@ import { createLogger } from '../logger';
 
 const log = createLogger('ipc:oauth');
 
-/** OAuth login flows (Claude, Copilot, ChatGPT), usage/quota lookups, and
+/** OAuth login flows (Copilot, ChatGPT), usage/quota lookups, and
  *  live model discovery for provider-hosted connections. */
 export function registerOAuthIpc(): void {
-  // ---- Claude OAuth ------------------------------------------------------
-
-  ipcMain.handle('claude-oauth:start', async () => {
-    const url = prepareLoginUrl();
-    await shell.openExternal(url);
-    return { ok: true as const, url };
-  });
-
-  ipcMain.handle('claude-oauth:cancel', () => clearLoginState());
-
-  ipcMain.handle('claude-oauth:exchange', async (_e, code: string) => {
-    if (!code || typeof code !== 'string') {
-      throw new Error('Authorization code is required.');
-    }
-    return exchangeCode(code);
-  });
-
   // ---- GitHub Copilot OAuth (device flow via Pi SDK) ---------------------
 
   // The device flow is asynchronous: we start the flow, push a
@@ -70,38 +52,6 @@ export function registerOAuthIpc(): void {
   });
 
   ipcMain.handle('chatgpt-oauth:cancel', () => cancelChatGptLogin());
-
-  // ---- Claude OAuth usage -----------------------------------------------
-
-  ipcMain.handle(
-    'claude:fetchUsage',
-    async (
-      _e,
-      args: { connectionSlug: string },
-    ): Promise<import('../claude/usage').ClaudeUsageEntry[] | { error: string }> => {
-      try {
-        const meta = listConnections().find((c) => c.slug === args.connectionSlug);
-        if (!meta) return { error: `Connection "${args.connectionSlug}" not found.` };
-        if (meta.providerType !== 'anthropic' || meta.authType !== 'oauth') {
-          return { error: 'Connection is not Claude OAuth.' };
-        }
-
-        const auth = await resolveAuthForSlug(args.connectionSlug);
-        if (auth.type !== 'anthropic_oauth') {
-          return { error: 'Resolved auth is not Claude OAuth.' };
-        }
-
-        const { fetchClaudeUsage } = await import('../claude/usage');
-        const result = await fetchClaudeUsage(auth.accessToken);
-        if ('error' in result) {
-          log.error('fetchUsage:', result.error);
-        }
-        return result;
-      } catch (e) {
-        return { error: e instanceof Error ? e.message : String(e) };
-      }
-    },
-  );
 
   /**
    * Live Copilot model discovery. Caller passes either a freshly-acquired
@@ -180,11 +130,11 @@ export function registerOAuthIpc(): void {
     ) => {
       try {
         const meta = listConnections().find((c) => c.slug === args.connectionSlug);
-        if (!meta || meta.providerType !== 'pi' || meta.piAuthProvider !== 'openai-codex') {
+        if (!meta || meta.providerType !== 'openai-codex') {
           return { error: 'Connection is not a ChatGPT (Codex) OAuth connection.' };
         }
         const auth = await resolveAuthForSlug(args.connectionSlug);
-        if (auth.type !== 'copilot_oauth') {
+        if (auth.type !== 'oauth') {
           return { error: 'Resolved auth is not ChatGPT OAuth.' };
         }
         const { fetchChatGptQuota } = await import('../chatgpt/quota');

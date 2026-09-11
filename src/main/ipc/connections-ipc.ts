@@ -1,5 +1,4 @@
 import { BrowserWindow, ipcMain } from 'electron';
-import { runAgentChat } from '../agent-runtime/runner';
 import { parseError } from '../agent-runtime/errors';
 import { resolveAuthForSlug } from '../auth/resolve';
 import {
@@ -65,14 +64,14 @@ export function registerConnectionsIpc(): void {
     async (_e, slug: string): Promise<{ ok: true } | { ok: false; error: ReturnType<typeof parseError> }> => {
       try {
         const auth = await resolveAuthForSlug(slug);
-        // Tiniest possible round-trip - runAgentChat with maxTurns=1 and a
-        // throwaway prompt. Pi/Copilot pathways don't run the SDK; for now
-        // a successful auth resolve is sufficient validation there.
+        // Pi/Copilot connections don't run a probe query — a successful auth
+        // resolve (OAuth refresh, or the openai-compatible /models check
+        // below) is sufficient validation.
         const meta = listConnections().find((c) => c.slug === slug);
         if (!meta) throw new Error(`Connection "${slug}" not found.`);
         // OpenAI-compatible providers: do a real round-trip from main (no CORS)
         // by listing models. Validates the base URL + Bearer key cheaply.
-        if ((meta.providerType === 'openai-compatible' || meta.providerType === 'codemie-sso') && auth.type === 'local_api') {
+        if ((meta.providerType === 'openai-compatible' || meta.providerType === 'codemie-sso') && auth.type === 'api') {
           const base = auth.baseUrl.replace(/\/+$/, '');
           const ctrl = new AbortController();
           const timeout = setTimeout(() => ctrl.abort(), 15_000);
@@ -96,29 +95,8 @@ export function registerConnectionsIpc(): void {
             clearTimeout(timeout);
           }
         }
-        if (auth.type !== 'anthropic_api_key' && auth.type !== 'anthropic_oauth') {
-          // Auth resolved → token is valid; don't burn an API call we can't make.
-          return { ok: true };
-        }
-        const ctrl = new AbortController();
-        const timeout = setTimeout(() => ctrl.abort(), 15_000);
-        try {
-          for await (const evt of runAgentChat({
-            auth,
-            turnId: `test-${slug}-${Date.now()}`,
-            model: meta.defaultModel,
-            prompt: 'ping',
-            maxTurns: 1,
-            permissionMode: 'auto',
-            signal: ctrl.signal,
-          })) {
-            if (evt.type === 'turn_done') return { ok: true };
-            if (evt.type === 'error') return { ok: false, error: evt.error };
-          }
-          return { ok: true };
-        } finally {
-          clearTimeout(timeout);
-        }
+        // Auth resolved → token is valid; don't burn an API call we can't make.
+        return { ok: true };
       } catch (e) {
         return { ok: false, error: parseError(e) };
       }

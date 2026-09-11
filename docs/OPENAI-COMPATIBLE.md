@@ -70,15 +70,15 @@ errors inline.
 
 ## How It Runs
 
-OpenAI-compatible connections run on the **Pi runtime** (the same subprocess backend as
+OpenAI-compatible connections run on the **agent runtime** (the same subprocess as
 GitHub Copilot and ChatGPT Plus). At turn time:
 
-- `auth/resolve.ts` resolves the connection into `LocalApiAuth` — a Bearer key + base URL.
+- `auth/resolve.ts` resolves the connection into `ResolvedApiAuth` — a Bearer key + base URL.
 - Title and commit-message generation reuse the session model (custom endpoints don't have a
   separate cheap model).
 - Remote providers skip the local `enable_thinking` hack that Ollama uses.
 
-See [ARCHITECTURE.md](ARCHITECTURE.md#pi-backend-github-copilot--chatgpt-plus--openai-compatible)
+See [ARCHITECTURE.md](ARCHITECTURE.md#agent-runtime-github-copilot--chatgpt-plus--openai-compatible--codemie)
 for the backend flow.
 
 ---
@@ -94,7 +94,7 @@ For contributors:
 
 **Main**
 - `openai-compatible/models.ts` — `fetchOpenAICompatibleModelIds` (`/v1/models` discovery)
-- `auth/resolve.ts` — `openai-compatible` → `LocalApiAuth`
+- `auth/resolve.ts` — `openai-compatible` → `ResolvedApiAuth`
 - `storage/connections.ts` — `providerType: 'openai-compatible'`, `presetId`, `baseUrl`
 - IPC: `connections:listRemoteModels`, `connections:test`
 

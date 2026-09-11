@@ -177,9 +177,9 @@ Pick the right module by **process context**:
   under `userData/logs/main.log`). Debug/info are silenced in packaged builds;
   override with `MA_LOG_LEVEL=debug|info|warn|error`.
 - **pi-server subprocess** (anything bundled into `out/main/pi-server.js` —
-  `pi-server/index.ts`, `agent/backends/pi/agent-tool.ts`, `agent/planning/*`)
+  `pi-server/index.ts`, `agent-runtime/pi/agent-tool.ts`, `agent-runtime/planning/*`)
   → `src/shared/sub-logger.ts`. It is **electron-free** and writes to **stderr**
-  (stdout is the JSONL protocol). The parent (`agent/backends/pi/agent.ts`)
+  (stdout is the JSONL protocol). The parent (`agent-runtime/pi/agent.ts`)
   pipes that stderr into the main log file, so subprocess lines still persist.
 - **Renderer** → `src/renderer/src/lib/logger.ts`. `debug`/`info` are dev-console
   only; `warn`/`error` also forward to the main log file via `window.api.logs`.

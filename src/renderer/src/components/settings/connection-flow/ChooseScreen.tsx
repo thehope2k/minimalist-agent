@@ -1,7 +1,7 @@
-import { Key, Monitor, Plug, Sparkles } from 'lucide-react';
+import { Monitor, Plug, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui';
-import { AnthropicMark, CodeMieMark, GithubMark, OpenAIMark } from './shared';
+import { CodeMieMark, GithubMark, OpenAIMark } from './shared';
 import type { ConnectionKind } from './types';
 
 type ChoiceProps = {
@@ -53,12 +53,6 @@ export function ChooseScreen({ onPick }: { onPick: (k: ConnectionKind) => void }
 
       <div className="mt-6 space-y-2">
         <Choice
-          icon={<AnthropicMark />}
-          title="Claude Pro / Max"
-          desc="Use your Claude subscription for unlimited access."
-          onClick={() => onPick('claude-max')}
-        />
-        <Choice
           icon={<OpenAIMark />}
           title="Codex · ChatGPT"
           desc="Sign in with your ChatGPT account."
@@ -81,12 +75,6 @@ export function ChooseScreen({ onPick }: { onPick: (k: ConnectionKind) => void }
           title="OpenAI-compatible API"
           desc="StepFun, DeepSeek, Groq, OpenRouter, xAI… pick a provider and paste a key."
           onClick={() => onPick('openai-compatible')}
-        />
-        <Choice
-          icon={<Key className="h-4 w-4" strokeWidth={1.75} />}
-          title="I use another provider"
-          desc="Anthropic API key (Bedrock / OpenAI / Gemini coming later)."
-          onClick={() => onPick('other')}
         />
         <Choice
           icon={<Monitor className="h-4 w-4" strokeWidth={1.75} />}

@@ -12,7 +12,7 @@ An agent definition system that lets you create, configure, and spawn specialize
 - **Global registry** — agents stored under `<userData>/agents/<slug>/` and available across all sessions
 - **UI management** — dedicated Agents panel with Build with AI flow for creating agents
 - **System prompt injection** — agent awareness block automatically injected into the main agent's system prompt
-- **Custom Agent tool** — Pi backend (GitHub Copilot, ChatGPT Plus) includes a specialized Agent tool for spawning sub-agents
+- **Custom Agent tool** — the runtime includes a specialized Agent tool for spawning sub-agents
 - **Nested visibility** — sub-agent progress and transcripts visible in the chat UI
 
 ---
@@ -91,7 +91,6 @@ Return findings as a structured report:
 - **`maxTurns`** — Maximum number of turns before agent stops (default: 10)
 - **`permissionMode`** — `plan` (read-only) or `auto` (execution allowed)
   - If omitted, inherits session permission mode
-- **`effort`** — Anthropic only: reasoning effort level (`low`, `medium`, `high`)
 - **`icon`** — Emoji (e.g., `🔍`) or URL
 
 ---
@@ -181,7 +180,7 @@ The main agent decides when to spawn a sub-agent based on:
 - `src/renderer/src/components/agents/AgentsPanel.tsx` — management UI
 - `src/renderer/src/components/agents/AgentInfoPage.tsx` — details view
 
-**Pi backend integration:**
+**Runtime integration:**
 - Custom `Agent` tool definition for GitHub Copilot and ChatGPT Plus connections
 - Nested sub-agent visibility in chat UI
 

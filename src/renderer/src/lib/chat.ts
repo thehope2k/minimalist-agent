@@ -72,7 +72,7 @@ export interface ChatMessage {
   /** Total wall-clock duration of the turn in milliseconds. Persisted. */
   durationMs?: number;
   /**
-   * Per-call usage from the latest API round inside the turn. Anthropic
+   * Per-call usage from the latest API round inside the turn. The backend
    * attaches `usage` to every assistant message it returns; we keep the
    * most recent so the context badge can report the real prompt size on
    * the *current* call (vs the aggregate sum which exceeds the window

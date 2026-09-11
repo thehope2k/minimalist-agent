@@ -94,12 +94,10 @@ export function registerGitIpc(): void {
     ) => {
       try {
         const { resolveAuthForSlug } = await import('../auth/resolve');
-        const { listConnections } = await import('../storage/connections');
         const { generateCommitMessage } = await import('../agent-runtime/commit-message');
         const { getCoAuthorPreference } = await import('../storage/preferences');
         const { findProjectForPath } = await import('../storage/projects');
         const auth = await resolveAuthForSlug(args.connectionSlug);
-        const conn = listConnections().find((c) => c.slug === args.connectionSlug);
         const projectCoAuthor = args.cwd
           ? findProjectForPath(args.cwd)?.includeCoAuthoredBy
           : undefined;
@@ -111,7 +109,6 @@ export function registerGitIpc(): void {
           model: args.model,
           connectionSlug: args.connectionSlug,
           chatSessionId: args.sessionId,
-          piAuthProvider: conn?.piAuthProvider,
           cwd: args.cwd,
           includeCoAuthoredBy,
         });
