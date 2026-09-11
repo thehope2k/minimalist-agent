@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import * as Popover from '@radix-ui/react-popover';
 import {
   Activity,
+  ChevronDown,
   KeyRound,
   LogIn,
   MoreHorizontal,
@@ -47,6 +49,7 @@ export function ConnectionRow({
   onRefreshModels?: () => void;
 }) {
   const [renaming, setRenaming] = useState(false);
+  const [modelsOpen, setModelsOpen] = useState(false);
   const [renameValue, setRenameValue] = useState(conn.name);
 
   const startRename = () => {
@@ -105,8 +108,53 @@ export function ConnectionRow({
             {isDefault && <Badge>Default</Badge>}
           </div>
         )}
-        <div className="text-xs text-fg-subtle">
-          {providerLabel(conn)} · {conn.models.length} models
+        <div className="flex items-center gap-1 text-xs text-fg-subtle">
+          <span>{providerLabel(conn)} ·</span>
+          <Popover.Root open={modelsOpen} onOpenChange={setModelsOpen}>
+            <Popover.Trigger asChild>
+              <button
+                type="button"
+                aria-expanded={modelsOpen}
+                className="inline-flex items-center gap-0.5 rounded px-1 text-fg-muted transition-colors hover:bg-elevated hover:text-fg"
+              >
+                {conn.models.length} {conn.models.length === 1 ? 'model' : 'models'}
+                <ChevronDown
+                  className="h-3 w-3"
+                  strokeWidth={1.75}
+                  aria-hidden="true"
+                />
+              </button>
+            </Popover.Trigger>
+            <Popover.Portal>
+              <Popover.Content
+                align="start"
+                side="bottom"
+                sideOffset={6}
+                collisionPadding={8}
+                className="z-50 w-80 overflow-hidden rounded-lg border border-border bg-panel p-1 shadow-2xl"
+              >
+                <div className="border-b border-border px-2.5 py-2 text-xs font-medium text-fg">
+                  {conn.models.length} {conn.models.length === 1 ? 'model' : 'models'} available
+                </div>
+                <div className="scroll-thin max-h-80 overflow-auto py-1">
+                  {conn.models.length === 0 ? (
+                    <div className="px-2.5 py-3 text-sm text-fg-subtle">
+                      No models on this connection.
+                    </div>
+                  ) : (
+                    conn.models.map((model) => (
+                      <div key={model.id} className="px-2.5 py-1.5">
+                        <div className="truncate text-sm text-fg">{model.name}</div>
+                        {model.name !== model.id && (
+                          <div className="truncate text-xs text-fg-subtle">{model.id}</div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </Popover.Content>
+            </Popover.Portal>
+          </Popover.Root>
         </div>
         {conn.providerType === 'pi' && conn.piAuthProvider === 'github-copilot' && (
           <CopilotQuotaBar connectionSlug={conn.slug} />
