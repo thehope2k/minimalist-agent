@@ -267,10 +267,7 @@ export function AIPanel() {
         title="Context & Compaction"
         subtitle="Tuning for the Pi backend's automatic conversation summarization (GitHub Copilot, local, OpenAI-compatible connections). Ignored for Anthropic. Percentages are resolved against whichever model is active in a chat."
       >
-        <CompactionSection
-          settings={settings}
-          availableModels={availableModels}
-        />
+        <CompactionSection settings={settings} />
       </SettingsSection>
 
       <AddConnectionDialog

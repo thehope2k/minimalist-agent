@@ -7,8 +7,8 @@ import {
   DEFAULT_RESERVE_TOKENS_FLOOR,
   setCompactionSettings,
 } from '@/lib/connections';
-import type { AiSettings, ModelDef } from '@/lib/electron';
-import { Input, Select } from '@/components/ui';
+import type { AiSettings } from '@/lib/electron';
+import { Input } from '@/components/ui';
 import { SettingsCard, SettingsDivider, SettingsRow, SettingsToggle } from '../SettingsPrimitives';
 
 const PERCENT_MULTIPLIER = 100;
@@ -23,10 +23,8 @@ function percentToFraction(percent: number): number {
 
 export function CompactionSection({
   settings,
-  availableModels,
 }: {
   settings: AiSettings;
-  availableModels: ModelDef[];
 }) {
   const compaction = settings.compactionSettings;
 
@@ -58,26 +56,6 @@ export function CompactionSection({
             percent={fractionToPercent(compaction?.keepRecentFraction ?? DEFAULT_KEEP_RECENT_FRACTION)}
             onChange={(v) => void setCompactionSettings({ keepRecentFraction: percentToFraction(v) })}
           />
-        }
-      />
-      <SettingsDivider />
-      <SettingsRow
-        label="Summarizer model"
-        description="Model used for the manual “Compact now” trigger. Same provider as the default connection above."
-        control={
-          availableModels.length === 0 ? (
-            <span className="text-sm text-fg-subtle">—</span>
-          ) : (
-            <Select
-              variant="compact"
-              value={compaction?.summarizerModel ?? ''}
-              onChange={(id) => void setCompactionSettings({ summarizerModel: id || undefined })}
-              options={[
-                { value: '', label: 'Same as chat model' },
-                ...availableModels.map((m) => ({ value: m.id, label: m.name })),
-              ]}
-            />
-          )
         }
       />
       <SettingsDivider />

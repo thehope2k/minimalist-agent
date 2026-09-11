@@ -15,8 +15,6 @@ export interface CompactionTuning {
   keepRecentFraction?: number;
   keepRecentTokensFloor?: number;
   keepRecentTokensCeiling?: number;
-  /** Applies only to the manual "Compact now" trigger. */
-  summarizerModel?: string;
 }
 
 export interface ResolvedCompactionSettings {

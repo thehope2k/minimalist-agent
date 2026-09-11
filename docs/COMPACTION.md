@@ -28,7 +28,7 @@ flowchart TB
     subgraph SDK["Pi SDK (in-process)"]
         A[compaction starts] --> B{session_before_compact hook}
         B -->|auto| C[default summarize]
-        B -->|manual| D[optional cheaper summarizer model]
+        B -->|manual| D[default summarize + plan-preservation instructions]
         C --> E[compaction ends]
         D --> E
     end
@@ -39,7 +39,7 @@ flowchart TB
     F --> J[OTel span, cost attributed]
     G --> J
     H --> K[UI: expandable divider or failure chip]
-    L[Settings: enabled / reserve / keep-recent / summarizer model] --> A
+    L[Settings: enabled / reserve / keep-recent] --> A
     L --> M[ContextBadge preview]
 ```
 
@@ -51,14 +51,13 @@ internal
 always set explicitly by the adapter — never inferred from other fields — so a failed compaction can't render as a
 successful one.
 
-**Settings, one source of truth.** Auto-compact on/off, the token threshold, how much recent history stays verbatim, and
-an optional cheaper summarizer model all live in one settings object. That same object feeds both session construction
-and the context-usage badge's "compacts near ~X%" preview, so the preview can't drift from what actually triggers
-compaction.
+**Settings, one source of truth.** Auto-compact on/off, the token threshold, and how much recent history stays
+verbatim all live in one settings object. That same object feeds both session construction and the context-usage
+badge's "compacts near ~X%" preview, so the preview can't drift from what actually triggers compaction.
 
 **`session_before_compact` hook.** Used two ways: attributing an OTel span to auto-triggered compactions, and — manual
-trigger only — swapping in a cheaper model plus instructing the summarizer to preserve any in-flight multi-phase plan
-state verbatim (this app's planning feature has no general-purpose way to signal "don't paraphrase this" otherwise).
+trigger only — instructing the summarizer to preserve any in-flight multi-phase plan state verbatim (this app's
+planning feature has no general-purpose way to signal "don't paraphrase this" otherwise).
 
 **Concurrency.** A manual compaction and a real chat turn must never run against the session at the same time (wrong
 model, misrouted events). This is enforced at the subprocess level, not just by disabling the input in the UI.
@@ -86,8 +85,6 @@ turn. See [`OTEL.md`](OTEL.md) for the span model this reuses.
 
 - Never infer `status` — set it explicitly at every emit site.
 - Settings numbers have exactly one source of truth; don't reintroduce a UI-local hardcoded threshold.
-- Summarizer-model override stays manual-trigger only — the automatic path has no safe way to swap models mid-flight
-  without racing the active turn.
 - Auto-compactions that get aborted must still close out their OTel span.
 - A manual compaction and a prompt turn must never execute concurrently.
 - A fork must never fail because context-summarization failed — always fall back to a clean cutoff.

@@ -826,17 +826,6 @@ function detectPlanPreservationInstructions(): string | undefined {
   );
 }
 
-async function resolveSummarizerModel(): Promise<Model<Api> | undefined> {
-  const modelId = state.init?.compactionSettings?.summarizerModel;
-  if (!modelId || !state.init || !state.modelRuntime) return undefined;
-  const resolved = getBuiltinModel(state.init.piAuthProvider as 'github-copilot', modelId as never);
-  if (!resolved) {
-    log.warn(`Configured summarizer model "${modelId}" could not be resolved — using the active chat model instead.`);
-    return undefined;
-  }
-  return withResolvedBaseUrl(resolved, state.modelRuntime);
-}
-
 async function handleManualCompact(msg: MsgManualCompact): Promise<void> {
   if (!state.session) return;
 
@@ -846,21 +835,11 @@ async function handleManualCompact(msg: MsgManualCompact): Promise<void> {
 
   // Claim the same busy-slot `handlePrompt` uses, synchronously right after
   // the guard above resolves (no `await` in between) so a `prompt` message
-  // racing in via the next stdin line can't slip through and run against the
-  // summarizer model swapped in below, or clobber `state.currentTurnId`.
+  // racing in via the next stdin line can't slip through and clobber
+  // `state.currentTurnId`.
   const run = async (): Promise<void> => {
     const planInstructions = detectPlanPreservationInstructions();
     const combinedInstructions = [msg.customInstructions, planInstructions].filter(Boolean).join('\n\n') || undefined;
-
-    const summarizerModel = await resolveSummarizerModel();
-    const originalModel = state.model;
-    if (summarizerModel) {
-      try {
-        await state.session!.setModel(summarizerModel as never);
-      } catch (e) {
-        log.warn('Failed to switch to summarizer model, using active chat model:', errMessage(e));
-      }
-    }
 
     state.currentTurnId = msg.turnId;
     try {
@@ -871,7 +850,7 @@ async function handleManualCompact(msg: MsgManualCompact): Promise<void> {
             'gen_ai.operation.name': 'chat',
             'gen_ai.provider.name': state.init?.piAuthProvider ?? '',
             'gen_ai.conversation.id': state.init?.sessionId ?? '',
-            'gen_ai.request.model': summarizerModel?.id ?? originalModel?.id ?? state.init?.model ?? '',
+            'gen_ai.request.model': state.model?.id ?? state.init?.model ?? '',
             'minimalist_agent.compaction.reason': 'manual',
             'minimalist_agent.compaction.plan_preserved': !!planInstructions,
           });
@@ -893,14 +872,6 @@ async function handleManualCompact(msg: MsgManualCompact): Promise<void> {
         },
       );
     } finally {
-      if (summarizerModel && originalModel) {
-        try {
-          await state.session!.setModel(originalModel as never);
-        } catch (e) {
-          log.warn('Failed to restore chat model after manual compaction:', errMessage(e));
-        }
-      }
-
       if (state.currentTurnId === msg.turnId) {
         const out: MsgEvent = { type: 'event', turnId: msg.turnId, event: { type: 'turn_done' } };
         send(out);
