@@ -8,21 +8,7 @@ import type { FlowProps } from './types';
 
 const DEFAULT_CONNECTION_NAME = 'CodeMie SSO';
 const EPAM_CODEMIE_API_URL = 'https://codemie.lab.epam.com/code-assistant-api';
-const DEFAULT_CONTEXT_WINDOW = 128_000;
-
 type Integration = { id: string; alias: string };
-
-function createModel(id: string): ModelDef {
-  return {
-    id,
-    name: id,
-    shortName: id,
-    description: 'CodeMie-managed model',
-    contextWindow: DEFAULT_CONTEXT_WINDOW,
-    supportsToolCalls: true,
-    supportsStreaming: true,
-  };
-}
 
 function normalizeUrl(value: string): string {
   return value.trim().replace(/\/+$/, '');
@@ -64,7 +50,7 @@ export function CodeMieSsoFlow({ onBack, onClose, onSaved, editingMeta }: FlowPr
         setError('CodeMie returned no projects for this account. Contact your administrator.');
         return;
       }
-      const discoveredModels = session.ids.map(createModel);
+      const discoveredModels = session.models;
       const selectedProject = session.projects.includes(project) ? project : session.projects[0];
       const projectIntegrations = session.integrations[selectedProject] ?? [];
       setModels(discoveredModels);

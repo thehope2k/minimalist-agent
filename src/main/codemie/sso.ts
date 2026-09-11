@@ -1,6 +1,7 @@
 import { createServer, type Server } from 'node:http';
 import { shell } from 'electron';
 import { createLogger } from '../logger';
+import type { ModelDef } from '../storage/connections';
 import { codeMieApiBase, codeMieCookieHeader, isLoopbackAddress } from './shared';
 
 const log = createLogger('codemie-sso');
@@ -31,7 +32,15 @@ const CALLBACK_SUCCESS_PAGE = `<!doctype html>
 </html>`;
 
 type CodeMieCallbackPayload = { cookies?: Record<string, string> };
-type CodeMieModel = { id?: string; base_name?: string; deployment_name?: string; label?: string };
+type CodeMieModel = {
+  id?: string;
+  base_name?: string;
+  deployment_name?: string;
+  label?: string;
+  provider?: string;
+  multimodal?: boolean;
+  features?: { streaming?: boolean; tools?: boolean };
+};
 type CodeMieUser = { username?: string; applications?: string[]; applications_admin?: string[]; applicationsAdmin?: string[] };
 type CodeMieIntegration = { id?: string; alias?: string; project_name?: string; credential_type?: string };
 type CodeMieBudgetRow = { project_name?: string; current_spending?: number; budget_limit?: number; total?: number; budget_reset_at?: string };
@@ -139,10 +148,31 @@ async function fetchCodeMieJson<T>(baseUrl: string, path: string, cookies: Recor
   return response.json() as Promise<T>;
 }
 
-export async function fetchCodeMieModels(baseUrl: string, cookies: Record<string, string>): Promise<string[]> {
+function toCodeMieModel({ id, base_name, deployment_name, label, provider, multimodal, features }: CodeMieModel): ModelDef | null {
+  const modelId = id ?? base_name ?? deployment_name ?? label;
+  if (!modelId) return null;
+  const displayName = label?.trim() || modelId;
+  return {
+    id: modelId,
+    name: displayName,
+    shortName: displayName,
+    description: provider ? `CodeMie · ${provider}` : 'CodeMie-managed model',
+    contextWindow: 128_000,
+    supportsVision: multimodal || undefined,
+    supportsToolCalls: features?.tools ?? true,
+    supportsStreaming: features?.streaming ?? true,
+  };
+}
+
+export async function fetchCodeMieModels(baseUrl: string, cookies: Record<string, string>): Promise<ModelDef[]> {
   const models = await fetchCodeMieJson<CodeMieModel[]>(baseUrl, '/v1/llm_models?include_all=true', cookies);
   if (!Array.isArray(models)) return [];
-  return [...new Set(models.map(({ id, base_name, deployment_name, label }) => id ?? base_name ?? deployment_name ?? label).filter((id): id is string => Boolean(id)))].sort();
+  const byId = new Map<string, ModelDef>();
+  for (const model of models) {
+    const parsed = toCodeMieModel(model);
+    if (parsed) byId.set(parsed.id, parsed);
+  }
+  return [...byId.values()].sort((left, right) => left.name.localeCompare(right.name));
 }
 
 export async function fetchCodeMieProjects(baseUrl: string, cookies: Record<string, string>): Promise<string[]> {
@@ -170,16 +200,34 @@ export async function fetchCodeMieBudget(baseUrl: string, cookies: Record<string
   };
 }
 
-export async function fetchCodeMieIntegrations(baseUrl: string, cookies: Record<string, string>, project: string): Promise<CodeMieIntegrationOption[]> {
-  const response = await fetchCodeMieJson<unknown>(baseUrl, '/v1/settings/user', cookies);
+function integrationRows(response: unknown): CodeMieIntegration[] {
   const rows = Array.isArray(response)
     ? response
     : typeof response === 'object' && response !== null && Array.isArray((response as { data?: unknown[] }).data)
       ? (response as { data: unknown[] }).data
       : [];
-  return rows
-    .filter((row): row is CodeMieIntegration => typeof row === 'object' && row !== null)
-    .filter(({ id, alias, project_name, credential_type }) => Boolean(id) && Boolean(alias) && project_name === project && credential_type === 'LiteLLM')
-    .map(({ id, alias }) => ({ id: id!, alias: alias! }))
-    .sort((left, right) => left.alias.localeCompare(right.alias));
+  return rows.filter((row): row is CodeMieIntegration => typeof row === 'object' && row !== null);
+}
+
+export async function fetchCodeMieIntegrations(baseUrl: string, cookies: Record<string, string>, project: string): Promise<CodeMieIntegrationOption[]> {
+  const integrations = new Map<string, CodeMieIntegrationOption>();
+  const seenRowIds = new Set<string>();
+  for (let page = 0; page < 20; page++) {
+    const params = new URLSearchParams({
+      page: String(page),
+      per_page: '50',
+      filters: JSON.stringify({ type: ['LiteLLM'] }),
+    });
+    const rows = integrationRows(await fetchCodeMieJson<unknown>(baseUrl, `/v1/settings/user?${params}`, cookies));
+    let sawNewRow = false;
+    for (const { id, alias, project_name, credential_type } of rows) {
+      if (!id || seenRowIds.has(id)) continue;
+      seenRowIds.add(id);
+      sawNewRow = true;
+      if (!alias || project_name !== project || credential_type !== 'LiteLLM') continue;
+      integrations.set(id, { id, alias });
+    }
+    if (rows.length < 50 || !sawNewRow) break;
+  }
+  return [...integrations.values()].sort((left, right) => left.alias.localeCompare(right.alias));
 }

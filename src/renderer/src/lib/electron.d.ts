@@ -1018,7 +1018,7 @@ export interface AppApi {
     getCredential: (slug: string) => Promise<Credential | null>;
     isEncryptionAvailable: () => Promise<boolean>;
     test: (slug: string) => Promise<{ ok: true } | { ok: false; error: AgentError }>;
-    signInWithCodeMie: (args: { baseUrl: string }) => Promise<{ cookies: Record<string, string>; expiresAt?: number; ids: string[]; projects: string[]; integrations: Record<string, Array<{ id: string; alias: string }>> }>;
+    signInWithCodeMie: (args: { baseUrl: string }) => Promise<{ cookies: Record<string, string>; expiresAt?: number; models: ModelDef[]; projects: string[]; integrations: Record<string, Array<{ id: string; alias: string }>> }>;
     fetchCodeMieBudget: (args: { connectionSlug: string }) => Promise<CodeMieBudget | { error: string }>;
     listRemoteModels: (
       args: { baseUrl: string; apiKey?: string },

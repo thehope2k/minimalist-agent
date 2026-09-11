@@ -56,10 +56,7 @@ export function isRefreshable(meta: ConnectionMeta): boolean {
   if (meta.providerType === 'pi' && meta.piAuthProvider === 'github-copilot') {
     return true;
   }
-  if (meta.providerType === 'openai-compatible' || meta.providerType === 'local' || meta.providerType === 'codemie-sso') {
-    return true;
-  }
-  return false;
+  return meta.providerType === 'openai-compatible' || meta.providerType === 'local' || meta.providerType === 'codemie-sso';
 }
 
 function isStale(meta: ConnectionMeta): boolean {
@@ -116,10 +113,7 @@ async function fetchForProvider(
       return { error: 'No CodeMie SSO session stored for this connection.' };
     }
     const { fetchCodeMieModels } = await import('../codemie/sso');
-    return (await fetchCodeMieModels(meta.baseUrl, cred.cookies)).map((id) => ({
-      ...minimalModel(id),
-      description: 'CodeMie-managed model',
-    }));
+    return fetchCodeMieModels(meta.baseUrl, cred.cookies);
   }
 
   // ---- OpenAI-compatible / local: union (keep curated, append discovered) --

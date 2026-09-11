@@ -655,7 +655,7 @@ const api = {
       ipcRenderer.invoke('connections:isEncryptionAvailable'),
     test: (slug: string): Promise<{ ok: true } | { ok: false; error: AgentError }> =>
       ipcRenderer.invoke('connections:test', slug),
-    signInWithCodeMie: (args: { baseUrl: string }): Promise<{ cookies: Record<string, string>; expiresAt?: number; ids: string[]; projects: string[]; integrations: Record<string, Array<{ id: string; alias: string }>> }> =>
+    signInWithCodeMie: (args: { baseUrl: string }): Promise<{ cookies: Record<string, string>; expiresAt?: number; models: Array<{ id: string; name: string; shortName: string; description: string; contextWindow: number; supportsVision?: boolean; supportsToolCalls?: boolean; supportsStreaming?: boolean }>; projects: string[]; integrations: Record<string, Array<{ id: string; alias: string }>> }> =>
       ipcRenderer.invoke('codemie-sso:signIn', args),
     fetchCodeMieBudget: (
       args: { connectionSlug: string },

@@ -153,7 +153,7 @@ export function registerConnectionsIpc(): void {
 
   ipcMain.handle('codemie-sso:signIn', async (_e, args: { baseUrl: string }) => {
     const session = await signInWithCodeMie(args.baseUrl);
-    const [ids, projects] = await Promise.all([
+    const [models, projects] = await Promise.all([
       fetchCodeMieModels(args.baseUrl, session.cookies),
       fetchCodeMieProjects(args.baseUrl, session.cookies),
     ]);
@@ -167,7 +167,7 @@ export function registerConnectionsIpc(): void {
         }
       }),
     );
-    return { ...session, ids, projects, integrations: Object.fromEntries(integrations) };
+    return { ...session, models, projects, integrations: Object.fromEntries(integrations) };
   });
 
   ipcMain.handle(
