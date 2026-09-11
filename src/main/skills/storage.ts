@@ -1,8 +1,11 @@
-import {existsSync, readdirSync, readFileSync, rmSync, statSync,} from 'node:fs';
-import {basename, dirname, join} from 'node:path';
-import type {LoadedSkill} from './types';
-import {parseSkillFile} from './parse';
-import {Paths, projectConfigRoot} from '../storage/paths';
+import { existsSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
+import { basename, dirname, join } from 'node:path';
+import type { LoadedSkill } from './types';
+import { parseSkillFile } from './parse';
+import { Paths, projectConfigRoot } from '../storage/paths';
+import { findIconFile } from '../asset-tiers/icon';
+import { createTwoTierCache, mergeTiers } from '../asset-tiers/two-tier-cache';
+import { scanAssetDirectory } from '../asset-tiers/file-tree';
 
 /**
  * User-tier skills directory: ~/.minimalist-agent/skills/
@@ -18,20 +21,6 @@ export function getSkillsDir(): string {
  */
 export function getProjectSkillsDir(cwd: string): string {
   return join(projectConfigRoot(cwd), 'skills');
-}
-
-
-/* ---------- icon discovery ---------- */
-
-const ICON_EXTS = ['.png', '.jpg', '.jpeg', '.webp', '.svg', '.gif'];
-
-/** Find the first `icon.{ext}` file in a skill directory, if any. */
-function findIconFile(skillDir: string): string | undefined {
-  for (const ext of ICON_EXTS) {
-    const candidate = join(skillDir, `icon${ext}`);
-    if (existsSync(candidate)) return candidate;
-  }
-  return undefined;
 }
 
 /* ---------- single-skill loader ---------- */
@@ -69,18 +58,11 @@ function loadSkillFromDir(slug: string, dir: string, source: import('./types').S
 
 /* ---------- cache ---------- */
 
-// Keyed by canonical cache key: '' for user-only, cwd string when project included.
-const cacheMap = new Map<string, { skills: LoadedSkill[]; ts: number }>();
-const CACHE_TTL = 5 * 60_000;
+const cache = createTwoTierCache<LoadedSkill>(5 * 60_000);
 
 /** Drop the cache for a specific cwd (or all entries). Call on file events / settings changes. */
 export function invalidateSkillsCache(cwd?: string): void {
-  if (cwd) {
-    cacheMap.delete('');
-    cacheMap.delete(cwd);
-  } else {
-    cacheMap.clear();
-  }
+  cache.invalidate(cwd);
 }
 
 /* ---------- directory-level loader ---------- */
@@ -115,23 +97,16 @@ function loadSkillsFromDirectory(
  * Cached per unique (user + cwd) combination with a 5-minute TTL.
  */
 export function loadAllSkills(cwd?: string): LoadedSkill[] {
-  const cacheKey = cwd ?? '';
-  const now = Date.now();
-  const cached = cacheMap.get(cacheKey);
-  if (cached && now - cached.ts < CACHE_TTL) return cached.skills;
+  const cached = cache.get(cwd);
+  if (cached) return cached;
 
   const userSkills = loadSkillsFromDirectory(getSkillsDir(), 'user');
   const projectSkills = cwd
     ? loadSkillsFromDirectory(getProjectSkillsDir(cwd), 'project')
     : [];
 
-  // Merge: project overrides user for same slug (project wins).
-  const bySlug = new Map<string, LoadedSkill>();
-  for (const s of userSkills) bySlug.set(s.slug, s);
-  for (const s of projectSkills) bySlug.set(s.slug, s); // project overrides
-
-  const skills = Array.from(bySlug.values());
-  cacheMap.set(cacheKey, { skills, ts: now });
+  const skills = mergeTiers(userSkills, projectSkills);
+  cache.set(cwd, skills);
   return skills;
 }
 
@@ -166,41 +141,8 @@ export type SkillFileNode =
 
 /** Recursively scan a skill directory for the info-page file tree view. */
 export function scanSkillDirectory(dir: string): SkillFileNode[] {
-  if (!existsSync(dir)) return [];
-  const out: SkillFileNode[] = [];
-  let names: string[] = [];
-  try {
-    names = readdirSync(dir);
-  } catch {
-    return [];
-  }
-  for (const name of names) {
-    if (name.startsWith('.')) continue;
-    const full = join(dir, name);
-    let info;
-    try {
-      info = statSync(full);
-    } catch {
-      continue;
-    }
-    if (info.isDirectory()) {
-      out.push({
-        kind: 'dir',
-        name,
-        path: full,
-        children: scanSkillDirectory(full),
-      });
-    } else if (info.isFile()) {
-      out.push({ kind: 'file', name, path: full, size: info.size });
-    }
-  }
-  out.sort((a, b) => {
-    if (a.kind !== b.kind) return a.kind === 'dir' ? -1 : 1;
-    return a.name.localeCompare(b.name);
-  });
-  return out;
+  return scanAssetDirectory(dir);
 }
 
-/* ---------- icon download ---------- */
 export type { LoadedSkill, SkillSource } from './types';
 export { basename };

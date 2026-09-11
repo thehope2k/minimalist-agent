@@ -6,55 +6,20 @@ import {
   getModelValidationError,
   SESSION_DEFAULT_MODEL,
 } from '../../shared/agent-models';
+import type { ValidationIssue, ValidationResult } from '../asset-tiers/validation';
+import { invalidResult, validateSlug as validateSlugShared } from '../asset-tiers/validation';
 
-/* ---------- validation result types ---------- */
+export {
+  type ValidationIssue,
+  type ValidationResult,
+  validResult,
+  invalidResult,
+  SLUG_REGEX,
+} from '../asset-tiers/validation';
 
-export interface ValidationIssue {
-  /** dotted path or filename — e.g. `name`, `frontmatter`, `AGENT.md`. */
-  path: string;
-  message: string;
-  suggestion?: string;
-}
-
-export interface ValidationResult {
-  valid: boolean;
-  errors: ValidationIssue[];
-  warnings: ValidationIssue[];
-}
-
-export function validResult(): ValidationResult {
-  return { valid: true, errors: [], warnings: [] };
-}
-
-export function invalidResult(
-  path: string,
-  message: string,
-  suggestion?: string,
-): ValidationResult {
-  return {
-    valid: false,
-    errors: [{ path, message, suggestion }],
-    warnings: [],
-  };
-}
-
-/* ---------- slug ---------- */
-
-/** Lowercase alphanumeric with hyphens. Single-char slugs allowed. */
-export const SLUG_REGEX = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
-
+/** Agent-specific fallback suggestion text on top of the shared validator. */
 export function validateSlug(slug: string): ValidationResult {
-  if (SLUG_REGEX.test(slug)) return validResult();
-  const suggested = slug
-    .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .replace(/-+/g, '-');
-  return invalidResult(
-    'slug',
-    'Slug must be lowercase alphanumeric with hyphens',
-    `Suggested: '${suggested || 'valid-agent-name'}'`,
-  );
+  return validateSlugShared(slug, 'valid-agent-name');
 }
 
 /* ---------- frontmatter schema ---------- */

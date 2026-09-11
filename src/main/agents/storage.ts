@@ -1,9 +1,12 @@
-import {existsSync, readdirSync, readFileSync, rmSync, statSync} from 'node:fs';
-import {basename, join} from 'node:path';
-import type {LoadedAgent} from './types';
-import {parseAgentFile} from './parse';
-import {Paths, projectConfigRoot} from '../storage/paths';
-import {invalidateAgentsPromptCache} from '../agent-runtime/system-prompt';
+import { existsSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
+import { basename, join } from 'node:path';
+import type { LoadedAgent } from './types';
+import { parseAgentFile } from './parse';
+import { Paths, projectConfigRoot } from '../storage/paths';
+import { invalidateAgentsPromptCache } from '../agent-runtime/system-prompt';
+import { findIconFile } from '../asset-tiers/icon';
+import { createTwoTierCache, mergeTiers } from '../asset-tiers/two-tier-cache';
+import { scanAssetDirectory } from '../asset-tiers/file-tree';
 
 /* ---------- directory resolution ---------- */
 
@@ -18,19 +21,6 @@ export function getAgentsDir(): string {
  */
 export function getProjectAgentsDir(cwd: string): string {
   return join(projectConfigRoot(cwd), 'agents');
-}
-
-/* ---------- icon discovery ---------- */
-
-const ICON_EXTS = ['.png', '.jpg', '.jpeg', '.webp', '.svg', '.gif'];
-
-/** Find the first `icon.{ext}` file in an agent directory, if any. */
-function findIconFile(agentDir: string): string | undefined {
-  for (const ext of ICON_EXTS) {
-    const candidate = join(agentDir, `icon${ext}`);
-    if (existsSync(candidate)) return candidate;
-  }
-  return undefined;
 }
 
 /* ---------- single-agent loader ---------- */
@@ -68,18 +58,11 @@ function loadAgentFromDir(slug: string, dir: string, source: import('./types').A
 
 /* ---------- cache ---------- */
 
-// Keyed by canonical cache key: '' for user-only, cwd string when project included.
-const cacheMap = new Map<string, { agents: LoadedAgent[]; ts: number }>();
-const CACHE_TTL = 5 * 60_000; // 5 minutes
+const cache = createTwoTierCache<LoadedAgent>(5 * 60_000);
 
 /** Drop the cache. Call on file events / settings changes. */
 export function invalidateAgentsCache(cwd?: string): void {
-  if (cwd) {
-    cacheMap.delete('');
-    cacheMap.delete(cwd);
-  } else {
-    cacheMap.clear();
-  }
+  cache.invalidate(cwd);
   invalidateAgentsPromptCache(); // Also invalidate system prompt cache
 }
 
@@ -115,23 +98,16 @@ function loadAgentsFromDirectory(
  * Cached per unique (user + cwd) combination with a 5-minute TTL.
  */
 export function loadAllAgents(cwd?: string): LoadedAgent[] {
-  const cacheKey = cwd ?? '';
-  const now = Date.now();
-  const cached = cacheMap.get(cacheKey);
-  if (cached && now - cached.ts < CACHE_TTL) return cached.agents;
+  const cached = cache.get(cwd);
+  if (cached) return cached;
 
   const userAgents = loadAgentsFromDirectory(getAgentsDir(), 'user');
   const projectAgents = cwd
     ? loadAgentsFromDirectory(getProjectAgentsDir(cwd), 'project')
     : [];
 
-  // Merge: project overrides user for same slug.
-  const bySlug = new Map<string, LoadedAgent>();
-  for (const a of userAgents) bySlug.set(a.slug, a);
-  for (const a of projectAgents) bySlug.set(a.slug, a); // project overrides
-
-  const agents = Array.from(bySlug.values());
-  cacheMap.set(cacheKey, { agents, ts: now });
+  const agents = mergeTiers(userAgents, projectAgents);
+  cache.set(cwd, agents);
   return agents;
 }
 
@@ -165,39 +141,7 @@ export type AgentFileNode =
 
 /** Recursively scan an agent directory for the info-page file tree view. */
 export function scanAgentDirectory(dir: string): AgentFileNode[] {
-  if (!existsSync(dir)) return [];
-  const out: AgentFileNode[] = [];
-  let names: string[] = [];
-  try {
-    names = readdirSync(dir);
-  } catch {
-    return [];
-  }
-  for (const name of names) {
-    if (name.startsWith('.')) continue;
-    const full = join(dir, name);
-    let info;
-    try {
-      info = statSync(full);
-    } catch {
-      continue;
-    }
-    if (info.isDirectory()) {
-      out.push({
-        kind: 'dir',
-        name,
-        path: full,
-        children: scanAgentDirectory(full),
-      });
-    } else if (info.isFile()) {
-      out.push({ kind: 'file', name, path: full, size: info.size });
-    }
-  }
-  out.sort((a, b) => {
-    if (a.kind !== b.kind) return a.kind === 'dir' ? -1 : 1;
-    return a.name.localeCompare(b.name);
-  });
-  return out;
+  return scanAssetDirectory(dir);
 }
 
 export type { LoadedAgent } from './types';

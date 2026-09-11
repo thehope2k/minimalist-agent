@@ -9,10 +9,12 @@ import { basename, dirname, join } from 'node:path';
 import { Paths, projectConfigRoot } from '../storage/paths';
 import { parseExtensionConfig, parseExtensionGuide } from './parse';
 import { type ExtensionScope, type LoadedExtension, variantOf } from './types';
+import { findIconFile } from '../asset-tiers/icon';
+import { createTwoTierCache, mergeTiers } from '../asset-tiers/two-tier-cache';
+import { scanAssetDirectory } from '../asset-tiers/file-tree';
 
 const CONFIG_FILE = 'extension.json';
 const GUIDE_FILE = 'guide.md';
-const ICON_EXTS = ['.png', '.jpg', '.jpeg', '.webp', '.svg', '.gif'];
 
 /** User-tier extensions: ~/.minimalist-agent/extensions/ */
 export function getExtensionsDir(): string {
@@ -22,14 +24,6 @@ export function getExtensionsDir(): string {
 /** Project-tier extensions: <cwd>/.minimalist-agent/extensions/ */
 export function getProjectExtensionsDir(cwd: string): string {
   return join(projectConfigRoot(cwd), 'extensions');
-}
-
-function findIconFile(extDir: string): string | undefined {
-  for (const ext of ICON_EXTS) {
-    const candidate = join(extDir, `icon${ext}`);
-    if (existsSync(candidate)) return candidate;
-  }
-  return undefined;
 }
 
 /* ---------- single-extension loader ---------- */
@@ -75,17 +69,11 @@ function loadExtensionFromDir(slug: string, dir: string, scope: ExtensionScope):
 
 /* ---------- cache ---------- */
 
-// Keyed by cwd ('' = user-only). Same pattern as skills/agents.
-const cacheMap = new Map<string, { items: LoadedExtension[]; ts: number }>();
-const CACHE_TTL = 5_000;
+// Same pattern as skills/agents, via the shared two-tier cache helper.
+const cache = createTwoTierCache<LoadedExtension>(5_000);
 
 export function invalidateExtensionsCache(cwd?: string): void {
-  if (cwd) {
-    cacheMap.delete('');
-    cacheMap.delete(cwd);
-  } else {
-    cacheMap.clear();
-  }
+  cache.invalidate(cwd);
 }
 
 /* ---------- directory-level loader ---------- */
@@ -122,23 +110,16 @@ function loadExtensionsFromDirectory(
  * Cached per unique (user + cwd) combination.
  */
 export function loadAllExtensions(cwd?: string): LoadedExtension[] {
-  const cacheKey = cwd ?? '';
-  const now = Date.now();
-  const cached = cacheMap.get(cacheKey);
-  if (cached && now - cached.ts < CACHE_TTL) return cached.items;
+  const cached = cache.get(cwd);
+  if (cached) return cached;
 
   const userItems = loadExtensionsFromDirectory(getExtensionsDir(), 'user');
   const projectItems = cwd
     ? loadExtensionsFromDirectory(getProjectExtensionsDir(cwd), 'project')
     : [];
 
-  // Project overrides user for same slug.
-  const bySlug = new Map<string, LoadedExtension>();
-  for (const ext of userItems) bySlug.set(ext.slug, ext);
-  for (const ext of projectItems) bySlug.set(ext.slug, ext);
-
-  const items = Array.from(bySlug.values());
-  cacheMap.set(cacheKey, { items, ts: now });
+  const items = mergeTiers(userItems, projectItems);
+  cache.set(cwd, items);
   return items;
 }
 
@@ -169,39 +150,7 @@ export type ExtensionFileNode =
   | { kind: 'dir'; name: string; path: string; children: ExtensionFileNode[] };
 
 export function scanExtensionDirectory(dir: string): ExtensionFileNode[] {
-  if (!existsSync(dir)) return [];
-  const out: ExtensionFileNode[] = [];
-  let names: string[] = [];
-  try {
-    names = readdirSync(dir);
-  } catch {
-    return [];
-  }
-  for (const name of names) {
-    if (name.startsWith('.')) continue;
-    const full = join(dir, name);
-    let info;
-    try {
-      info = statSync(full);
-    } catch {
-      continue;
-    }
-    if (info.isDirectory()) {
-      out.push({
-        kind: 'dir',
-        name,
-        path: full,
-        children: scanExtensionDirectory(full),
-      });
-    } else if (info.isFile()) {
-      out.push({ kind: 'file', name, path: full, size: info.size });
-    }
-  }
-  out.sort((a, b) => {
-    if (a.kind !== b.kind) return a.kind === 'dir' ? -1 : 1;
-    return a.name.localeCompare(b.name);
-  });
-  return out;
+  return scanAssetDirectory(dir);
 }
 
 export type { LoadedExtension } from './types';

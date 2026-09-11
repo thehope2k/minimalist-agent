@@ -4,54 +4,17 @@ import type {
   ExtensionConfig,
   ExtensionGuideFrontmatter,
 } from './types';
+import type { ValidationIssue, ValidationResult } from '../asset-tiers/validation';
+import { invalidResult, validateSlug } from '../asset-tiers/validation';
 
-/* ---------- shared validation result types (mirrors skills/parse.ts) ---------- */
-
-export interface ValidationIssue {
-  path: string;
-  message: string;
-  suggestion?: string;
-}
-
-export interface ValidationResult {
-  valid: boolean;
-  errors: ValidationIssue[];
-  warnings: ValidationIssue[];
-}
-
-export function validResult(): ValidationResult {
-  return { valid: true, errors: [], warnings: [] };
-}
-
-export function invalidResult(
-  path: string,
-  message: string,
-  suggestion?: string,
-): ValidationResult {
-  return {
-    valid: false,
-    errors: [{ path, message, suggestion }],
-    warnings: [],
-  };
-}
-
-/* ---------- slug ---------- */
-
-export const SLUG_REGEX = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
-
-export function validateSlug(slug: string): ValidationResult {
-  if (SLUG_REGEX.test(slug)) return validResult();
-  const suggested = slug
-    .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .replace(/-+/g, '-');
-  return invalidResult(
-    'slug',
-    'Slug must be lowercase alphanumeric with hyphens',
-    `Suggested: '${suggested || 'valid-slug-name'}'`,
-  );
-}
+export {
+  type ValidationIssue,
+  type ValidationResult,
+  validResult,
+  invalidResult,
+  SLUG_REGEX,
+  validateSlug,
+} from '../asset-tiers/validation';
 
 /* ---------- zod schemas for extension.json ---------- */
 

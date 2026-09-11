@@ -1,56 +1,17 @@
 import matter from 'gray-matter';
 import { z } from 'zod';
 import type { SkillMetadata } from './types';
+import type { ValidationIssue, ValidationResult } from '../asset-tiers/validation';
+import { invalidResult, validateSlug } from '../asset-tiers/validation';
 
-/* ---------- validation result types ---------- */
-
-export interface ValidationIssue {
-  /** dotted path or filename — e.g. `name`, `frontmatter`, `SKILL.md`. */
-  path: string;
-  message: string;
-  suggestion?: string;
-}
-
-export interface ValidationResult {
-  valid: boolean;
-  errors: ValidationIssue[];
-  warnings: ValidationIssue[];
-}
-
-export function validResult(): ValidationResult {
-  return { valid: true, errors: [], warnings: [] };
-}
-
-export function invalidResult(
-  path: string,
-  message: string,
-  suggestion?: string,
-): ValidationResult {
-  return {
-    valid: false,
-    errors: [{ path, message, suggestion }],
-    warnings: [],
-  };
-}
-
-/* ---------- slug ---------- */
-
-/** Lowercase alphanumeric with hyphens. Single-char slugs allowed. */
-export const SLUG_REGEX = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
-
-export function validateSlug(slug: string): ValidationResult {
-  if (SLUG_REGEX.test(slug)) return validResult();
-  const suggested = slug
-    .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .replace(/-+/g, '-');
-  return invalidResult(
-    'slug',
-    'Slug must be lowercase alphanumeric with hyphens',
-    `Suggested: '${suggested || 'valid-slug-name'}'`,
-  );
-}
+export {
+  type ValidationIssue,
+  type ValidationResult,
+  validResult,
+  invalidResult,
+  SLUG_REGEX,
+  validateSlug,
+} from '../asset-tiers/validation';
 
 /* ---------- frontmatter schema ---------- */
 
