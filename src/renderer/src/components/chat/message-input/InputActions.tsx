@@ -4,6 +4,7 @@ import { FolderPicker } from '../FolderPicker';
 import { ConnectionModelPicker } from '../ConnectionModelPicker';
 import { CopilotQuotaPill } from '@/components/settings/CopilotQuotaBar';
 import { ChatGptQuotaPill } from '@/components/settings/ChatGptQuotaBar';
+import { CodeMieBudgetPill } from '@/components/settings/CodeMieBudgetBar';
 import { MOD as SHORTCUT_MOD_SYMBOL } from '@/lib/shortcuts';
 import type { ConnectionMeta } from '@/lib/electron';
 import type { useAiData } from '@/hooks/useAiData';
@@ -139,6 +140,11 @@ export function InputActions({
                 connection.providerType === 'pi' &&
                 connection.piAuthProvider === 'openai-codex'
               }
+              isStreaming={isStreaming}
+            />
+            <CodeMieBudgetPill
+              connectionSlug={connection.slug}
+              isCodeMie={connection.providerType === 'codemie-sso'}
               isStreaming={isStreaming}
             />
             <ConnectionModelPicker
