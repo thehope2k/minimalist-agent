@@ -5,6 +5,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.33.0] — 2026-09-11
+
+CodeMie SSO support for EPAM users, with connection setup and budget visibility.
+
+### Added
+
+**CodeMie SSO**
+
+- Sign in to your organization's CodeMie account and configure its project, LiteLLM integration, and model for agent sessions.
+- View current CodeMie budget usage and reset date from the connection settings.
+
+---
+
 ## [1.32.0] — 2026-09-10
 
 Project organization improvements and safer session keyboard shortcuts.
