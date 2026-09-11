@@ -18,7 +18,7 @@ import {
   setCredential,
 } from './credentials';
 
-export type ProviderType = 'anthropic' | 'pi' | 'local' | 'openai-compatible';
+export type ProviderType = 'anthropic' | 'pi' | 'local' | 'openai-compatible' | 'codemie-sso';
 export type AuthType = 'api_key' | 'oauth';
 import type { PiAuthProvider } from '../../shared/pi-types';
 export type { PiAuthProvider };
@@ -44,12 +44,11 @@ export interface ConnectionMeta {
   name: string;
   providerType: ProviderType;
   authType: AuthType;
-  /** Required when providerType === 'pi'; identifies which sub-provider. */
   piAuthProvider?: PiAuthProvider;
-  /** Required when providerType === 'local' | 'openai-compatible'; base URL of the model server. */
   baseUrl?: string;
-  /** Preset id for 'openai-compatible' connections (e.g. 'stepfun'); 'custom' for hand-entered. */
   presetId?: string;
+  codeMieProject?: string;
+  codeMieIntegrationId?: string;
   defaultModel: string;
   models: ModelDef[];
   /**

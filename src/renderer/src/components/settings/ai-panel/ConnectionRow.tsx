@@ -13,6 +13,7 @@ import { BrandMark } from '../connection-flow/shared';
 import { CopilotQuotaBar } from '../CopilotQuotaBar';
 import { ChatGptQuotaBar } from '../ChatGptQuotaBar';
 import { ClaudeUsageBar } from '../ClaudeUsageBar';
+import { CodeMieBudgetBar } from '../CodeMieBudgetBar';
 import {
   Badge,
   DragHandle,
@@ -115,6 +116,9 @@ export function ConnectionRow({
         )}
         {conn.providerType === 'anthropic' && conn.authType === 'oauth' && (
           <ClaudeUsageBar connectionSlug={conn.slug} />
+        )}
+        {conn.providerType === 'codemie-sso' && (
+          <CodeMieBudgetBar connectionSlug={conn.slug} />
         )}
       </div>
       <Menu trigger={<IconButton icon={MoreHorizontal} label="More" />} items={items} />

@@ -358,6 +358,7 @@ app.on('will-quit', () => {
   // Best-effort SIGTERM/KILL to any running Pi subprocesses so they don't
   // outlive the parent.
   void import('./agent-runtime/backends/pi/agent').then((m) => m.shutdownAllPiSubprocesses());
+  void import('./codemie/proxy').then((m) => m.stopCodeMieProxies());
   // Kill any active agent sub-subprocesses.
   void import('./agent-runtime/backends/pi/agent-tool').then((m) => m.shutdownAllAgentSubprocesses());
 });

@@ -2,7 +2,8 @@
 
 **A focused AI coding agent for software engineers who value simplicity.**
 
-Chat with Claude, GitHub Copilot, ChatGPT, or local models through a clean desktop interface. Full tool access, intelligent collaboration, built-in terminal, git integration, and powerful search — all without the bloat.
+Chat with Claude, GitHub Copilot, ChatGPT, CodeMie, or local models through a clean desktop interface. Full tool access,
+intelligent collaboration, built-in terminal, git integration, and powerful search — all without the bloat.
 
 ---
 
@@ -12,8 +13,8 @@ Minimalist Agent is built **for its author, first**. It's tailored directly to t
 actually have — not a feature checklist chasing every use case.
 
 The guiding rule is simple: **more features means more maintenance, and that's not fun.**
-So the project moves forward with only the functionality that's genuinely needed, and
-**everything that ships is owned** — understood end to end, maintained deliberately, and
+So the project moves forward with only the functionality that's genuinely needed, and **everything that ships is
+owned** — understood end to end, maintained deliberately, and
 built in-house rather than left floating around as a half-wired dependency or a feature
 nobody fully grasps.
 
@@ -30,18 +31,26 @@ it's the design. If something doesn't earn its keep, it doesn't make the cut.
 - **Claude Pro / Max OAuth** — browser PKCE flow, token auto-refresh
 - **GitHub Copilot** — device-flow OAuth; live model discovery (Claude, GPT-5, GPT-5.1, and more); Copilot quota display
 - **ChatGPT Plus / Codex** — browser OAuth; live model discovery via Pi SDK; full permission modes and tool streaming
-- **OpenAI-compatible providers** — StepFun, DeepSeek, Moonshot, Together AI, Groq, OpenRouter, xAI, or any custom endpoint; curated presets with live model discovery from `/v1/models`; encrypted API key storage
+- **OpenAI-compatible providers** — StepFun, DeepSeek, Moonshot, Together AI, Groq, OpenRouter, xAI, or any custom
+  endpoint; curated presets with live model discovery from `/v1/models`; encrypted API key storage
+- **CodeMie SSO** — EPAM browser SSO with encrypted session cookies, project and LiteLLM integration selection, model
+  refresh, and project-budget display
 - **Local model (Ollama)** — connect to any Ollama endpoint; live model discovery; no auth required
 
 ### Agent Runtime
 
 - **Full toolset** — Read, Write, Edit, Bash, Grep, Glob, WebFetch, WebSearch, Task via the `claude_code` SDK preset
-- **In-app browser (`browser_tool`)** — drive a real, visible Chromium window (one per session) to navigate, click, fill forms, screenshot, and read console/JS output on a running app
-- **Multi-phase planning** — complex tasks broken into phases with progress tracking, per-phase approval, and plan revision based on discoveries
+- **In-app browser (`browser_tool`)** — drive a real, visible Chromium window (one per session) to navigate, click, fill
+  forms, screenshot, and read console/JS output on a running app
+- **Multi-phase planning** — complex tasks broken into phases with progress tracking, per-phase approval, and plan
+  revision based on discoveries
 - **Phase-level approval workflow** — configure when phases require approval based on risk level and autonomy settings
-- **Subagents** — Task tool for Anthropic connections spawns subagents within a turn; parallel execution with git worktree isolation
-- **Permission modes** — Plan (read-only) · Approve (require approval per phase) · Auto (intelligent execution with autonomy slider)
-- **Intelligent collaboration** — 0-100% autonomy slider controlling how often the agent asks for decisions, approvals, and feedback
+- **Subagents** — Task tool for Anthropic connections spawns subagents within a turn; parallel execution with git
+  worktree isolation
+- **Permission modes** — Plan (read-only) · Approve (require approval per phase) · Auto (intelligent execution with
+  autonomy slider)
+- **Intelligent collaboration** — 0-100% autonomy slider controlling how often the agent asks for decisions, approvals,
+  and feedback
 - **Mid-turn steering** — inject a message (with attachments) into a live turn without cancelling it (`Cmd+Enter`)
 - **Continue after max turns** — one-click resume when the agent hits `max_turns`
 - **Thinking / reasoning** — extended thinking with collapsible panels
@@ -50,8 +59,10 @@ it's the design. If something doesn't earn its keep, it doesn't make the cut.
 ### Sessions & Projects
 
 - **Persistent sessions** — full message history (`messages.jsonl` + `session.json`); resume across restarts
-- **Session export & sharing** — export to HTML (summary or full); save locally or publish ephemeral share links with configurable TTL; revoke anytime; paths and secrets are redacted on share
-- **Projects** — group sessions by folder with name + color; per-project connection, model, permission mode, and Co-Authored-By defaults
+- **Session export & sharing** — export to HTML (summary or full); save locally or publish ephemeral share links with
+  configurable TTL; revoke anytime; paths and secrets are redacted on share
+- **Projects** — group sessions by folder with name + color; per-project connection, model, permission mode, and
+  Co-Authored-By defaults
 - **Conversation branching** — fork a new session from any user message in history
 - **Bulk session actions** — select multiple sessions to delete or archive at once
 - **User Preferences** — name, timezone, location, language, free-text notes injected into every turn
@@ -59,14 +70,21 @@ it's the design. If something doesn't earn its keep, it doesn't make the cut.
 
 ### Developer Tools
 
-- **Voice dictation (`Cmd+Shift+M`)** — on-device speech-to-text in the composer (`sherpa-onnx` + Moonshine, CPU inference); streaming transcription inserted at cursor; model downloads once on first use, fully offline after that; audio never leaves the machine
-- **Terminal (`Cmd+T`)** — full in-app terminal (`xterm.js` + `node-pty`); real PTY, multiple tabs, in-terminal search, copy-on-select, URL click-to-open, 2 MB scrollback; three bundled fonts
-- **File Explorer (`Cmd+B`)** — collapsible file tree panel with virtual scrolling for high performance with large directories; gitignore-aware, keyboard navigation, context menu (Copy Path / Reveal in Finder); persistent state across sessions
-- **Git diff review (`Cmd+G`)** — full-screen Monaco DiffEditor; file list with M/N/D/R status; per-repo branch labels; collapsible file sections; hunk-level staging; commit panel with amend support; multi-repo workspace
+- **Voice dictation (`Cmd+Shift+M`)** — on-device speech-to-text in the composer (`sherpa-onnx` + Moonshine, CPU
+  inference); streaming transcription inserted at cursor; model downloads once on first use, fully offline after that;
+  audio never leaves the machine
+- **Terminal (`Cmd+T`)** — full in-app terminal (`xterm.js` + `node-pty`); real PTY, multiple tabs, in-terminal search,
+  copy-on-select, URL click-to-open, 2 MB scrollback; three bundled fonts
+- **File Explorer (`Cmd+B`)** — collapsible file tree panel with virtual scrolling for high performance with large
+  directories; gitignore-aware, keyboard navigation, context menu (Copy Path / Reveal in Finder); persistent state
+  across sessions
+- **Git diff review (`Cmd+G`)** — full-screen Monaco DiffEditor; file list with M/N/D/R status; per-repo branch labels;
+  collapsible file sections; hunk-level staging; commit panel with amend support; multi-repo workspace
 
 ### Search & Navigation
 
-- **Search Everywhere (double-tap Shift)** — unified file name + content search; bundled `ripgrep` for fast full-text search; smart file viewer (Markdown, images, JSON tree, syntax-highlighted code)
+- **Search Everywhere (double-tap Shift)** — unified file name + content search; bundled `ripgrep` for fast full-text
+  search; smart file viewer (Markdown, images, JSON tree, syntax-highlighted code)
 - **Recent Files (`Cmd+E`)** — palette of the 30 most recently opened files, type to filter
 - **Keyboard shortcut map** — Settings → Shortcuts panel with every keybinding
 
@@ -85,7 +103,8 @@ it's the design. If something doesn't earn its keep, it doesn't make the cut.
 - **JSON tree viewer** — collapsible interactive tree for tool results and structured data
 - **Datatable renderer** — ` ```datatable ` fenced blocks render as interactive tables
 - **Inline diffs** — unified diff + split-view modal for Edit/Write tool calls
-- **Smart snippet attachments** — large clipboard pastes auto-converted to named snippet chips with language detection and inline preview
+- **Smart snippet attachments** — large clipboard pastes auto-converted to named snippet chips with language detection
+  and inline preview
 - **Turn duration** — elapsed time displayed in each message bubble
 - **Auto-update** — ships new releases automatically via GitHub Releases
 
@@ -95,7 +114,8 @@ it's the design. If something doesn't earn its keep, it doesn't make the cut.
 
 ### Download
 
-Get the latest release for your platform from the [Releases page](https://github.com/thehope2k/minimalist-agent/releases).
+Get the latest release for your platform from
+the [Releases page](https://github.com/thehope2k/minimalist-agent/releases).
 
 | Platform              | File                            |
 |-----------------------|---------------------------------|
@@ -108,11 +128,13 @@ Get the latest release for your platform from the [Releases page](https://github
 
 1. **Launch the app** (see macOS Gatekeeper note below if blocked)
 2. **Add a connection** — Settings → Connections
-   - **Anthropic** — Paste your API key or sign in with Claude Pro/Max
-   - **GitHub Copilot** — Sign in via device flow
-   - **ChatGPT** — Sign in via browser OAuth
-   - **OpenAI-compatible** — Choose a preset (StepFun, DeepSeek, Moonshot, Together AI, Groq, OpenRouter, xAI) or enter a custom endpoint; paste your API key
-   - **Local** — Point to your Ollama endpoint
+    - **Anthropic** — Paste your API key or sign in with Claude Pro/Max
+    - **GitHub Copilot** — Sign in via device flow
+    - **ChatGPT** — Sign in via browser OAuth
+    - **OpenAI-compatible** — Choose a preset (StepFun, DeepSeek, Moonshot, Together AI, Groq, OpenRouter, xAI) or enter
+      a custom endpoint; paste your API key
+    - **CodeMie SSO** — Sign in with EPAM SSO, then select a CodeMie project, optional LiteLLM integration, and model
+    - **Local** — Point to your Ollama endpoint
 3. **Start chatting** — `Cmd+N` for new session
 
 ### macOS — Gatekeeper
@@ -150,7 +172,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development guide.
 - Electron + electron-vite
 - React 18 + TypeScript
 - Tailwind CSS v4
-- `@anthropic-ai/claude-agent-sdk` + `@earendil-works/pi-coding-agent` (Anthropic, GitHub Copilot, ChatGPT Plus, OpenAI-compatible providers)
+- `@anthropic-ai/claude-agent-sdk` + `@earendil-works/pi-coding-agent` (Anthropic, GitHub Copilot, ChatGPT Plus,
+  CodeMie, OpenAI-compatible providers)
 - xterm.js + node-pty (terminal)
 - Monaco Editor (git diff / file viewer)
 - `@vscode/ripgrep` (Search Everywhere)
@@ -160,11 +183,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development guide.
 
 ## Why Minimalist Agent?
 
-- **Multi-provider** — switch between Anthropic, GitHub Copilot, ChatGPT, and local models from one interface
+- **Multi-provider** — switch between Anthropic, GitHub Copilot, ChatGPT, CodeMie, and local models from one interface
 - **Developer-first** — built-in terminal, git diff viewer, file explorer, and powerful search
 - **Intelligent collaboration** — adjustable autonomy from "ask me everything" to "just get it done"
 - **Planning workflow** — break down complex tasks into phases with approval and revision
-- **Privacy-focused** — local storage, encrypted secrets, no telemetry by default (optional local OpenTelemetry tracing is opt-in)
+- **Privacy-focused** — local storage, encrypted secrets, no telemetry by default (optional local OpenTelemetry tracing
+  is opt-in)
 - **Extensible** — MCP servers, CLI-bound extensions, and reusable skills
 - **Open source** — MIT licensed, built with modern web tech
 
@@ -173,13 +197,16 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development guide.
 ## Documentation
 
 ### User Guides
+
 - [Changelog](CHANGELOG.md) — what's new in each release
 - [Roadmap](docs/ROADMAP.md) — what's in, what's coming, what's out of scope
 
 ### Technical
+
 - [Architecture](docs/ARCHITECTURE.md) — agent pipeline, event flow, storage layout
 - [System Prompt](docs/SYSTEM-PROMPT.md) — every prompt block, token budget, and the rules for changing it
 - [OpenAI-Compatible Providers](docs/OPENAI-COMPATIBLE.md) — presets, custom endpoints, model discovery
+- [CodeMie SSO](docs/CODEMIE.md) — EPAM SSO setup, projects, models, and budget display
 - [Session Export & Sharing](docs/SESSION-EXPORT.md) — HTML export, share links, redaction
 - [Agent Definitions](docs/AGENT-DEFINITIONS.md) — reusable agent configurations and sub-agent system
 - [Collaboration](docs/COLLABORATION.md) — autonomy system and intelligent engagement
@@ -189,6 +216,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development guide.
 - [OpenTelemetry Tracing](docs/OTEL.md) — opt-in spans for agent turns, model requests, and tool calls
 
 ### Contributing
+
 - [Contributing](CONTRIBUTING.md) — development setup and guidelines
 - [Security](SECURITY.md) — vulnerability reporting
 

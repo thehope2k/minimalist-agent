@@ -350,7 +350,7 @@ function spawnSubprocess(req: PiChatRequest, systemPrompt: string): SubprocessHa
   if (isLocal) {
     const meta = listConnections().find((c) => c.slug === req.connectionSlug);
     const modelDef = meta?.models.find((m) => m.id === req.model);
-    const isOpenAICompat = meta?.providerType === 'openai-compatible';
+    const isOpenAICompat = meta?.providerType === 'openai-compatible' || meta?.providerType === 'codemie-sso';
     customEndpoint = {
       api: 'openai-completions' as const,
       supportsImages: modelDef?.supportsVision ?? false,

@@ -9,6 +9,7 @@ import { CopilotFlow } from './connection-flow/CopilotFlow';
 import { ChatGptFlow } from './connection-flow/ChatGptFlow';
 import { LocalModelFlow } from './connection-flow/LocalModelFlow';
 import { OpenAICompatibleFlow } from './connection-flow/OpenAICompatibleFlow';
+import { CodeMieSsoFlow } from './connection-flow/CodeMieSsoFlow';
 import type { ConnectionKind } from './connection-flow/types';
 
 type Props = {
@@ -34,6 +35,7 @@ function inferKind(meta: ConnectionMeta): ConnectionKind {
   }
   if (meta.providerType === 'local') return 'local';
   if (meta.providerType === 'openai-compatible') return 'openai-compatible';
+  if (meta.providerType === 'codemie-sso') return 'codemie-sso';
   if (meta.authType === 'oauth') return 'claude-max';
   return 'other';
 }
@@ -89,6 +91,7 @@ export function AddConnectionDialog({
         {activeKind === 'chatgpt' && <ChatGptFlow {...flowProps} />}
         {activeKind === 'local' && <LocalModelFlow {...flowProps} />}
         {activeKind === 'openai-compatible' && <OpenAICompatibleFlow {...flowProps} />}
+        {activeKind === 'codemie-sso' && <CodeMieSsoFlow {...flowProps} />}
       </div>
     </div>
   );

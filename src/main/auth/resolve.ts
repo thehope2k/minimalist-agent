@@ -35,6 +35,7 @@ import {
 } from '../storage/connections';
 import type { ResolvedAuth } from '../agent-runtime/backends/types';
 import { createLogger } from '../logger';
+import { ensureCodeMieProxy } from '../codemie/proxy';
 import { raceAbort, withDeadline } from '../../shared/with-timeout';
 import { AUTH_REFRESH_CEILING_MS } from '../../shared/timeouts';
 
@@ -110,6 +111,24 @@ export async function resolveAuthForSlug(slug: string, signal?: AbortSignal, cal
     );
   }
 
+  if (conn.providerType === 'codemie-sso') {
+    if (cred.type !== 'codemie_sso' || !conn.baseUrl) {
+      throw new Error('CodeMie SSO session is missing. Sign in again from Settings → AI.');
+    }
+    if (cred.expiresAt && cred.expiresAt <= Date.now()) {
+      throw new Error('CodeMie SSO session has expired. Sign in again from Settings → AI.');
+    }
+    return {
+      type: 'local_api',
+      baseUrl: await ensureCodeMieProxy(slug, {
+        targetBaseUrl: conn.baseUrl,
+        cookies: cred.cookies,
+        project: conn.codeMieProject,
+        integrationId: conn.codeMieIntegrationId,
+      }),
+    };
+  }
+
   if (conn.providerType === 'local' || conn.providerType === 'openai-compatible') {
     return {
       type: 'local_api',
@@ -150,6 +169,9 @@ export async function resolveAuthForSlug(slug: string, signal?: AbortSignal, cal
   // anthropic
   if (cred.type === 'api_key') {
     return { type: 'anthropic_api_key', apiKey: cred.apiKey };
+  }
+  if (cred.type !== 'oauth') {
+    throw new Error(`Connection "${slug}" has an invalid credential type. Re-authenticate from Settings → AI.`);
   }
   const fresh = await ensureFreshAnthropicOAuth(slug, cred, signal, callerTag);
   return { type: 'anthropic_oauth', accessToken: fresh.accessToken };

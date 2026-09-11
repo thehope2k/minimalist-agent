@@ -17,7 +17,13 @@ export interface OAuthCred {
   expiresAt?: number;
   scopes?: string[];
 }
-export type Credential = ApiKeyCred | OAuthCred;
+export interface CodeMieSsoCred {
+  type: 'codemie_sso';
+  /** Browser session cookies; encrypted at rest in the OS keychain. */
+  cookies: Record<string, string>;
+  expiresAt?: number;
+}
+export type Credential = ApiKeyCred | OAuthCred | CodeMieSsoCred;
 
 interface CredentialFile {
   /** Schema version — bump if the wire format changes. */

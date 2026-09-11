@@ -53,6 +53,23 @@ export function OpenAIMark() {
   );
 }
 
+export function CodeMieMark() {
+  return (
+    <svg viewBox="0 0 640 640" className="h-4 w-4 rounded-sm" aria-label="CodeMie">
+      <rect width="640" height="640" rx="40" fill="#230230" />
+      <defs>
+        <linearGradient id="codemie-gradient" x1="410" y1="61.5" x2="-71.0294" y2="651.221" gradientUnits="userSpaceOnUse">
+          <stop offset="0.0192308" stopColor="#ECB1FF" />
+          <stop offset="0.375" stopColor="#C447EB" />
+          <stop offset="1" stopColor="#3E1866" />
+        </linearGradient>
+      </defs>
+      <path d="M117 320.5C117 208.662 207.662 118 319.5 118C379.76 118 433.902 144.359 470.953 186.079L426.091 225.921C399.944 196.479 361.899 178 319.5 178C240.799 178 177 241.799 177 320.5C177 399.201 240.799 463 319.5 463C361.899 463 399.944 444.521 426.091 415.079L470.953 454.921C433.902 496.641 379.76 523 319.5 523C207.662 523 117 432.338 117 320.5Z" fill="url(#codemie-gradient)" />
+      <path d="M229.277 320.785C285.131 324.684 315.286 354.311 319.716 409.723C319.744 410.092 320.256 410.092 320.284 409.723C324.742 354.311 354.869 324.655 410.723 320.785C411.092 320.785 411.092 320.244 410.723 320.215C354.869 316.316 324.714 286.689 320.284 231.277C320.256 230.908 319.744 230.908 319.716 231.277C315.258 286.689 285.131 316.345 229.277 320.215C228.908 320.215 228.908 320.756 229.277 320.785Z" fill="white" />
+    </svg>
+  );
+}
+
 export function GithubMark() {
   return (
     <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor" aria-hidden="true">
@@ -72,5 +89,6 @@ export function BrandMark({ conn }: { conn: Pick<ConnectionMeta, 'providerType' 
   if (conn.providerType === 'openai-compatible') {
     return <Plug className="h-4 w-4 text-fg-muted" strokeWidth={1.75} />;
   }
+  if (conn.providerType === 'codemie-sso') return <CodeMieMark />;
   return <span className="grid h-4 w-4 place-items-center text-fg-subtle">·</span>;
 }

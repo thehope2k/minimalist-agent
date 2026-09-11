@@ -34,7 +34,7 @@ const getConnectionId = (conn: ConnectionMeta): string => conn.slug;
 /** Mirrors main's model-refresh.isRefreshable: only providers with a live catalog. */
 function isRefreshable(conn: ConnectionMeta): boolean {
   if (conn.providerType === 'pi' && conn.piAuthProvider === 'github-copilot') return true;
-  return conn.providerType === 'openai-compatible' || conn.providerType === 'local';
+  return conn.providerType === 'openai-compatible' || conn.providerType === 'local' || conn.providerType === 'codemie-sso';
 }
 
 const THINKING_LABELS: Record<ThinkingLevel, string> = {

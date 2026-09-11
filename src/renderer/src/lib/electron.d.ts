@@ -309,6 +309,12 @@ export interface ChatGptRateLimitWindow {
   resetsAt: number | null;
 }
 
+export interface CodeMieBudget {
+  currentSpending: number;
+  usedPercent: number;
+  resetAt?: string;
+}
+
 export interface ChatGptQuota {
   /** Normalised plan identifier: 'plus' | 'pro' | 'team' | 'enterprise' etc. */
   planType: string | null;
@@ -345,7 +351,7 @@ export type { PiAuthProvider } from '../../../shared/pi-types';
 export interface ConnectionMeta {
   slug: string;
   name: string;
-  providerType: 'anthropic' | 'pi' | 'local' | 'openai-compatible';
+  providerType: 'anthropic' | 'pi' | 'local' | 'openai-compatible' | 'codemie-sso';
   authType: 'api_key' | 'oauth';
   /** Required when providerType === 'pi'. */
   piAuthProvider?: PiAuthProvider;
@@ -353,6 +359,8 @@ export interface ConnectionMeta {
   baseUrl?: string;
   /** Preset id for 'openai-compatible' connections (e.g. 'stepfun'); 'custom' for hand-entered. */
   presetId?: string;
+  codeMieProject?: string;
+  codeMieIntegrationId?: string;
   defaultModel: string;
   models: ModelDef[];
   /** Epoch ms of the last successful live model fetch (stale-while-revalidate cache). */
@@ -368,7 +376,8 @@ export type Credential =
       refreshToken?: string;
       expiresAt?: number;
       scopes?: string[];
-    };
+    }
+  | { type: 'codemie_sso'; cookies: Record<string, string>; expiresAt?: number };
 
 export type ThinkingLevel = 'off' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
@@ -1008,6 +1017,8 @@ export interface AppApi {
     getCredential: (slug: string) => Promise<Credential | null>;
     isEncryptionAvailable: () => Promise<boolean>;
     test: (slug: string) => Promise<{ ok: true } | { ok: false; error: AgentError }>;
+    signInWithCodeMie: (args: { baseUrl: string }) => Promise<{ cookies: Record<string, string>; expiresAt?: number; ids: string[]; projects: string[]; integrations: Record<string, Array<{ id: string; alias: string }>> }>;
+    fetchCodeMieBudget: (args: { connectionSlug: string }) => Promise<CodeMieBudget | { error: string }>;
     listRemoteModels: (
       args: { baseUrl: string; apiKey?: string },
     ) => Promise<{ ids: string[] } | { error: string }>;

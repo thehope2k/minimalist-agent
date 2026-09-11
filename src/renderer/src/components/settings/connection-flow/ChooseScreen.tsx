@@ -1,7 +1,7 @@
 import { Key, Monitor, Plug, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui';
-import { AnthropicMark, GithubMark, OpenAIMark } from './shared';
+import { AnthropicMark, CodeMieMark, GithubMark, OpenAIMark } from './shared';
 import type { ConnectionKind } from './types';
 
 type ChoiceProps = {
@@ -69,6 +69,12 @@ export function ChooseScreen({ onPick }: { onPick: (k: ConnectionKind) => void }
           title="GitHub Copilot"
           desc="Sign in with GitHub. Chat runtime ships next milestone."
           onClick={() => onPick('github-copilot')}
+        />
+        <Choice
+          icon={<CodeMieMark />}
+          title="CodeMie SSO"
+          desc="Sign in with your organization’s CodeMie account."
+          onClick={() => onPick('codemie-sso')}
         />
         <Choice
           icon={<Plug className="h-4 w-4" strokeWidth={1.75} />}

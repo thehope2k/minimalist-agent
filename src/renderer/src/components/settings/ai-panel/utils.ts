@@ -6,6 +6,7 @@ export function providerLabel(conn: ConnectionMeta): string {
   if (conn.providerType === 'openai-compatible') {
     return getPreset(conn.presetId)?.name ?? 'OpenAI-compatible';
   }
+  if (conn.providerType === 'codemie-sso') return 'CodeMie SSO';
   if (conn.providerType === 'pi') {
     if (conn.piAuthProvider === 'github-copilot') return 'GitHub Copilot';
     if (conn.piAuthProvider === 'openai-codex') return 'ChatGPT';

@@ -17,6 +17,10 @@ import { onConnectionModelsChanged, refreshConnectionModels } from '../storage/m
 import { type Credential, isEncryptionAvailable } from '../storage/credentials';
 import { type AiSettings, getSettings, saveSettings } from '../storage/settings';
 import { invalidateContextFileCache } from '../agent-runtime/system-prompt';
+import { createLogger } from '../logger';
+import { fetchCodeMieBudget, fetchCodeMieIntegrations, fetchCodeMieModels, fetchCodeMieProjects, signInWithCodeMie } from '../codemie/sso';
+
+const log = createLogger('connections-ipc');
 
 /** Connection CRUD, connection testing/model discovery, and global AI settings. */
 export function registerConnectionsIpc(): void {
@@ -48,13 +52,10 @@ export function registerConnectionsIpc(): void {
   ipcMain.handle('connections:delete', (_e, slug: string) => {
     deleteConnection(slug);
   });
-  /**
-   * Used by the chat send path: the renderer must hand us a credential to
-   * pass to the SDK. We never send credentials *to* the renderer once saved.
-   */
-  ipcMain.handle('connections:getCredential', (_e, slug: string) =>
-    getCredential(slug),
-  );
+  ipcMain.handle('connections:getCredential', (_e, slug: string) => {
+    const credential = getCredential(slug);
+    return credential?.type === 'codemie_sso' ? null : credential;
+  });
   ipcMain.handle('connections:isEncryptionAvailable', () =>
     isEncryptionAvailable(),
   );
@@ -71,7 +72,7 @@ export function registerConnectionsIpc(): void {
         if (!meta) throw new Error(`Connection "${slug}" not found.`);
         // OpenAI-compatible providers: do a real round-trip from main (no CORS)
         // by listing models. Validates the base URL + Bearer key cheaply.
-        if (meta.providerType === 'openai-compatible' && auth.type === 'local_api') {
+        if ((meta.providerType === 'openai-compatible' || meta.providerType === 'codemie-sso') && auth.type === 'local_api') {
           const base = auth.baseUrl.replace(/\/+$/, '');
           const ctrl = new AbortController();
           const timeout = setTimeout(() => ctrl.abort(), 15_000);
@@ -132,6 +133,43 @@ export function registerConnectionsIpc(): void {
 
   // List models a remote OpenAI-compatible provider advertises via /v1/models.
   // Used by the add-connection flow to merge live ids onto preset metadata.
+  ipcMain.handle('codemie:fetchBudget', async (_e, args: { connectionSlug: string }) => {
+    const connection = listConnections().find((item) => item.slug === args.connectionSlug);
+    if (!connection || connection.providerType !== 'codemie-sso' || !connection.baseUrl || !connection.codeMieProject) {
+      return { error: 'Connection is not a CodeMie SSO connection.' };
+    }
+    const credential = getCredential(connection.slug);
+    if (!credential || credential.type !== 'codemie_sso') {
+      return { error: 'No CodeMie SSO session is stored for this connection.' };
+    }
+    try {
+      const budget = await fetchCodeMieBudget(connection.baseUrl, credential.cookies, connection.codeMieProject);
+      return budget ?? { error: 'CodeMie reported no budget for the selected project.' };
+    } catch (error) {
+      log.warn('CodeMie budget lookup failed:', error);
+      return { error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
+  ipcMain.handle('codemie-sso:signIn', async (_e, args: { baseUrl: string }) => {
+    const session = await signInWithCodeMie(args.baseUrl);
+    const [ids, projects] = await Promise.all([
+      fetchCodeMieModels(args.baseUrl, session.cookies),
+      fetchCodeMieProjects(args.baseUrl, session.cookies),
+    ]);
+    const integrations = await Promise.all(
+      projects.map(async (project) => {
+        try {
+          return [project, await fetchCodeMieIntegrations(args.baseUrl, session.cookies, project)] as const;
+        } catch (error) {
+          log.warn(`CodeMie integration discovery failed for project "${project}":`, error);
+          return [project, []] as const;
+        }
+      }),
+    );
+    return { ...session, ids, projects, integrations: Object.fromEntries(integrations) };
+  });
+
   ipcMain.handle(
     'connections:listRemoteModels',
     async (_e, args: { baseUrl: string; apiKey?: string }) => {

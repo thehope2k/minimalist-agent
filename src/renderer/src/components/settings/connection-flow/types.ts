@@ -5,6 +5,7 @@ export type ConnectionKind =
   | 'chatgpt'
   | 'github-copilot'
   | 'openai-compatible'
+  | 'codemie-sso'
   | 'other'
   | 'local';
 

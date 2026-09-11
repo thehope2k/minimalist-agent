@@ -260,11 +260,13 @@ type PiAuthProvider = import('../shared/pi-types').PiAuthProvider;
 interface ConnectionMeta {
   slug: string;
   name: string;
-  providerType: 'anthropic' | 'pi' | 'local';
+  providerType: 'anthropic' | 'pi' | 'local' | 'openai-compatible' | 'codemie-sso';
   authType: 'api_key' | 'oauth';
   piAuthProvider?: PiAuthProvider;
-  /** Base URL for local model server (providerType === 'local'). */
   baseUrl?: string;
+  presetId?: string;
+  codeMieProject?: string;
+  codeMieIntegrationId?: string;
   defaultModel: string;
   models: ModelDef[];
   modelsFetchedAt?: number;
@@ -279,7 +281,8 @@ type Credential =
       refreshToken?: string;
       expiresAt?: number;
       scopes?: string[];
-    };
+    }
+  | { type: 'codemie_sso'; cookies: Record<string, string>; expiresAt?: number };
 
 interface AiSettings {
   defaultModel?: string;
@@ -652,6 +655,12 @@ const api = {
       ipcRenderer.invoke('connections:isEncryptionAvailable'),
     test: (slug: string): Promise<{ ok: true } | { ok: false; error: AgentError }> =>
       ipcRenderer.invoke('connections:test', slug),
+    signInWithCodeMie: (args: { baseUrl: string }): Promise<{ cookies: Record<string, string>; expiresAt?: number; ids: string[]; projects: string[]; integrations: Record<string, Array<{ id: string; alias: string }>> }> =>
+      ipcRenderer.invoke('codemie-sso:signIn', args),
+    fetchCodeMieBudget: (
+      args: { connectionSlug: string },
+    ): Promise<{ currentSpending: number; usedPercent: number; resetAt?: string } | { error: string }> =>
+      ipcRenderer.invoke('codemie:fetchBudget', args),
     listRemoteModels: (
       args: { baseUrl: string; apiKey?: string },
     ): Promise<{ ids: string[] } | { error: string }> =>

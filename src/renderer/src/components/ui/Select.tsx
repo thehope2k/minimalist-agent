@@ -78,6 +78,7 @@ export function Select<T extends string>({
           align="end"
           sideOffset={4}
           collisionPadding={8}
+          onInteractOutside={() => setOpen(false)}
           style={{ width: menuWidth }}
           className="z-50 overflow-hidden rounded-lg border border-border bg-panel p-1 shadow-2xl"
         >

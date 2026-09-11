@@ -82,7 +82,7 @@ Events are forwarded over IPC as `{ id: turnId, ...event }` so the renderer corr
 
 ---
 
-## Pi backend (GitHub Copilot / ChatGPT Plus / OpenAI-compatible)
+## Pi backend (GitHub Copilot / ChatGPT Plus / OpenAI-compatible / CodeMie)
 
 `agent/backends/pi/agent.ts` spawns a Node subprocess running
 `@earendil-works/pi-coding-agent`. Communication is over stdin/stdout as newline-delimited JSON (`SubprocessInbound` /
@@ -103,6 +103,10 @@ For **OpenAI-compatible providers** (StepFun, DeepSeek, Moonshot, Together AI, G
 discovery hits the provider's `/v1/models`
 endpoint from the main process (no CORS), and authentication uses a Bearer API key resolved via `auth/resolve.ts` into
 `LocalApiAuth` (baseUrl + optional key). See [OPENAI-COMPATIBLE.md](OPENAI-COMPATIBLE.md) for the full reference.
+
+**CodeMie SSO** also resolves to `LocalApiAuth`, but its base URL points to a main-process, localhost-only proxy. The
+proxy owns the encrypted browser session cookies and injects CodeMie authentication, project, and integration headers
+before forwarding to the tenant API. See [CODEMIE.md](CODEMIE.md).
 
 ---
 
@@ -132,6 +136,8 @@ on file-system events.
 - ChatGPT Plus/Codex tokens are refreshed with `oauth/chatgpt-flow.ts:refreshChatGptTokens()`.
 - Copilot tokens are refreshed with `oauth/copilot-flow.ts:refreshCopilotTokens()`
   using the stored long-lived GitHub OAuth token.
+- CodeMie browser session cookies are stored as `codemie_sso` credentials. They remain in the main process, which
+  injects them through the localhost proxy; CodeMie currently requires reconnecting after session expiry.
 
 ---
 
