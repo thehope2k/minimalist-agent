@@ -38,9 +38,7 @@ export function Actions({ children }: { children: React.ReactNode }) {
 
 export function AnthropicMark() {
   return (
-    <span className="grid h-4 w-4 place-items-center rounded-sm bg-orange-500/20 text-orange-400">
-      <Sparkles className="h-2.5 w-2.5" strokeWidth={2} />
-    </span>
+    <Sparkles className="h-4 w-4 text-orange-400" strokeWidth={1.75} aria-hidden />
   );
 }
 

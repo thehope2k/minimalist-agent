@@ -44,9 +44,6 @@ export function ConnectionModelPicker({
     () => activeConn?.models.find((m) => m.id === activeModelId),
     [activeConn, activeModelId],
   );
-  const activeCategory: ProviderCategory = activeConn
-    ? categorize(activeConn)
-    : 'other';
 
   // Group connections by provider category, preserving insertion order.
   const groups = useMemo(() => {
@@ -78,7 +75,7 @@ export function ConnectionModelPicker({
             open && 'bg-elevated text-fg',
           )}
         >
-          <BrandMark category={activeCategory} />
+          <BrandMark conn={activeConn} />
           <span className="truncate">
             {activeModel?.name ?? 'Pick a model'}
           </span>
