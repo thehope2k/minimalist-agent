@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [2.1.0] — 2026-09-11
+
+Mermaid layout improvements, Kimi K3 support, and planning and OAuth polish.
+
+### Added
+
+- Mermaid diagrams in chat and exported sessions now use ELK automatic layout for clearer, more capable diagrams.
+- Kimi K3 is now available in the Moonshot AI OpenAI-compatible model preset, with 1M context, reasoning, and vision support.
+
+### Changed
+
+- Plan revision history is now presented in an accessible, consolidated History control in the plan footer.
+- ChatGPT OAuth models now surface their reasoning capability where supported.
+
+---
+
 ## [2.0.0] — 2026-09-11
 
 Removes direct Anthropic connections in favor of the unified Pi runtime; adds model context size and a CodeMie budget pill.
