@@ -2,6 +2,7 @@
 import { Check, ChevronLeft, Eye, EyeOff } from 'lucide-react';
 import type { ConnectionMeta } from '@/lib/electron';
 import { cn } from '@/lib/utils';
+import { compactNumber } from '../message-list/utils';
 
 export function ModelList({
   connection,
@@ -70,9 +71,13 @@ export function ModelList({
                       </span>
                     )}
                   </div>
-                  {m.description && (
+                  {(m.description || m.contextWindow > 0) && (
                     <div className="mt-0.5 truncate text-xs text-fg-subtle">
                       {m.description}
+                      {m.description && m.contextWindow > 0 && ' · '}
+                      {m.contextWindow > 0 && (
+                        <span className="font-mono">{compactNumber(m.contextWindow)} ctx</span>
+                      )}
                     </div>
                   )}
                 </div>

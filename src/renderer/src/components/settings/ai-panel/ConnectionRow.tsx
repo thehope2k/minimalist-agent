@@ -12,6 +12,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { BrandMark } from '../connection-flow/shared';
+import { compactNumber } from '@/components/chat/message-list/utils';
 import { CopilotQuotaBar } from '../CopilotQuotaBar';
 import { ChatGptQuotaBar } from '../ChatGptQuotaBar';
 import { ClaudeUsageBar } from '../ClaudeUsageBar';
@@ -144,7 +145,14 @@ export function ConnectionRow({
                   ) : (
                     conn.models.map((model) => (
                       <div key={model.id} className="px-2.5 py-1.5">
-                        <div className="truncate text-sm text-fg">{model.name}</div>
+                        <div className="flex items-baseline justify-between gap-2">
+                          <div className="truncate text-sm text-fg">{model.name}</div>
+                          {model.contextWindow > 0 && (
+                            <span className="shrink-0 font-mono text-[10px] text-fg-subtle">
+                              {compactNumber(model.contextWindow)} ctx
+                            </span>
+                          )}
+                        </div>
                         {model.name !== model.id && (
                           <div className="truncate text-xs text-fg-subtle">{model.id}</div>
                         )}
