@@ -5,6 +5,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [2.0.0] — 2026-09-11
+
+Removes direct Anthropic connections in favor of the unified Pi runtime; adds model context size and a CodeMie budget pill.
+
+### Added
+
+- Model pickers (connection setup and AI settings) now show each model's context window size (e.g. "128k ctx") next to its description.
+- A compact CodeMie budget pill appears next to chat input actions for CodeMie SSO connections, with click-to-refresh and automatic updates after each turn.
+
+### Changed
+
+**Anthropic connections removed**
+
+- The "Anthropic API key" and "Claude Pro/Max OAuth" connection types have been removed. GitHub Copilot, ChatGPT, CodeMie, and local/OpenAI-compatible models now cover every supported connection through a single, unified runtime. Claude models remain available via a GitHub Copilot connection.
+- If you had an Anthropic connection configured, it will no longer work — reconnect via GitHub Copilot (or another supported provider) from Settings → AI to keep using Claude models.
+
+---
+
 ## [1.33.1] — 2026-09-11
 
 Bug fixes for CodeMie SSO integration, plus settings simplification.
