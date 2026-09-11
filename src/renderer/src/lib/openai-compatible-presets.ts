@@ -154,6 +154,14 @@ export const OPENAI_COMPATIBLE_PRESETS: OpenAICompatiblePreset[] = [
     keyHint: 'Keys start with "sk-".',
     keyPrefix: 'sk-',
     models: [
+      m('kimi-k3', 'Kimi K3', {
+        contextWindow: 1_000_000,
+        description: '1M context · always-on reasoning · vision',
+        supportsVision: true,
+        supportsReasoning: true,
+        maxOutputTokens: 32_768,
+        category: 'powerful',
+      }),
       m('kimi-k2.6', 'Kimi K2.6', {
         contextWindow: 256_000,
         description: '1T-param MoE · agentic',
