@@ -34,7 +34,7 @@ type CodeMieCallbackPayload = { cookies?: Record<string, string> };
 type CodeMieModel = { id?: string; base_name?: string; deployment_name?: string; label?: string };
 type CodeMieUser = { username?: string; applications?: string[]; applications_admin?: string[]; applicationsAdmin?: string[] };
 type CodeMieIntegration = { id?: string; alias?: string; project_name?: string; credential_type?: string };
-type CodeMieBudgetRow = { project_name?: string; current_spending?: number; total?: number; budget_reset_at?: string };
+type CodeMieBudgetRow = { project_name?: string; current_spending?: number; budget_limit?: number; total?: number; budget_reset_at?: string };
 type CodeMieBudgetResponse = { data?: { rows?: CodeMieBudgetRow[] } };
 
 export interface CodeMieIntegrationOption {
@@ -44,6 +44,7 @@ export interface CodeMieIntegrationOption {
 
 export interface CodeMieBudget {
   currentSpending: number;
+  budgetLimit?: number;
   usedPercent: number;
   resetAt?: string;
 }
@@ -161,7 +162,12 @@ export async function fetchCodeMieBudget(baseUrl: string, cookies: Record<string
     .map((name) => name.trim().toLowerCase());
   const row = budget.data?.rows?.find(({ project_name }) => projectNames.includes(project_name?.trim().toLowerCase() ?? ''));
   if (!row || typeof row.current_spending !== 'number' || typeof row.total !== 'number') return null;
-  return { currentSpending: row.current_spending, usedPercent: row.total, resetAt: row.budget_reset_at };
+  return {
+    currentSpending: row.current_spending,
+    budgetLimit: typeof row.budget_limit === 'number' ? row.budget_limit : undefined,
+    usedPercent: row.total,
+    resetAt: row.budget_reset_at,
+  };
 }
 
 export async function fetchCodeMieIntegrations(baseUrl: string, cookies: Record<string, string>, project: string): Promise<CodeMieIntegrationOption[]> {

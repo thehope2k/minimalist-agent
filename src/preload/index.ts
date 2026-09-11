@@ -659,7 +659,7 @@ const api = {
       ipcRenderer.invoke('codemie-sso:signIn', args),
     fetchCodeMieBudget: (
       args: { connectionSlug: string },
-    ): Promise<{ currentSpending: number; usedPercent: number; resetAt?: string } | { error: string }> =>
+    ): Promise<{ currentSpending: number; budgetLimit?: number; usedPercent: number; resetAt?: string } | { error: string }> =>
       ipcRenderer.invoke('codemie:fetchBudget', args),
     listRemoteModels: (
       args: { baseUrl: string; apiKey?: string },

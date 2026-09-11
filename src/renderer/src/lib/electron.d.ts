@@ -311,6 +311,7 @@ export interface ChatGptRateLimitWindow {
 
 export interface CodeMieBudget {
   currentSpending: number;
+  budgetLimit?: number;
   usedPercent: number;
   resetAt?: string;
 }

@@ -56,14 +56,17 @@ export function CodeMieBudgetBar({ connectionSlug }: { connectionSlug: string })
     return <p className="mt-1.5 text-xs text-fg-subtle">Budget unavailable · {state.message}</p>;
   }
 
-  const { currentSpending, usedPercent, resetAt } = state.budget;
+  const { currentSpending, budgetLimit, usedPercent, resetAt } = state.budget;
   const filledPercent = Math.min(100, Math.max(0, Math.round(usedPercent)));
   const reset = formatReset(resetAt);
 
   return (
     <div className="mt-2 space-y-1">
       <div className="flex items-baseline justify-between text-xs">
-        <span className="text-fg-muted"><span className="font-medium text-fg">${currentSpending.toFixed(2)}</span> spent</span>
+        <span className="text-fg-muted">
+          <span className="font-medium text-fg">${currentSpending.toFixed(2)}</span>
+          {typeof budgetLimit === 'number' ? ` / $${budgetLimit.toFixed(2)}` : ''} spent
+        </span>
         {reset && <span className="text-fg-subtle">Resets {reset}</span>}
       </div>
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-elevated-2">
