@@ -5,6 +5,30 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.33.1] — 2026-09-11
+
+Bug fixes for CodeMie SSO integration, plus settings simplification.
+
+### Changed
+
+- Removed the "Max turns per message" setting — it only ever bounded the Anthropic backend's tool-use loop, silently doing nothing for other providers.
+- Manual compaction no longer offers a separate summarizer-model override; it always uses the active session model.
+
+### Fixed
+
+**CodeMie SSO**
+
+- Discovered model metadata (provider labels, capabilities) is now preserved after SSO discovery, and LiteLLM integrations are paginated correctly.
+- Budget limit now displays alongside current spending in connection settings.
+- Transient budget-fetch errors (e.g. a freshly created SSO session not yet propagated) retry faster instead of freezing the UI for minutes.
+
+**Chat**
+
+- Provider logos are restored in the connection/model picker.
+- Connection models now show up correctly in the model popover.
+
+---
+
 ## [1.33.0] — 2026-09-11
 
 CodeMie SSO support for EPAM users, with connection setup and budget visibility.
