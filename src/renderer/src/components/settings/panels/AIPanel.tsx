@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import {
-  DEFAULT_MAX_TURNS,
   deleteConnection,
   refreshConnectionModels,
   renameConnection,
@@ -10,11 +9,10 @@ import {
   setDefaultModel,
   setDefaultPermissionMode,
   setDefaultThinking,
-  setMaxTurns,
 } from '@/lib/connections';
 import { useAiData } from '@/hooks/useAiData';
 import type { ConnectionMeta, PermissionMode, ThinkingLevel } from '@/lib/electron';
-import { Button, Input, Select, SortableList } from '@/components/ui';
+import { Button, Select, SortableList } from '@/components/ui';
 import { AddConnectionDialog } from '../AddConnectionDialog';
 import {
   SettingsCard,
@@ -261,25 +259,6 @@ export function AIPanel() {
               />
             }
           />
-          <SettingsDivider />
-          <SettingsRow
-            label="Max turns per message"
-            description="Caps the tool-use loop per response (Anthropic only — ignored for Pi and Copilot). The agent stops with stop_reason=max_turns when reached."
-            control={
-              <Input
-                type="number"
-                min={1}
-                max={200}
-                value={settings.maxTurns ?? DEFAULT_MAX_TURNS}
-                onChange={(e) => {
-                  const v = parseInt(e.target.value, 10);
-                  void setMaxTurns(Number.isFinite(v) ? v : undefined);
-                }}
-                className="w-24 text-right"
-              />
-            }
-          />
-          <SettingsDivider />
           <ContextFileNamesRow current={settings.contextFileNames} />
         </SettingsCard>
       </SettingsSection>

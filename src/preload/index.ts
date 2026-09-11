@@ -71,7 +71,6 @@ interface ChatSendRequest {
   prompt: string;
   cwd?: string;
   resumeSessionId?: string;
-  maxTurns?: number;
   permissionMode?: PermissionMode;
   sessionId?: string;
 }
@@ -288,7 +287,6 @@ interface AiSettings {
   defaultModel?: string;
   defaultThinking: 'off' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
   recentFolders?: string[];
-  maxTurns?: number;
   defaultPermissionMode?: PermissionMode;
   compactionSettings?: import('../shared/compaction').CompactionTuning;
 }

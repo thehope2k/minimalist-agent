@@ -46,7 +46,6 @@ export function useSeedSubmit(
       connection,
       model,
       cwd: cwd ?? (homedir() || undefined),
-      maxTurns: aiData.settings.maxTurns,
       permissionMode,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps

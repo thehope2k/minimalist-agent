@@ -5,7 +5,7 @@
 //
 //   <userData>/  — machine-specific, sensitive data (Electron-managed)
 //   ├── connections.json           ← LLM connections (no secrets)
-//   ├── settings.json              ← AI defaults: model, thinking, max turns
+//   ├── settings.json              ← AI defaults: model, thinking, permission mode
 //   ├── credentials.enc            ← Encrypted api keys / OAuth tokens
 //   ├── backups/
 //   ├── logs/

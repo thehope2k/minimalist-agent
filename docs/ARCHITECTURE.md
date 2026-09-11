@@ -194,7 +194,7 @@ Three storage tiers. Priority (highest wins): **project > user > machine**.
 
 ```
 <userData>/                     ← machine-specific, Electron-managed
-  settings.json                 ← AI defaults (model, thinking, maxTurns, permission mode, autonomy level, sessionRetentionDays)
+  settings.json                 ← AI defaults (model, thinking, permission mode, autonomy level, sessionRetentionDays)
   preferences.json              ← User preferences (name, timezone, location, notes)
   connections.json              ← Connection metadata (slugs, models, auth types)
   credentials.enc               ← Encrypted API keys + OAuth tokens

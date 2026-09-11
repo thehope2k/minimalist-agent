@@ -29,8 +29,6 @@ export interface ChatSendRequest {
   cwd?: string;
   /** Resume the SDK session for multi-turn continuity. */
   resumeSessionId?: string;
-  /** Bound for tool-use loops in this turn. */
-  maxTurns?: number;
   /** Permission mode for this turn ('plan' | 'auto'). */
   permissionMode?: PermissionMode;
   /**
@@ -171,7 +169,6 @@ export function registerChatIpc(): void {
         attachments: req.attachments,
         cwd: req.cwd,
         resumeSessionId: req.resumeSessionId,
-        maxTurns: req.maxTurns,
         permissionMode: req.permissionMode,
         thinkingLevel,
         askCollaboration,

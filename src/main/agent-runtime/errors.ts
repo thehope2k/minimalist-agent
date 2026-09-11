@@ -173,7 +173,7 @@ const ERROR_DEFINITIONS: Record<ErrorCode, ErrorDef> = {
   max_turns_exceeded: {
     title: 'Max turns reached',
     message:
-      "The agent hit the maxTurns ceiling before finishing. Raise it in Settings → AI, or ask the assistant to break the task into smaller steps.",
+      'The agent hit its tool-use turn ceiling before finishing. Ask it to break the task into smaller steps and continue.',
     canRetry: false,
   },
   budget_exceeded: {

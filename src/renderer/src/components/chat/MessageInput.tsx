@@ -206,7 +206,6 @@ export function MessageInput({
       connection,
       model,
       cwd,
-      maxTurns: data?.settings.maxTurns,
       permissionMode,
       autonomyLevel,
       thinkingLevel,

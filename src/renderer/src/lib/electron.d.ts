@@ -114,7 +114,6 @@ export interface ChatSendRequest {
   prompt: string;
   cwd?: string;
   resumeSessionId?: string;
-  maxTurns?: number;
   permissionMode?: PermissionMode;
   sessionId?: string;
   /** Already-stored attachments for this turn. */
@@ -386,7 +385,6 @@ export interface AiSettings {
   defaultModel?: string;
   defaultThinking: ThinkingLevel;
   recentFolders?: string[];
-  maxTurns?: number;
   /** Mode applied to brand-new chats; switch per-session above the composer. */
   defaultPermissionMode?: PermissionMode;
   /** Default autonomy level (0-100) for new sessions in auto mode. Default 50. */

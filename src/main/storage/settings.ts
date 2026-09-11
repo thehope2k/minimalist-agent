@@ -19,8 +19,6 @@ export interface AiSettings {
   defaultThinking: ThinkingLevel;
   /** Recently-used working directories, most-recent first. Capped at MAX. */
   recentFolders?: string[];
-  /** Bound for tool-use loops per message. Defaults to DEFAULT_MAX_TURNS. */
-  maxTurns?: number;
   /** Permission mode applied to brand-new sessions. Defaults to 'auto'. */
   defaultPermissionMode?: PermissionMode;
   /** Default autonomy level (0-100) for new sessions in auto mode. Defaults to 50. */
@@ -46,7 +44,6 @@ export const DEFAULT_CONTEXT_FILE_NAMES: readonly string[] = [
   'claude.md',
   'copilot-instructions.md', // GitHub Copilot Workspace standard
 ];
-export const DEFAULT_MAX_TURNS = 50;
 export const DEFAULT_PERMISSION_MODE: PermissionMode = 'auto';
 
 /** Default autonomy level (0-100) when in auto mode. */
@@ -56,7 +53,6 @@ export const DEFAULT_SESSION_RETENTION_DAYS = 90;
 const DEFAULTS: AiSettings = {
   defaultThinking: 'medium',
   recentFolders: [],
-  maxTurns: DEFAULT_MAX_TURNS,
   defaultPermissionMode: DEFAULT_PERMISSION_MODE,
   defaultAutonomyLevel: DEFAULT_AUTONOMY_LEVEL,
   sessionRetentionDays: DEFAULT_SESSION_RETENTION_DAYS,
@@ -66,7 +62,7 @@ const RECENT_MAX = 10;
 
 const SCHEMA: FileSchema<AiSettings> = {
   path: Paths.settings(),
-  currentVersion: 4,
+  currentVersion: 5,
   defaultValue: DEFAULTS,
   migrations: [
     // v0 → v1: no-op (initial version)
@@ -97,6 +93,16 @@ const SCHEMA: FileSchema<AiSettings> = {
 
       const { reserveTokens: _reserveTokens, keepRecentTokens: _keepRecentTokens, ...migrated } = legacy;
       return { ...settings, compactionSettings: migrated } as AiSettings;
+    },
+    // v4 → v5: drops the "Max turns per message" setting — it only ever
+    // bounded the Anthropic backend's tool-use loop (Pi/Copilot/local always
+    // ignored it), which made the control confusing and half-broken. Removed
+    // entirely rather than made Anthropic-only; the SDK call now uses its
+    // own fixed default.
+    (prev) => {
+      const settings = prev as AiSettings & { maxTurns?: number };
+      const { maxTurns: _maxTurns, ...migrated } = settings;
+      return migrated as AiSettings;
     },
   ],
 };

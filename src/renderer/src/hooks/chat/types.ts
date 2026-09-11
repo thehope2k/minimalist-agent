@@ -11,8 +11,6 @@ export interface SendArgs {
   model: string;
   /** Working directory the agent should operate in (per-session). */
   cwd?: string;
-  /** Bound for tool-use loops in this turn. */
-  maxTurns?: number;
   /** Permission mode for this turn ('plan' | 'auto'). */
   permissionMode: PermissionMode;
   /**

@@ -409,7 +409,6 @@ export function useChat(
       connection,
       model,
       cwd,
-      maxTurns,
       permissionMode,
       autonomyLevel,
       thinkingLevel,
@@ -507,7 +506,6 @@ export function useChat(
           connection,
           model,
           cwd,
-          maxTurns,
           permissionMode,
           attachments: drafts,
         },
@@ -541,7 +539,6 @@ export function useChat(
           prompt: promptForAgent,
           cwd,
           resumeSessionId: sdkSessionIdBySession.current.get(sid),
-          maxTurns,
           permissionMode,
           sessionId: sid,
           attachments: stored.length > 0 ? stored : undefined,
@@ -788,7 +785,6 @@ export function useChat(
         connection: ConnectionMeta;
         model: string;
         cwd?: string;
-        maxTurns?: number;
         permissionMode: PermissionMode;
       },
     ) => {
@@ -899,7 +895,6 @@ export function useChat(
           connection: fallback.connection,
           model: fallback.model,
           cwd: fallback.cwd,
-          maxTurns: fallback.maxTurns,
           permissionMode: fallback.permissionMode,
         });
         return;
@@ -919,7 +914,6 @@ export function useChat(
         connection: fallback.connection,
         model: fallback.model,
         cwd: fallback.cwd,
-        maxTurns: fallback.maxTurns,
         permissionMode: fallback.permissionMode,
       });
     },
@@ -931,7 +925,6 @@ export function useChat(
       connection: ConnectionMeta;
       model: string;
       cwd?: string;
-      maxTurns?: number;
       permissionMode: PermissionMode;
     }) => {
       const sid = activeSessionIdRef.current;

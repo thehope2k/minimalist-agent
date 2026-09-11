@@ -1,6 +1,5 @@
 // Renderer-side facade over the main-process connections / settings store.
 
-export const DEFAULT_MAX_TURNS = 50;
 export {
   DEFAULT_COMPACTION_ENABLED,
   DEFAULT_RESERVE_FRACTION,
@@ -181,12 +180,6 @@ export async function setDefaultModel(modelId: string | undefined): Promise<void
 
 export async function setDefaultThinking(level: ThinkingLevel): Promise<void> {
   const next = { ...snapshot().settings, defaultThinking: level };
-  await window.api.settings.save(next);
-  await reload();
-}
-
-export async function setMaxTurns(value: number | undefined): Promise<void> {
-  const next = { ...snapshot().settings, maxTurns: value };
   await window.api.settings.save(next);
   await reload();
 }

@@ -12,7 +12,6 @@ export type SendArgs = {
   connection: ConnectionMeta;
   model: string;
   cwd?: string;
-  maxTurns?: number;
   permissionMode: PermissionMode;
   autonomyLevel?: number;
   thinkingLevel?: ThinkingLevel;

@@ -35,7 +35,6 @@ export function usePlanActions(args: {
     connection: ConnectionMeta;
     model: string;
     cwd?: string;
-    maxTurns?: number;
     permissionMode: PermissionMode;
   }) => Promise<void>;
   sessionId: string | null;
@@ -88,7 +87,6 @@ export function usePlanActions(args: {
       connection: resolved.connection,
       model: resolved.model,
       cwd: cwd ?? (homedir() || undefined),
-      maxTurns: aiData?.settings.maxTurns,
       permissionMode,
     });
   }, [resolveSessionConnectionModel, aiData, send, cwd, permissionMode]);
@@ -101,7 +99,6 @@ export function usePlanActions(args: {
       connection: resolved.connection,
       model: resolved.model,
       cwd: cwd ?? (homedir() || undefined),
-      maxTurns: aiData?.settings.maxTurns,
       permissionMode,
     });
   }, [resolveSessionConnectionModel, aiData, retry, cwd, permissionMode]);
@@ -119,7 +116,6 @@ export function usePlanActions(args: {
         connection: resolved.connection,
         model: resolved.model,
         cwd: cwd ?? (homedir() || undefined),
-        maxTurns: aiData?.settings.maxTurns,
         permissionMode,
       });
     },
