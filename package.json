@@ -21,7 +21,7 @@
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
-    "postinstall": "node scripts/rebuild-native.mjs",
+    "postinstall": "node node_modules/electron/install.js && node scripts/rebuild-native.mjs",
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
@@ -96,7 +96,7 @@
     "katex": "^0.18.1",
     "lucide-react": "^1.24.0",
     "mark.js": "^8.11.1",
-    "mermaid": "^11.17.2",
+    "mermaid": "^12.0.0",
     "monaco-editor": "^0.56.0",
     "react": "^19.2.7",
     "react-diff-viewer-continued": "^4.4.0",

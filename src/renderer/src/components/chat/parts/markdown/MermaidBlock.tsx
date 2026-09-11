@@ -29,6 +29,7 @@ async function getMermaid() {
       // 'strict' would block all HTML and make multiline labels impossible.
       securityLevel: 'antiscript',
       theme: 'dark',
+      layout: 'elk',
       fontFamily:
         '-apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif',
       flowchart: { htmlLabels: true },

@@ -18,6 +18,7 @@ async function getMermaid() {
       startOnLoad: false,
       securityLevel: 'antiscript',
       theme: 'dark',
+      layout: 'elk',
       fontFamily:
         '-apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif',
       flowchart: { htmlLabels: true },
