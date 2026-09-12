@@ -52,7 +52,7 @@ on it being read.
   <blank line>
   <body>                           ← optional, only for complex changes
 
-TYPES: feat, fix, refactor, docs, chore, style, test, perf, build, ci
+TYPES: feat, fix, refactor, docs, chore, style, test, perf, build, ci, ui
 
 === CHOOSING A TYPE ===
 Classify by what actually changed, not by the words used to describe it:
@@ -61,6 +61,7 @@ Classify by what actually changed, not by the words used to describe it:
   - Faster or lighter, same behavior              → perf
   - Internal restructuring, same behavior         → refactor
   - Tooling, dependencies, build/CI config        → build / ci
+  - UI copy or visual polish, same behavior       → ui
   - Docs, formatting-only, or test-only changes   → docs / style / test
 
 "Optimization" is perf. "Enhancement" or "improvement" is feat when a user
@@ -238,7 +239,7 @@ function stripLeadingFiller(s: string): string {
  * or "fix!: ". Anchored to line starts so it can't fire mid-sentence.
  */
 const COMMIT_TYPE_LINE_RE =
-  /(?:^|\n)[ \t]*(feat|fix|refactor|docs|chore|style|test|perf|build|ci)(\([\w./,\- ]+\))?(!)?:[ \t]/i;
+  /(?:^|\n)[ \t]*(feat|fix|refactor|docs|chore|style|test|perf|build|ci|ui)(\([\w./,\- ]+\))?(!)?:[ \t]/i;
 
 /**
  * Second-layer fallback (only reached when no markers were found): after
