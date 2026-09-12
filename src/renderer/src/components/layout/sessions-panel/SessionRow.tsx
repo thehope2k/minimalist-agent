@@ -98,20 +98,20 @@ export function SessionRow({
 
   const selectionIcon = selected
     ? <CheckCircle2
-      className="h-4.5 w-4.5 shrink-0 text-accent"
-      style={{ transform: 'translate(-1.5px, -1.5px)' }}
-      strokeWidth={1.75}
-    />
-    : (
-      <span
-        className="h-1.5 w-1.5 rounded-full"
-        style={{ backgroundColor: project?.color ?? 'var(--color-fg-subtle)', opacity: project ? 1 : 0.4 }}
+        className="h-4.5 w-4.5 shrink-0 text-accent"
+        style={{ transform: 'translate(-1.5px, -1.5px)' }}
+        strokeWidth={1.75}
       />
-    );
+    : isStreaming
+      ? <RunningDot title="Running…" />
+      : (
+        <span
+          className="h-1.5 w-1.5 rounded-full"
+          style={{ backgroundColor: project?.color ?? 'var(--color-fg-subtle)', opacity: project ? 1 : 0.4 }}
+        />
+      );
 
-  const leadingIcon = isStreaming ? (
-    <RunningDot title="Running…" />
-  ) : showProjectDot ? (
+  const leadingIcon = showProjectDot ? (
     <Tooltip content={project ? `Project: ${project.name}` : 'Unassigned'}>
       <span
         className="h-2.5 w-2.5 shrink-0 rounded-full"
@@ -188,9 +188,9 @@ export function SessionRow({
             onClick={onToggleSelect}
             className={cn(
               'grid h-4 w-4 shrink-0 place-items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70',
-              selected ? 'border border-transparent' : 'border hover:brightness-125',
+              selected || isStreaming ? 'border border-transparent' : 'border hover:brightness-125',
             )}
-            style={selected ? undefined : { borderColor: project?.color ?? 'var(--color-fg-subtle)', opacity: project ? 1 : 0.55 }}
+            style={selected || isStreaming ? undefined : { borderColor: project?.color ?? 'var(--color-fg-subtle)', opacity: project ? 1 : 0.55 }}
           >
             {selectionIcon}
           </button>
