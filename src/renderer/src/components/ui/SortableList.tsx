@@ -20,6 +20,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { cn } from '@/lib/utils';
 
 const DRAG_ACTIVATION_DISTANCE_PX = 4;
 const DRAGGING_OPACITY = 0.5;
@@ -68,7 +69,7 @@ export function SortableList<T>({
       onDragEnd={handleDragEnd}
     >
       <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-        <div className={className}>
+        <div className={cn('overflow-hidden', className)}>
           {items.map((item) => (
             <SortableRow key={getId(item)} id={getId(item)}>
               {(dragHandle) => renderItem(item, dragHandle)}
