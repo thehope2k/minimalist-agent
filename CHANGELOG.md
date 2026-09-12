@@ -5,6 +5,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [2.1.1] — 2026-09-12
+
+Bug fixes for persisted plans, compaction output limits, and context scan-depth settings.
+
+### Changed
+
+- The context-file scan-depth setting and its description now agree on the number of directory levels scanned.
+
+### Fixed
+
+**Planning**
+
+- Reopened sessions now restore persisted plans and pending phase approvals after an agent subprocess restarts.
+
+**Compaction**
+
+- Compaction now keeps model output within the reply space you reserved instead of expanding it to a model catalog limit.
+
+---
+
 ## [2.1.0] — 2026-09-11
 
 Mermaid layout improvements, Kimi K3 support, and planning and OAuth polish.
