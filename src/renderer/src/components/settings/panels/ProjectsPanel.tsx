@@ -30,14 +30,14 @@ export function ProjectsPanel() {
 
   if (projects === null) {
     return (
-      <div className="mx-auto max-w-[760px] px-8 py-12 text-sm text-fg-subtle">
+      <div className="mx-auto max-w-190 px-8 py-12 text-sm text-fg-subtle">
         Loading…
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-[760px] px-8 py-10">
+    <div className="mx-auto max-w-190 px-8 py-10">
       <SettingsSection
         title="Projects"
         subtitle="Group sessions by project. New sessions auto-assign by working directory."

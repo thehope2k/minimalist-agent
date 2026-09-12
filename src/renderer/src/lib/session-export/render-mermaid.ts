@@ -17,6 +17,7 @@ async function getMermaid() {
     mermaid.initialize({
       startOnLoad: false,
       securityLevel: 'antiscript',
+      suppressErrorRendering: true,
       theme: 'dark',
       layout: 'elk',
       fontFamily:

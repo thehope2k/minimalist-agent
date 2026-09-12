@@ -28,6 +28,7 @@ async function getMermaid() {
       // HTML in labels — needed for our \n → <br/> preprocessing below.
       // 'strict' would block all HTML and make multiline labels impossible.
       securityLevel: 'antiscript',
+      suppressErrorRendering: true,
       theme: 'dark',
       layout: 'elk',
       fontFamily:
