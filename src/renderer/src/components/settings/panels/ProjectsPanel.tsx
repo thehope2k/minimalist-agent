@@ -55,7 +55,7 @@ export function ProjectsPanel() {
         <SettingsCard>
           {projects.length === 0 ? (
             <div className="px-4 py-6 text-sm text-fg-subtle">
-              No projects yet. Sessions go to Inbox until you create one.
+              No projects yet. Sessions stay unassigned until you create one.
             </div>
           ) : (
             <SortableList

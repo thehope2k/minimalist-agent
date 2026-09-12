@@ -84,7 +84,7 @@ export function SessionRow({
     { label: revealLabel(), icon: FolderOpen, onSelect: handleReveal },
     'separator',
     {
-      label: session.projectId === null ? 'In Inbox ✓' : 'Move to Inbox',
+      label: session.projectId === null ? 'Unassigned ✓' : 'Remove from project',
       icon: Inbox,
       onSelect: () => void handleMoveTo(null),
     },
@@ -112,7 +112,7 @@ export function SessionRow({
   const leadingIcon = isStreaming ? (
     <RunningDot title="Running…" />
   ) : showProjectDot ? (
-    <Tooltip content={project ? `Project: ${project.name}` : 'No project — in Inbox'}>
+    <Tooltip content={project ? `Project: ${project.name}` : 'Unassigned'}>
       <span
         className="h-2.5 w-2.5 shrink-0 rounded-full"
         style={{ backgroundColor: project?.color ?? 'var(--color-fg-subtle)', opacity: project ? 1 : 0.4 }}

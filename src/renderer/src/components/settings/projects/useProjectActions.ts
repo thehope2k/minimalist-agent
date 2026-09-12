@@ -34,7 +34,7 @@ export function useProjectActions(
       const count = sessionCount(proj.id);
       const tail =
         count > 0
-          ? `\n\n${count} session${count === 1 ? '' : 's'} will move to Inbox.`
+          ? `\n\n${count} session${count === 1 ? '' : 's'} will become unassigned.`
           : '';
       if (!window.confirm(`Delete project "${proj.name}"?${tail}`)) return;
       await deleteProjectStore(proj.id);

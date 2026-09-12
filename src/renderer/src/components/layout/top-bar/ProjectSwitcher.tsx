@@ -68,7 +68,7 @@ export function ProjectSwitcher({ value, onChange, onManage }: ProjectSwitcherPr
           className="z-50 w-56 overflow-hidden rounded-lg border border-border bg-panel p-1 shadow-2xl"
         >
           <ProjectSwitcherItem
-            label="All Projects"
+            label="All Sessions"
             icon={Folders}
             selected={value === 'all'}
             onSelect={() => {
@@ -77,7 +77,7 @@ export function ProjectSwitcher({ value, onChange, onManage }: ProjectSwitcherPr
             }}
           />
           <ProjectSwitcherItem
-            label="Inbox"
+            label="Unassigned"
             icon={Inbox}
             selected={value === 'inbox'}
             onSelect={() => {
