@@ -62,6 +62,8 @@ jobs:
       # above. All matrix jobs append to that single draft (no creation race).
       - name: Build & publish
         env:
+          # Vite's production renderer build can exceed Node's default ~2 GiB heap.
+          NODE_OPTIONS: --max-old-space-size=4096
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run release
 
