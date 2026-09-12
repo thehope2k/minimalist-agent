@@ -10,13 +10,13 @@ import {
 import { cn } from '@/lib/utils';
 
 export const SETTINGS_CATEGORIES = [
-  { id: 'ai',          label: 'AI',          hint: 'Model, thinking, connections',  icon: Sparkles },
-  { id: 'preferences', label: 'Preferences', hint: 'Name, language, location, notes',  icon: User },
-  { id: 'app',         label: 'App',         hint: 'Notifications and updates',     icon: Cog },
-  { id: 'projects',    label: 'Projects',    hint: 'Group sessions by project',     icon: Folders },
+  { id: 'ai',          label: 'AI',          hint: 'Connections, defaults, compaction', icon: Sparkles },
+  { id: 'preferences', label: 'Preferences', hint: 'Profile, notes, Git commits',        icon: User },
+  { id: 'app',         label: 'App',         hint: 'App behavior, storage, updates',    icon: Cog },
+  { id: 'projects',    label: 'Projects',    hint: 'Session grouping and defaults',     icon: Folders },
   { id: 'terminal',    label: 'Terminal',    hint: 'Shell, font, scrollback',           icon: SquareTerminal },
-  { id: 'telemetry',   label: 'Telemetry',   hint: 'OpenTelemetry tracing',             icon: Activity },
-  { id: 'shortcuts',    label: 'Shortcuts',   hint: 'Keyboard shortcut reference',       icon: Keyboard },
+  { id: 'telemetry',   label: 'Telemetry',   hint: 'Tracing, exporters, identity',      icon: Activity },
+  { id: 'shortcuts',   label: 'Shortcuts',   hint: 'Available keyboard shortcuts',      icon: Keyboard },
 ] as const;
 
 export type SettingsCategory = (typeof SETTINGS_CATEGORIES)[number]['id'];
@@ -29,7 +29,7 @@ type Props = {
 export function SettingsCategoriesPanel({ active, onChange }: Props) {
   return (
     <section className="flex h-full w-full flex-col bg-panel">
-      <div className="flex h-10 items-center justify-center px-3">
+      <div className="flex h-10 items-center justify-center border-b border-border px-3">
         <h2 className="text-[15px] font-semibold text-fg">Settings</h2>
       </div>
 
