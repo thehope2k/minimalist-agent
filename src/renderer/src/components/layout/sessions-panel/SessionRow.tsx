@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
-  Archive, ArchiveRestore, CheckSquare, Circle,
-  FolderOpen, Inbox, MoreHorizontal, Pencil, Sparkles, Square, Trash2,
+  Archive, ArchiveRestore, CheckCircle2, Circle,
+  FolderOpen, Inbox, MoreHorizontal, Pencil, Sparkles, Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -21,7 +21,6 @@ export interface SessionRowProps {
   projects: Project[];
   showProjectDot: boolean;
   isStreaming?: boolean;
-  selectMode?: boolean;
   selected?: boolean;
   onClick: () => void;
   onAfterDelete: () => void;
@@ -34,7 +33,6 @@ export function SessionRow({
   projects,
   showProjectDot,
   isStreaming,
-  selectMode,
   selected,
   onClick,
   onAfterDelete,
@@ -98,11 +96,20 @@ export function SessionRow({
     { label: 'Delete', icon: Trash2, variant: 'destructive', onSelect: handleDelete },
   ];
 
-  const leadingIcon = selectMode ? (
-    selected
-      ? <CheckSquare className="h-4 w-4 shrink-0 text-accent" strokeWidth={1.75} />
-      : <Square className="h-4 w-4 shrink-0 text-fg-subtle" strokeWidth={1.75} />
-  ) : isStreaming ? (
+  const selectionIcon = selected
+    ? <CheckCircle2
+      className="h-4.5 w-4.5 shrink-0 text-accent"
+      style={{ transform: 'translate(-1.5px, -1.5px)' }}
+      strokeWidth={1.75}
+    />
+    : (
+      <span
+        className="h-1.5 w-1.5 rounded-full"
+        style={{ backgroundColor: project?.color ?? 'var(--color-fg-subtle)', opacity: project ? 1 : 0.4 }}
+      />
+    );
+
+  const leadingIcon = isStreaming ? (
     <RunningDot title="Running…" />
   ) : showProjectDot ? (
     <Tooltip content={project ? `Project: ${project.name}` : 'No project — in Inbox'}>
@@ -111,14 +118,33 @@ export function SessionRow({
         style={{ backgroundColor: project?.color ?? 'var(--color-fg-subtle)', opacity: project ? 1 : 0.4 }}
       />
     </Tooltip>
+  ) : session.archived ? (
+    <Archive className="h-4 w-4 shrink-0 text-fg-subtle" strokeWidth={1.75} />
   ) : (
     <Circle className="h-4 w-4 shrink-0 text-fg-subtle" strokeWidth={1.75} />
+  );
+
+  const sessionDetails = (
+    <div className="min-w-0 flex-1">
+      <div className="flex items-center gap-2">
+        <span className={cn('flex-1 truncate text-[0.95rem]', regenerating ? 'italic text-fg-muted' : 'text-fg')}>
+          {regenerating ? 'Regenerating title…' : session.title}
+        </span>
+        <span className={cn(
+          'shrink-0 text-xs group-hover/session:invisible',
+          isStreaming ? 'font-medium text-accent' : 'text-fg-subtle',
+          menuOpen && 'invisible',
+        )}>
+          {isStreaming ? 'Running…' : relativeTime(session.lastMessageAt)}
+        </span>
+      </div>
+    </div>
   );
 
   return (
     <div
       className={cn(
-        'group/session relative border-b border-border/60 last:border-b-0',
+        'group/session relative border-b border-border/60',
         '[&:has(button:hover)]:border-b-transparent',
         '[&:has(+_[data-active])]:border-b-transparent',
         '[&:has(+_div:has(button:hover))]:border-b-transparent',
@@ -148,30 +174,30 @@ export function SessionRow({
           />
         </div>
       ) : (
-        <button
-          onClick={selectMode ? onToggleSelect : onClick}
+        <div
           className={cn(
-            'flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors',
-            active && !selectMode ? 'bg-elevated' : 'hover:bg-elevated/60',
-            selectMode && selected && 'bg-elevated/60',
+            'flex w-full items-center gap-3 px-3 py-2.5 transition-colors',
+            active ? 'bg-elevated' : 'hover:bg-elevated/60',
+            selected && 'bg-elevated/60',
           )}
         >
-          {leadingIcon}
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <span className={cn('flex-1 truncate text-[0.95rem]', regenerating ? 'italic text-fg-muted' : 'text-fg')}>
-                {regenerating ? 'Regenerating title…' : session.title}
-              </span>
-              <span className={cn(
-                'shrink-0 text-xs group-hover/session:invisible',
-                isStreaming ? 'font-medium text-accent' : 'text-fg-subtle',
-                menuOpen && 'invisible',
-              )}>
-                {isStreaming ? 'Running…' : relativeTime(session.lastMessageAt)}
-              </span>
-            </div>
-          </div>
-        </button>
+          <button
+            type="button"
+            aria-label={selected ? `Deselect ${session.title}` : `Select ${session.title}`}
+            aria-pressed={selected}
+            onClick={onToggleSelect}
+            className={cn(
+              'grid h-4 w-4 shrink-0 place-items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70',
+              selected ? 'border border-transparent' : 'border hover:brightness-125',
+            )}
+            style={selected ? undefined : { borderColor: project?.color ?? 'var(--color-fg-subtle)', opacity: project ? 1 : 0.55 }}
+          >
+            {selectionIcon}
+          </button>
+          <button type="button" onClick={onClick} className="min-w-0 flex-1 text-left">
+            {sessionDetails}
+          </button>
+        </div>
       )}
 
       <div
@@ -179,7 +205,7 @@ export function SessionRow({
           'absolute right-2 top-1/2 -translate-y-1/2 transition-opacity',
           'opacity-0 group-hover/session:opacity-100',
           menuOpen && 'opacity-100',
-          (renaming || selectMode) && '!opacity-0 pointer-events-none',
+          renaming && 'opacity-0! pointer-events-none',
         )}
         onClick={(e) => e.stopPropagation()}
       >

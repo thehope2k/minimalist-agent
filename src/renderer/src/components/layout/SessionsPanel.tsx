@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Archive, ArchiveRestore, CheckSquare, Plus, Search, Trash2, X } from 'lucide-react';
+import { Archive, ArchiveRestore, Plus, Search, Trash2, X } from 'lucide-react';
 import { useSessions } from '@/hooks/useSessions';
 import { useProjects } from '@/hooks/useProjects';
 import { deleteSession, updateSessionMeta } from '@/lib/sessions';
@@ -45,7 +45,6 @@ export function SessionsPanel({
   const sessions = useSessions();
   const projects = useProjects() ?? [];
   const hasNewSessionDraft = useHasNewSessionDraft();
-  const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [searchMode, setSearchMode] = useState(false);
   const [query, setQuery] = useState('');
@@ -62,7 +61,10 @@ export function SessionsPanel({
       onManage={onManageProjects}
     />
   ) : (
-    <h2 className="text-[15px] font-semibold text-fg">{heading}</h2>
+    <h2 className="flex items-center gap-2 text-[15px] font-semibold text-fg">
+      {view === 'archived' && <Archive className="h-4 w-4 text-fg-muted" strokeWidth={1.75} />}
+      {heading}
+    </h2>
   );
 
   if (sessions === null) {
@@ -93,7 +95,7 @@ export function SessionsPanel({
     });
 
   /* ---- bulk selection helpers ---- */
-  const exitSelectMode = () => { setSelectMode(false); setSelectedIds(new Set()); };
+  const clearSelection = () => setSelectedIds(new Set());
   const openSearch = () => setSearchMode(true);
   const closeSearch = () => { setSearchMode(false); setQuery(''); };
   const toggleSelect = (id: string) => setSelectedIds((prev) => {
@@ -101,7 +103,6 @@ export function SessionsPanel({
     next.has(id) ? next.delete(id) : next.add(id);
     return next;
   });
-  const selectAll = () => setSelectedIds(new Set(items.map((s) => s.id)));
 
   const handleBulkDelete = async () => {
     const ids = [...selectedIds];
@@ -109,34 +110,50 @@ export function SessionsPanel({
     if (!window.confirm(`Delete ${ids.length} session${ids.length !== 1 ? 's' : ''}? This cannot be undone.`)) return;
     await Promise.all(ids.map((id) => deleteSession(id)));
     const deletedActive = activeId && selectedIds.has(activeId);
-    exitSelectMode();
+    clearSelection();
     if (deletedActive) onActiveDeleted?.();
   };
 
   const handleBulkArchive = async () => {
     if (!selectedIds.size) return;
     await Promise.all([...selectedIds].map((id) => updateSessionMeta(id, { archived: true })));
-    exitSelectMode();
+    clearSelection();
   };
 
   const handleBulkRestore = async () => {
     if (!selectedIds.size) return;
     await Promise.all([...selectedIds].map((id) => updateSessionMeta(id, { archived: false })));
-    exitSelectMode();
+    clearSelection();
   };
 
   return (
     <section className="relative flex h-full w-full flex-col bg-panel">
       {/* Normal header */}
-      {!selectMode && !searchMode && (
+      {!searchMode && (
         <header className="flex h-10 shrink-0 items-center justify-between border-b border-border px-3">
           {headerTitle}
           <div className="flex items-center gap-1">
             <IconButton icon={Search} label="Search sessions" size="sm" onClick={openSearch} />
-            {items.length > 0 && (
-              <IconButton icon={CheckSquare} label="Select sessions" size="sm" onClick={() => setSelectMode(true)} />
+            {selectedIds.size > 0 && (
+              <>
+                <span className="px-1 text-xs text-fg-muted">{selectedIds.size} selected</span>
+                <IconButton
+                  icon={view === 'archived' ? ArchiveRestore : Archive}
+                  label={view === 'archived' ? 'Restore selected sessions' : 'Archive selected sessions'}
+                  size="sm"
+                  onClick={() => void (view === 'archived' ? handleBulkRestore() : handleBulkArchive())}
+                />
+                <IconButton
+                  icon={Trash2}
+                  label="Delete selected sessions"
+                  size="sm"
+                  className="text-red-400 hover:text-red-300"
+                  onClick={() => void handleBulkDelete()}
+                />
+                <IconButton icon={X} label="Clear selection" size="sm" onClick={clearSelection} />
+              </>
             )}
-            {view === 'all' && onNewSession && (
+            {view === 'all' && selectedIds.size === 0 && onNewSession && (
               <Button
                 variant="outline" size="sm" icon={Plus}
                 onClick={onNewSession}
@@ -150,7 +167,7 @@ export function SessionsPanel({
       )}
 
       {/* Search-mode header */}
-      {searchMode && !selectMode && (
+      {searchMode && (
         <header className="flex h-10 shrink-0 items-center gap-1 border-b border-border px-2">
           <Search className="ml-1 h-4 w-4 shrink-0 text-fg-subtle" strokeWidth={1.75} />
           <Input
@@ -162,36 +179,6 @@ export function SessionsPanel({
             className="h-7 border-0 bg-transparent px-1"
           />
           <IconButton icon={X} label="Close search" size="sm" onClick={closeSearch} />
-        </header>
-      )}
-
-      {/* Select-mode header */}
-      {selectMode && (
-        <header className="flex h-10 shrink-0 items-center gap-1 border-b border-border px-2">
-          <span className="flex-1 truncate text-xs text-fg-muted">
-            {selectedIds.size > 0 ? `${selectedIds.size} selected` : 'Select sessions'}
-          </span>
-          {selectedIds.size < items.length && (
-            <Button variant="ghost" size="sm" onClick={selectAll}>Select all</Button>
-          )}
-          {view === 'archived' ? (
-            <Button variant="ghost" size="sm" icon={ArchiveRestore}
-              disabled={selectedIds.size === 0} onClick={() => void handleBulkRestore()}>
-              Restore
-            </Button>
-          ) : (
-            <Button variant="ghost" size="sm" icon={Archive}
-              disabled={selectedIds.size === 0} onClick={() => void handleBulkArchive()}>
-              Archive
-            </Button>
-          )}
-          <Button variant="ghost" size="sm" icon={Trash2}
-            disabled={selectedIds.size === 0}
-            className="text-red-400 hover:text-red-300"
-            onClick={() => void handleBulkDelete()}>
-            Delete
-          </Button>
-          <IconButton icon={X} label="Cancel selection" size="sm" onClick={exitSelectMode} />
         </header>
       )}
 
@@ -227,7 +214,6 @@ export function SessionsPanel({
                       projects={projects}
                       showProjectDot={showProjectDot}
                       isStreaming={!!streamingSessionIds?.has(s.id)}
-                      selectMode={selectMode}
                       selected={selectedIds.has(s.id)}
                       onClick={() => onSelect(s.id)}
                       onAfterDelete={() => onActiveDeleted?.()}
