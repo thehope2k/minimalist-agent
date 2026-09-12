@@ -31,7 +31,7 @@ const log = createLogger('system-prompt');
 const MAX_CONTEXT_FILES = 30;
 
 /** Maximum directory depth when walking for context files. */
-const MAX_WALK_DEPTH = 4;
+const MAX_WALK_DEPTH = 3;
 
 /**
  * Directories to exclude when searching for context files.

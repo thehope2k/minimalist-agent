@@ -24,7 +24,7 @@ export function ContextFileNamesRow({ current }: { current?: string[] }) {
         <span className="text-sm text-fg">Context file names</span>
       </div>
       <p className="mb-3 text-xs text-fg-subtle">
-        Filenames MA scans for project context each turn (case-insensitive, any directory depth).
+        Filenames MA scans for project context each turn (case-insensitive, up to 3 directory levels deep).
         Add your team's convention: <code className="text-fg-muted">copilot-instructions.md</code>,
         <code className="text-fg-muted"> .cursorrules</code>, etc.
       </p>
