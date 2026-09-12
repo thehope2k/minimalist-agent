@@ -5,6 +5,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [2.1.2] — 2026-09-13
+
+Commit-message options, project-label polish, and fixes across sessions, lists, help, and Mermaid rendering.
+
+### Added
+
+- Generated commit-message suggestions can now use a `ui` type for user-interface changes.
+
+### Changed
+
+- The default project is now labelled “Unassigned” throughout the app, and Settings category hints and session selection controls are clearer.
+
+### Fixed
+
+- Running sessions retain their project indicator, and row action buttons remain visible in agent, extension, and skill lists.
+- The Help button now opens the Minimalist Agent project repository.
+- Sortable lists no longer overflow their containers, and failed Mermaid diagrams no longer render an error SVG.
+
+---
+
 ## [2.1.1] — 2026-09-12
 
 Bug fixes for persisted plans, compaction output limits, and context scan-depth settings.
