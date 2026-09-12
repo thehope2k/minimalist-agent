@@ -37,7 +37,7 @@ export function ExtensionRow({
         <div className="flex w-5 shrink-0 items-center justify-center">
           <DragHandle
             dragHandle={dragHandle}
-            className="opacity-0 transition-opacity group-hover/ext:opacity-100"
+            className="opacity-50 transition-opacity hover:opacity-100 group-hover/ext:opacity-100"
           />
         </div>
         <button
