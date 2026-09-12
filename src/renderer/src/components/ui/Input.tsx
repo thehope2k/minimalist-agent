@@ -10,10 +10,11 @@ type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
 };
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, mono, ...rest }, ref) => (
+  ({ className, mono, type, ...rest }, ref) => (
     <input
       ref={ref}
-      className={cn(FIELD_CHROME, mono && 'font-mono', className)}
+      type={type}
+      className={cn(FIELD_CHROME, type === 'number' && 'number-input', mono && 'font-mono', className)}
       {...rest}
     />
   ),

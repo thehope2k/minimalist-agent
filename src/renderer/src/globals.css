@@ -90,6 +90,17 @@ body {
 .titlebar-drag { -webkit-app-region: drag; }
 .titlebar-no-drag { -webkit-app-region: no-drag; }
 
+/* Numeric fields use the shared text-field chrome; arrow keys still increment. */
+.number-input {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.number-input::-webkit-inner-spin-button,
+.number-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 /* ----- Markdown prose typography (assistant messages) -----
  *
  * Tight vertical rhythm tuned for chat. We don't use @tailwindcss/typography
