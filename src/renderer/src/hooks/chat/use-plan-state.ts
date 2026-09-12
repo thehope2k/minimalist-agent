@@ -62,6 +62,10 @@ export function usePlanState(activeSessionId: string | null, deps: PlanStateStor
 
     activePlanBySession.current.set(sid, plan);
 
+    if (plan.anchorTurnId) {
+      planAnchorTurnBySession.current.set(sid, plan.anchorTurnId);
+    }
+
     if (options?.resetAnchor) {
       planAnchorTurnBySession.current.delete(sid);
       const anchor = resolvePlanAnchorTurnId(sid);
@@ -88,8 +92,9 @@ export function usePlanState(activeSessionId: string | null, deps: PlanStateStor
       return liveAnchor === messageId ? plan : null;
     }
 
-    // Terminal plans stay frozen at their final anchor.
-    const frozenAnchor = planAnchorTurnBySession.current.get(sid);
+    // Terminal plans stay at their persisted creation anchor. Older plans
+    // lack that field, so retain a latest-assistant fallback for compatibility.
+    const frozenAnchor = planAnchorTurnBySession.current.get(sid) ?? findLastAssistantTurnId(sid);
     if (!frozenAnchor || frozenAnchor !== messageId) return null;
     return plan;
   }, [resolvePlanAnchorTurnId]);
@@ -190,12 +195,22 @@ export function usePlanState(activeSessionId: string | null, deps: PlanStateStor
     };
   }, [resolvePlanAnchorTurnId, setSessionPlan]);
 
-  // Load active plan on session change
+  // Load active plan on session change.
   useEffect(() => {
+    setShowPhaseApproval(false);
+    setPhaseAwaitingApproval(null);
     if (!activeSessionId || !window.api?.planning) return;
 
     window.api.planning.getActivePlan(activeSessionId)
-      .then((plan: Plan | null) => setSessionPlan(activeSessionId, plan))
+      .then((plan: Plan | null) => {
+        setSessionPlan(activeSessionId, plan);
+        if (activeSessionIdRef.current !== activeSessionId) return;
+        const awaitingPhase = plan?.phases.find((phase) => phase.approvalStatus === 'awaiting');
+        if (awaitingPhase) {
+          setPhaseAwaitingApproval(awaitingPhase);
+          setShowPhaseApproval(true);
+        }
+      })
       .catch((err) => log.error('Failed to load active plan:', err));
   }, [activeSessionId, setSessionPlan]);
 

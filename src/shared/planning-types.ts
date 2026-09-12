@@ -53,6 +53,8 @@ export interface PlanRevision {
  */
 export interface Plan {
   id: string;
+  /** Assistant turn that created the plan, used to restore its UI placement. */
+  anchorTurnId?: string;
   version: number;
   task: string;
   phases: Phase[];
@@ -136,16 +138,6 @@ export interface RevisePlanOutput {
 }
 
 /**
- * Safety analysis for a phase.
- */
-export interface SafetyAnalysis {
-  isSafe: boolean;
-  risk: number;
-  riskFactors: string[];
-  confidence: number; // 0-100
-}
-
-/**
  * Discrepancy detected during plan execution.
  */
 export interface Discrepancy {
@@ -175,6 +167,8 @@ export const PhaseSchema = z.object({
   completedAt: z.number().optional(),
   findings: z.string().optional(),
   error: z.string().optional(),
+  approvalStatus: z.enum(['awaiting', 'approved', 'denied']).optional(),
+  approvalNotes: z.string().optional(),
 });
 
 /**
@@ -193,6 +187,7 @@ export const PlanRevisionSchema = z.object({
  */
 export const PlanSchema = z.object({
   id: z.string(),
+  anchorTurnId: z.string().optional(),
   version: z.number().int().min(1),
   task: z.string().min(1, 'Task cannot be empty'),
   phases: z.array(PhaseSchema).min(1, 'Plan must have at least one phase'),

@@ -1,11 +1,48 @@
 import { BrowserWindow, ipcMain } from 'electron';
+import { dirname } from 'node:path';
 import { sessionPath } from '../storage/sessions';
 import { sendPlanApprovalResponse } from '../agent-runtime/pi/agent';
-import { getActivePlan, updatePlanCache as updatePlan } from '../agent-runtime/plan-cache';
-import type { Phase } from '../../shared/planning-types';
-import { createLogger } from '../logger';
+import { getActivePlan, restorePlanCache, updatePlanCache as updatePlan } from '../agent-runtime/plan-cache';
+import { PlanStorage } from '../agent-runtime/planning/storage';
+import type { Phase, Plan } from '../../shared/planning-types';
 
-const log = createLogger('ipc:planning');
+function applyPersistedPhaseDecision(
+  sessionId: string,
+  phaseId: string,
+  approved: boolean,
+  notes?: string,
+): void {
+  const sessionsDir = dirname(sessionPath(sessionId));
+  const plan = (getActivePlan(sessionId) ?? restorePlanCache(sessionId, sessionsDir)) as Plan | null;
+  if (!plan) throw new Error(`No plan found for session ${sessionId}`);
+
+  const phase = plan.phases.find((candidate) => candidate.id === phaseId);
+  if (!phase) throw new Error(`Phase ${phaseId} not found in plan ${plan.id}`);
+  if (phase.approvalStatus !== 'awaiting') {
+    throw new Error(`Phase ${phaseId} is not awaiting approval`);
+  }
+
+  if (approved) {
+    phase.approvalStatus = 'approved';
+    if (notes) phase.approvalNotes = notes;
+  } else {
+    phase.approvalStatus = 'denied';
+    phase.status = 'skipped';
+    phase.completedAt = Date.now();
+    phase.approvalNotes = notes;
+    phase.findings = notes ? `Skipped by user: ${notes}` : 'Skipped by user';
+  }
+  plan.lastUpdatedAt = Date.now();
+
+  new PlanStorage(sessionsDir).savePlan(sessionId, plan);
+  updatePlan(sessionId, plan);
+  BrowserWindow.getAllWindows()[0]?.webContents.send('planning:phase-updated', {
+    sessionId,
+    planId: plan.id,
+    phase,
+  });
+  BrowserWindow.getAllWindows()[0]?.webContents.send('planning:updated', { sessionId, plan });
+}
 
 /**
  * Planning workflow IPC handlers - manages multi-phase execution plans.
@@ -14,7 +51,7 @@ const log = createLogger('ipc:planning');
  */
 export function registerPlanningIpc(): void {
   ipcMain.handle('planning:getActivePlan', async (_e, sessionId: string) => {
-    return getActivePlan(sessionId);
+    return getActivePlan(sessionId) ?? restorePlanCache(sessionId, dirname(sessionPath(sessionId)));
   });
 
   ipcMain.handle('planning:cancelPlan', async (_e, sessionId: string) => {
@@ -41,10 +78,11 @@ export function registerPlanningIpc(): void {
     });
 
     if (!sent) {
-      log.warn(`Could not send approval response: subprocess not found for session ${sessionId}`);
+      applyPersistedPhaseDecision(sessionId, phaseId, true, notes);
     }
 
-    // Note: Plan cache will be updated when subprocess emits phase-updated event
+    // A live subprocess emits the cache/UI updates; the fallback persists and
+    // broadcasts the same updates so a restored approval is not lost.
   });
 
   ipcMain.handle('planning:denyPhase', async (_e, sessionId: string, phaseId: string, reason?: string) => {
@@ -57,10 +95,11 @@ export function registerPlanningIpc(): void {
     });
 
     if (!sent) {
-      log.warn(`Could not send denial response: subprocess not found for session ${sessionId}`);
+      applyPersistedPhaseDecision(sessionId, phaseId, false, reason);
     }
 
-    // Note: Plan cache will be updated when subprocess emits phase-updated event
+    // A live subprocess emits the cache/UI updates; the fallback persists and
+    // broadcasts the same updates so a restored denial is not lost.
   });
 
   ipcMain.handle('planning:retryPhase', async (_e, sessionId: string, phaseId: string) => {

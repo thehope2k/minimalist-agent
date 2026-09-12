@@ -79,7 +79,7 @@ export function createPlanningTools(sessionId: string): ToolDefinition<any, any>
       ) => {
         try {
           const input = validateCreatePlanInput(params);
-          const plan = state.planManager!.createPlan(sessionId, input);
+          const plan = state.planManager!.createPlan(sessionId, input, state.currentTurnId);
 
           return {
             isError: false,

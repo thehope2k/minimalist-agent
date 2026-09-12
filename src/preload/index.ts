@@ -43,6 +43,8 @@ interface Phase {
   completedAt?: number;
   findings?: string;
   error?: string;
+  approvalStatus?: 'awaiting' | 'approved' | 'denied';
+  approvalNotes?: string;
 }
 
 interface PlanRevision {
@@ -55,6 +57,7 @@ interface PlanRevision {
 
 interface Plan {
   id: string;
+  anchorTurnId?: string;
   version: number;
   task: string;
   phases: Phase[];

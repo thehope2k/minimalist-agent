@@ -67,7 +67,7 @@ export class PlanManager extends EventEmitter {
   /**
    * Create a new plan for a session.
    */
-  createPlan(sessionId: string, input: CreatePlanInput): Plan {
+  createPlan(sessionId: string, input: CreatePlanInput, anchorTurnId?: string): Plan {
     // Cancel any existing plan for this session
     const existing = this.activePlans.get(sessionId);
     if (existing && existing.status === 'active') {
@@ -110,6 +110,7 @@ export class PlanManager extends EventEmitter {
     // Create plan
     const plan: Plan = {
       id: randomUUID(),
+      anchorTurnId,
       version: 1,
       task: input.task,
       phases,
@@ -131,7 +132,12 @@ export class PlanManager extends EventEmitter {
    * Get active plan for a session.
    */
   getActivePlan(sessionId: string): Plan | null {
-    return this.activePlans.get(sessionId) || null;
+    const cached = this.activePlans.get(sessionId);
+    if (cached) return cached;
+
+    const persisted = this.storage.loadPlan(sessionId);
+    if (persisted) this.activePlans.set(sessionId, persisted);
+    return persisted;
   }
 
   /**
