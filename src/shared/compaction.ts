@@ -25,7 +25,7 @@ export interface ResolvedCompactionSettings {
 
 export interface CompactionModelInfo {
   contextWindow: number;
-  /** The model's max output tokens — reserveTokens is never smaller than this. */
+  /** The model's maximum output tokens, when known. */
   maxTokens?: number;
 }
 
@@ -50,7 +50,7 @@ export function resolveCompactionSettings(
   model: CompactionModelInfo,
 ): ResolvedCompactionSettings {
   const enabled = tuning?.enabled ?? DEFAULT_COMPACTION_ENABLED;
-  const { contextWindow, maxTokens = 0 } = model;
+  const { contextWindow } = model;
 
   let reserveTokens = clamp(
     Math.round(contextWindow * (tuning?.reserveFraction ?? DEFAULT_RESERVE_FRACTION)),
@@ -71,9 +71,22 @@ export function resolveCompactionSettings(
     keepRecentTokens = Math.round(keepRecentTokens * scale);
   }
 
-  // Hard requirement overrides the ceiling/scale-down above — a model must
-  // always have room to emit its own max output.
-  reserveTokens = Math.max(reserveTokens, maxTokens);
-
   return { enabled, reserveTokens, keepRecentTokens };
+}
+
+/**
+ * Keep Pi's per-request output limit within the configured compaction reserve.
+ * This makes `contextWindow - reserveTokens` safe without discarding a user's
+ * reserve ceiling in favor of the model catalog's theoretical maximum output.
+ */
+export function capModelOutputToCompactionReserve<M extends CompactionModelInfo>(
+  model: M,
+  reserveTokens: number,
+): M {
+  return {
+    ...model,
+    maxTokens: model.maxTokens && model.maxTokens > 0
+      ? Math.min(model.maxTokens, reserveTokens)
+      : reserveTokens,
+  };
 }

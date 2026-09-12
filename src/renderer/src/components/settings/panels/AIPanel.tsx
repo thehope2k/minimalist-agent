@@ -265,7 +265,7 @@ export function AIPanel() {
 
       <SettingsSection
         title="Context & Compaction"
-        subtitle="Tune automatic conversation summarization. Percentages are resolved against whichever model is active in a chat."
+        subtitle="Tune automatic conversation summarization. Percentages are resolved against whichever model is active."
       >
         <CompactionSection settings={settings} />
       </SettingsSection>

@@ -49,8 +49,10 @@ always set explicitly by the adapter — never inferred from other fields — so
 successful one.
 
 **Settings, one source of truth.** Auto-compact on/off, the token threshold, and how much recent history stays
-verbatim all live in one settings object. That same object feeds both session construction and the context-usage
-badge's "compacts near ~X%" preview, so the preview can't drift from what actually triggers compaction.
+verbatim all live in one settings object. The resolved reserve also caps Pi's per-request model output, so the
+configured threshold remains safe even when a model catalog advertises a much larger theoretical output maximum.
+That same object feeds both session construction and the context-usage badge's "compacts near ~X%" preview, so the
+preview can't drift from what actually triggers compaction.
 
 **`session_before_compact` hook.** Used two ways: attributing an OTel span to auto-triggered compactions, and — manual
 trigger only — instructing the summarizer to preserve any in-flight multi-phase plan state verbatim (this app's

@@ -92,7 +92,7 @@ import { fileURLToPath } from 'node:url';
 import type { LoadedAgent } from '../agents/types';
 import { PlanManager } from '../agent-runtime/planning/manager';
 import { createLogger } from '../../shared/sub-logger';
-import { resolveCompactionSettings } from '../../shared/compaction';
+import { capModelOutputToCompactionReserve, resolveCompactionSettings } from '../../shared/compaction';
 import {
   initOtel,
   shutdownOtel,
@@ -358,6 +358,8 @@ async function handleInit(msg: MsgInit): Promise<void> {
   // history) to a text placeholder instead of the provider rejecting them.
   state.visionSupported = msg.visionSupported;
   model = applyVisionInput(model, msg.visionSupported);
+  const resolvedCompaction = resolveCompactionSettings(msg.compactionSettings, model);
+  model = capModelOutputToCompactionReserve(model, resolvedCompaction.reserveTokens);
   state.model = model;
 
   // continueRecent resumes the most recent session stored in msg.sessionPath
@@ -415,8 +417,6 @@ async function handleInit(msg: MsgInit): Promise<void> {
   });
   await resourceLoader.reload();
   state.resourceLoader = resourceLoader;
-
-  const resolvedCompaction = resolveCompactionSettings(msg.compactionSettings, model);
 
   const { session } = await createAgentSession({
     cwd: msg.cwd,
@@ -1123,16 +1123,17 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
           // image history instead of erroring.
           state.visionSupported = msg.visionSupported;
           newModel = applyVisionInput(newModel, msg.visionSupported);
+          // Compaction tuning is window-relative, so a model switch changes
+          // the resolved reserve/output cap too.
+          const resolvedCompaction = resolveCompactionSettings(
+            state.init.compactionSettings,
+            newModel,
+          );
+          newModel = capModelOutputToCompactionReserve(newModel, resolvedCompaction.reserveTokens);
           state.model = newModel;
           // Propagate to the live session so the next prompt uses the new model.
           if (state.session) {
             await state.session.setModel(newModel as never);
-            // Compaction tuning is window-relative, so a model switch changes
-            // the resolved absolute reserveTokens/keepRecentTokens too.
-            const resolvedCompaction = resolveCompactionSettings(
-              state.init.compactionSettings,
-              newModel,
-            );
             state.session.settingsManager.applyOverrides({ compaction: resolvedCompaction });
             state.compactionSettings = resolvedCompaction;
           }
