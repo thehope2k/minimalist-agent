@@ -1,15 +1,11 @@
 // Left panel of the git diff modal: repo groups with file lists.
 // Keyboard navigable (↑↓), click to select, status badges + colored filenames.
-//
-// A (staged-new) and ? (untracked) are both shown as N (new/uncommitted).
-// The staged vs unstaged distinction is a git internal — irrelevant for
-// "what changed" review.
 
 import { useEffect, useRef, useState } from 'react';
-import { AlertTriangle, Check, ChevronDown, ChevronRight, FolderGit2, GitCommitHorizontal, Minus } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import type { GitFileEntry, GitFileStatus, GitRepo } from './types';
+import type { GitFileEntry, GitRepo } from './types';
 import type { AmendPreview } from './CommitPanel';
+import { AmendPreviewSection } from './git-file-list/AmendPreviewSection';
+import { RepoSection } from './git-file-list/RepoSection';
 
 interface GitFileListProps {
   repos: GitRepo[];
@@ -28,95 +24,48 @@ interface GitFileListProps {
   onSelectAmendFile?: (file: AmendPreview['files'][number]) => void;
 }
 
-const STATUS_STYLES: Record<GitFileStatus, {
-  label: string;
-  badgeClasses: string;
-  /** Color applied to the filename — consistent with DiffPart's add/remove palette. */
-  nameClasses: string;
-}> = {
-  M: {
-    label: 'M',
-    badgeClasses: 'text-amber-400 bg-amber-500/15',
-    nameClasses: 'text-amber-300',
-  },
-  A: {
-    label: 'N',
-    badgeClasses: 'text-emerald-400 bg-emerald-500/15',
-    nameClasses: 'text-emerald-300',
-  },
-  D: {
-    label: 'D',
-    badgeClasses: 'text-red-400 bg-red-500/15',
-    nameClasses: 'text-red-300 line-through',
-  },
-  R: {
-    label: 'R',
-    badgeClasses: 'text-blue-400 bg-blue-500/15',
-    nameClasses: 'text-blue-300',
-  },
-  '?': {
-    label: 'N',
-    badgeClasses: 'text-emerald-400 bg-emerald-500/15',
-    nameClasses: 'text-emerald-300',
-  },
-  // U = unmerged / conflict — amber with warning icon
-  U: {
-    label: 'C',
-    badgeClasses: 'text-orange-400 bg-orange-500/15',
-    nameClasses: 'text-orange-300',
-  },
-};
-
-function repoLabel(root: string): string {
-  return root.split('/').filter(Boolean).pop() ?? root;
-}
-
-function shortenRoot(root: string): string {
-  return root.replace(/^\/Users\/[^/]+\//, '~/');
-}
-
-function splitPath(relativePath: string): { dir: string; name: string } {
-  const lastSlash = relativePath.lastIndexOf('/');
-  if (lastSlash === -1) return { dir: '', name: relativePath };
-  return {
-    dir: relativePath.slice(0, lastSlash + 1),
-    name: relativePath.slice(lastSlash + 1),
-  };
-}
-
-export function GitFileList({ repos, branchesByRepo, selected, onSelect, stagedPaths, onToggleStage, onToggleRepoStage, hunkStates, amendPreview, selectedAmendFile, onSelectAmendFile }: GitFileListProps) {
+export function GitFileList({
+  repos,
+  branchesByRepo,
+  selected,
+  onSelect,
+  stagedPaths,
+  onToggleStage,
+  onToggleRepoStage,
+  hunkStates,
+  amendPreview,
+  selectedAmendFile,
+  onSelectAmendFile,
+}: GitFileListProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [collapsedRoots, setCollapsedRoots] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    setCollapsedRoots((prev) => {
-      const next = new Set([...prev].filter((root) => repos.some((r) => r.root === root)));
-      if (selected?.repoRoot) {
-        next.delete(selected.repoRoot);
-      }
+    setCollapsedRoots((previous) => {
+      const next = new Set([...previous].filter((root) => repos.some((repo) => repo.root === root)));
+      if (selected?.repoRoot) next.delete(selected.repoRoot);
       return next;
     });
   }, [repos, selected?.repoRoot]);
 
-  const visibleFiles = repos.flatMap((r) => (collapsedRoots.has(r.root) ? [] : r.files));
+  const visibleFiles = repos.flatMap((repo) => (collapsedRoots.has(repo.root) ? [] : repo.files));
 
   useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
-      e.preventDefault();
-      const idx = selected
-        ? visibleFiles.findIndex((f) => f.absolutePath === selected.absolutePath)
+    const element = containerRef.current;
+    if (!element) return;
+    const handler = (event: KeyboardEvent) => {
+      if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+      event.preventDefault();
+      const index = selected
+        ? visibleFiles.findIndex((file) => file.absolutePath === selected.absolutePath)
         : -1;
-      const next =
-        e.key === 'ArrowDown'
-          ? Math.min(visibleFiles.length - 1, idx + 1)
-          : Math.max(0, idx - 1);
+      const next = event.key === 'ArrowDown'
+        ? Math.min(visibleFiles.length - 1, index + 1)
+        : Math.max(0, index - 1);
       if (visibleFiles[next]) onSelect(visibleFiles[next]);
     };
-    el.addEventListener('keydown', handler);
-    return () => el.removeEventListener('keydown', handler);
+    element.addEventListener('keydown', handler);
+    return () => element.removeEventListener('keydown', handler);
   }, [visibleFiles, selected, onSelect]);
 
   if (repos.length === 0 && !(amendPreview && amendPreview.files.length > 0)) {
@@ -128,227 +77,37 @@ export function GitFileList({ repos, branchesByRepo, selected, onSelect, stagedP
   }
 
   return (
-    <div
-      ref={containerRef}
-      tabIndex={0}
-      className="scroll-thin flex h-full flex-col overflow-y-auto outline-none"
-    >
-      {repos.map((repo, repoIdx) => {
-        // Surface conflict files before regular changed files.
-        const sortedFiles = [
-          ...repo.files.filter((f) => f.status === 'U'),
-          ...repo.files.filter((f) => f.status !== 'U'),
-        ];
-        const isCollapsed = collapsedRoots.has(repo.root);
-        const branch = branchesByRepo?.get(repo.root) ?? null;
-        return (
-        <div key={repo.root}>
-          {/* ── Repo section header ── */}
-          <div
-            className={cn(
-              'sticky top-0 z-10 flex cursor-pointer items-center gap-2 bg-app px-3 py-2.5',
-              repoIdx > 0 && 'border-t border-border',
-            )}
-            title={repo.root}
-            onClick={() => {
-              setCollapsedRoots((prev) => {
-                const next = new Set(prev);
-                if (next.has(repo.root)) next.delete(repo.root);
-                else next.add(repo.root);
-                return next;
-              });
-            }}
-          >
-            {/* Repo-level stage-all checkbox */}
-            {(() => {
-              const allStaged = repo.files.every((f) => stagedPaths.has(f.absolutePath));
-              const someStaged = repo.files.some((f) => stagedPaths.has(f.absolutePath));
-              const isIndeterminate = someStaged && !allStaged;
-              return (
-                <div
-                  role="checkbox"
-                  aria-checked={isIndeterminate ? 'mixed' : allStaged}
-                  aria-label={allStaged ? 'Unstage all files in repo' : 'Stage all files in repo'}
-                  onClick={(e) => { e.stopPropagation(); onToggleRepoStage(repo); }}
-                  className={cn(
-                    'flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded-sm border transition-colors',
-                    allStaged || isIndeterminate
-                      ? 'border-accent bg-accent'
-                      : 'border-border-strong bg-transparent hover:border-accent/70',
-                  )}
-                >
-                  {isIndeterminate
-                    ? <Minus className="h-3 w-3 text-accent-fg" strokeWidth={3} />
-                    : allStaged
-                      ? <Check className="h-3 w-3 text-accent-fg" strokeWidth={2.5} />
-                      : null
-                  }
-                </div>
-              );
-            })()}
-            {isCollapsed ? (
-              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-fg-subtle" strokeWidth={1.75} />
-            ) : (
-              <ChevronDown className="h-3.5 w-3.5 shrink-0 text-fg-subtle" strokeWidth={1.75} />
-            )}
-            <FolderGit2 className="h-3.5 w-3.5 shrink-0 text-accent" strokeWidth={1.75} />
-            <div className="min-w-0 flex-1">
-              <div className="flex min-w-0 items-center gap-2">
-                <span className="truncate text-[13px] font-semibold text-fg">
-                  {repoLabel(repo.root)}
-                </span>
-                {branch && (
-                  <span className="shrink-0 rounded bg-elevated px-1.5 py-0.5 font-mono text-[10px] text-fg-muted">
-                    {branch}
-                  </span>
-                )}
-              </div>
-              <span className="block truncate font-mono text-[11px] text-fg-subtle">
-                {shortenRoot(repo.root)}
-              </span>
-            </div>
-            <span className="shrink-0 rounded bg-elevated px-1.5 py-0.5 text-[10px] tabular-nums text-fg-muted">
-              {repo.files.length}
-            </span>
-          </div>
-
-          {/* ── File rows — indented under the repo header ── */}
-          {!isCollapsed && sortedFiles.map((file) => {
-            const isSelected = selected?.absolutePath === file.absolutePath;
-            const isConflict = file.status === 'U';
-            // Conflict files can't be manually staged/unstaged — git add is
-            // triggered by the conflict resolution flow instead.
-            const isStaged = stagedPaths.has(file.absolutePath);
-            const hs = hunkStates?.get(file.absolutePath);
-            // Indeterminate: file is staged but only some hunks are selected.
-            const isIndeterminate = isStaged && hs != null && hs.staged > 0 && hs.staged < hs.total;
-            const isFullyStaged = isStaged && (!hs || hs.staged === hs.total);
-            const s = STATUS_STYLES[file.status];
-            const { dir, name } = splitPath(file.relativePath);
-            return (
-              <button
-                key={file.absolutePath}
-                type="button"
-                onClick={() => onSelect(file)}
-                className={cn(
-                  'flex w-full items-center gap-2.5 py-2 pr-3 text-left transition-colors',
-                  'focus-visible:outline-none',
-                  isSelected
-                    ? 'border-l-2 border-accent bg-accent/10 pl-[26px]'
-                    : 'border-l-2 border-transparent pl-[26px] hover:bg-elevated',
-                )}
-              >
-                {/* Stage checkbox — hidden for conflict files */}
-                {isConflict ? (
-                  <AlertTriangle
-                    className="h-4 w-4 shrink-0 text-orange-400"
-                    strokeWidth={1.75}
-                    aria-label="Conflict"
-                  />
-                ) : (
-                  <div
-                    role="checkbox"
-                    aria-checked={isIndeterminate ? 'mixed' : isFullyStaged}
-                    aria-label={`Stage ${file.relativePath}`}
-                    onClick={(e) => { e.stopPropagation(); onToggleStage(file); }}
-                    className={cn(
-                      'flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border transition-colors cursor-pointer',
-                      isFullyStaged || isIndeterminate
-                        ? 'border-accent bg-accent'
-                        : 'border-border-strong bg-transparent hover:border-accent/70',
-                    )}
-                  >
-                    {isIndeterminate
-                      ? <Minus className="h-3 w-3 text-accent-fg" strokeWidth={3} />
-                      : isFullyStaged
-                        ? <Check className="h-3 w-3 text-accent-fg" strokeWidth={2.5} />
-                        : null
-                    }
-                  </div>
-                )}
-
-                {/* Status badge */}
-                <span
-                  className={cn(
-                    'shrink-0 rounded px-1.5 py-0.5 font-mono text-[11px] font-bold leading-none',
-                    s.badgeClasses,
-                  )}
-                >
-                  {s.label}
-                </span>
-
-                {/* Filename (status-colored) + directory (muted) */}
-                <span className="min-w-0 flex-1">
-                  <span className={cn('block truncate font-mono text-[13px] font-medium', s.nameClasses)}>
-                    {name}
-                  </span>
-                  {dir && (
-                    <span className="block truncate font-mono text-[11px] text-fg-subtle">
-                      {dir}
-                    </span>
-                  )}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-        );
-      })}
-
-      {/* ── Commit being amended — read-only, muted, shown separately from current changes ── */}
+    <div ref={containerRef} tabIndex={0} className="scroll-thin flex h-full flex-col overflow-y-auto outline-none">
+      {repos.map((repo, index) => (
+        <RepoSection
+          key={repo.root}
+          repo={repo}
+          repoIndex={index}
+          branch={branchesByRepo?.get(repo.root) ?? null}
+          collapsed={collapsedRoots.has(repo.root)}
+          selected={selected}
+          stagedPaths={stagedPaths}
+          hunkStates={hunkStates}
+          onToggleCollapsed={() => {
+            setCollapsedRoots((previous) => {
+              const next = new Set(previous);
+              if (next.has(repo.root)) next.delete(repo.root);
+              else next.add(repo.root);
+              return next;
+            });
+          }}
+          onSelect={onSelect}
+          onToggleStage={onToggleStage}
+          onToggleRepoStage={onToggleRepoStage}
+        />
+      ))}
       {amendPreview && amendPreview.files.length > 0 && (
-        <div>
-          <div
-            className={cn(
-              'sticky top-0 z-10 flex items-center gap-2 bg-app px-3 py-2.5',
-              repos.length > 0 && 'border-t border-border',
-            )}
-            title="This commit will be amended with the staged changes above"
-          >
-            <GitCommitHorizontal className="h-3.5 w-3.5 shrink-0 text-fg-subtle" strokeWidth={1.75} />
-            <div className="min-w-0 flex-1">
-              <span className="block truncate text-[13px] font-semibold text-fg-subtle">
-                {amendPreview.subject ?? 'Commit being amended'}
-              </span>
-            </div>
-            <span className="shrink-0 rounded bg-elevated px-1.5 py-0.5 text-[10px] tabular-nums text-fg-subtle">
-              {amendPreview.files.length}
-            </span>
-          </div>
-          {amendPreview.files.map((f, i) => {
-            const { dir, name } = splitPath(f.path);
-            const isSelected = selectedAmendFile?.path === f.path;
-            const s = STATUS_STYLES[f.status];
-            return (
-              <button
-                key={`${f.path}-${i}`}
-                type="button"
-                onClick={() => onSelectAmendFile?.(f)}
-                className={cn(
-                  'flex w-full items-center gap-2.5 py-2 pr-3 text-left transition-colors',
-                  'focus-visible:outline-none',
-                  isSelected
-                    ? 'border-l-2 border-accent bg-accent/10 pl-[26px]'
-                    : 'border-l-2 border-transparent pl-[26px] hover:bg-elevated',
-                )}
-              >
-                <span className={cn('shrink-0 rounded px-1.5 py-0.5 font-mono text-[11px] font-bold leading-none', s.badgeClasses)}>
-                  {s.label}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className={cn('block truncate font-mono text-[13px] font-medium', s.nameClasses)}>
-                    {f.oldPath ? `${f.oldPath.split('/').pop()} \u2192 ${name}` : name}
-                  </span>
-                  {dir && (
-                    <span className="block truncate font-mono text-[11px] text-fg-subtle">
-                      {dir}
-                    </span>
-                  )}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+        <AmendPreviewSection
+          amendPreview={amendPreview}
+          hasRepos={repos.length > 0}
+          selectedPath={selectedAmendFile?.path}
+          onSelect={onSelectAmendFile}
+        />
       )}
     </div>
   );

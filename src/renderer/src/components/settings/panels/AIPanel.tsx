@@ -1,18 +1,13 @@
 import { useState } from 'react';
-import { Plus } from 'lucide-react';
 import {
-  deleteConnection,
-  refreshConnectionModels,
-  renameConnection,
-  reorderConnections,
   setDefaultConnection,
   setDefaultModel,
   setDefaultPermissionMode,
   setDefaultThinking,
 } from '@/lib/connections';
 import { useAiData } from '@/hooks/useAiData';
-import type { ConnectionMeta, PermissionMode, ThinkingLevel } from '@/lib/electron';
-import { Button, Select, SortableList } from '@/components/ui';
+import type { PermissionMode, ThinkingLevel } from '@/lib/electron';
+import { Button, Select } from '@/components/ui';
 import { AddConnectionDialog } from '../AddConnectionDialog';
 import {
   SettingsCard,
@@ -20,20 +15,11 @@ import {
   SettingsRow,
   SettingsSection,
 } from '../SettingsPrimitives';
-import { ConnectionRow } from '../ai-panel/ConnectionRow';
+import { ConnectionsSection } from '../ai-panel/ConnectionsSection';
 import { ContextFileNamesRow } from '../ai-panel/ContextFileNamesRow';
 import { CompactionSection } from '../ai-panel/CompactionSection';
 
 const THINKING_LEVELS: ThinkingLevel[] = ['off', 'low', 'medium', 'high', 'xhigh', 'max'];
-
-/** Stable identity for SortableList — must not be an inline arrow (memo churn). */
-const getConnectionId = (conn: ConnectionMeta): string => conn.slug;
-
-/** Mirrors main's model-refresh.isRefreshable: only providers with a live catalog. */
-function isRefreshable(conn: ConnectionMeta): boolean {
-  if (conn.providerType === 'github-copilot') return true;
-  return conn.providerType === 'openai-compatible' || conn.providerType === 'local' || conn.providerType === 'codemie-sso';
-}
 
 const THINKING_LABELS: Record<ThinkingLevel, string> = {
   off: 'No Thinking',
@@ -71,40 +57,6 @@ export function AIPanel() {
   /** When set, AddConnectionDialog opens in "edit" mode for this slug. */
   const [reauthSlug, setReauthSlug] = useState<string | null>(null);
 
-  const testConnection = async (conn: ConnectionMeta) => {
-    try {
-      const res = await window.api.connections.test(conn.slug);
-      if (res.ok) {
-        window.alert(`✓ "${conn.name}" is working.`);
-      } else {
-        window.alert(
-          `✗ "${conn.name}" failed.\n\n${res.error?.title ?? 'Error'}\n${res.error?.message ?? ''}`,
-        );
-      }
-    } catch (e) {
-      window.alert(e instanceof Error ? e.message : 'Test failed.');
-    }
-  };
-
-  const refreshModels = async (conn: ConnectionMeta) => {
-    try {
-      const res = await refreshConnectionModels(conn.slug);
-      if (res.ok) {
-        window.alert(
-          res.changed
-            ? `✓ "${conn.name}" model list updated.`
-            : `"${conn.name}" is already up to date.`,
-        );
-      } else if (res.reason === 'unsupported') {
-        window.alert(`"${conn.name}" uses a fixed model list — nothing to refresh.`);
-      } else {
-        window.alert(`Could not refresh "${conn.name}".\n\n${res.error ?? 'Unknown error.'}`);
-      }
-    } catch (e) {
-      window.alert(e instanceof Error ? e.message : 'Refresh failed.');
-    }
-  };
-
   if (!data) {
     return <div className="px-8 py-10 text-sm text-fg-subtle">Loading…</div>;
   }
@@ -116,70 +68,14 @@ export function AIPanel() {
 
   return (
     <div className="mx-auto max-w-190 px-8 py-10">
-      <SettingsSection
-        title="Connections"
-        subtitle="Manage your AI provider connections."
-        action={
-          <Button
-            variant="outline"
-            icon={Plus}
-            onClick={() => setDialogOpen(true)}
-            className="bg-elevated/40"
-          >
-            Add Connection
-          </Button>
-        }
-      >
-        {!encryptionAvailable && connections.length > 0 && (
-          <div className="mb-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-200">
-            OS keychain encryption is unavailable on this machine — API keys and
-            OAuth tokens are stored as <b>plaintext</b> on disk (owner-readable
-            only). Avoid storing long-lived secrets here; prefer a host with a
-            working keychain.
-          </div>
-        )}
-        <div className="space-y-2">
-          {connections.length === 0 ? (
-            <SettingsCard>
-              <div className="px-4 py-6 text-center text-sm text-fg-subtle">
-                No connections yet. Add one to get started.
-              </div>
-            </SettingsCard>
-          ) : (
-            <SortableList
-              items={connections}
-              getId={getConnectionId}
-              onReorder={(next) => void reorderConnections(next.map((c) => c.slug))}
-              className="space-y-2"
-              renderItem={(c, dragHandle) => (
-                <ConnectionRow
-                  conn={c}
-                  dragHandle={dragHandle}
-                  isDefault={c.slug === (defaultSlug ?? defaultConn?.slug)}
-                  onMakeDefault={() => {
-                    void setDefaultConnection(c.slug);
-                    const stillValid = c.models.some(
-                      (m) => m.id === data?.settings.defaultModel,
-                    );
-                    if (!stillValid) void setDefaultModel(c.defaultModel);
-                  }}
-                  onRename={(name) => void renameConnection(c.slug, name)}
-                  onDelete={() => {
-                    if (confirm(`Delete connection "${c.name}"?`)) {
-                      void deleteConnection(c.slug);
-                    }
-                  }}
-                  onTest={() => void testConnection(c)}
-                  onReauth={() => setReauthSlug(c.slug)}
-                  onRefreshModels={
-                    isRefreshable(c) ? () => void refreshModels(c) : undefined
-                  }
-                />
-              )}
-            />
-          )}
-        </div>
-      </SettingsSection>
+      <ConnectionsSection
+        connections={connections}
+        defaultSlug={defaultSlug}
+        defaultModel={settings.defaultModel}
+        encryptionAvailable={encryptionAvailable}
+        onAdd={() => setDialogOpen(true)}
+        onReauth={setReauthSlug}
+      />
 
       <SettingsSection
         title="New Session Defaults"
