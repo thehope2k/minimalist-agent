@@ -19,7 +19,11 @@ export function ActionButtons({ terminalOpen, onToggleTerminal }: ActionButtonsP
         className={terminalOpen ? 'text-accent' : ''}
       />
       <WhatsNewButton />
-      <IconButton icon={HelpCircle} label="Help" />
+      <IconButton
+        icon={HelpCircle}
+        label="Help"
+        onClick={() => void window.api.app.openExternal('https://github.com/thehope2k/minimalist-agent')}
+      />
     </div>
   );
 }
