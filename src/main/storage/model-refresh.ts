@@ -19,6 +19,7 @@ import {
 } from './connections';
 import { getCredential } from './credentials';
 import { createLogger } from '../logger';
+import { supportsModelCatalogRefresh } from '../../shared/provider-capabilities';
 
 const log = createLogger('model-refresh');
 
@@ -53,8 +54,7 @@ export type RefreshResult = RefreshOk | RefreshErr;
 
 /** Providers whose catalog we can re-fetch live. */
 export function isRefreshable(meta: ConnectionMeta): boolean {
-  if (meta.providerType === 'github-copilot') return true;
-  return meta.providerType === 'openai-compatible' || meta.providerType === 'local' || meta.providerType === 'codemie-sso';
+  return supportsModelCatalogRefresh(meta.providerType);
 }
 
 function isStale(meta: ConnectionMeta): boolean {

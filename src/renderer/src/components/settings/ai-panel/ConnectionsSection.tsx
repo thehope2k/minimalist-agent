@@ -9,17 +9,12 @@ import {
 } from '@/lib/connections';
 import { Button, SortableList } from '@/components/ui';
 import type { ConnectionMeta } from '@/lib/electron';
+import { supportsModelCatalogRefresh } from '../../../../../shared/provider-capabilities';
 import { SettingsCard, SettingsSection } from '../SettingsPrimitives';
 import { ConnectionRow } from './ConnectionRow';
 
 /** Stable identity for SortableList — must not be an inline arrow (memo churn). */
 const getConnectionId = (conn: ConnectionMeta): string => conn.slug;
-
-/** Mirrors main's model-refresh.isRefreshable: only providers with a live catalog. */
-function isRefreshable(conn: ConnectionMeta): boolean {
-  if (conn.providerType === 'github-copilot') return true;
-  return conn.providerType === 'openai-compatible' || conn.providerType === 'local' || conn.providerType === 'codemie-sso';
-}
 
 interface ConnectionsSectionProps {
   connections: ConnectionMeta[];
@@ -123,7 +118,11 @@ export function ConnectionsSection({
                 }}
                 onTest={() => void testConnection(conn)}
                 onReauth={() => onReauth(conn.slug)}
-                onRefreshModels={isRefreshable(conn) ? () => void refreshModels(conn) : undefined}
+                onRefreshModels={
+                  supportsModelCatalogRefresh(conn.providerType)
+                    ? () => void refreshModels(conn)
+                    : undefined
+                }
               />
             )}
           />
