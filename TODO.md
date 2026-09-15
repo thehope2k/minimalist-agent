@@ -69,7 +69,6 @@ _(Nothing pending)_
   - `src/renderer/src/lib/electron.d.ts` — 1,320 lines (type surface for the whole `window.api`;
     grows with every IPC method, splitting it needs a per-domain type layout decision first)
   - `src/preload/index.ts` — 1,029 lines
-  - `src/main/agent-runtime/system-prompt.ts` — 811 lines
   - `src/main/agent-runtime/pi/agent.ts` — 728 lines
   - Largest `.tsx`: `src/renderer/src/components/chat/MessageInput.tsx` (419),
     `src/renderer/src/components/pet/DesktopPet.tsx` (319),

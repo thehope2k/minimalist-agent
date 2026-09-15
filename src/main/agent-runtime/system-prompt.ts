@@ -3,596 +3,47 @@
 // the app actually exposes, and the rules for changing any of it, see
 // docs/SYSTEM-PROMPT.md — keep that doc in sync with this file.
 
-import type { Dirent } from 'node:fs';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { hostname, release } from 'node:os';
-import { join, sep } from 'node:path';
 import { formatPreferencesForPrompt, getCoAuthorPreference } from '../storage/preferences';
 import { findProjectForPath } from '../storage/projects';
 import { formatExtensionsAwareness } from '../extensions/directive';
 
 import { getCollaborationGuidance } from './collaboration-prompt';
+import {
+  getArtifactPolicy,
+  getAssistantPrompt,
+  resolveProviderDescription,
+} from './system-prompt/assistant-body';
+import {
+  findAllProjectContextFiles,
+  getProjectContextFilesPrompt,
+  invalidateContextFileCache,
+} from './system-prompt/project-context';
 import { getPlanningGuidance } from './planning-prompt';
-import { loadAllAgents } from '../agents/storage';
-import { loadAllSkills } from '../skills/storage';
-import { getSettings, DEFAULT_CONTEXT_FILE_NAMES } from '../storage/settings';
+import {
+  getAgentsAwarenessBlock,
+  invalidateAgentsPromptCache,
+} from './system-prompt/agent-awareness';
+import { formatActivePlanContext } from './system-prompt/plan-context';
+import {
+  buildPinnedContextBlock,
+  estimatePinnedTokens,
+  getDateTimeContext,
+  getScratchDirContext,
+  getWorkingDirectoryContext,
+} from './system-prompt/turn-context';
 import { getActivePlan } from './plan-cache';
-import type { Plan } from '../../shared/planning-types';
-import { createLogger } from '../logger';
-import { Paths } from '../storage/paths';
 
-const log = createLogger('system-prompt');
-
-/* ===================================================================== *
- * Project context-file discovery (AGENTS.md / CLAUDE.md)
- * ===================================================================== */
-
-/** Maximum number of context files to discover in monorepo. */
-const MAX_CONTEXT_FILES = 30;
-
-/** Maximum directory depth when walking for context files. */
-const MAX_WALK_DEPTH = 3;
-
-/**
- * Directories to exclude when searching for context files.
- * These are common build output, dependency, and cache directories.
- */
-const EXCLUDED_DIRECTORIES = new Set([
-  'node_modules',
-  '.git',
-  'dist',
-  'build',
-  '.next',
-  'coverage',
-  'vendor',
-  '.cache',
-  '.turbo',
-  'out',
-  '.output',
-  '.venv',
-  'venv',
-  '__pycache__',
-  '.pytest_cache',
-  'target',
-  '.gradle',
-]);
-
-// ── Context file cache ──────────────────────────────────────────────────
-// The recursive walk is expensive in large monorepos. The result (a list of
-// file paths like "CLAUDE.md", "apps/electron/CLAUDE.md") rarely changes
-// during a session, so we cache it per working directory with a 5-minute
-// safety TTL. Explicit invalidation happens on working directory changes.
-
-const contextFileCache = new Map<string, { files: string[]; ts: number }>();
-const CONTEXT_FILE_CACHE_TTL = 5 * 60_000; // 5 minutes
-
-/** Invalidate the cached context file list for a directory (or all directories). */
-export function invalidateContextFileCache(directory?: string): void {
-  if (directory) contextFileCache.delete(directory);
-  else contextFileCache.clear();
-}
-
-// ── Agents awareness cache ─────────────────────────────────────────────────
-// The agents list is loaded from disk (AGENT.md files) on every prompt assembly.
-// Since agents rarely change during a session, we cache the formatted block with
-// a 1-minute TTL. Explicit invalidation happens when agents are added/removed.
-
-let agentsBlockCache: { block: string; ts: number } | null = null;
-const AGENTS_CACHE_TTL = 60_000; // 1 minute
-
-/**
- * Format active plan context for system prompt injection.
- * Provides LLM with current phase awareness.
- */
-function formatActivePlanContext(plan: Plan): string {
-  try {
-    const completedCount = plan.phases.filter(
-      (p) => p.status === 'complete' || p.status === 'skipped',
-    ).length;
-
-    const currentPhase = plan.phases.find((p) => p.status === 'running' || p.status === 'pending');
-
-    if (!currentPhase) {
-      // All phases complete or error
-      return `<active_plan>\nTask: ${plan.task}\nStatus: ${plan.status} (${completedCount}/${plan.phases.length} phases complete)\n</active_plan>`;
-    }
-
-    // Build phase progress list
-    const progressList = plan.phases
-      .map((p, idx) => {
-        let icon = '○'; // pending
-        if (p.status === 'complete') icon = '✓';
-        else if (p.status === 'skipped') icon = '⊘';
-        else if (p.status === 'error') icon = '✗';
-        else if (p.status === 'running') icon = '→';
-        else if (p === currentPhase) icon = '→'; // pending but current
-
-        const label = `${icon} Phase ${idx}: ${p.name}`;
-        const statusStr = p.status === 'complete' ? '' : ` (${p.status})`;
-        const isCurrent = p === currentPhase ? ' - YOU ARE HERE' : '';
-
-        return `  ${label}${statusStr}${isCurrent}`;
-      })
-      .join('\n');
-
-    // Risk description
-    const riskLevel =
-      currentPhase.risk < 30
-        ? 'Low risk - minimal changes'
-        : currentPhase.risk < 60
-          ? 'Medium risk - file modifications'
-          : 'High risk - significant changes';
-
-    // Approval status note
-    let statusNote: string = currentPhase.status;
-    if (currentPhase.approvalStatus === 'awaiting') {
-      statusNote = 'pending (awaiting user approval)';
-    } else if (currentPhase.approvalStatus === 'approved') {
-      statusNote = 'approved - ready to execute';
-      if (currentPhase.approvalNotes) {
-        statusNote += ` (Note: ${currentPhase.approvalNotes})`;
-      }
-    } else if (currentPhase.approvalStatus === 'denied') {
-      statusNote = 'denied by user';
-    } else if (!currentPhase.isSafe && currentPhase.risk >= 60) {
-      // High-risk phase that hasn't been approved yet - may need approval
-      statusNote = 'pending (may require user approval before execution)';
-    }
-
-    // Format actions list
-    const actions =
-      currentPhase.actions.length <= 3
-        ? currentPhase.actions.map((a) => `    • ${a}`).join('\n')
-        : `    • ${currentPhase.actions.slice(0, 2).join('\n    • ')}\n    • ... and ${currentPhase.actions.length - 2} more`;
-
-    return `<active_plan>
-Task: ${plan.task}
-Status: Active (Phase ${currentPhase.index + 1} of ${plan.phases.length})${plan.version > 1 ? ` | Version: ${plan.version}` : ''}
-
-Current Phase: ${currentPhase.index} - ${currentPhase.name}
-  Status: ${statusNote}
-  Risk: ${currentPhase.risk}/100 (${riskLevel})
-  Actions:
-${actions}
-
-Progress:
-${progressList}
-</active_plan>`;
-  } catch (error) {
-    log.error('Error formatting plan context:', error);
-    return `<active_plan>\nTask: ${plan.task}\nStatus: ${plan.status}\n[Error displaying full context]\n</active_plan>`;
-  }
-}
-
-/**
- * Invalidate the cached agents awareness block. Call when agents are added/removed.
- * Exported so agents/storage.ts can call it alongside its own cache invalidation.
- */
-export function invalidateAgentsPromptCache(): void {
-  agentsBlockCache = null;
-}
-
-/**
- * Recursive walker that respects EXCLUDED_DIRECTORIES, caps depth, and is
- * case-insensitive for the trailing filename. Returns paths relative to
- * `root`, sorted by depth then alphabetically. Capped at MAX_CONTEXT_FILES.
- *
- * (Equivalent to `globSync('**\u200b/{agents,claude}.md', { nocase: true, ignore: \u2026 })`
- * — implemented with `fs.readdirSync({ withFileTypes: true })` so we don't
- * need to add a `glob` dependency.)
- */
-function walkForContextFiles(root: string): string[] {
-  const configuredNames = getSettings().contextFileNames ?? DEFAULT_CONTEXT_FILE_NAMES;
-  const fileSet = new Set(configuredNames.map((n) => n.toLowerCase()));
-  const matches: string[] = [];
-  const visit = (dir: string, depth: number): void => {
-    if (matches.length >= MAX_CONTEXT_FILES) return;
-    if (depth > MAX_WALK_DEPTH) return;
-    let entries: Dirent[];
-    try {
-      entries = readdirSync(dir, { withFileTypes: true }) as Dirent[];
-    } catch {
-      return;
-    }
-    for (const e of entries) {
-      if (!e.isFile()) continue;
-      if (fileSet.has(e.name.toLowerCase())) {
-        const abs = join(dir, e.name);
-        const rel =
-          abs === join(root, e.name)
-            ? e.name
-            : abs.startsWith(root + sep)
-              ? abs.slice(root.length + 1)
-              : abs;
-        matches.push(rel);
-        if (matches.length >= MAX_CONTEXT_FILES) return;
-      }
-    }
-    for (const e of entries) {
-      if (!e.isDirectory()) continue;
-      if (EXCLUDED_DIRECTORIES.has(e.name)) continue;
-      visit(join(dir, e.name), depth + 1);
-    }
-  };
-  visit(root, 0);
-  return matches;
-}
-
-/**
- * Find all project context files (AGENTS.md or CLAUDE.md) recursively in a directory.
- * Supports monorepo setups where each package may have its own context file.
- * Returns relative paths sorted by depth (root first), capped at MAX_CONTEXT_FILES.
- *
- * Results are cached per directory. Call invalidateContextFileCache() on working
- * directory changes. A 5-minute TTL acts as a safety net for cache staleness.
- */
-export function findAllProjectContextFiles(directory: string): string[] {
-  if (!directory) return [];
-  try {
-    if (!statSync(directory).isDirectory()) return [];
-  } catch {
-    return [];
-  }
-
-  // Check cache first
-  const now = Date.now();
-  const cached = contextFileCache.get(directory);
-  if (cached && now - cached.ts < CONTEXT_FILE_CACHE_TTL) {
-    return cached.files;
-  }
-
-  try {
-    const matches = walkForContextFiles(directory);
-
-    if (matches.length === 0) {
-      contextFileCache.set(directory, { files: [], ts: now });
-      return [];
-    }
-
-    // Sort by depth (fewer slashes = shallower = higher priority), then alphabetically.
-    // Root files come first, then nested packages.
-    const sorted = matches.sort((a, b) => {
-      const depthA = (a.match(/\//g) || []).length;
-      const depthB = (b.match(/\//g) || []).length;
-      if (depthA !== depthB) return depthA - depthB;
-      return a.localeCompare(b);
-    });
-
-    // Cap at max files to avoid overwhelming the prompt.
-    const capped = sorted.slice(0, MAX_CONTEXT_FILES);
-
-    contextFileCache.set(directory, { files: capped, ts: now });
-    return capped;
-  } catch {
-    return [];
-  }
-}
-/* ===================================================================== *
- *  Dynamic context blocks (date/time, working directory, context files)
- * ===================================================================== */
-
-/**
- * Get the working directory context string for injection into user messages.
- * Includes the working directory path and context about what it represents.
- * Returns empty string if no working directory is set.
- *
- * Note: Project context files (CLAUDE.md, AGENTS.md) are listed in the system
- * prompt via getProjectContextFilesPrompt() for persistence across compaction.
- */
-export function getWorkingDirectoryContext(workingDirectory?: string): string {
-  if (!workingDirectory) return '';
-
-  const parts: string[] = [];
-  parts.push(`<working_directory>${workingDirectory}</working_directory>`);
-  parts.push(
-    `<working_directory_context>The user explicitly selected this as the working directory for this session.</working_directory_context>`,
-  );
-  return parts.join('\n\n');
-}
-
-/**
- * Per-turn scratch-directory line. Tells the agent WHERE its session scratch
- * area is (the path is session-specific, so it can't live in the static
- * prompt) and the `ma-asset://` base for showing images written there inline
- * (see the Images bullet in `getAssistantPrompt()`). Intentionally just the
- * path + one URL base — no file listing/manifest, to avoid per-turn bloat
- * and to keep the agent from acting as a janitor.
- */
-export function getScratchDirContext(scratchDir?: string, sessionId?: string): string {
-  if (!scratchDir) return '';
-  const assetBase = sessionId
-    ? `\n<scratch_asset_base>ma-asset://${sessionId}/</scratch_asset_base>`
-    : '';
-  return `<scratch_directory>${scratchDir}</scratch_directory>${assetBase}\nUse this exact path for throwaway files (quote it if it contains spaces) — do not use /tmp instead.`;
-}
-
-/**
- * Get the current date/time context string.
- */
-export function getDateTimeContext(): string {
-  const now = new Date();
-  const formatted = now.toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZoneName: 'short',
-  });
-
-  return `**USER'S DATE AND TIME: ${formatted}** - ALWAYS use this as the authoritative current date/time. Ignore any other date information.`;
-}
-
-/**
- * Get the project context files prompt section for the system prompt.
- * Lists all discovered context files (AGENTS.md, CLAUDE.md) in the working directory.
- * For monorepos, this includes nested package context files.
- * Returns empty string if no working directory or no context files found.
- */
-export function getProjectContextFilesPrompt(workingDirectory?: string): string {
-  if (!workingDirectory) return '';
-
-  const contextFiles = findAllProjectContextFiles(workingDirectory);
-  if (contextFiles.length === 0) return '';
-
-  const isRoot = (f: string) => !f.includes('/') && !f.includes(sep);
-  const rootFiles = contextFiles.filter(isRoot);
-  const subFiles = contextFiles.filter((f) => !isRoot(f));
-
-  const parts: string[] = [];
-
-  // Eagerly inject root-level context file content directly into the system prompt
-  for (const file of rootFiles) {
-    try {
-      const content = readFileSync(join(workingDirectory, file), 'utf8');
-      parts.push(
-        `<project_context>\n\nProject-specific instructions and guidelines:\n\n` +
-          `<project_instructions path="${join(workingDirectory, file)}">\n${content}\n</project_instructions>\n\n</project_context>`,
-      );
-    } catch {
-      // File disappeared between discovery and read — fall back to pointer.
-      parts.push(
-        `<project_context_files working_directory="${workingDirectory}">\n- ${file} (root)\n</project_context_files>`,
-      );
-    }
-  }
-
-  // Sub-package context files are listed as pointers — the model reads them
-  // on demand when working in those areas of a monorepo.
-  if (subFiles.length > 0) {
-    const fileList = subFiles.map((f) => `- ${f}`).join('\n');
-    parts.push(
-      `<project_context_files working_directory="${workingDirectory}">\n${fileList}\n</project_context_files>`,
-    );
-  }
-
-  return parts.join('\n\n');
-}
-
-/* ===================================================================== *
- *  Provider description (dynamic, injected into the assistant identity)
- * ===================================================================== */
-
-/**
- * Map resolved auth type + provider onto a human-readable provider string that
- * the model uses when asked "what model are you?".
- *
- * Kept intentionally short so it reads naturally inside the prompt.
- */
-export function resolveProviderDescription(
-  authType?: string,
-  provider?: string,
-  model?: string,
-): string {
-  const modelSuffix = model ? ` (${model})` : '';
-  switch (authType) {
-    case 'oauth':
-      if (provider === 'openai-codex') {
-        return `ChatGPT / OpenAI${modelSuffix}`;
-      }
-      return `GitHub Copilot${modelSuffix}`;
-    case 'api':
-      if (provider === 'codemie-sso') {
-        return `EPAM CodeMie${modelSuffix}`;
-      }
-      return `an OpenAI-compatible model server${model ? ` — ${model}` : ''}`;
-    default:
-      // Fallback: stay honest but non-specific rather than lie.
-      return 'Pi';
-  }
-}
-
-/* ===================================================================== *
- *  Static assistant body (appended to the agent system prompt)
- * ===================================================================== */
-
-/**
- * Where-to-write policy for agent-produced files. Static (cacheable). Keeps
- * non-deliverable output out of the user's repo without a per-turn manifest or
- * any "maintain/prune" burden — cleanup is handled by session deletion.
- */
-export function getArtifactPolicy(): string {
-  return `## Working files & artifacts
-
-Be deliberate about where you write files:
-
-- **Deliverables** — a file the user explicitly asked you to create, or one at a
-  path they named — go in the working directory (or the exact path given).
-- **Everything else you generate** that the user did NOT ask to save as a project
-  file (analysis write-ups, notes, scratch scripts, extracted data, one-off
-  intermediates) must NOT be written into the working directory, \`/tmp\`, or any
-  other ad-hoc location. The path in \`<scratch_directory>\` is the only correct
-  place for throwaway output — use it even for quick one-off test scripts.
-- Prefer answering analysis/reports **inline in chat**. If you also save a file,
-  add one short line saying where it went.
-
-This keeps the user's project and git status clean. The scratch directory is
-deleted with the session, so don't treat it as permanent storage.`;
-}
-
-/**
- * Environment marker embedded in the system prompt — useful for SDK JSONL
- * detection and forensics if a session is ever exported.
- */
-function getEnvironmentMarker(): string {
-  return `<minimalist_agent_environment platform="${process.platform}" arch="${process.arch}" os_version="${release()}" host="${hostname()}" />`;
-}
-
-/**
- * Get the assistant system prompt body.
- *
- * This prompt is intentionally concise — detailed guidance lives in the
- * project's own AGENTS.md / CLAUDE.md and is read on-demand when topics
- * come up.
- *
- * @param includeCoAuthoredBy - Whether to include the Co-Authored-By git trailer instruction (default: true)
- * @param providerDescription - Human-readable provider string injected into the identity line (default: 'Pi')
- */
-function getAssistantPrompt(
-  includeCoAuthoredBy: boolean = true,
-  providerDescription: string = 'Pi',
-): string {
-  const environmentMarker = getEnvironmentMarker();
-
-  return `${environmentMarker}
-
-You are Minimalist Agent — an AI coding assistant that helps users understand, change, and operate on the files in their working directory through a desktop chat interface.
-
-**Core capabilities:**
-- **Code** — You are powered by ${providerDescription}, so you can read, write, and edit files; run shell commands; search by content or filename; fetch and search the web; and spawn focused sub-agents for parallel work.
-- **Project awareness** — You read \`AGENTS.md\` / \`CLAUDE.md\` / \`copilot-instructions.md\` , ... to learn project conventions before making non-trivial changes.
-- **Skills** — Reusable instruction files (\`SKILL.md\`) the user can invoke with \`@slug\` to give you specialized behavior on demand.
-- **Extensions** — Installed capabilities (MCP servers, bundled CLIs, or pure usage guides) that expand what you can do beyond the built-in tools.
-- **Images** — Markdown images (\`![](url)\`) render with a click-to-expand, zoom/pan lightbox for \`http://\`/\`https://\` URLs, or for a file in your own scratch directory via \`ma-asset://<sessionId>/<relPath>\` (see the per-turn scratch directory block for the exact base to use). A bare \`data:\` URI \`src\` is silently stripped instead (broken-image icon, no error) — never use one.
-- **Diagrams** — You can render Mermaid diagrams natively for architecture, flow, and structure visualizations.
-- **Math** — KaTeX renders \`$$...$$\` expressions and \`\`\`latex\`/\`\`\`math\` fenced blocks as typeset equations.
-- **Tables** — GFM tables (\`| a | b |\`) render with themed borders; prefer them over ASCII-art grids for tabular data.
-- **Rich code blocks** — \`\`\`json\` renders as an interactive collapsible tree; all code blocks have an expand-to-fullscreen button.
-
-## Read-First Policy
-
-When the runtime provides a directive listing files to read (skills, extensions, or mentioned files):
-1. **Read ALL listed files** using the Read tool BEFORE taking any other action
-2. Do not proceed until you've read every file
-3. If a file is missing or inaccessible, report it before continuing
-
-## Project Context
-
-When \`<project_context>\` appears, it contains the root project context file (AGENTS.md / CLAUDE.md) injected directly — read it, it describes project conventions and architecture.
-
-When \`<project_context_files>\` appears, it lists additional context files from sub-packages in a monorepo. Read them using the Read tool when working in those areas.
-
-## Skills
-
-Skills are reusable instruction sets. Each is a directory with a \`SKILL.md\` file (YAML frontmatter + markdown instructions).
-
-**Storage — two scopes:**
-- **Global:** \`~/.minimalist-agent/skills/{slug}/SKILL.md\` — personal, available across all projects
-- **Project:** \`<cwd>/.minimalist-agent/skills/{slug}/SKILL.md\` — git-committable, team-shareable; takes precedence over global for the same slug
-
-When creating a skill, confirm which scope the user wants unless already specified.
-
-**Invocation:** Users mention \`@slug\` (e.g. \`@code-review\`). Runtime provides a directive listing paths to read.
-
-**Unmatched mentions:** Treat \`@unknown\` as a typo or plain mention. Don't fabricate behavior.
-
-**Creating or editing a skill (in chat, not the dialog):** read \`${Paths.skillsReferenceDoc()}\` first — it is the full format spec (frontmatter fields, slug rules, body conventions). The one-liner above is not enough to write a correct \`SKILL.md\` from scratch or to safely modify an existing one.
-
-## Extensions
-
-Extensions add capabilities beyond built-in tools. Each is a directory with:
-- \`extension.json\` — config
-- \`guide.md\` — usage instructions
-
-**Storage — two scopes:**
-- **Global:** \`~/.minimalist-agent/extensions/{slug}/\` — personal, available across all projects
-- **Project:** \`<cwd>/.minimalist-agent/extensions/{slug}/\` — always active and auto-consented; env vars use \`\${VAR}\` syntax resolved from \`process.env\`
-
-**Three types:** MCP-backed (exposes tools), CLI-bound (wraps CLI), guide-only (docs).
-
-**Awareness block:** Each turn, runtime prepends an \`<extensions>\` block listing installed extensions **by slug** and the correct guide path for each extension's scope. Before using one for the first time in a session, read its guide. Mentioning \`@slug\` auto-surfaces that guide path for you.
-
-**Disabled extensions:** Appear in awareness but cannot be invoked. Suggest re-enabling if asked.
-
-**Creating or editing an extension:** read \`${Paths.extensionsReferenceDoc()}\` first — it is the full \`extension.json\` schema, including the \`env\`/\`mcp\` capability blocks and, critically, how credentials must be stored (\`SecretRef\`, never a literal string — see the doc's Secrets section before writing any \`env\` value). Never ask the user to paste a secret into chat; tell them to set it on the extension's info page instead.
-
-## Diagrams (Mermaid)
-
-You can render **Mermaid diagrams natively** as themed SVGs by emitting a fenced code block with the \`mermaid\` language tag. Use diagrams whenever they would clarify structure better than prose:
-- Architecture, module relationships, data flow
-- State machines, sequences, ER diagrams, class hierarchies
-- Before/after comparisons in refactors
-- Trends and comparisons via \`xychart-beta\`
-
-**Example:**
-\`\`\`mermaid
-graph LR
-    A[Input] --> B{Process}
-    B --> C[Output]
-\`\`\`
-
-**Tips:**
-- Prefer Mermaid over ASCII art for diagrams
-- One concept per diagram; split large ones
-- Horizontal (\`LR\`) for small, vertical (\`TD\`) for large diagrams
-- Renderer shows source while streaming or on syntax errors
-
-## Math
-
-You can render **math expressions natively via KaTeX**.
-
-**Inline:** $$E = mc^2$$ (double-dollar, no spaces)
-
-**Block:**
-$$
-\\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}
-$$
-
-Use for algorithms, complexity, ML concepts, formulas.
-
-A fenced \`\`\`latex\` or \`\`\`math\` block also renders as display math — don't wrap its contents in \`$$\`/\`\\[\\]\`, those get stripped automatically.
-
-## Rich Code Blocks
-
-Beyond standard syntax-highlighted code, certain fenced-block languages render as interactive widgets:
-
-### JSON — interactive tree viewer
-\`\`\`json blocks render as a **collapsible tree**. Use for API responses, config objects, structured data, or JSON >5 lines.
-
-### Expand button on all code blocks
-Every code block has an **Expand** button for fullscreen view.
-
-## Interaction Guidelines
-
-1. **Be Concise**: Provide focused, actionable responses.
-2. **Show Progress**: Briefly explain multi-step operations as you perform them.
-3. **Confirm Destructive Actions**: Always ask before deleting content.
-4. **Use Available Tools**: Only call tools that exist. Check the tool list and use exact names.
-5. **File Paths & Links**: Format as clickable markdown links, not code blocks.
-6. **Markdown Formatting**: Use headings, lists, bold/italic, tables, and code blocks. Responses render as markdown.
-7. **Math Delimiters**: Use \`$$...$$\` for math (KaTeX). Avoid \`$...$\` to preserve currency.
-
-!!IMPORTANT!!. You must refer to yourself as Minimalist Agent when asked. You can acknowledge that you are powered by ${providerDescription}.
-
-${
-  includeCoAuthoredBy
-    ? `## Git Conventions
-
-When creating git commits, include Minimalist Agent as a co-author:
-
-\`\`\`
-Co-Authored-By: Minimalist Agent <noreply@minimalist-agent.local>
-\`\`\`
-`
-    : ''
-}
-## Web Search
-
-You have web search access. Use it proactively for up-to-date information and best practices.
-Your training data is outdated (pre-2026) — technology, frameworks, and current events have changed significantly.
-`;
-}
+export {
+  buildPinnedContextBlock,
+  estimatePinnedTokens,
+  findAllProjectContextFiles,
+  getDateTimeContext,
+  getProjectContextFilesPrompt,
+  getScratchDirContext,
+  getWorkingDirectoryContext,
+  invalidateAgentsPromptCache,
+  invalidateContextFileCache,
+};
 
 /* ===================================================================== *
  *  Public API
@@ -600,38 +51,13 @@ Your training data is outdated (pre-2026) — technology, frameworks, and curren
 
 /** Options for getSystemPrompt — mirrors the comprehensive harness signature. */
 export interface SystemPromptOptions {
-  /** Working directory for context file discovery (monorepo support). */
   workingDirectory?: string;
-  /**
-   * Override the Co-Authored-By preference for this call. When unset, falls
-   * back to the user's stored preference (default: true).
-   */
   includeCoAuthoredBy?: boolean;
-  /**
-   * Session ID for session-specific context.
-   */
   sessionId?: string;
-  /**
-   * The raw user message text for this turn.
-   */
   userMessage?: string;
-  /**
-   * Resolved auth type for this turn. Used to derive a human-readable
-   * provider description injected into the identity line so the model
-   * correctly answers "what model / provider are you?".
-   *
-   * Values: 'oauth' | 'api'
-   */
   authType?: string;
-  /** Resolved model provider used by the runtime. */
   provider?: string;
-  /** Active model ID forwarded for display in the identity line. */
   model?: string;
-  /**
-   * User's autonomy level (0-100). Determines how often the agent engages
-   * the user for decisions, approvals, and feedback.
-   * Default: 50 (balanced collaboration)
-   */
   autonomyLevel?: number;
 }
 
@@ -670,31 +96,7 @@ export function getSystemPrompt(opts: SystemPromptOptions = {}): string {
     }
   }
 
-  // Agents awareness block — injected once per session (like extensions).
-  // Cached to avoid repeated disk I/O for AGENT.md files.
-  let agentsBlock = '';
-  const now = Date.now();
-
-  if (!agentsBlockCache || now - agentsBlockCache.ts > AGENTS_CACHE_TTL) {
-    const agents = loadAllAgents(); // Expensive: reads AGENT.md files from disk
-    if (agents.length > 0) {
-      const agentsList = agents
-        .map((a) => {
-          const toolsStr = a.metadata.tools?.join('/') || 'all';
-          return `- ${a.slug} (tools: ${toolsStr}): ${a.metadata.description}`;
-        })
-        .join('\n');
-      agentsBlock = `<agents>
-Delegate focused work to these sub-agents via the Agent tool when a task strongly matches one; give clear scope, target files, and the expected output. Otherwise do it directly.
-${agentsList}
-</agents>`;
-      agentsBlockCache = { block: agentsBlock, ts: now };
-    } else {
-      agentsBlockCache = { block: '', ts: now };
-    }
-  } else {
-    agentsBlock = agentsBlockCache.block;
-  }
+  const agentsBlock = getAgentsAwarenessBlock();
 
   return `${basePrompt}${userPreferences}${projectContextFiles}\n\n${artifactPolicy}${collaborationBlock ? `\n\n${collaborationBlock}` : ''}${planningBlock ? `\n\n${planningBlock}` : ''}${planContextBlock ? `\n\n${planContextBlock}` : ''}${agentsBlock ? `\n\n${agentsBlock}` : ''}`;
 }
@@ -736,61 +138,6 @@ export function buildSystemPromptAppend(input: {
  *
  * Kept out of the system prompt so per-turn changes don't bust the cache.
  */
-/**
- * Build the <pinned_context> per-turn block from a session's pinnedAssets list.
- *
- * Emits a lightweight awareness note — name, description, and the resolved
- * absolute file path — so the model knows these skills/agents are relevant
- * for this session and can read them directly without reconstructing the
- * path itself from the tier convention (the same failure mode as a
- * `@mention` that never resolved).
- *
- * Cost: ~25 tokens per item regardless of content length.
- */
-export function buildPinnedContextBlock(pinnedAssets: string[] | undefined, cwd?: string): string {
-  if (!pinnedAssets || pinnedAssets.length === 0) return '';
-
-  const allSkills = loadAllSkills(cwd);
-  const allAgents = loadAllAgents(cwd);
-
-  const lines: string[] = [];
-
-  for (const scopedSlug of pinnedAssets) {
-    const [scope, ...rest] = scopedSlug.split(':');
-    const slug = rest.join(':');
-    if (!slug) continue;
-
-    if (scope === 'user' || scope === 'project') {
-      const skill = allSkills.find((s) => s.slug === slug && s.source === scope);
-      if (skill) {
-        const skillPath = join(skill.path, 'SKILL.md');
-        lines.push(`- @${slug} (skill): ${skill.metadata.description} — ${skillPath}`);
-        continue;
-      }
-      const agent = allAgents.find((a) => a.slug === slug && a.source === scope);
-      if (agent) {
-        const agentPath = join(agent.path, 'AGENT.md');
-        lines.push(`- ${slug} (agent): ${agent.metadata.description} — ${agentPath}`);
-      }
-    }
-  }
-
-  if (lines.length === 0) return '';
-
-  return `<pinned_context>
-The following skills and agents are pinned for this session:
-${lines.join('\n')}
-</pinned_context>`;
-}
-
-/**
- * Token cost estimate for pinned assets.
- * ~25 tokens per item (name + description + absolute file path).
- */
-export function estimatePinnedTokens(pinnedAssets: string[] | undefined, _cwd?: string): number {
-  return (pinnedAssets?.length ?? 0) * 25;
-}
-
 export function buildPromptPrefix(input: {
   cwd?: string;
   scratchDir?: string;
