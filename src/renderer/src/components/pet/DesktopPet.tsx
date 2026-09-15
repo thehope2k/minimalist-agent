@@ -2,35 +2,32 @@ import { useEffect, useRef, useState } from 'react';
 import { PetPanda } from './PetPanda';
 import { usePetSignal, type PetReaction, type PetBaseState } from './usePetSignal';
 import { useCursorGaze } from './useCursorGaze';
-import { usePrefersReducedMotion } from './usePrefersReducedMotion';
+import {
+  clampX,
+  clampY,
+  DASH_SPEED_PX_PER_SEC,
+  HORIZONTAL_MARGIN_PX,
+  PET_HEIGHT_PX,
+  PET_WIDTH_PX,
+  randomDashTarget,
+  randomWalkTarget,
+  restingY,
+  stepToward,
+  useMotionLoop,
+  WALK_SPEED_PX_PER_SEC,
+} from './pet-position';
 import { getAppSettings, setPetLastX, setPetLastY } from '@/lib/app-settings';
 import { playPetSound, type PetSoundKind } from '@/lib/pet-sound';
-import {
-  applyFriction,
-  computeReleaseVelocity,
-  recordPointerSample,
-  speedOf,
-  type PointerSample,
-  type Velocity,
-} from '@/lib/pet-motion';
+import { applyFriction, speedOf, type Velocity } from '@/lib/pet-motion';
+import { usePetDrag } from './usePetDrag';
 
-const WALK_SPEED_PX_PER_SEC = 40;
-const DASH_SPEED_PX_PER_SEC = 140;
-const DASH_DISTANCE_PX = 55;
-const HORIZONTAL_MARGIN_PX = 40;
-const VERTICAL_MARGIN_PX = 24;
-const PET_WIDTH_PX = 72;
-const PET_HEIGHT_PX = 44;
-const POSITION_EPSILON_PX = 2;
 const POSITION_SAVE_INTERVAL_MS = 3000;
-const CLICK_DRAG_THRESHOLD_PX = 6;
 
 /** Fraction of velocity retained after a full second of momentum decay — low value = a short, snappy flick, not an ice-rink slide. */
 const MOMENTUM_FRICTION_RETAINED_PER_SEC = 0.08;
 /** Below this speed a flick isn't worth animating, and momentum stops decaying toward zero forever. */
 const MOMENTUM_STOP_SPEED_PX_PER_SEC = 24;
 /** A release slower than this just drops the pet in place, matching the pre-momentum drag behavior. */
-const MIN_FLICK_SPEED_PX_PER_SEC = 60;
 const FACING_FLIP_VELOCITY_THRESHOLD_PX_PER_SEC = 8;
 
 const REACTION_DURATION_MS: Record<Exclude<PetReaction, null>, number> = {
@@ -57,73 +54,6 @@ const REACTION_SOUND: Partial<Record<Exclude<PetReaction, null>, PetSoundKind>> 
 
 const DASH_TRIGGERS: ReadonlySet<PetReaction> = new Set(['tool-start', 'commit-success']);
 
-function clampX(x: number): number {
-  const maxX = window.innerWidth - HORIZONTAL_MARGIN_PX - PET_WIDTH_PX;
-  return Math.min(Math.max(x, HORIZONTAL_MARGIN_PX), Math.max(HORIZONTAL_MARGIN_PX, maxX));
-}
-
-function clampY(y: number): number {
-  const maxY = window.innerHeight - VERTICAL_MARGIN_PX - PET_HEIGHT_PX;
-  return Math.min(Math.max(y, VERTICAL_MARGIN_PX), Math.max(VERTICAL_MARGIN_PX, maxY));
-}
-
-function restingY(): number {
-  return window.innerHeight - VERTICAL_MARGIN_PX - PET_HEIGHT_PX;
-}
-
-function randomWalkTarget(): number {
-  const maxX = window.innerWidth - HORIZONTAL_MARGIN_PX - PET_WIDTH_PX;
-  return HORIZONTAL_MARGIN_PX + Math.random() * Math.max(0, maxX - HORIZONTAL_MARGIN_PX);
-}
-
-function randomDashTarget(fromX: number): number {
-  const direction = Math.random() < 0.5 ? 1 : -1;
-  return clampX(fromX + direction * DASH_DISTANCE_PX);
-}
-
-function stepToward(
-  current: number,
-  target: number,
-  speedPxPerSec: number,
-  deltaSec: number,
-): { next: number; arrived: boolean } {
-  const direction = target > current ? 1 : -1;
-  const next = current + direction * speedPxPerSec * deltaSec;
-  const arrived = Math.abs(target - next) < POSITION_EPSILON_PX;
-  return { next: arrived ? target : next, arrived };
-}
-
-function useMotionLoop(active: boolean, onStep: (deltaSec: number) => void): void {
-  const onStepRef = useRef(onStep);
-  onStepRef.current = onStep;
-  const prefersReducedMotion = usePrefersReducedMotion();
-
-  useEffect(() => {
-    if (!active) return;
-
-    let animationFrameId: number;
-    let lastTimestamp: number | null = null;
-
-    const frame = (timestamp: number) => {
-      animationFrameId = requestAnimationFrame(frame);
-      if (document.hidden || prefersReducedMotion) {
-        lastTimestamp = null;
-        return;
-      }
-      if (lastTimestamp === null) {
-        lastTimestamp = timestamp;
-        return;
-      }
-      const deltaSec = (timestamp - lastTimestamp) / 1000;
-      lastTimestamp = timestamp;
-      onStepRef.current(deltaSec);
-    };
-
-    animationFrameId = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(animationFrameId);
-  }, [active, prefersReducedMotion]);
-}
-
 interface DesktopPetProps {
   isStreaming: boolean;
 }
@@ -136,7 +66,6 @@ export function DesktopPet({ isStreaming }: DesktopPetProps) {
   const [y, setY] = useState(() => clampY(getAppSettings().petLastY ?? restingY()));
   const [facing, setFacing] = useState<1 | -1>(1);
   const [dashPhase, setDashPhase] = useState<'out' | 'back' | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
 
   const walkTargetRef = useRef(randomWalkTarget());
   const dashHomeXRef = useRef(x);
@@ -146,14 +75,18 @@ export function DesktopPet({ isStreaming }: DesktopPetProps) {
   xRef.current = x;
   yRef.current = y;
 
-  const dragPointerOffsetRef = useRef({ dx: 0, dy: 0 });
-  const dragStartClientRef = useRef({ x: 0, y: 0 });
-  const draggedBeyondThresholdRef = useRef(false);
-  const pointerHistoryRef = useRef<PointerSample[]>([]);
-
   const [momentumActive, setMomentumActive] = useState(false);
   const velocityRef = useRef<Velocity>({ vx: 0, vy: 0 });
   const pendingDashRef = useRef(false);
+  const { isDragging, handlePointerDown, handlePointerMove, handlePointerUp } = usePetDrag({
+    xRef,
+    yRef,
+    velocityRef,
+    setX,
+    setY,
+    setMomentumActive,
+    setDashPhase,
+  });
 
   const startDash = () => {
     dashHomeXRef.current = xRef.current;
@@ -265,51 +198,6 @@ export function DesktopPet({ isStreaming }: DesktopPetProps) {
       setPetLastY(yRef.current);
     };
   }, []);
-
-  const handlePointerDown = (event: React.PointerEvent) => {
-    event.currentTarget.setPointerCapture(event.pointerId);
-    dragPointerOffsetRef.current = {
-      dx: event.clientX - xRef.current,
-      dy: event.clientY - yRef.current,
-    };
-    dragStartClientRef.current = { x: event.clientX, y: event.clientY };
-    draggedBeyondThresholdRef.current = false;
-    pointerHistoryRef.current = [{ x: event.clientX, y: event.clientY, timeMs: performance.now() }];
-    setMomentumActive(false);
-    setDashPhase(null);
-    setIsDragging(true);
-  };
-
-  const handlePointerMove = (event: React.PointerEvent) => {
-    if (!isDragging) return;
-    const movedX = event.clientX - dragStartClientRef.current.x;
-    const movedY = event.clientY - dragStartClientRef.current.y;
-    if (Math.hypot(movedX, movedY) > CLICK_DRAG_THRESHOLD_PX) {
-      draggedBeyondThresholdRef.current = true;
-    }
-    pointerHistoryRef.current = recordPointerSample(pointerHistoryRef.current, {
-      x: event.clientX,
-      y: event.clientY,
-      timeMs: performance.now(),
-    });
-    setX(clampX(event.clientX - dragPointerOffsetRef.current.dx));
-    setY(clampY(event.clientY - dragPointerOffsetRef.current.dy));
-  };
-
-  const handlePointerUp = (event: React.PointerEvent) => {
-    setIsDragging(false);
-    if (!draggedBeyondThresholdRef.current) return;
-
-    event.preventDefault();
-    setPetLastX(xRef.current);
-    setPetLastY(yRef.current);
-
-    const releaseVelocity = computeReleaseVelocity(pointerHistoryRef.current);
-    if (speedOf(releaseVelocity) >= MIN_FLICK_SPEED_PX_PER_SEC) {
-      velocityRef.current = releaseVelocity;
-      setMomentumActive(true);
-    }
-  };
 
   return (
     <div
