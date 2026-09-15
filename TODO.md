@@ -58,21 +58,31 @@ _(Nothing pending)_
 
 ## Tech Debt
 
-- [ ] **Split "god files"** — several modules far exceed the AGENTS.md ~250-line guideline
-      (12 `.ts` files >400 lines; 6 `.tsx` components >250; ~70.6K lines total across `src/`).
-      Sizes refreshed Sep 15, 2026:
+- [ ] **Split "god files"** — several modules exceed the AGENTS.md ~250-line guideline.
+      Full inventory refreshed Sep 15, 2026 (12 `.ts` files >400 lines; 4 `.tsx` components >250;
+      ~70.4K lines total across `src/`):
   - `src/main/pi-server/index.ts` — 1,444 lines. Orchestrates `handleInit`/
     `handlePrompt`/`handleManualCompact`/`dispatch`/the stdin entrypoint, all sharing
     `activePromptPromise` and the OTel span lifecycle via the module-scoped `state` object.
     Genuinely tightly-coupled (deep mutable-state + async-ordering coupling) — further
     splitting is real risk, not mechanical code motion.
-  - `src/renderer/src/lib/electron.d.ts` — 1,320 lines (type surface for the whole `window.api`;
-    grows with every IPC method, splitting it needs a per-domain type layout decision first)
-  - `src/preload/index.ts` — 1,029 lines
+  - `src/shared/electron-api.ts` — 1,311 lines. Authoritative `window.api` contract shared by the
+    renderer declaration and six preload-domain factories; this prevents contract drift. Split its
+    type definitions by domain only when the shared contract becomes difficult to navigate.
   - `src/main/agent-runtime/pi/agent.ts` — 728 lines
-  - Largest `.tsx`: `src/renderer/src/components/chat/MessageInput.tsx` (400),
-    `src/renderer/src/components/context/ContextPanelSections.tsx` (274),
-    `src/renderer/src/components/settings/projects/ProjectEditDialog.tsx` (273),
+  - `src/main/agent-runtime/planning/manager.ts` — 552 lines
+  - `src/main/agent-runtime/pi/worktree-manager.ts` — 542 lines
+  - `src/main/pi-server/event-adapter.ts` — 526 lines
+  - `src/shared/otel.ts` — 505 lines
+  - `src/main/agent-runtime/errors.ts` — 490 lines
+  - `src/main/agent-runtime/pi/protocol.ts` — 472 lines
+  - `src/main/browser/browser-cdp.ts` — 450 lines
+  - `src/main/pi-server/ssrf-guard.ts` — 422 lines
+  - `src/main/pi-server/planning-tools.ts` — 411 lines
+  - `.tsx`: `src/renderer/src/components/chat/MessageInput.tsx` — 400 lines
+  - `.tsx`: `src/renderer/src/components/layout/ChatArea.tsx` — 270 lines
+  - `.tsx`: `src/renderer/src/components/git/GitDiffModal.tsx` — 266 lines
+  - `.tsx`: `src/renderer/src/components/git/GitDiffView.tsx` — 262 lines
 
 - [ ] **Provider quota fetchers have no shared type** — `src/main/chatgpt/quota.ts` and
       `src/main/copilot/quota.ts` are independently hand-rolled (justified — genuinely different
