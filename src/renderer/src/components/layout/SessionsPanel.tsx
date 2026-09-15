@@ -198,13 +198,11 @@ export function SessionsPanel({
           </div>
         ) : items.length > 0 ? (
           <>
-            {groupByDate(items, view === 'archived').map(([label, group]) => (
+            {groupByDate(items).map(([label, group]) => (
               <div key={label}>
-                {view !== 'archived' && (
-                  <div className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wider text-fg-subtle">
-                    {label}
-                  </div>
-                )}
+                <div className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wider text-fg-subtle">
+                  {label}
+                </div>
                 <div className="flex flex-col gap-1">
                   {group.map((s) => (
                     <SessionRow

@@ -7,12 +7,7 @@ export function revealLabel(): string {
   return 'Show in File Manager';
 }
 
-export function groupByDate(
-  items: SessionSummary[],
-  archived: boolean,
-): Array<[string, SessionSummary[]]> {
-  if (archived) return items.length ? [['Archived', items]] : [];
-
+export function groupByDate(items: SessionSummary[]): Array<[string, SessionSummary[]]> {
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const startOfYesterday = startOfToday - 86_400_000;
