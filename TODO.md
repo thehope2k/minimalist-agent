@@ -59,19 +59,18 @@ _(Nothing pending)_
 ## Tech Debt
 
 - [ ] **Split "god files"** — several modules far exceed the AGENTS.md ~250-line guideline
-      (13 `.ts` files >400 lines; 13 `.tsx` components >250; ~69.8K lines total across `src/`).
+      (14 `.ts` files >400 lines; 11 `.tsx` components >250; ~70.3K lines total across `src/`).
       Sizes refreshed Sep 15, 2026:
-  - `src/main/pi-server/index.ts` — 1,346 lines. Orchestrates `handleInit`/
+  - `src/main/pi-server/index.ts` — 1,444 lines. Orchestrates `handleInit`/
     `handlePrompt`/`handleManualCompact`/`dispatch`/the stdin entrypoint, all sharing
     `activePromptPromise` and the OTel span lifecycle via the module-scoped `state` object.
     Genuinely tightly-coupled (deep mutable-state + async-ordering coupling) — further
     splitting is real risk, not mechanical code motion.
-  - `src/renderer/src/lib/electron.d.ts` — 1,335 lines (type surface for the whole `window.api`;
+  - `src/renderer/src/lib/electron.d.ts` — 1,320 lines (type surface for the whole `window.api`;
     grows with every IPC method, splitting it needs a per-domain type layout decision first)
-  - `src/preload/index.ts` — 1,046 lines
-  - `src/main/agent-runtime/system-prompt.ts` — 804 lines
-  - `src/main/storage/sessions.ts` — 799 lines
-  - `src/main/agent-runtime/pi/agent.ts` — 724 lines
+  - `src/preload/index.ts` — 1,029 lines
+  - `src/main/agent-runtime/system-prompt.ts` — 811 lines
+  - `src/main/agent-runtime/pi/agent.ts` — 728 lines
   - Largest `.tsx`: `src/renderer/src/components/chat/MessageInput.tsx` (419),
     `src/renderer/src/components/pet/DesktopPet.tsx` (319),
     `src/renderer/src/App.tsx` (292)

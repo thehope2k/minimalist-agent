@@ -1,4 +1,13 @@
-import { closeSync, openSync, readSync, statSync } from 'node:fs';
+import {
+  closeSync,
+  existsSync,
+  openSync,
+  readFileSync,
+  readSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
+import type { StoredMessage } from './session-types';
 import { StringDecoder } from 'node:string_decoder';
 
 export interface JsonlParseOptions {
@@ -40,6 +49,50 @@ export function readJsonlFile<T = unknown>(path: string, options?: JsonlParseOpt
   if (size === 0) return [];
 
   return parseJsonlChunks<T>(readChunks(path, size), options);
+}
+
+export function replaceStoredMessage(path: string, message: StoredMessage): boolean {
+  if (!existsSync(path)) return false;
+  const lines = readFileSync(path, 'utf-8')
+    .split('\n')
+    .filter((line) => line.trim());
+  for (let index = lines.length - 1; index >= 0; index--) {
+    try {
+      if ((JSON.parse(lines[index]) as StoredMessage).id !== message.id) continue;
+      lines[index] = JSON.stringify(message);
+      writeFileSync(path, `${lines.join('\n')}\n`, 'utf-8');
+      return true;
+    } catch {
+      // Ignore malformed legacy lines while locating the requested message.
+    }
+  }
+  return false;
+}
+
+export function writeStoredMessages(path: string, messages: readonly StoredMessage[]): void {
+  writeFileSync(
+    path,
+    messages.length ? `${messages.map((message) => JSON.stringify(message)).join('\n')}\n` : '',
+    'utf-8',
+  );
+}
+
+export function truncateStoredMessages(path: string, firstDroppedId: string): number {
+  if (!existsSync(path)) return 0;
+  const lines = readFileSync(path, 'utf-8')
+    .split('\n')
+    .filter((line) => line.trim());
+  const cutIndex = lines.findIndex((line) => {
+    try {
+      return (JSON.parse(line) as StoredMessage).id === firstDroppedId;
+    } catch {
+      return false;
+    }
+  });
+  if (cutIndex < 0) return lines.length;
+  const kept = lines.slice(0, cutIndex);
+  writeFileSync(path, kept.length ? `${kept.join('\n')}\n` : '', 'utf-8');
+  return kept.length;
 }
 
 function* readChunks(path: string, size: number): Generator<string> {
