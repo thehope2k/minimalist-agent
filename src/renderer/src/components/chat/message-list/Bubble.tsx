@@ -1,28 +1,15 @@
-import { useMemo, useState } from 'react';
-import { Check, ChevronsRight, Copy, GitBranch, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button, Menu } from '../../ui';
-import { readAttachmentBase64 } from '@/lib/attachments';
 import type { ChatMessage } from '@/lib/chat';
-import type { Plan, StoredAttachment } from '@/lib/electron';
-import { AssistantCard } from '../AssistantCard';
+import type { Plan } from '@/lib/electron';
 import { ErrorBubble } from '../ErrorBubble';
-import { MentionText } from '../MentionText';
 import { MessageAttachments } from '../MessageAttachments';
-import { StreamStatus } from '../StreamStatus';
-import { PlanProgress } from '../PlanProgress';
-import { TurnSummaryCard } from '../parts/TurnSummaryCard';
-import { ToolPack } from '../parts/ToolPack';
-import { ShareResponseButton } from './ShareResponseButton';
-import { PartView } from './PartView';
-import { groupMessageParts } from './group-parts';
-import { compactNumber, emptyTurnLabel, labelForIntent } from './utils';
-import { createLogger } from '@/lib/logger';
-
-const log = createLogger('bubble');
+import { labelForIntent } from './utils';
+import { AssistantMessage } from './bubble/AssistantMessage';
+import { AssistantMessageFooter } from './bubble/AssistantMessageFooter';
+import { UserMessage } from './bubble/UserMessage';
 
 export function Bubble({
-  message: m,
+  message,
   onRetry,
   isRetrying,
   onContinue,
@@ -38,12 +25,8 @@ export function Bubble({
   sessionId?: string;
   plan?: Plan | null;
 }) {
-  const isUser = m.role === 'user';
-  const parts = m.parts;
-  const blocks = useMemo(() => groupMessageParts(parts), [parts]);
-  const showStopBadge =
-    !m.isStreaming && m.stopReason && m.stopReason !== 'end_turn' && !isUser;
-  const intentLabel = isUser ? labelForIntent(m.intentTag) : null;
+  const isUser = message.role === 'user';
+  const intentLabel = isUser ? labelForIntent(message.intentTag) : null;
 
   return (
     <div className={cn('group flex flex-col', isUser ? 'items-end' : 'items-start')}>
@@ -52,240 +35,33 @@ export function Bubble({
           {intentLabel}
         </span>
       )}
-      {isUser && m.attachments && m.attachments.length > 0 && (
-        <MessageAttachments attachments={m.attachments} className="mb-1.5" />
-      )}
-      {isUser ? (
-        <>
-          <div
-            className={cn(
-              'max-w-[80%]',
-              parts.length === 0 && 'hidden',
-              parts.length > 0 &&
-                (m.intentTag === 'steer'
-                  ? 'rounded-2xl border border-dashed border-accent/40 bg-accent/5 px-3.5 py-2 text-sm leading-relaxed text-fg whitespace-pre-wrap wrap-break-word'
-                  : 'rounded-2xl bg-elevated px-4 py-2.5 text-sm leading-relaxed text-fg whitespace-pre-wrap wrap-break-word'),
-            )}
-          >
-            <MentionText text={parts.map((p) => (p.kind === 'text' ? p.text : '')).join('')} />
-          </div>
-          <UserMessageActions
-            text={parts.map((p) => (p.kind === 'text' ? p.text : '')).join('')}
-            attachments={m.attachments ?? []}
-            onBranch={onBranch}
-          />
-        </>
-      ) : (
-        (parts.length > 0 || m.isStreaming) ? (
-          <AssistantCard>
-            {blocks.map((block, i) => {
-              if (block.kind === 'text' || block.kind === 'single') {
-                return <PartView key={block.key} part={block.part} />;
-              }
-              return (
-                <ToolPack
-                  key={block.key}
-                  parts={block.parts}
-                  isLive={!!m.isStreaming && i === blocks.length - 1}
-                />
-              );
-            })}
-            {!m.isStreaming && <TurnSummaryCard parts={m.parts} />}
-            {m.isStreaming && <StreamStatus parts={parts} startedAt={m.createdAt} />}
-            {/* Plan Progress - pinned to the assistant message that created the plan */}
-            {plan && sessionId && (
-              <div className="mt-3 border-t border-border/30 pt-3">
-                <PlanProgress sessionId={sessionId} plan={plan} />
-              </div>
-            )}
-          </AssistantCard>
-        ) : (
-          !m.errorInfo && !m.error && m.stopReason && m.stopReason !== 'end_turn' && (
-            <AssistantCard>
-              <p className="text-sm text-fg-muted italic">{emptyTurnLabel(m.stopReason)}</p>
-            </AssistantCard>
-          )
-        )
+      {isUser && message.attachments && message.attachments.length > 0 && (
+        <MessageAttachments attachments={message.attachments} className="mb-1.5" />
       )}
 
-      {(m.errorInfo || m.error) && (
+      {isUser ? (
+        <UserMessage
+          parts={message.parts}
+          attachments={message.attachments ?? []}
+          intentTag={message.intentTag}
+          onBranch={onBranch}
+        />
+      ) : (
+        <AssistantMessage message={message} sessionId={sessionId} plan={plan} />
+      )}
+
+      {(message.errorInfo || message.error) && (
         <ErrorBubble
-          error={m.errorInfo}
-          legacyText={!m.errorInfo ? m.error : undefined}
+          error={message.errorInfo}
+          legacyText={!message.errorInfo ? message.error : undefined}
           onRetry={onRetry}
           isRetrying={isRetrying}
         />
       )}
 
-      {!isUser && !m.isStreaming && (
-        <div className="mt-1 flex w-full items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            {showStopBadge && (
-              <span className="rounded-sm bg-amber-500/15 px-1 py-px text-[10px] font-medium text-amber-300">
-                {m.stopReason}
-              </span>
-            )}
-            {(m.stopReason === 'max_turns' || m.errorInfo?.code === 'max_turns_exceeded') &&
-              onContinue && (
-                <Button
-                  variant="outline" size="sm" icon={ChevronsRight} onClick={onContinue}
-                  className="h-5 border-accent/40 bg-accent/10 px-1.5 text-[10px] text-accent hover:bg-accent/20 hover:text-accent"
-                >
-                  Continue
-                </Button>
-              )}
-            {(m.model || m.usage?.outputTokens !== undefined || m.stopReason || m.durationMs !== undefined) && (
-              <span className={cn(
-                'inline-flex items-center gap-1.5 rounded-md border border-border/40 bg-panel/40',
-                'px-1.5 py-0.5 font-mono text-[10px] text-fg-subtle',
-                'opacity-0 transition-opacity duration-150 group-hover:opacity-100',
-              )}>
-                {m.model && <span className="text-fg-muted">{m.model}</span>}
-                {m.model && m.usage?.outputTokens !== undefined && <span className="opacity-50">·</span>}
-                {m.usage?.outputTokens !== undefined && (
-                  <span title="input ↑ / output ↓ tokens">
-                    {compactNumber(m.usage.inputTokens ?? 0)}↑ {compactNumber(m.usage.outputTokens)}↓
-                  </span>
-                )}
-                {m.stopReason && !showStopBadge && (
-                  <><span className="opacity-50">·</span><span title="SDK stop_reason">{m.stopReason}</span></>
-                )}
-                {m.durationMs !== undefined && (
-                  <><span className="opacity-50">·</span><span title="Turn duration">{formatDuration(m.durationMs)}</span></>
-                )}
-              </span>
-            )}
-          </div>
-          <ShareResponseButton parts={m.parts} sessionId={sessionId} />
-        </div>
+      {!isUser && (
+        <AssistantMessageFooter message={message} onContinue={onContinue} sessionId={sessionId} />
       )}
     </div>
   );
-}
-
-function UserMessageActions({ text, attachments, onBranch }: {
-  text: string;
-  attachments: StoredAttachment[];
-  onBranch?: (withContext?: boolean) => void;
-}) {
-  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
-  const [branchState, setBranchState] = useState<'idle' | 'branching'>('idle');
-
-  const handleCopy = async () => {
-    try {
-      await copyMessage(text, attachments);
-      setCopyState('copied');
-      window.setTimeout(() => setCopyState('idle'), 1500);
-    } catch (e) {
-      log.error('Copy failed:', e);
-      setCopyState('error');
-      window.setTimeout(() => setCopyState('idle'), 1500);
-    }
-  };
-
-  const handleBranch = async (withContext?: boolean) => {
-    if (!onBranch || branchState === 'branching') return;
-    setBranchState('branching');
-    try {
-      await onBranch(withContext);
-    } finally {
-      setBranchState('idle');
-    }
-  };
-
-  if (!text.trim() && attachments.length === 0) return null;
-
-  return (
-    <div className="mt-1 flex items-center gap-1.5">
-      <button
-        type="button"
-        onClick={() => void handleCopy()}
-        className={cn(
-          'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-fg-subtle',
-          'transition-opacity duration-150 hover:bg-elevated hover:text-fg',
-          'opacity-0 group-hover:opacity-100',
-        )}
-        title={copyState === 'error' ? 'Copy failed' : 'Copy message'}
-      >
-        {copyState === 'copied' ? (
-          <><Check className="h-3 w-3" strokeWidth={2} /><span>Copied</span></>
-        ) : (
-          <><Copy className="h-3 w-3" strokeWidth={1.75} /><span>{copyState === 'error' ? 'Failed' : 'Copy'}</span></>
-        )}
-      </button>
-      {onBranch && (
-        <Menu
-          trigger={
-            <button
-              type="button"
-              disabled={branchState === 'branching'}
-              className={cn(
-                'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-fg-subtle',
-                'transition-opacity duration-150 hover:bg-elevated hover:text-fg',
-                'opacity-0 group-hover:opacity-100',
-                branchState === 'branching' && 'opacity-60 cursor-wait',
-              )}
-              title="Branch conversation from here"
-            >
-              <GitBranch className="h-3 w-3" strokeWidth={1.75} />
-              <span>{branchState === 'branching' ? 'Branching…' : 'Branch'}</span>
-            </button>
-          }
-          menuWidth={200}
-          items={[
-            { label: 'Branch (clean)', icon: GitBranch, onSelect: () => void handleBranch(false) },
-            {
-              label: 'Branch (summarized)',
-              icon: Sparkles,
-              onSelect: () => void handleBranch(true),
-            },
-          ]}
-          footer={
-            <div className="px-2 pb-1.5 pt-1 text-[10px] leading-snug text-fg-subtle">
-              Clean drops the messages after this point. Summarized keeps a compressed
-              memory of them instead (uses an extra AI call, takes a few seconds).
-            </div>
-          }
-        />
-      )}
-    </div>
-  );
-}
-
-async function copyMessage(text: string, attachments: StoredAttachment[]): Promise<void> {
-  const images = attachments.filter((a) => a.type === 'image');
-  const others = attachments.filter((a) => a.type !== 'image');
-  const trailers = others.length ? '\n\n' + others.map((a) => `[file: ${a.name}]`).join('\n') : '';
-  const fullText = (text + trailers).trim();
-
-  if (images.length === 0) { await navigator.clipboard.writeText(fullText); return; }
-
-  const items: ClipboardItem[] = [];
-  for (let i = 0; i < images.length; i++) {
-    const img = images[i];
-    const b64 = await readAttachmentBase64(img.storedPath);
-    if (!b64) continue;
-    const blob = base64ToBlob(b64, img.mimeType || 'image/png');
-    const types: Record<string, Blob> = { [blob.type]: blob };
-    if (i === 0 && fullText) types['text/plain'] = new Blob([fullText], { type: 'text/plain' });
-    items.push(new ClipboardItem(types));
-  }
-
-  if (items.length === 0) { await navigator.clipboard.writeText(fullText); return; }
-  try { await navigator.clipboard.write(items); }
-  catch { await navigator.clipboard.writeText(fullText); }
-}
-
-function base64ToBlob(b64: string, mimeType: string): Blob {
-  const bytes = atob(b64);
-  const arr = new Uint8Array(bytes.length);
-  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
-  return new Blob([arr], { type: mimeType });
-}
-
-function formatDuration(ms: number): string {
-  const total = Math.floor(ms / 1000);
-  const m = Math.floor(total / 60);
-  const s = total % 60;
-  return m > 0 ? `${m}:${s.toString().padStart(2, '0')}` : `${s}s`;
 }

@@ -59,7 +59,7 @@ tracks what's *left to do*, not what's done. Add a one-line note only if it'll s
 ## Tech Debt
 
 - [ ] **Split "god files"** — several modules far exceed the AGENTS.md ~250-line guideline
-  (14 `.ts` files >400 lines; 16 `.tsx` components >250; ~69.6K lines total across `src/`).
+  (13 `.ts` files >400 lines; 13 `.tsx` components >250; ~69.8K lines total across `src/`).
   Sizes refreshed Sep 15, 2026:
   - `src/main/pi-server/index.ts` — 1,346 lines. Orchestrates `handleInit`/
     `handlePrompt`/`handleManualCompact`/`dispatch`/the stdin entrypoint, all sharing
@@ -73,10 +73,10 @@ tracks what's *left to do*, not what's done. Add a one-line note only if it'll s
   - `src/main/storage/sessions.ts` — 799 lines
   - `src/main/agent-runtime/pi/agent.ts` — 724 lines
   - Largest `.tsx`: `src/renderer/src/components/chat/MessageInput.tsx` (419),
-    `src/renderer/src/components/git/GitDiffModal.tsx` (368),
     `src/renderer/src/components/pet/DesktopPet.tsx` (319),
-    `src/renderer/src/components/chat/parts/TurnSummaryCard.tsx` (291),
-    `src/renderer/src/components/chat/message-list/Bubble.tsx` (291)
+    `src/renderer/src/App.tsx` (292),
+    `src/renderer/src/components/chat/AttachmentPreview.tsx` (286),
+    `src/renderer/src/components/settings/connection-flow/OpenAICompatibleFlow.tsx` (284)
 
 - [ ] **Provider quota fetchers have no shared type** — `src/main/chatgpt/quota.ts` and
   `src/main/copilot/quota.ts` are independently hand-rolled (justified — genuinely different
