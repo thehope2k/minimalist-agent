@@ -19,12 +19,12 @@ import {
   updateSessionMeta,
 } from '@/lib/sessions';
 import { IconButton, Menu, Tooltip, type MenuItem } from '../../ui';
-import type { Project, SessionSummary } from '@/lib/electron';
+import type { Project, SessionMeta } from '@/lib/electron';
 import { RunningDot } from './RunningDot';
 import { relativeTime, revealLabel } from './utils';
 
 export interface SessionRowProps {
-  session: SessionSummary;
+  session: SessionMeta;
   active?: boolean;
   projects: Project[];
   showProjectDot: boolean;

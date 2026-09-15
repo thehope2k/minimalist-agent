@@ -13,10 +13,10 @@ tracks what's _left to do_, not what's done. Add a one-line note only if it'll s
   - Scope = harden the existing single-session memory tier only. Cross-session / semantic / shared
     memory are intentionally OUT (minimalist, single-user).
   - Worth addressing:
-    1. **Retrieval cost** — `loadSession` reads the whole `messages.jsonl` into memory every open
-       (`storage/sessions.ts`); grows with session length.
-    2. **Transcript robustness** — a missing `runtimeSessionId` silently skips transcript
-       forking when a session is branched.
+    1. **Retrieval cost** — `loadSession` still materializes the full `messages.jsonl` history for
+       the renderer (`storage/sessions.ts`); grows with session length. Chunked parsing now avoids
+       retaining an additional full raw-file string and split-line array, but pagination/lazy UI
+       loading is needed to eliminate the remaining growth.
 
 ---
 

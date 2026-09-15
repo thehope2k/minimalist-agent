@@ -1,4 +1,4 @@
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   SessionManager,
@@ -8,6 +8,7 @@ import {
 } from '@earendil-works/pi-coding-agent';
 import type { Model, Api } from '@earendil-works/pi-ai';
 import { createLogger } from '../logger';
+import { selectTranscriptFile, type TranscriptCandidate } from './transcript-discovery';
 
 const log = createLogger('session-fork');
 
@@ -26,10 +27,20 @@ export interface ForkSessionTranscriptInput {
   };
 }
 
-function findTranscriptFile(sessionDir: string, runtimeSessionId: string): string | undefined {
+function findTranscriptFile(sessionDir: string, runtimeSessionId?: string): string | undefined {
   if (!existsSync(sessionDir)) return undefined;
-  const fileName = readdirSync(sessionDir).find((f) => f.endsWith(`_${runtimeSessionId}.jsonl`));
-  return fileName ? join(sessionDir, fileName) : undefined;
+  const candidates: TranscriptCandidate[] = [];
+  for (const entry of readdirSync(sessionDir, { withFileTypes: true })) {
+    if (!entry.isFile() || entry.name === 'messages.jsonl' || !entry.name.endsWith('.jsonl'))
+      continue;
+    const path = join(sessionDir, entry.name);
+    try {
+      candidates.push({ path, mtimeMs: statSync(path).mtimeMs });
+    } catch (err) {
+      log.warn(`Could not inspect potential Pi transcript ${path}:`, err);
+    }
+  }
+  return selectTranscriptFile(candidates, runtimeSessionId);
 }
 
 function lastEntryIdBefore(entries: readonly SessionEntry[], cutoffMs: number): string | null {
@@ -42,17 +53,17 @@ function lastEntryIdBefore(entries: readonly SessionEntry[], cutoffMs: number): 
 }
 
 export function forkSessionTranscript(input: ForkSessionTranscriptInput): Promise<void> {
-  if (!input.parentRuntimeSessionId) {
-    log.warn(`no runtimeSessionId recorded for parent session at ${input.parentSessionDir}`);
-    return Promise.resolve();
-  }
-
   const transcriptFile = findTranscriptFile(input.parentSessionDir, input.parentRuntimeSessionId);
   if (!transcriptFile) {
     log.warn(
-      `no transcript matching runtimeSessionId ${input.parentRuntimeSessionId} in ${input.parentSessionDir}`,
+      input.parentRuntimeSessionId
+        ? `no Pi transcript matched runtimeSessionId in ${input.parentSessionDir}; branch will start clean`
+        : `no Pi transcript found in ${input.parentSessionDir}; branch will start clean`,
     );
     return Promise.resolve();
+  }
+  if (!input.parentRuntimeSessionId) {
+    log.warn(`runtimeSessionId missing for ${input.parentSessionDir}; using newest Pi transcript`);
   }
 
   try {

@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { bootstrap, snapshot as readSnapshot, subscribe } from '@/lib/sessions';
-import type { SessionSummary } from '@/lib/electron';
+import type { SessionMeta } from '@/lib/electron';
 
 /**
  * Bootstraps + subscribes to the session list. Returns null while loading.
  */
-export function useSessions(): SessionSummary[] | null {
+export function useSessions(): SessionMeta[] | null {
   const [, force] = useState(0);
   const [ready, setReady] = useState(false);
 

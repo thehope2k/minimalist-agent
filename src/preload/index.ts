@@ -390,8 +390,6 @@ interface ProjectInput {
   defaultConnectionSlug?: string;
 }
 
-type SessionSummary = SessionMeta;
-
 type UpdateState = 'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'error';
 
 interface TerminalTabInfo {
@@ -688,7 +686,7 @@ const api = {
     save: (prefs: UserPreferences): Promise<void> => ipcRenderer.invoke('preferences:save', prefs),
   },
   sessions: {
-    list: (): Promise<SessionSummary[]> => ipcRenderer.invoke('sessions:list'),
+    list: (): Promise<SessionMeta[]> => ipcRenderer.invoke('sessions:list'),
     load: (id: string): Promise<{ meta: SessionMeta; messages: StoredMessage[] } | null> =>
       ipcRenderer.invoke('sessions:load', id),
     create: (opts?: {

@@ -2,32 +2,26 @@
 // store. Mirrors the pattern in `connections.ts`: snapshot reads are sync
 // after a one-time bootstrap; mutations are async and refresh the cache.
 
-import type {
-  PermissionMode,
-  SessionMeta,
-  SessionSummary,
-  StoredMessage,
-  ThinkingLevel,
-} from './electron';
+import type { PermissionMode, SessionMeta, StoredMessage, ThinkingLevel } from './electron';
 import { snapshot as connectionsSnapshot } from './connections';
 import { buildTitleSample } from './title';
 import { chatFromStored } from './chat';
 
-export type { PermissionMode, SessionMeta, SessionSummary, StoredMessage };
+export type { PermissionMode, SessionMeta, StoredMessage };
 
-let cache: SessionSummary[] | null = null;
-let bootPromise: Promise<SessionSummary[]> | null = null;
+let cache: SessionMeta[] | null = null;
+let bootPromise: Promise<SessionMeta[]> | null = null;
 const subscribers = new Set<() => void>();
 
 function notify(): void {
   subscribers.forEach((cb) => cb());
 }
 
-async function load(): Promise<SessionSummary[]> {
+async function load(): Promise<SessionMeta[]> {
   return window.api.sessions.list();
 }
 
-export function bootstrap(): Promise<SessionSummary[]> {
+export function bootstrap(): Promise<SessionMeta[]> {
   if (cache) return Promise.resolve(cache);
   if (!bootPromise) {
     bootPromise = load()
@@ -46,7 +40,7 @@ export function bootstrap(): Promise<SessionSummary[]> {
   return bootPromise;
 }
 
-export function snapshot(): SessionSummary[] {
+export function snapshot(): SessionMeta[] {
   if (!cache) throw new Error('Sessions store not bootstrapped yet.');
   return cache;
 }

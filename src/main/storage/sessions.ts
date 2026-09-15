@@ -19,9 +19,21 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 import { Paths } from './paths';
-import { type FileSchema, load, save } from './json-store';
+import { load, save } from './json-store';
+import { readJsonlFile } from './message-log';
+import { metaSchema } from './session-meta';
+import type { SessionMeta, StoredMessage } from './session-types';
+export type {
+  AttachmentType,
+  ChatRole,
+  MessageUsage,
+  SessionMeta,
+  SessionUsage,
+  StoredAttachment,
+  StoredMessage,
+  StoredMessagePart,
+} from './session-types';
 import { invalidateContextFileCache } from '../agent-runtime/system-prompt';
-import type { PermissionMode, ThinkingLevel } from './settings';
 import { findProjectForPath } from './projects';
 import { createLogger } from '../logger';
 import { listConnections } from './connections';
@@ -32,215 +44,6 @@ import { SUBAGENT_DIR_NAME } from '../../shared/subagent-storage';
 import type { Model, Api } from '@earendil-works/pi-ai';
 
 const log = createLogger('sessions');
-
-export type ChatRole = 'user' | 'assistant';
-
-/**
- * A single rendered piece of a message. Assistant messages can interleave
- * text, thinking, and tool-call segments — older v1.0 sessions only had a
- * flat `content` string and are rehydrated as a single `text` part.
- */
-export type StoredMessagePart =
-  | { kind: 'text'; text: string }
-  | { kind: 'thinking'; text: string; outputTokens?: number }
-  | {
-      kind: 'tool';
-      toolUseId: string;
-      name: string;
-      input?: unknown;
-      partialInputJson?: string;
-      result?: { content: string; isError?: boolean };
-      status: 'running' | 'done' | 'error';
-      contextDelta?: number;
-      contextDeltaGroupSize?: number;
-    };
-
-export type AttachmentType = 'image' | 'pdf' | 'text' | 'snippet' | 'office';
-
-export interface StoredAttachment {
-  type: AttachmentType;
-  name: string;
-  mimeType: string;
-  size: number;
-  storedPath: string;
-  thumbnailBase64?: string;
-  resizedBase64?: string;
-  /** Detected or user-set language tag (snippets only). */
-  language?: string;
-  /** Pre-computed line count (snippets only). */
-  lineCount?: number;
-}
-
-export interface StoredMessage {
-  id: string;
-  role: ChatRole;
-  /** Legacy plain-text content. New writes still set this for backwards compat. */
-  content: string;
-  /** Rich segments — preferred shape for assistant messages going forward. */
-  parts?: StoredMessagePart[];
-  /** Set on assistant messages — the model that produced it. */
-  model?: string;
-  /** Set when the stream errored on this message. */
-  error?: string;
-  /** SDK stop_reason for the turn (`end_turn`, `max_turns`, `tool_use`, …). */
-  stopReason?: string;
-  /** Token counts reported by the SDK on this turn's `result` message. */
-  usage?: MessageUsage;
-  /**
-   * Per-call usage from the latest API round inside the turn. Distinct from
-   * `usage` (the turn's aggregate across all rounds), which can exceed the
-   * context window on tool-heavy turns.
-   */
-  latestCallUsage?: MessageUsage;
-  /** Total wall-clock duration of the turn in milliseconds. */
-  durationMs?: number;
-  createdAt: number;
-  /** User-message attachments. */
-  attachments?: StoredAttachment[];
-  /**
-   * If set, this isn't a normal user/assistant message but a marker line
-   * inserted between turns (e.g. compaction boundary). Renderers branch
-   * on this BEFORE role and render the row as a divider chip.
-   */
-  markerKind?: 'compaction';
-  /** Populated for `markerKind === 'compaction'`. */
-  compactionMeta?: {
-    status?: 'success' | 'failed';
-    trigger: 'manual' | 'auto' | 'threshold' | 'overflow';
-    preTokens?: number;
-    postTokens?: number;
-    durationMs?: number;
-    summary?: string;
-    readFiles?: string[];
-    modifiedFiles?: string[];
-    errorMessage?: string;
-  };
-}
-
-/** Per-message token counts. Mirror of renderer-side `AgentUsage`. */
-export interface MessageUsage {
-  inputTokens?: number;
-  outputTokens?: number;
-  cacheReadInputTokens?: number;
-  cacheCreationInputTokens?: number;
-}
-
-export interface SessionUsage {
-  /** Cumulative input tokens reported by the SDK over this session. */
-  inputTokens?: number;
-  outputTokens?: number;
-}
-
-export interface SessionMeta {
-  id: string;
-  /** First user-message snippet, or 'New session' until set. */
-  title: string;
-  /** Per-session working directory passed to the SDK as `cwd`. */
-  workingDirectory?: string;
-  /** Runtime transcript id persisted for branching and continuity. */
-  runtimeSessionId?: string;
-  archived: boolean;
-  createdAt: number;
-  /** Bumped on every append. */
-  lastMessageAt: number;
-  /** Optional cumulative usage for this session. Added in v2. */
-  usage?: SessionUsage;
-  /**
-   * Per-session permission mode. When unset, the session inherits the global
-   * `defaultPermissionMode` from AI settings at send time. Added in v3.
-   */
-  permissionMode?: PermissionMode;
-  /**
-   * Project this session belongs to (`null` = Inbox / unassigned). Auto-set
-   * at creation by matching `workingDirectory` against project rootPaths.
-   * Added in v4.
-   */
-  projectId?: string | null;
-  /**
-   * Connection + model the session last sent with. Restored to the pill on
-   * session switch so each session "remembers" its choice. Added in v5.
-   */
-  connectionSlug?: string;
-  model?: string;
-  /**
-   * Per-session autonomy level (0-100) for intelligent collaboration.
-   * Higher = more independent, lower = more collaborative.
-   * Defaults to 50 (balanced) when absent. Added in v8.
-   */
-  autonomyLevel?: number;
-  /**
-   * Slugs of skills/agents pinned for this session.
-   * Each entry is a scoped slug string: 'user:<slug>' or 'project:<slug>'.
-   * Pinned items are injected into the system prompt on every turn.
-   * Added in v10.
-   */
-  pinnedAssets?: string[];
-  /**
-   * Per-session thinking-level override. When unset, the session inherits
-   * the global `defaultThinking` from AI settings at send time. Added in v11.
-   */
-  thinkingLevel?: ThinkingLevel;
-}
-
-export type SessionSummary = SessionMeta;
-
-const META_DEFAULT_FACTORY = (): SessionMeta => ({
-  id: '',
-  title: 'New session',
-  archived: false,
-  createdAt: 0,
-  lastMessageAt: 0,
-});
-
-function metaSchema(id: string): FileSchema<SessionMeta> {
-  return {
-    path: join(Paths.sessionsDir(), id, 'session.json'),
-    currentVersion: 12,
-    defaultValue: META_DEFAULT_FACTORY(),
-    // Index 0 → v0 (legacy/unset). Index 1 → v1 (no usage field).
-    // Index 2 → v2 (no permissionMode field). Index 3 → v3 (no projectId).
-    // Index 4 → v4 (no connectionSlug/model). All migrations are additive
-    // and idempotent: missing fields stay missing and are filled at use
-    // sites with sensible defaults.
-    // NOTE: autonomyLevel (added in v8) is a fully optional field that
-    // defaults to 50 at every call-site — no migration step needed.
-    // v9: Remove 'ask' permission mode (replaced by intelligent collaboration).
-    migrations: [
-      (prev) => ({ ...META_DEFAULT_FACTORY(), ...(prev as object) }) as SessionMeta,
-      (prev) => ({ ...(prev as SessionMeta) }),
-      (prev) => ({ ...(prev as SessionMeta) }),
-      (prev) => ({ ...(prev as SessionMeta), projectId: null }) as SessionMeta,
-      (prev) => ({ ...(prev as SessionMeta) }),
-      // v5 → v6: (removed SDD fields, no-op migration).
-      (prev) => ({ ...(prev as SessionMeta) }),
-      // v6 → v7: (removed SDD fields, no-op migration).
-      (prev) => ({ ...(prev as SessionMeta) }),
-      // v7 → v8: adds autonomyLevel (optional field, no-op migration).
-      (prev) => ({ ...(prev as SessionMeta) }),
-      // v8 → v9: migrate 'ask' → 'auto' (breaking change).
-      (prev) => {
-        const session = prev as SessionMeta;
-        if (session.permissionMode === ('ask' as any)) {
-          return { ...session, permissionMode: 'auto' };
-        }
-        return session;
-      },
-      // v9 → v10: adds pinnedAssets (optional field, no-op migration).
-      (prev) => ({ ...(prev as SessionMeta) }),
-      // v10 → v11: adds thinkingLevel (optional field, no-op migration).
-      (prev) => ({ ...(prev as SessionMeta) }),
-      // v11 → v12: rename the implementation-specific SDK session field.
-      (prev) => {
-        const legacy = prev as SessionMeta & { sdkSessionId?: string };
-        const { sdkSessionId, ...session } = legacy;
-        return {
-          ...session,
-          ...(sdkSessionId ? { runtimeSessionId: sdkSessionId } : {}),
-        } as SessionMeta;
-      },
-    ],
-  };
-}
 
 function messagesPath(id: string): string {
   return join(Paths.sessionsDir(), id, 'messages.jsonl');
@@ -256,14 +59,14 @@ function genId(): string {
 
 /* -------------------------- public API -------------------------- */
 
-export function listSessions(): SessionSummary[] {
+export function listSessions(): SessionMeta[] {
   const dir = Paths.sessionsDir();
   if (!existsSync(dir)) return [];
   const ids = readdirSync(dir, { withFileTypes: true })
     .filter((e) => e.isDirectory())
     .map((e) => e.name);
 
-  const out: SessionSummary[] = [];
+  const out: SessionMeta[] = [];
   for (const id of ids) {
     const metaFile = join(dir, id, 'session.json');
     if (!existsSync(metaFile)) continue;
@@ -290,19 +93,13 @@ export function loadSession(id: string): {
   const meta = load(metaSchema(id));
   meta.id = id;
 
-  const messages: StoredMessage[] = [];
   const mp = messagesPath(id);
-  if (existsSync(mp)) {
-    const raw = readFileSync(mp, 'utf-8');
-    for (const line of raw.split('\n')) {
-      const trimmed = line.trim();
-      if (!trimmed) continue;
-      try {
-        messages.push(JSON.parse(trimmed) as StoredMessage);
-      } catch {
-        // skip malformed line
-      }
-    }
+  let malformedLines = 0;
+  const messages = existsSync(mp)
+    ? readJsonlFile<StoredMessage>(mp, { onMalformedLine: () => malformedLines++ })
+    : [];
+  if (malformedLines > 0) {
+    log.warn(`Ignored ${malformedLines} malformed message-log line(s) for session ${id}`);
   }
   return { meta, messages };
 }

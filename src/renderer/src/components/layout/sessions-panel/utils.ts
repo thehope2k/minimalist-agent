@@ -1,4 +1,4 @@
-import type { SessionSummary } from '@/lib/electron';
+import type { SessionMeta } from '@/lib/electron';
 
 export function revealLabel(): string {
   const ua = navigator.userAgent;
@@ -7,15 +7,15 @@ export function revealLabel(): string {
   return 'Show in File Manager';
 }
 
-export function groupByDate(items: SessionSummary[]): Array<[string, SessionSummary[]]> {
+export function groupByDate(items: SessionMeta[]): Array<[string, SessionMeta[]]> {
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const startOfYesterday = startOfToday - 86_400_000;
   const startOf7Days = startOfToday - 7 * 86_400_000;
   const startOf30Days = startOfToday - 30 * 86_400_000;
 
-  const groups = new Map<string, SessionSummary[]>();
-  const push = (key: string, s: SessionSummary) => {
+  const groups = new Map<string, SessionMeta[]>();
+  const push = (key: string, s: SessionMeta) => {
     const arr = groups.get(key) ?? [];
     arr.push(s);
     groups.set(key, arr);

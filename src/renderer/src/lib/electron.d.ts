@@ -532,8 +532,6 @@ export interface SessionMeta {
   thinkingLevel?: ThinkingLevel;
 }
 
-export type SessionSummary = SessionMeta;
-
 export interface SharedExportResult {
   /** Public short URL (anyone with the link can read it). */
   url: string;
@@ -1020,7 +1018,7 @@ export interface AppApi {
     save: (prefs: UserPreferences) => Promise<void>;
   };
   sessions: {
-    list: () => Promise<SessionSummary[]>;
+    list: () => Promise<SessionMeta[]>;
     load: (id: string) => Promise<{ meta: SessionMeta; messages: StoredMessage[] } | null>;
     create: (opts?: {
       workingDirectory?: string;
