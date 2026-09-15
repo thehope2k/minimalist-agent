@@ -57,7 +57,9 @@ export function ContextBadge({ messages, contextWindow, reserveTokens, className
     <div className="space-y-1.5 font-mono text-[11px]">
       <div className="font-semibold">
         Context: {contextTokens.toLocaleString()} / {contextWindow.toLocaleString()} tokens
-        {usage.estimated && <span className="ml-1 font-normal text-fg-subtle">(post-compaction estimate)</span>}
+        {usage.estimated && (
+          <span className="ml-1 font-normal text-fg-subtle">(post-compaction estimate)</span>
+        )}
       </div>
       {!usage.estimated && (
         <div className="text-fg-muted whitespace-nowrap">
@@ -66,7 +68,9 @@ export function ContextBadge({ messages, contextWindow, reserveTokens, className
       )}
       <div className="border-t border-border pt-1.5">
         {compactionCount > 0 ? (
-          <div className="text-fg-muted">Compacted {compactionCount}× — older history summarised</div>
+          <div className="text-fg-muted">
+            Compacted {compactionCount}× — older history summarised
+          </div>
         ) : (
           <div className="text-fg-subtle">Not yet compacted</div>
         )}
@@ -83,22 +87,22 @@ export function ContextBadge({ messages, contextWindow, reserveTokens, className
     <Tooltip content={tooltipContent} side="top" className="max-w-none">
       <span
         className={cn(
-        'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 font-mono text-[10px]',
-        tone,
-        className,
-      )}
-    >
-      <span>{pct}%</span>
-      <span className="opacity-60">·</span>
-      <span>
-        {compact(contextTokens)} / {compact(contextWindow)}
-      </span>
-      {compactionCount > 0 && (
-        <>
-          <span className="opacity-40">·</span>
-          <span className="opacity-70">{compactionCount}×</span>
-        </>
-      )}
+          'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 font-mono text-[10px]',
+          tone,
+          className,
+        )}
+      >
+        <span>{pct}%</span>
+        <span className="opacity-60">·</span>
+        <span>
+          {compact(contextTokens)} / {compact(contextWindow)}
+        </span>
+        {compactionCount > 0 && (
+          <>
+            <span className="opacity-40">·</span>
+            <span className="opacity-70">{compactionCount}×</span>
+          </>
+        )}
       </span>
     </Tooltip>
   );

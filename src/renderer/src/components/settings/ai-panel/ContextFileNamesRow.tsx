@@ -11,7 +11,10 @@ export function ContextFileNamesRow({ current }: { current?: string[] }) {
 
   const add = () => {
     const trimmed = input.trim().toLowerCase();
-    if (!trimmed || names.includes(trimmed)) { setInput(''); return; }
+    if (!trimmed || names.includes(trimmed)) {
+      setInput('');
+      return;
+    }
     void setContextFileNames([...names, trimmed]);
     setInput('');
   };
@@ -24,13 +27,17 @@ export function ContextFileNamesRow({ current }: { current?: string[] }) {
         <span className="text-sm text-fg">Context file names</span>
       </div>
       <p className="mb-3 text-xs text-fg-subtle">
-        Filenames MA scans for project context each turn (case-insensitive, up to 3 directory levels deep).
-        Add your team's convention: <code className="text-fg-muted">copilot-instructions.md</code>,
+        Filenames MA scans for project context each turn (case-insensitive, up to 3 directory levels
+        deep). Add your team's convention:{' '}
+        <code className="text-fg-muted">copilot-instructions.md</code>,
         <code className="text-fg-muted"> .cursorrules</code>, etc.
       </p>
       <div className="flex flex-wrap gap-1.5 mb-2">
         {names.map((name) => (
-          <span key={name} className="flex items-center gap-1 rounded-md border border-border bg-elevated px-2 py-0.5 text-xs text-fg">
+          <span
+            key={name}
+            className="flex items-center gap-1 rounded-md border border-border bg-elevated px-2 py-0.5 text-xs text-fg"
+          >
             {name}
             {!DEFAULT_NAMES.includes(name) && (
               <button
@@ -49,7 +56,9 @@ export function ContextFileNamesRow({ current }: { current?: string[] }) {
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') add(); }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') add();
+          }}
           placeholder="e.g. copilot-instructions.md"
           className="flex-1 text-xs"
         />

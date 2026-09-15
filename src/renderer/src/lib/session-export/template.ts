@@ -51,8 +51,10 @@ async function renderPart(part: ExportPart): Promise<string> {
       return `<div class="me-md">${await renderMarkdown(part.text)}</div>`;
 
     case 'thinking':
-      return `<details class="me-collapse"><summary>Thinking</summary>` +
-        `<div class="me-collapse-body me-md">${await renderMarkdown(part.text)}</div></details>`;
+      return (
+        `<details class="me-collapse"><summary>Thinking</summary>` +
+        `<div class="me-collapse-body me-md">${await renderMarkdown(part.text)}</div></details>`
+      );
 
     case 'diff':
       return renderDiffPart(part);
@@ -73,9 +75,7 @@ async function renderPart(part: ExportPart): Promise<string> {
   }
 }
 
-async function renderToolPart(
-  part: Extract<ExportPart, { kind: 'tool' }>,
-): Promise<string> {
+async function renderToolPart(part: Extract<ExportPart, { kind: 'tool' }>): Promise<string> {
   const pieces: string[] = [];
   if (part.inputText) {
     pieces.push(`<div class="me-codeblock">${await highlightCode(part.inputText, 'json')}</div>`);

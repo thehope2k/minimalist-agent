@@ -26,7 +26,12 @@ function toAgentUsage(u: NormalizedUsage): AgentUsage {
 }
 
 function hasAnyUsage(u: AgentUsage): boolean {
-  return !!(u.inputTokens || u.outputTokens || u.cacheReadInputTokens || u.cacheCreationInputTokens);
+  return !!(
+    u.inputTokens ||
+    u.outputTokens ||
+    u.cacheReadInputTokens ||
+    u.cacheCreationInputTokens
+  );
 }
 
 /**
@@ -34,7 +39,9 @@ function hasAnyUsage(u: AgentUsage): boolean {
  * run()/continue() call in pi-agent-core's agent loop (never the whole session
  * history), so summing it here cannot double-count across turns.
  */
-function sumRunUsage(messages: { role?: string; usage?: NormalizedUsage }[]): AgentUsage | undefined {
+function sumRunUsage(
+  messages: { role?: string; usage?: NormalizedUsage }[],
+): AgentUsage | undefined {
   const total: Required<NormalizedUsage> = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
   for (const m of messages) {
     if (m.role !== 'assistant' || !m.usage) continue;
@@ -106,11 +113,7 @@ function normalizeArgs(toolName: string, args: unknown): unknown {
   // Pi edit: edits[] with a single entry → flatten to old_string / new_string
   // for renderer helpers that consume the flat format.
   // Multi-entry arrays are kept; DiffPart handles them with its own branch.
-  if (
-    toolName.toLowerCase() === 'edit' &&
-    Array.isArray(out.edits) &&
-    out.edits.length === 1
-  ) {
+  if (toolName.toLowerCase() === 'edit' && Array.isArray(out.edits) && out.edits.length === 1) {
     const e = out.edits[0] as { oldText?: unknown; newText?: unknown };
     if (typeof e.oldText === 'string' && typeof e.newText === 'string') {
       out.old_string = e.oldText;
@@ -191,7 +194,11 @@ function stringifyToolResult(result: unknown): string {
     const r = result as { output?: unknown; text?: unknown };
     if (typeof r.output === 'string') return r.output;
     if (typeof r.text === 'string') return r.text;
-    try { return JSON.stringify(result); } catch { /* */ }
+    try {
+      return JSON.stringify(result);
+    } catch {
+      /* */
+    }
   }
   return String(result);
 }
@@ -204,20 +211,21 @@ function debug(event: AgentSessionEvent): void {
   if (!PI_DEBUG) return;
   try {
     const t = (event as { type?: string }).type;
-    const sub = (event as { assistantMessageEvent?: { type?: string } })
-      .assistantMessageEvent;
-    const msg = (event as {
-      message?: {
-        role?: string;
-        content?: unknown;
-        stopReason?: string;
-        errorMessage?: string;
-        api?: string;
-        provider?: string;
-        model?: string;
-        usage?: unknown;
-      };
-    }).message;
+    const sub = (event as { assistantMessageEvent?: { type?: string } }).assistantMessageEvent;
+    const msg = (
+      event as {
+        message?: {
+          role?: string;
+          content?: unknown;
+          stopReason?: string;
+          errorMessage?: string;
+          api?: string;
+          provider?: string;
+          model?: string;
+          usage?: unknown;
+        };
+      }
+    ).message;
     const role = msg?.role;
     const contentPreview =
       typeof msg?.content === 'string'
@@ -245,10 +253,10 @@ function debug(event: AgentSessionEvent): void {
     // where Copilot-specific failure details usually hide.
     if (t === 'message_end' || t === 'agent_end' || t === 'turn_end') {
       try {
-        process.stderr.write(
-          `[pi-event-detail] ${JSON.stringify(event).slice(0, 10000)}\n`,
-        );
-      } catch { /* */ }
+        process.stderr.write(`[pi-event-detail] ${JSON.stringify(event).slice(0, 10000)}\n`);
+      } catch {
+        /* */
+      }
     }
   } catch {
     /* never crash on debug */
@@ -277,8 +285,7 @@ export function adaptAgentEvent(event: AgentSessionEvent): AgentChatEvent[] {
       // sub-event has a precise `delta` string — no diff math needed.
       // Non-assistant messages (e.g. the user message Pi appends to
       // history) don't carry this field, so they're naturally ignored.
-      const sub = (event as { assistantMessageEvent?: { type?: string } })
-        .assistantMessageEvent;
+      const sub = (event as { assistantMessageEvent?: { type?: string } }).assistantMessageEvent;
       const msg = (event as { message: unknown }).message;
       if (!sub || !sub.type) {
         // No streaming sub-event — fall back to diffing the message
@@ -328,9 +335,11 @@ export function adaptAgentEvent(event: AgentSessionEvent): AgentChatEvent[] {
     }
 
     case 'message_end': {
-      const msg = (event as {
-        message: { stopReason?: string; errorMessage?: string } | unknown;
-      }).message;
+      const msg = (
+        event as {
+          message: { stopReason?: string; errorMessage?: string } | unknown;
+        }
+      ).message;
       if (!isAssistantMessage(msg)) return out;
       // Surface API failures — Pi sets stopReason='error' + errorMessage on
       // provider rejections (e.g. Copilot's "vision is not enabled"). Without
@@ -406,7 +415,9 @@ export function adaptAgentEvent(event: AgentSessionEvent): AgentChatEvent[] {
             partialJson: json,
           });
         }
-      } catch { /* skip */ }
+      } catch {
+        /* skip */
+      }
       return out;
     }
 
@@ -438,7 +449,8 @@ export function adaptAgentEvent(event: AgentSessionEvent): AgentChatEvent[] {
       //
       // The Session Usage panel requires a turn-level `usage` aggregate, not
       // just the per-round `assistant_usage` emitted from message_end.
-      const runMessages = (event as { messages?: { role?: string; usage?: NormalizedUsage }[] }).messages ?? [];
+      const runMessages =
+        (event as { messages?: { role?: string; usage?: NormalizedUsage }[] }).messages ?? [];
       out.push({ type: 'turn_done', stopReason: 'end_turn', usage: sumRunUsage(runMessages) });
       return out;
     }

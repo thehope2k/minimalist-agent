@@ -42,9 +42,7 @@ export const AgentMetadataSchema = z
  * Parse AGENT.md content into metadata + body. Returns null if frontmatter
  * is unparseable or required fields are missing.
  */
-export function parseAgentFile(
-  content: string,
-): { metadata: AgentMetadata; body: string } | null {
+export function parseAgentFile(content: string): { metadata: AgentMetadata; body: string } | null {
   try {
     const parsed = matter(content);
     if (!parsed.data.name || !parsed.data.description) return null;
@@ -54,9 +52,7 @@ export function parseAgentFile(
         ? parsed.data.icon.trim()
         : undefined;
 
-    const tools = Array.isArray(parsed.data.tools)
-      ? (parsed.data.tools as string[])
-      : undefined;
+    const tools = Array.isArray(parsed.data.tools) ? (parsed.data.tools as string[]) : undefined;
 
     return {
       metadata: {
@@ -65,9 +61,7 @@ export function parseAgentFile(
         model: parsed.data.model ? String(parsed.data.model) : undefined,
         tools,
         maxTurns: parsed.data.maxTurns ? Number(parsed.data.maxTurns) : undefined,
-        permissionMode: parsed.data.permissionMode
-          ? String(parsed.data.permissionMode)
-          : undefined,
+        permissionMode: parsed.data.permissionMode ? String(parsed.data.permissionMode) : undefined,
         icon,
       } as AgentMetadata,
       body: parsed.content,
@@ -139,7 +133,7 @@ export async function validateAgentContent(
       path: 'content',
       message: 'Agent system prompt is empty (nothing after frontmatter)',
       suggestion:
-        'Add a system prompt after the frontmatter describing the agent\'s behavior and instructions',
+        "Add a system prompt after the frontmatter describing the agent's behavior and instructions",
     });
   }
 

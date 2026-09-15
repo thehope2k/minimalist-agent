@@ -45,9 +45,7 @@ export function PlanErrorNotification({
         <div className="flex items-start justify-between gap-3 border-b border-red-500/20 px-4 py-3">
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0" />
-            <h3 className="font-semibold text-red-900 dark:text-red-100">
-              Plan Execution Error
-            </h3>
+            <h3 className="font-semibold text-red-900 dark:text-red-100">Plan Execution Error</h3>
           </div>
           <button
             onClick={handleDismiss}
@@ -61,9 +59,7 @@ export function PlanErrorNotification({
         {/* Content */}
         <div className="px-4 py-3 space-y-3">
           {/* Error Message */}
-          <p className="text-sm text-red-900 dark:text-red-100">
-            {error.message}
-          </p>
+          <p className="text-sm text-red-900 dark:text-red-100">{error.message}</p>
 
           {/* Suggested Action */}
           {error.suggestedAction && (
@@ -90,7 +86,7 @@ export function PlanErrorNotification({
                   Retry Phase
                 </Button>
               )}
-              
+
               {onSkip && (
                 <Button
                   variant="outline"
@@ -104,7 +100,7 @@ export function PlanErrorNotification({
                   Skip Phase
                 </Button>
               )}
-              
+
               {onCancel && (
                 <Button
                   variant="ghost"

@@ -35,9 +35,7 @@ export function PreferencesPanel() {
   const prefs = usePreferences();
 
   if (!prefs) {
-    return (
-      <div className="p-6 text-sm text-fg-subtle">Loading preferences…</div>
-    );
+    return <div className="p-6 text-sm text-fg-subtle">Loading preferences…</div>;
   }
 
   return (
@@ -107,9 +105,7 @@ export function PreferencesPanel() {
             label="Include Co-Authored-By trailer"
             description="Adds 'Co-Authored-By: Minimalist Agent <noreply@minimalist-agent.local>' to commit messages."
             checked={prefs.includeCoAuthoredBy ?? true}
-            onCheckedChange={(v) =>
-              void updatePreferences({ includeCoAuthoredBy: v })
-            }
+            onCheckedChange={(v) => void updatePreferences({ includeCoAuthoredBy: v })}
           />
         </SettingsCard>
       </SettingsSection>

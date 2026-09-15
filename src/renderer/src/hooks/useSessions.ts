@@ -1,9 +1,5 @@
 import { useEffect, useState } from 'react';
-import {
-  bootstrap,
-  snapshot as readSnapshot,
-  subscribe,
-} from '@/lib/sessions';
+import { bootstrap, snapshot as readSnapshot, subscribe } from '@/lib/sessions';
 import type { SessionSummary } from '@/lib/electron';
 
 /**

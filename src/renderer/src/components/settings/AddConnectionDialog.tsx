@@ -33,13 +33,7 @@ function inferKind(meta: ConnectionMeta): ConnectionKind {
   throw new Error(`Unsupported connection provider: ${meta.providerType}`);
 }
 
-export function AddConnectionDialog({
-  open,
-  onClose,
-  onSaved,
-  makeDefault,
-  editingMeta,
-}: Props) {
+export function AddConnectionDialog({ open, onClose, onSaved, makeDefault, editingMeta }: Props) {
   const [kind, setKind] = useState<ConnectionKind | null>(null);
 
   if (!open) return null;

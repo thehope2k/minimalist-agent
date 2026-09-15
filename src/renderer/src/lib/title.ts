@@ -8,9 +8,7 @@ import type { ChatMessage } from './chat';
 /** Mirror of `makeTitle` in src/main/storage/sessions.ts. */
 export function firstLineTruncateTitle(text: string): string {
   const firstLine = text.trim().split('\n')[0]?.trim() ?? '';
-  return firstLine.length > 60
-    ? firstLine.slice(0, 57) + '…'
-    : firstLine || 'New session';
+  return firstLine.length > 60 ? firstLine.slice(0, 57) + '…' : firstLine || 'New session';
 }
 
 /** True if the title is the placeholder or matches the first-message truncate. */

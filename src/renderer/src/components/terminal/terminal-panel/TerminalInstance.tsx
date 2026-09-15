@@ -10,43 +10,43 @@ import { PasteConfirmDialog } from './PasteConfirmDialog';
 import { TerminalContextMenu } from './ContextMenu';
 
 const SEARCH_DECORATIONS: ISearchDecorationOptions = {
-  matchBackground:               '#4a3d0f',
-  matchBorder:                   '#f5f543',
-  matchOverviewRuler:            '#f5f543',
-  activeMatchBackground:         '#6b5514',
-  activeMatchBorder:             '#ffb347',
+  matchBackground: '#4a3d0f',
+  matchBorder: '#f5f543',
+  matchOverviewRuler: '#f5f543',
+  activeMatchBackground: '#6b5514',
+  activeMatchBorder: '#ffb347',
   activeMatchColorOverviewRuler: '#ffb347',
 };
 
 export interface TerminalInstanceHandle {
-  clear:        () => void;
-  findNext:     (query: string, options?: { caseSensitive?: boolean; regex?: boolean }) => boolean;
+  clear: () => void;
+  findNext: (query: string, options?: { caseSensitive?: boolean; regex?: boolean }) => boolean;
   findPrevious: (query: string, options?: { caseSensitive?: boolean; regex?: boolean }) => boolean;
 }
 
 interface TerminalInstanceProps {
-  tabId:      string;
-  cwd:        string;
-  isActive:   boolean;
-  alive:      boolean;
+  tabId: string;
+  cwd: string;
+  isActive: boolean;
+  alive: boolean;
   onOpenPath: (absolutePath: string, lineNumber: number) => void;
 }
 
 interface ContextMenuState {
-  x:            number;
-  y:            number;
+  x: number;
+  y: number;
   hasSelection: boolean;
 }
 
 export const TerminalInstance = forwardRef<TerminalInstanceHandle, TerminalInstanceProps>(
   function TerminalInstance({ tabId, cwd, isActive, alive, onOpenPath }, ref) {
-    const containerRef  = useRef<HTMLDivElement>(null);
-    const termRef       = useRef<XTerminal | null>(null);
-    const fitRef        = useRef<FitAddon | null>(null);
-    const searchRef     = useRef<SearchAddon | null>(null);
-    const cleanupRef    = useRef<(() => void) | null>(null);
-    const aliveRef      = useRef(alive);
-    const cwdRef        = useRef(cwd);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const termRef = useRef<XTerminal | null>(null);
+    const fitRef = useRef<FitAddon | null>(null);
+    const searchRef = useRef<SearchAddon | null>(null);
+    const cleanupRef = useRef<(() => void) | null>(null);
+    const aliveRef = useRef(alive);
+    const cwdRef = useRef(cwd);
     const onOpenPathRef = useRef(onOpenPath);
     const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
     const [pasteGuardInactive, setPasteGuardInactive] = useState(false);
@@ -54,18 +54,29 @@ export const TerminalInstance = forwardRef<TerminalInstanceHandle, TerminalInsta
     const { pendingPaste, pasteOrConfirm, confirmPaste, cancelPaste } = usePasteGuard(termRef);
 
     // Keep refs current without re-mounting the heavy xterm effect.
-    useEffect(() => { aliveRef.current = alive; }, [alive]);
-    useEffect(() => { cwdRef.current = cwd; }, [cwd]);
-    useEffect(() => { onOpenPathRef.current = onOpenPath; }, [onOpenPath]);
+    useEffect(() => {
+      aliveRef.current = alive;
+    }, [alive]);
+    useEffect(() => {
+      cwdRef.current = cwd;
+    }, [cwd]);
+    useEffect(() => {
+      onOpenPathRef.current = onOpenPath;
+    }, [onOpenPath]);
 
     // Expose imperative handles to TerminalPanel.
-    useImperativeHandle(ref, () => ({
-      clear: () => termRef.current?.clear(),
-      findNext: (query, opts) =>
-        searchRef.current?.findNext(query, { ...opts, decorations: SEARCH_DECORATIONS }) ?? false,
-      findPrevious: (query, opts) =>
-        searchRef.current?.findPrevious(query, { ...opts, decorations: SEARCH_DECORATIONS }) ?? false,
-    }), []);
+    useImperativeHandle(
+      ref,
+      () => ({
+        clear: () => termRef.current?.clear(),
+        findNext: (query, opts) =>
+          searchRef.current?.findNext(query, { ...opts, decorations: SEARCH_DECORATIONS }) ?? false,
+        findPrevious: (query, opts) =>
+          searchRef.current?.findPrevious(query, { ...opts, decorations: SEARCH_DECORATIONS }) ??
+          false,
+      }),
+      [],
+    );
 
     // Mount xterm once per tabId.
     useEffect(() => {
@@ -74,23 +85,23 @@ export const TerminalInstance = forwardRef<TerminalInstanceHandle, TerminalInsta
 
       void mountXterm(containerRef.current, {
         tabId,
-        getCwd:               () => cwdRef.current,
-        isAlive:              () => aliveRef.current,
-        onOpenPath:           (path, line) => onOpenPathRef.current(path, line),
-        onPasteIntercepted:   (text) => pasteOrConfirm(text),
+        getCwd: () => cwdRef.current,
+        isAlive: () => aliveRef.current,
+        onOpenPath: (path, line) => onOpenPathRef.current(path, line),
+        onPasteIntercepted: (text) => pasteOrConfirm(text),
         onPasteGuardInactive: () => setPasteGuardInactive(true),
       }).then((mount) => {
         if (disposed) {
           mount.dispose();
           return;
         }
-        termRef.current   = mount.term;
-        fitRef.current    = mount.fitAddon;
+        termRef.current = mount.term;
+        fitRef.current = mount.fitAddon;
         searchRef.current = mount.searchAddon;
         cleanupRef.current = () => {
           mount.dispose();
-          termRef.current   = null;
-          fitRef.current    = null;
+          termRef.current = null;
+          fitRef.current = null;
           searchRef.current = null;
         };
       });
@@ -119,8 +130,8 @@ export const TerminalInstance = forwardRef<TerminalInstanceHandle, TerminalInsta
     const handleContextMenu = (e: React.MouseEvent) => {
       e.preventDefault();
       setContextMenu({
-        x:            e.clientX,
-        y:            e.clientY,
+        x: e.clientX,
+        y: e.clientY,
         hasSelection: !!termRef.current?.getSelection(),
       });
     };
@@ -136,7 +147,9 @@ export const TerminalInstance = forwardRef<TerminalInstanceHandle, TerminalInsta
     const handlePaste = async () => {
       try {
         pasteOrConfirm(await navigator.clipboard.readText());
-      } catch { /* clipboard permission denied */ }
+      } catch {
+        /* clipboard permission denied */
+      }
       closeMenu();
     };
 
@@ -160,7 +173,8 @@ export const TerminalInstance = forwardRef<TerminalInstanceHandle, TerminalInsta
           <div className="absolute inset-x-0 top-0 z-10 flex items-center gap-2 border-b border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs text-red-300">
             <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
             <span className="min-w-0 flex-1 truncate">
-              Multi-line paste confirmation is unavailable for this tab — pasted text runs immediately.
+              Multi-line paste confirmation is unavailable for this tab — pasted text runs
+              immediately.
             </span>
             <IconButton icon={X} label="Dismiss" onClick={() => setPasteGuardInactive(false)} />
           </div>
@@ -183,5 +197,5 @@ export const TerminalInstance = forwardRef<TerminalInstanceHandle, TerminalInsta
         )}
       </div>
     );
-  }
+  },
 );

@@ -23,7 +23,10 @@ export function ConflictBlockWidget({
   const btn = (label: string, color: string, onClick: () => void) => (
     <button
       type="button"
-      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
       className={cn(
         'rounded px-2 py-0.5 text-[10px] font-medium transition-colors',
         'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent',
@@ -43,7 +46,11 @@ export function ConflictBlockWidget({
       <span className="mr-1 text-[10px] text-fg-subtle tabular-nums">
         {blockIndex + 1}/{totalBlocks}
       </span>
-      {btn('Accept Ours', 'bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25', onAcceptOurs)}
+      {btn(
+        'Accept Ours',
+        'bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25',
+        onAcceptOurs,
+      )}
       {btn('Accept Theirs', 'bg-blue-500/15 text-blue-300 hover:bg-blue-500/25', onAcceptTheirs)}
       {btn('Accept Both', 'bg-elevated text-fg-muted hover:bg-elevated-2', onAcceptBoth)}
       {btn('Ignore', 'text-fg-subtle hover:text-fg hover:bg-elevated', onIgnore)}

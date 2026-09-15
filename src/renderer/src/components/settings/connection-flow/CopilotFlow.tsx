@@ -46,15 +46,15 @@ type Step = 'idle' | 'awaiting-code' | 'polling' | 'saving';
 export function CopilotFlow({ onBack, onClose, onSaved, editingMeta }: FlowProps) {
   const editing = !!editingMeta;
   const [name, setName] = useState(editingMeta?.name ?? 'GitHub Copilot');
-  const [model, setModel] = useState<string>(editingMeta?.defaultModel ?? FALLBACK_COPILOT_MODELS[0].id);
-  const [step, setStep] = useState<Step>('idle');
-  const [device, setDevice] = useState<{ userCode: string; verificationUri: string } | null>(
-    null,
+  const [model, setModel] = useState<string>(
+    editingMeta?.defaultModel ?? FALLBACK_COPILOT_MODELS[0].id,
   );
+  const [step, setStep] = useState<Step>('idle');
+  const [device, setDevice] = useState<{ userCode: string; verificationUri: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Track live models fetched during OAuth (replaces the fallback list in the UI).
   const [liveModels, setLiveModels] = useState<ModelDef[]>(
-    editingMeta?.models ?? ([...FALLBACK_COPILOT_MODELS] as ModelDef[])
+    editingMeta?.models ?? ([...FALLBACK_COPILOT_MODELS] as ModelDef[]),
   );
   // Track whether a flow is in flight so unmount cancels it.
   const inFlight = useRef(false);
@@ -109,8 +109,7 @@ export function CopilotFlow({ onBack, onClose, onSaved, editingMeta }: FlowProps
       }
       // If the user's pre-OAuth `model` choice isn't in the live list,
       // pick the first live model as the default.
-      const finalDefaultModel =
-        models.find((m) => m.id === model)?.id ?? models[0]?.id ?? model;
+      const finalDefaultModel = models.find((m) => m.id === model)?.id ?? models[0]?.id ?? model;
 
       const meta: ConnectionMeta = editing
         ? {
@@ -162,14 +161,15 @@ export function CopilotFlow({ onBack, onClose, onSaved, editingMeta }: FlowProps
       {step === 'idle' && (
         <div className="space-y-3">
           <p className="text-xs text-fg-subtle">
-            Sign in with your GitHub account that has Copilot enabled. We&apos;ll
-            open <code className="mx-1 rounded bg-elevated px-1 py-0.5 text-[11px] text-fg-muted">github.com/login/device</code>{' '}
+            Sign in with your GitHub account that has Copilot enabled. We&apos;ll open{' '}
+            <code className="mx-1 rounded bg-elevated px-1 py-0.5 text-[11px] text-fg-muted">
+              github.com/login/device
+            </code>{' '}
             in your browser and show you a one-time code to enter.
           </p>
           <p className="text-xs text-fg-subtle">
-            Chat runs through the agent runtime in a Node subprocess, including
-            permission prompts, plan/ask/auto modes, OAuth refresh, and tool
-            streaming.
+            Chat runs through the agent runtime in a Node subprocess, including permission prompts,
+            plan/ask/auto modes, OAuth refresh, and tool streaming.
           </p>
           <Button
             variant="primary"
@@ -192,13 +192,9 @@ export function CopilotFlow({ onBack, onClose, onSaved, editingMeta }: FlowProps
           </p>
           {device?.userCode && (
             <div className="rounded-lg border border-border bg-elevated/40 px-4 py-3">
-              <div className="text-[11px] uppercase tracking-wide text-fg-subtle">
-                Device code
-              </div>
+              <div className="text-[11px] uppercase tracking-wide text-fg-subtle">Device code</div>
               <div className="mt-1 flex items-center justify-between gap-3">
-                <code className="font-mono text-lg tracking-wider text-fg">
-                  {device.userCode}
-                </code>
+                <code className="font-mono text-lg tracking-wider text-fg">{device.userCode}</code>
                 <Button
                   variant="ghost"
                   icon={Copy}

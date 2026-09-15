@@ -64,9 +64,7 @@ export function FeedbackDialog({ reqId, payload, onRespond }: DialogProps<Feedba
       )}
 
       <div className="space-y-2">
-        <label className="text-sm font-medium text-fg-subtle">
-          Your feedback:
-        </label>
+        <label className="text-sm font-medium text-fg-subtle">Your feedback:</label>
         <Textarea
           value={feedback}
           onChange={(e) => setFeedback(e.target.value)}

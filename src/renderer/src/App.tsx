@@ -6,7 +6,12 @@ import { FileExplorerPanel } from './components/files';
 import { ContextPanel } from './components/context/ContextPanel';
 import { FileViewModal } from './components/search/FileViewModal';
 import { DesktopPetGate } from './components/pet/DesktopPetGate';
-import { TooltipProvider, ResizablePanelGroup, ResizablePanel, ResizableHandle } from './components/ui';
+import {
+  TooltipProvider,
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from './components/ui';
 import { useResizablePanels } from './hooks/useResizablePanels';
 import { push as pushRecentFile } from './lib/recent-files';
 import { LeftSidebar } from './components/app/LeftSidebar';
@@ -82,7 +87,9 @@ export default function App() {
   );
 
   const [activeCwd, setActiveCwd] = useState<string | undefined>(undefined);
-  const [viewFile, setViewFile] = useState<{ absolutePath: string; lineNumber: number } | null>(null);
+  const [viewFile, setViewFile] = useState<{ absolutePath: string; lineNumber: number } | null>(
+    null,
+  );
 
   const handleOpenFile = useCallback((absolutePath: string, lineNumber: number) => {
     pushRecentFile(absolutePath, lineNumber);
@@ -104,12 +111,21 @@ export default function App() {
 
   useDataRefresh();
 
-  const { defaultLayout: mainLayout, defaultSizesFromLayout: mainSizes, onLayoutChange } =
-    useResizablePanels('main-v4', ['main-left', 'main-right'], [28, 72]);
-  const { defaultLayout: termGroupLayout, defaultSizesFromLayout: termSizes, onLayoutChange: onTermLayout } =
-    useResizablePanels('terminal-v2', ['term-top', 'term-bottom'], [65, 35]);
-  const { defaultLayout: explorerGroupLayout, defaultSizesFromLayout: explorerSizes, onLayoutChange: onExplorerLayoutChange } =
-    useResizablePanels('explorer-v2', ['explorer-main', 'explorer-side'], [70, 30]);
+  const {
+    defaultLayout: mainLayout,
+    defaultSizesFromLayout: mainSizes,
+    onLayoutChange,
+  } = useResizablePanels('main-v4', ['main-left', 'main-right'], [28, 72]);
+  const {
+    defaultLayout: termGroupLayout,
+    defaultSizesFromLayout: termSizes,
+    onLayoutChange: onTermLayout,
+  } = useResizablePanels('terminal-v2', ['term-top', 'term-bottom'], [65, 35]);
+  const {
+    defaultLayout: explorerGroupLayout,
+    defaultSizesFromLayout: explorerSizes,
+    onLayoutChange: onExplorerLayoutChange,
+  } = useResizablePanels('explorer-v2', ['explorer-main', 'explorer-side'], [70, 30]);
 
   return (
     <TooltipProvider>
@@ -126,7 +142,11 @@ export default function App() {
         <UpdateBanner />
 
         <div className="min-h-0 flex-1 px-1.5 pb-1.5">
-          <ResizablePanelGroup orientation="horizontal" defaultLayout={mainLayout} onLayoutChange={onLayoutChange}>
+          <ResizablePanelGroup
+            orientation="horizontal"
+            defaultLayout={mainLayout}
+            onLayoutChange={onLayoutChange}
+          >
             <ResizablePanel
               id="main-left"
               panelRef={listPanelRef}
@@ -174,9 +194,17 @@ export default function App() {
             <ResizableHandle />
 
             <ResizablePanel id="main-right" defaultSize={mainSizes[1]} minSize="30%">
-              <ResizablePanelGroup orientation="vertical" defaultLayout={termGroupLayout} onLayoutChange={onTermLayout}>
+              <ResizablePanelGroup
+                orientation="vertical"
+                defaultLayout={termGroupLayout}
+                onLayoutChange={onTermLayout}
+              >
                 <ResizablePanel id="term-top" defaultSize={termSizes[0]} minSize="25%">
-                  <ResizablePanelGroup orientation="horizontal" defaultLayout={explorerGroupLayout} onLayoutChange={onExplorerLayoutChange}>
+                  <ResizablePanelGroup
+                    orientation="horizontal"
+                    defaultLayout={explorerGroupLayout}
+                    onLayoutChange={onExplorerLayoutChange}
+                  >
                     <ResizablePanel id="explorer-main" defaultSize={explorerSizes[0]} minSize="50%">
                       <div className={PANEL_CARD}>
                         <MainContent
@@ -198,7 +226,9 @@ export default function App() {
                           seedSubmit={seedSubmit}
                           onSeedSubmitConsumed={() => setSeedSubmit(null)}
                           newSessionDefaultProjectId={
-                            projectFilter === 'all' || projectFilter === 'inbox' ? null : projectFilter
+                            projectFilter === 'all' || projectFilter === 'inbox'
+                              ? null
+                              : projectFilter
                           }
                           onStreamingChange={setStreamingSessionIds}
                           onCwdChange={setActiveCwd}
@@ -238,8 +268,12 @@ export default function App() {
                           <ContextPanel
                             sessionId={activeSessionId}
                             cwd={activeCwd}
-                            pinnedAssets={sessions?.find((s) => s.id === activeSessionId)?.pinnedAssets}
-                            onPinnedChange={() => { void reloadSessions(); }}
+                            pinnedAssets={
+                              sessions?.find((s) => s.id === activeSessionId)?.pinnedAssets
+                            }
+                            onPinnedChange={() => {
+                              void reloadSessions();
+                            }}
                             onStartChatWithSubmission={startSessionWithSubmission}
                             onClose={toggleContextPanel}
                             onOpenFile={handleOpenFile}

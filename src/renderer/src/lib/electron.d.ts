@@ -333,7 +333,6 @@ export interface ModelDef {
   recommendedFor?: string[];
 }
 
-
 export interface ConnectionMeta {
   slug: string;
   name: string;
@@ -759,13 +758,7 @@ export type ExtensionFileNode =
   | { kind: 'file'; name: string; path: string; size: number }
   | { kind: 'dir'; name: string; path: string; children: ExtensionFileNode[] };
 
-export type UpdateState =
-  | 'idle'
-  | 'checking'
-  | 'available'
-  | 'downloading'
-  | 'ready'
-  | 'error';
+export type UpdateState = 'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'error';
 
 export interface UpdateInfo {
   state: UpdateState;
@@ -884,9 +877,7 @@ export interface AppApi {
     }>;
     cancel: () => Promise<void>;
     /** Subscribe to the device-code event so the UI can render it. */
-    onDeviceCode: (
-      cb: (u: { userCode: string; verificationUri: string }) => void,
-    ) => () => void;
+    onDeviceCode: (cb: (u: { userCode: string; verificationUri: string }) => void) => () => void;
   };
   chatgptOAuth: {
     /**
@@ -908,9 +899,7 @@ export interface AppApi {
      * entitlement) for a ChatGPT OAuth connection. Uses a freshly-resolved
      * (auto-refreshed) access token.
      */
-    fetchQuota: (
-      args: { connectionSlug: string },
-    ) => Promise<ChatGptQuota | { error: string }>;
+    fetchQuota: (args: { connectionSlug: string }) => Promise<ChatGptQuota | { error: string }>;
   };
   copilot: {
     /**
@@ -918,18 +907,16 @@ export interface AppApi {
      * fresh `refreshToken` (during setup, before save) or a
      * `connectionSlug` (after save).
      */
-    fetchModels: (
-      args: { refreshToken?: string; connectionSlug?: string },
-    ) => Promise<{ models: ModelDef[] } | { error: string }>;
+    fetchModels: (args: {
+      refreshToken?: string;
+      connectionSlug?: string;
+    }) => Promise<{ models: ModelDef[] } | { error: string }>;
     /**
      * Fetch the current-month premium-request quota snapshot.
      * Uses the stored GitHub OAuth token — not the Copilot API token.
      * Returns { error } when the token lacks billing permissions.
      */
-    fetchQuota: (
-      args: { connectionSlug: string },
-    ) => Promise<CopilotQuota | { error: string }>;
-
+    fetchQuota: (args: { connectionSlug: string }) => Promise<CopilotQuota | { error: string }>;
   };
   chat: {
     send: (req: ChatSendRequest) => Promise<void>;
@@ -948,9 +935,7 @@ export interface AppApi {
       customInstructions?: string;
     }) => Promise<void>;
     onEvent: (cb: (event: ChatStreamEvent) => void) => () => void;
-    onCollaborationRequest: (
-      cb: (req: EngagementRequest) => void,
-    ) => () => void;
+    onCollaborationRequest: (cb: (req: EngagementRequest) => void) => () => void;
     respondCollaboration: (response: EngagementResponse) => Promise<void>;
     generateTitle: (args: {
       connectionSlug: string;
@@ -970,11 +955,17 @@ export interface AppApi {
     onPlanCreated: (cb: (sessionId: string, plan: Plan) => void) => () => void;
     onPlanUpdated: (cb: (sessionId: string, plan: Plan) => void) => () => void;
     onPhaseUpdated: (cb: (sessionId: string, planId: string, phase: Phase) => void) => () => void;
-    onPlanRevised: (cb: (sessionId: string, plan: Plan, revision: PlanRevision) => void) => () => void;
+    onPlanRevised: (
+      cb: (sessionId: string, plan: Plan, revision: PlanRevision) => void,
+    ) => () => void;
     onPlanCompleted: (cb: (sessionId: string, planId: string) => void) => () => void;
     onPlanCancelled: (cb: (sessionId: string, planId: string) => void) => () => void;
-    onPlanError: (cb: (sessionId: string, planId: string, error: string, phaseId?: string) => void) => () => void;
-    onApprovalRequired: (cb: (sessionId: string, planId: string, phase: Phase) => void) => () => void;
+    onPlanError: (
+      cb: (sessionId: string, planId: string, error: string, phaseId?: string) => void,
+    ) => () => void;
+    onApprovalRequired: (
+      cb: (sessionId: string, planId: string, phase: Phase) => void,
+    ) => () => void;
     onPermissionModeChanged: (cb: (sessionId: string, mode: PermissionMode) => void) => () => void;
   };
   connections: {
@@ -988,11 +979,20 @@ export interface AppApi {
     getCredential: (slug: string) => Promise<Credential | null>;
     isEncryptionAvailable: () => Promise<boolean>;
     test: (slug: string) => Promise<{ ok: true } | { ok: false; error: AgentError }>;
-    signInWithCodeMie: (args: { baseUrl: string }) => Promise<{ cookies: Record<string, string>; expiresAt?: number; models: ModelDef[]; projects: string[]; integrations: Record<string, Array<{ id: string; alias: string }>> }>;
-    fetchCodeMieBudget: (args: { connectionSlug: string }) => Promise<CodeMieBudget | { error: string }>;
-    listRemoteModels: (
-      args: { baseUrl: string; apiKey?: string },
-    ) => Promise<{ ids: string[] } | { error: string }>;
+    signInWithCodeMie: (args: { baseUrl: string }) => Promise<{
+      cookies: Record<string, string>;
+      expiresAt?: number;
+      models: ModelDef[];
+      projects: string[];
+      integrations: Record<string, Array<{ id: string; alias: string }>>;
+    }>;
+    fetchCodeMieBudget: (args: {
+      connectionSlug: string;
+    }) => Promise<CodeMieBudget | { error: string }>;
+    listRemoteModels: (args: {
+      baseUrl: string;
+      apiKey?: string;
+    }) => Promise<{ ids: string[] } | { error: string }>;
     /** Force-refresh a connection's model catalog. */
     refreshModels: (
       slug: string,
@@ -1021,9 +1021,7 @@ export interface AppApi {
   };
   sessions: {
     list: () => Promise<SessionSummary[]>;
-    load: (
-      id: string,
-    ) => Promise<{ meta: SessionMeta; messages: StoredMessage[] } | null>;
+    load: (id: string) => Promise<{ meta: SessionMeta; messages: StoredMessage[] } | null>;
     create: (opts?: {
       workingDirectory?: string;
       projectId?: string | null;
@@ -1053,11 +1051,7 @@ export interface AppApi {
       ttlDays?: number,
       backend?: 'brewpage' | 'meethtml',
     ) => Promise<SharedExportResult>;
-    revokeExport: (
-      namespace: string,
-      id: string,
-      ownerToken: string,
-    ) => Promise<void>;
+    revokeExport: (namespace: string, id: string, ownerToken: string) => Promise<void>;
   };
   projects: {
     list: () => Promise<Project[]>;
@@ -1067,9 +1061,7 @@ export interface AppApi {
       id: string,
       patch: Partial<Omit<Project, 'id' | 'createdAt'>>,
     ) => Promise<Project | null>;
-    delete: (
-      id: string,
-    ) => Promise<{ ok: boolean; sessionsCleared: number }>;
+    delete: (id: string) => Promise<{ ok: boolean; sessionsCleared: number }>;
   };
   fs: {
     pickDirectory: () => Promise<string | null>;
@@ -1081,11 +1073,7 @@ export interface AppApi {
   };
   files: {
     /** BFS file/folder search rooted at `root`, respecting `.gitignore`. */
-    search: (args: {
-      root: string;
-      query: string;
-      limit?: number;
-    }) => Promise<FileSearchEntry[]>;
+    search: (args: { root: string; query: string; limit?: number }) => Promise<FileSearchEntry[]>;
     /** Full-text / regex content search rooted at `root`, respecting `.gitignore`. */
     grep: (args: {
       root: string;
@@ -1132,10 +1120,7 @@ export interface AppApi {
     /** Reveal the directory in Finder/Explorer. */
     revealInFinder: (dirPath: string) => Promise<void>;
     /** Validate SKILL.md schema + body. Returns formatted text report. */
-    validate: (
-      dirPath: string,
-      slug: string,
-    ) => Promise<{ ok: boolean; report: string }>;
+    validate: (dirPath: string, slug: string) => Promise<{ ok: boolean; report: string }>;
   };
   agents: {
     getDir: () => Promise<string>;
@@ -1148,14 +1133,14 @@ export interface AppApi {
     invalidateCache: () => Promise<void>;
     openInEditor: (dirPath: string) => Promise<string>;
     revealInFinder: (dirPath: string) => Promise<void>;
-    validate: (
-      dirPath: string,
-      slug: string,
-    ) => Promise<{ ok: boolean; report: string }>;
+    validate: (dirPath: string, slug: string) => Promise<{ ok: boolean; report: string }>;
   };
   context: {
     /** List all available skills + agents + extensions merged from project + user tiers. */
-    listAvailable: (cwd?: string, invalidate?: boolean) => Promise<{ skills: LoadedSkill[]; agents: LoadedAgent[]; extensions: LoadedExtension[] }>;
+    listAvailable: (
+      cwd?: string,
+      invalidate?: boolean,
+    ) => Promise<{ skills: LoadedSkill[]; agents: LoadedAgent[]; extensions: LoadedExtension[] }>;
     /** Pin a scoped asset to a session. scopedSlug: 'user:<slug>' | 'project:<slug>' */
     pin: (sessionId: string, scopedSlug: string) => Promise<unknown>;
     /** Unpin a scoped asset from a session. */
@@ -1177,10 +1162,7 @@ export interface AppApi {
     invalidateCache: () => Promise<void>;
     openInEditor: (dirPath: string) => Promise<string>;
     revealInFinder: (dirPath: string) => Promise<void>;
-    validate: (
-      dirPath: string,
-      slug: string,
-    ) => Promise<{ ok: boolean; report: string }>;
+    validate: (dirPath: string, slug: string) => Promise<{ ok: boolean; report: string }>;
 
     secretsEncryptionAvailable: () => Promise<boolean>;
     listSecretKeys: (slug: string) => Promise<string[]>;
@@ -1235,7 +1217,12 @@ export interface AppApi {
     /** Stage specific files (with optional line-level custom content) and commit. */
     commitFiles: (args: {
       repoRoot: string;
-      files: Array<{ relativePath: string; absolutePath: string; status: string; content?: string }>;
+      files: Array<{
+        relativePath: string;
+        absolutePath: string;
+        status: string;
+        content?: string;
+      }>;
       message: string;
       amend?: boolean;
     }) => Promise<{ ok: boolean; error?: string }>;

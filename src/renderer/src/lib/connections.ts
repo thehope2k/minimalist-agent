@@ -28,13 +28,7 @@ import type {
   ThinkingLevel,
 } from './electron';
 
-export type {
-  AiSettings,
-  ConnectionMeta,
-  Credential,
-  PermissionMode,
-  ThinkingLevel,
-};
+export type { AiSettings, ConnectionMeta, Credential, PermissionMode, ThinkingLevel };
 
 interface Snapshot {
   connections: ConnectionMeta[];
@@ -54,13 +48,12 @@ function notify(): void {
 }
 
 async function load(): Promise<Snapshot> {
-  const [connections, defaultSlug, settings, encryptionAvailable] =
-    await Promise.all([
-      window.api.connections.list(),
-      window.api.connections.getDefaultSlug(),
-      window.api.settings.get(),
-      window.api.connections.isEncryptionAvailable(),
-    ]);
+  const [connections, defaultSlug, settings, encryptionAvailable] = await Promise.all([
+    window.api.connections.list(),
+    window.api.connections.getDefaultSlug(),
+    window.api.settings.get(),
+    window.api.connections.isEncryptionAvailable(),
+  ]);
   return {
     connections,
     defaultSlug,
@@ -104,10 +97,7 @@ async function reload(): Promise<void> {
 
 /* ---------- mutations ---------- */
 
-export async function saveConnection(
-  meta: ConnectionMeta,
-  credential: Credential,
-): Promise<void> {
+export async function saveConnection(meta: ConnectionMeta, credential: Credential): Promise<void> {
   await window.api.connections.save(meta, credential);
   await reload();
 }
@@ -122,9 +112,7 @@ export async function renameConnection(slug: string, name: string): Promise<void
   if (cache) {
     cache = {
       ...cache,
-      connections: cache.connections.map((c) =>
-        c.slug === slug ? { ...c, name } : c,
-      ),
+      connections: cache.connections.map((c) => (c.slug === slug ? { ...c, name } : c)),
     };
     notify();
   }
@@ -156,8 +144,7 @@ export async function reorderConnections(slugs: string[]): Promise<void> {
 export async function refreshConnectionModels(
   slug: string,
 ): Promise<
-  | { ok: true; changed: boolean }
-  | { ok: false; reason: 'unsupported' | 'error'; error?: string }
+  { ok: true; changed: boolean } | { ok: false; reason: 'unsupported' | 'error'; error?: string }
 > {
   const res = await window.api.connections.refreshModels(slug);
   if (res.ok) {
@@ -196,9 +183,7 @@ export async function setContextFileNames(names: string[]): Promise<void> {
   await reload();
 }
 
-export async function setDefaultPermissionMode(
-  mode: PermissionMode,
-): Promise<void> {
+export async function setDefaultPermissionMode(mode: PermissionMode): Promise<void> {
   const next = { ...snapshot().settings, defaultPermissionMode: mode };
   await window.api.settings.save(next);
   await reload();

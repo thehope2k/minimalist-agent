@@ -1,6 +1,6 @@
 import type { LoadedAgent } from '@/lib/electron';
 import type { SeedSubmit } from '@/App';
-import React from "react";
+import React from 'react';
 
 export type AgentInfoPageProps = {
   agent: LoadedAgent | null;

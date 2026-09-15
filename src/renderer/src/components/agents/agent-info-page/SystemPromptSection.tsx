@@ -11,7 +11,12 @@ interface SystemPromptSectionProps {
   onOpenFile: (absolutePath: string, lineNumber: number) => void;
 }
 
-export function SystemPromptSection({ agent, onEdit, disabled, onOpenFile }: SystemPromptSectionProps) {
+export function SystemPromptSection({
+  agent,
+  onEdit,
+  disabled,
+  onOpenFile,
+}: SystemPromptSectionProps) {
   return (
     <section>
       <div className="mb-2 flex items-center justify-between">

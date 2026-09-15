@@ -7,10 +7,7 @@
 //   - `web_search`: DuckDuckGo HTML scrape (no API key required)
 
 import { Type } from 'typebox';
-import {
-  defineTool,
-  type ToolDefinition,
-} from '@earendil-works/pi-coding-agent';
+import { defineTool, type ToolDefinition } from '@earendil-works/pi-coding-agent';
 import { safeHttpGet, SsrfError, type SafeResponse } from './ssrf-guard';
 
 // Pi-server runs as a Node-mode subprocess (ELECTRON_RUN_AS_NODE=1), so
@@ -63,7 +60,10 @@ function stripHtml(html: string): string {
 
 function clamp(text: string, max: number): { text: string; truncated: boolean } {
   if (text.length <= max) return { text, truncated: false };
-  return { text: text.slice(0, max) + `\n\n[... truncated; ${text.length - max} more chars]`, truncated: true };
+  return {
+    text: text.slice(0, max) + `\n\n[... truncated; ${text.length - max} more chars]`,
+    truncated: true,
+  };
 }
 
 async function fetchSafe(url: string, signal?: AbortSignal): Promise<SafeResponse> {
@@ -88,8 +88,7 @@ export function createWebFetchTool(): ToolDefinition<typeof webFetchSchema, unkn
     description:
       'Fetch a web page or document by URL and return its readable text. ' +
       'HTML is stripped to plain prose; JSON/text are returned as-is. Output is truncated to roughly 60k chars.',
-    promptSnippet:
-      'web_fetch: GET a URL and return readable text. Use for docs/articles/specs.',
+    promptSnippet: 'web_fetch: GET a URL and return readable text. Use for docs/articles/specs.',
     parameters: webFetchSchema,
     execute: async (_toolCallId, params, signal) => {
       const url = String(params.url ?? '').trim();
@@ -232,10 +231,7 @@ export function createWebSearchTool(): ToolDefinition<typeof webSearchSchema, un
           } as never;
         }
         const formatted = hits
-          .map(
-            (h, i) =>
-              `${i + 1}. ${h.title}\n   ${h.url}\n   ${h.snippet.slice(0, 300)}`,
-          )
+          .map((h, i) => `${i + 1}. ${h.title}\n   ${h.url}\n   ${h.snippet.slice(0, 300)}`)
           .join('\n\n');
         return {
           isError: false,

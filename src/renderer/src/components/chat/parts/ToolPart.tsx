@@ -10,7 +10,7 @@ export type { ToolPartProps };
  * Compact tool-call chip. One line by default; click to expand and see
  * full input + result. Errored tools auto-expand so the user doesn't
  * have to hunt for what broke.
- * 
+ *
  * Routes to specialized renderers for TodoWrite, Edit, and Write tools.
  * Generic tools use ChipBody.
  */
@@ -22,11 +22,11 @@ export function ToolPart(props: ToolPartProps) {
   // Tool-name casing can vary, so compare case-insensitively to ensure each
   // built-in tool reaches its dedicated renderer.
   const lowerName = props.name.toLowerCase();
-  
+
   if (lowerName === 'todowrite') {
     return <TodoListPart input={props.input} />;
   }
-  
+
   // Edit / Write get a side-by-side code diff instead of the JSON-chip view —
   // raw `old_string` / `new_string` blobs are unreadable in pre-text form.
   //
@@ -50,6 +50,6 @@ export function ToolPart(props: ToolPartProps) {
     }
     return <ChipBody {...props} />;
   }
-  
+
   return <ChipBody {...props} />;
 }

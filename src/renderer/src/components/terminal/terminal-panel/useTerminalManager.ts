@@ -6,19 +6,19 @@ import type { TerminalTabState } from './types';
 const log = createLogger('terminal');
 
 interface TerminalState {
-  tabs:        TerminalTabState[];
+  tabs: TerminalTabState[];
   activeTabId: string | null;
-  error:       string | null;
+  error: string | null;
 }
 
 export interface UseTerminalManagerResult {
-  tabs:         TerminalTabState[];
-  activeTabId:  string | null;
-  error:        string | null;
+  tabs: TerminalTabState[];
+  activeTabId: string | null;
+  error: string | null;
   setActiveTab: (tabId: string) => void;
-  createTab:    (cwd: string) => Promise<void>;
-  closeTab:     (tabId: string) => Promise<void>;
-  renameTab:    (tabId: string, customTitle: string | undefined) => void;
+  createTab: (cwd: string) => Promise<void>;
+  closeTab: (tabId: string) => Promise<void>;
+  renameTab: (tabId: string, customTitle: string | undefined) => void;
   dismissError: () => void;
 }
 
@@ -34,11 +34,11 @@ export function useTerminalManager(): UseTerminalManagerResult {
       setState((prev) => ({
         ...prev,
         tabs: liveTabs.map((t) => ({
-          tabId:    t.tabId,
-          title:    t.title,
-          alive:    t.alive,
+          tabId: t.tabId,
+          title: t.title,
+          alive: t.alive,
           exitCode: t.exitCode,
-          cwd:      t.cwd,
+          cwd: t.cwd,
         })),
         activeTabId: liveTabs[liveTabs.length - 1].tabId,
       }));
@@ -95,7 +95,7 @@ export function useTerminalManager(): UseTerminalManagerResult {
           { tabId: info.tabId, title: info.title, alive: info.alive, cwd: info.cwd },
         ],
         activeTabId: info.tabId,
-        error:       null,
+        error: null,
       }));
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -107,7 +107,7 @@ export function useTerminalManager(): UseTerminalManagerResult {
   const closeTab = useCallback(async (tabId: string) => {
     await window.api.terminal.kill(tabId);
     setState((prev) => {
-      const idx  = prev.tabs.findIndex((t) => t.tabId === tabId);
+      const idx = prev.tabs.findIndex((t) => t.tabId === tabId);
       const next = prev.tabs.filter((t) => t.tabId !== tabId);
       let newActive = prev.activeTabId;
       if (newActive === tabId) {
@@ -130,8 +130,8 @@ export function useTerminalManager(): UseTerminalManagerResult {
     setState((prev) => ({
       ...prev,
       activeTabId: tabId,
-      error:       null,
-      tabs:        prev.tabs.map((t) => (t.tabId === tabId ? { ...t, hasActivity: false } : t)),
+      error: null,
+      tabs: prev.tabs.map((t) => (t.tabId === tabId ? { ...t, hasActivity: false } : t)),
     }));
   }, []);
 
@@ -140,9 +140,9 @@ export function useTerminalManager(): UseTerminalManagerResult {
   }, []);
 
   return {
-    tabs:        state.tabs,
+    tabs: state.tabs,
     activeTabId: state.activeTabId,
-    error:       state.error,
+    error: state.error,
     setActiveTab,
     createTab,
     closeTab,

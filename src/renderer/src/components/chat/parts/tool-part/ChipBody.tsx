@@ -83,33 +83,26 @@ export function ChipBody({
           strokeWidth={2}
         />
         <ToolIcon
-          className={cn(
-            'h-3.5 w-3.5 shrink-0',
-            erroredOrFailed ? 'text-red-400' : 'text-fg-muted',
-          )}
+          className={cn('h-3.5 w-3.5 shrink-0', erroredOrFailed ? 'text-red-400' : 'text-fg-muted')}
           strokeWidth={1.75}
         />
-        <span
-          className={cn(
-            'shrink-0 font-medium',
-            erroredOrFailed ? 'text-red-300' : 'text-fg',
-          )}
-        >
+        <span className={cn('shrink-0 font-medium', erroredOrFailed ? 'text-red-300' : 'text-fg')}>
           {toolName}
         </span>
         {summary && (
           <>
             <span className="shrink-0 text-fg-subtle">·</span>
-            <span className="min-w-0 flex-1 truncate font-mono text-fg-subtle">
-              {summary}
-            </span>
+            <span className="min-w-0 flex-1 truncate font-mono text-fg-subtle">{summary}</span>
           </>
         )}
         <span className="ml-auto flex shrink-0 items-center gap-1.5 text-fg-muted">
           {resultSummary && !open && (
             <span className="text-xs text-fg-subtle">{resultSummary}</span>
           )}
-          <ContextDeltaBadge contextDelta={contextDelta} contextDeltaGroupSize={contextDeltaGroupSize} />
+          <ContextDeltaBadge
+            contextDelta={contextDelta}
+            contextDeltaGroupSize={contextDeltaGroupSize}
+          />
           <StatusIcon status={status} resultIsError={result?.isError} />
         </span>
       </button>
@@ -117,34 +110,23 @@ export function ChipBody({
         <div className="space-y-2 border-t border-border/60 px-3 py-2">
           {subagent && <SubagentSummaryLine subagent={subagent} />}
           {isAgentTool ? (
-            <TaskInputSection
-              input={input}
-              partialInputJson={partialInputJson}
-              summary={summary}
-            />
+            <TaskInputSection input={input} partialInputJson={partialInputJson} summary={summary} />
           ) : input !== undefined && input !== null ? (
             <InputView input={input} />
           ) : (
             inputText && <CodeFrame label="Input" text={inputText} />
           )}
           {subagent && <SubagentTranscriptView subagent={subagent} />}
-          {result && (
-            isAgentTool && subagent
-              ? (
-                <AgentResultSection
-                  toolName={name}
-                  text={result.content}
-                  isError={!!result.isError}
-                />
-              )
-              : (
-                <ResultBlock
-                  toolName={name}
-                  text={result.content}
-                  isError={!!result.isError}
-                />
-              )
-          )}
+          {result &&
+            (isAgentTool && subagent ? (
+              <AgentResultSection
+                toolName={name}
+                text={result.content}
+                isError={!!result.isError}
+              />
+            ) : (
+              <ResultBlock toolName={name} text={result.content} isError={!!result.isError} />
+            ))}
         </div>
       )}
     </div>

@@ -25,7 +25,7 @@ export function useConflictDecorations(
         range: new monaco.Range(block.startLine, 1, block.startLine, 1),
         options: { isWholeLine: true, className: 'conflict-marker-line', zIndex: 1 },
       });
-      
+
       // Ours section
       const oursEnd = block.baseLine > 0 ? block.baseLine - 1 : block.separatorLine - 1;
       if (oursEnd >= block.startLine + 1) {
@@ -34,13 +34,13 @@ export function useConflictDecorations(
           options: { isWholeLine: true, className: 'conflict-ours-line' },
         });
       }
-      
+
       // ======= separator
       decos.push({
         range: new monaco.Range(block.separatorLine, 1, block.separatorLine, 1),
         options: { isWholeLine: true, className: 'conflict-marker-line', zIndex: 1 },
       });
-      
+
       // Theirs section
       if (block.endLine > block.separatorLine + 1) {
         decos.push({
@@ -48,7 +48,7 @@ export function useConflictDecorations(
           options: { isWholeLine: true, className: 'conflict-theirs-line' },
         });
       }
-      
+
       // >>>>>>> line
       decos.push({
         range: new monaco.Range(block.endLine, 1, block.endLine, 1),

@@ -39,10 +39,7 @@ import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { W3CTraceContextPropagator } from '@opentelemetry/core';
-import {
-  ATTR_SERVICE_NAME,
-  ATTR_SERVICE_VERSION,
-} from '@opentelemetry/semantic-conventions';
+import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
 import { ExportResultCode, type ExportResult } from '@opentelemetry/core';
 import { createLogger } from './sub-logger';
 
@@ -137,8 +134,7 @@ export function readOtelConfigFromEnv(env: NodeJS.ProcessEnv = process.env): Ote
         : 'file';
   return {
     enabled: env.MA_OTEL_ENABLED === '1' || env.MA_OTEL_ENABLED === 'true',
-    captureContent:
-      env.MA_OTEL_CAPTURE_CONTENT === '1' || env.MA_OTEL_CAPTURE_CONTENT === 'true',
+    captureContent: env.MA_OTEL_CAPTURE_CONTENT === '1' || env.MA_OTEL_CAPTURE_CONTENT === 'true',
     exporter,
     // Sub-agent subprocesses inherit MA_OTEL_OUTFILE from the parent, so without
     // isolation N processes would append to (and rotate) one file concurrently —
@@ -341,9 +337,7 @@ export async function initOtel(env: NodeJS.ProcessEnv = process.env): Promise<bo
 
   // File/console flush per-span for tailing; OTLP batches to amortize HTTP.
   const processor =
-    cfg.exporter === 'otlp'
-      ? new BatchSpanProcessor(exporter)
-      : new SimpleSpanProcessor(exporter);
+    cfg.exporter === 'otlp' ? new BatchSpanProcessor(exporter) : new SimpleSpanProcessor(exporter);
 
   const contextManager = new AsyncLocalStorageContextManager();
   contextManager.enable();
@@ -367,9 +361,7 @@ export async function initOtel(env: NodeJS.ProcessEnv = process.env): Promise<bo
   });
   provider.register();
 
-  log.info(
-    `tracing enabled (exporter=${cfg.exporter}, captureContent=${cfg.captureContent})`,
-  );
+  log.info(`tracing enabled (exporter=${cfg.exporter}, captureContent=${cfg.captureContent})`);
   return true;
 }
 
@@ -455,10 +447,7 @@ export async function withSpan<T>(
  * (opened on message_start, closed on message_end). Returns the span plus the
  * context that has it active, so callers can run work under it.
  */
-export function startSpan(
-  name: string,
-  opts: SpanOptions = {},
-): { span: Span; context: Context } {
+export function startSpan(name: string, opts: SpanOptions = {}): { span: Span; context: Context } {
   const tracer = getTracer();
   const parent = opts.parentContext ?? context.active();
   const span = tracer.startSpan(

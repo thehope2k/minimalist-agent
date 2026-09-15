@@ -76,13 +76,18 @@ export async function fetchCopilotModels(githubRefreshToken: string): Promise<Mo
   );
 
   const availableModelIds = creds.availableModelIds;
-  if (!Array.isArray(availableModelIds) || !availableModelIds.every((id) => typeof id === 'string')) {
+  if (
+    !Array.isArray(availableModelIds) ||
+    !availableModelIds.every((id) => typeof id === 'string')
+  ) {
     throw new Error('Copilot OAuth refresh did not return an available-model list.');
   }
 
   const { known, unknownIds } = partitionByCatalog(availableModelIds);
   if (unknownIds.length > 0) {
-    log.warn(`account has ${unknownIds.length} model(s) not in the bundled catalog: ${unknownIds.join(', ')}`);
+    log.warn(
+      `account has ${unknownIds.length} model(s) not in the bundled catalog: ${unknownIds.join(', ')}`,
+    );
   }
 
   return known.map(modelDefFrom).sort((a, b) => a.name.localeCompare(b.name));

@@ -22,11 +22,20 @@ function summarize(req: EngagementRequest): { title: string; body: string } {
     case 'decision':
       return { title: 'Agent needs a decision', body: (req.payload as DecisionPayload).question };
     case 'preference':
-      return { title: 'Agent needs your preference', body: (req.payload as PreferencePayload).question };
+      return {
+        title: 'Agent needs your preference',
+        body: (req.payload as PreferencePayload).question,
+      };
     case 'feedback':
-      return { title: 'Agent wants feedback', body: (req.payload as FeedbackPayload).work_completed };
+      return {
+        title: 'Agent wants feedback',
+        body: (req.payload as FeedbackPayload).work_completed,
+      };
     case 'guidance':
-      return { title: 'Agent needs guidance', body: (req.payload as GuidancePayload).what_guidance_needed };
+      return {
+        title: 'Agent needs guidance',
+        body: (req.payload as GuidancePayload).what_guidance_needed,
+      };
     case 'approval':
       return { title: 'Agent needs approval', body: (req.payload as ApprovalPayload).operation };
     default:

@@ -16,9 +16,7 @@ function basename(p: string): string {
 }
 
 type DetailTarget =
-  | { kind: 'skill'; item: LoadedSkill }
-  | { kind: 'extension'; item: LoadedExtension }
-  | null;
+  { kind: 'skill'; item: LoadedSkill } | { kind: 'extension'; item: LoadedExtension } | null;
 
 interface ContextPanelProps {
   sessionId: string | null;
@@ -78,13 +76,19 @@ export function ContextPanel({
   } = useContextPanel({ sessionId, cwd, pinnedAssets });
 
   const handlePin = async (scopedSlug: string) => {
-    try { await pin(scopedSlug); }
-    finally { onPinnedChange?.(); }
+    try {
+      await pin(scopedSlug);
+    } finally {
+      onPinnedChange?.();
+    }
   };
 
   const handleUnpin = async (scopedSlug: string) => {
-    try { await unpin(scopedSlug); }
-    finally { onPinnedChange?.(); }
+    try {
+      await unpin(scopedSlug);
+    } finally {
+      onPinnedChange?.();
+    }
   };
 
   return (
@@ -102,10 +106,7 @@ export function ContextPanel({
           title="Refresh"
           aria-label="Refresh context panel"
         >
-          <RefreshCw
-            className={cn('h-3.5 w-3.5', loading && 'animate-spin')}
-            strokeWidth={1.75}
-          />
+          <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} strokeWidth={1.75} />
         </button>
         {onClose && (
           <button
@@ -170,18 +171,15 @@ export function ContextPanel({
         />
 
         {/* Empty state */}
-        {!loading &&
-          projectSkills.length === 0 &&
-          userSkills.length === 0 && (
-            <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
-              <Layers className="h-5 w-5 text-fg-subtle" strokeWidth={1.5} />
-              <p className="text-sm text-fg-muted">No skills yet</p>
-              <p className="max-w-60 text-xs text-fg-subtle">
-                Add skills to{' '}
-                <code className="font-mono">~/.minimalist-agent/skills/</code>.
-              </p>
-            </div>
-          )}
+        {!loading && projectSkills.length === 0 && userSkills.length === 0 && (
+          <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
+            <Layers className="h-5 w-5 text-fg-subtle" strokeWidth={1.5} />
+            <p className="text-sm text-fg-muted">No skills yet</p>
+            <p className="max-w-60 text-xs text-fg-subtle">
+              Add skills to <code className="font-mono">~/.minimalist-agent/skills/</code>.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Project-scoped creation dialogs */}
@@ -190,13 +188,19 @@ export function ContextPanel({
           <AddSkillDialog
             open={newDialog === 'skill'}
             onClose={() => setNewDialog(null)}
-            onSubmit={(s) => { onStartChatWithSubmission({ ...s, workingDirectory: cwd }); setNewDialog(null); }}
+            onSubmit={(s) => {
+              onStartChatWithSubmission({ ...s, workingDirectory: cwd });
+              setNewDialog(null);
+            }}
             projectDir={projectSkillsDir}
           />
           <AddExtensionDialog
             open={newDialog === 'extension'}
             onClose={() => setNewDialog(null)}
-            onSubmit={(s) => { onStartChatWithSubmission({ ...s, workingDirectory: cwd }); setNewDialog(null); }}
+            onSubmit={(s) => {
+              onStartChatWithSubmission({ ...s, workingDirectory: cwd });
+              setNewDialog(null);
+            }}
             projectDir={projectExtDir}
           />
         </>

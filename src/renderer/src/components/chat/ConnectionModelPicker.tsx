@@ -60,7 +60,7 @@ export function ConnectionModelPicker({
   // Locked sessions skip the connection-list view entirely.
   const effectiveDrilledSlug = connectionLocked ? activeSlug : drilledInto;
   const drilledConn = effectiveDrilledSlug
-    ? connections.find((c) => c.slug === effectiveDrilledSlug) ?? null
+    ? (connections.find((c) => c.slug === effectiveDrilledSlug) ?? null)
     : null;
 
   return (
@@ -76,30 +76,18 @@ export function ConnectionModelPicker({
           )}
         >
           <BrandMark conn={activeConn} />
-          <span className="truncate">
-            {activeModel?.name ?? 'Pick a model'}
-          </span>
-          {activeModel && (
-            activeModel.supportsVision ? (
+          <span className="truncate">{activeModel?.name ?? 'Pick a model'}</span>
+          {activeModel &&
+            (activeModel.supportsVision ? (
               <span title="Vision supported">
-                <Eye
-                  className="h-3 w-3 shrink-0 text-fg-subtle"
-                  strokeWidth={1.75}
-                />
+                <Eye className="h-3 w-3 shrink-0 text-fg-subtle" strokeWidth={1.75} />
               </span>
             ) : (
               <span title="No vision support">
-                <EyeOff
-                  className="h-3 w-3 shrink-0 text-fg-subtle opacity-40"
-                  strokeWidth={1.75}
-                />
+                <EyeOff className="h-3 w-3 shrink-0 text-fg-subtle opacity-40" strokeWidth={1.75} />
               </span>
-            )
-          )}
-          <ChevronDown
-            className="h-3 w-3 shrink-0 text-fg-subtle"
-            strokeWidth={1.75}
-          />
+            ))}
+          <ChevronDown className="h-3 w-3 shrink-0 text-fg-subtle" strokeWidth={1.75} />
         </button>
       </Popover.Trigger>
 
@@ -113,9 +101,7 @@ export function ConnectionModelPicker({
           {drilledConn ? (
             <ModelList
               connection={drilledConn}
-              activeModelId={
-                drilledConn.slug === activeSlug ? activeModelId : ''
-              }
+              activeModelId={drilledConn.slug === activeSlug ? activeModelId : ''}
               // No back button when the session is locked — there's
               // nowhere to go (the top-level connection list is hidden).
               onBack={connectionLocked ? null : () => setDrilledInto(null)}

@@ -1,18 +1,7 @@
 import { useState } from 'react';
-import {
-  Download,
-  Loader2,
-  AlertCircle,
-  FileText,
-  FileStack,
-  Link2,
-} from 'lucide-react';
+import { Download, Loader2, AlertCircle, FileText, FileStack, Link2 } from 'lucide-react';
 import { IconButton, Menu } from '../../ui';
-import {
-  loadFullSession,
-  saveSessionExport,
-  shareSessionExport,
-} from '@/lib/sessions';
+import { loadFullSession, saveSessionExport, shareSessionExport } from '@/lib/sessions';
 import { recordSharedLink, type SharedLinkRecord } from '@/lib/shared-links';
 import { exportSessionHtml, type ExportMode, MODE_LABELS } from '@/lib/session-export';
 import { ShareResultDialog } from './ShareResultDialog';
@@ -72,9 +61,11 @@ export function ExportMenu({ sessionId }: { sessionId: string | null }) {
 
   const icon = state === 'working' ? Loader2 : state === 'error' ? AlertCircle : Download;
   const label =
-    state === 'working' ? 'Working…'
-    : state === 'error' ? 'Export failed — try again'
-    : 'Export session…';
+    state === 'working'
+      ? 'Working…'
+      : state === 'error'
+        ? 'Export failed — try again'
+        : 'Export session…';
 
   const trigger = (
     <IconButton
@@ -95,19 +86,41 @@ export function ExportMenu({ sessionId }: { sessionId: string | null }) {
         footer="Paths & secrets stripped. BrewPage links expire in 15 days; meethtml links expire in 24 hours."
         items={[
           { header: 'Save to file' },
-          { label: `${MODE_LABELS.summary} (.html)`, icon: FileText, onSelect: () => void save('summary') },
-          { label: `${MODE_LABELS.full} (.html)`, icon: FileStack, onSelect: () => void save('full') },
+          {
+            label: `${MODE_LABELS.summary} (.html)`,
+            icon: FileText,
+            onSelect: () => void save('summary'),
+          },
+          {
+            label: `${MODE_LABELS.full} (.html)`,
+            icon: FileStack,
+            onSelect: () => void save('full'),
+          },
           'separator',
           { header: 'Share link' },
-          { label: `${MODE_LABELS.summary} (${TRANSPORTS.brewpage})`, icon: Link2, onSelect: () => void share('summary', 'brewpage') },
-          { label: `${MODE_LABELS.full} (${TRANSPORTS.brewpage})`, icon: Link2, onSelect: () => void share('full', 'brewpage') },
-          { label: `${MODE_LABELS.summary} (${TRANSPORTS.meethtml})`, icon: Link2, onSelect: () => void share('summary', 'meethtml') },
-          { label: `${MODE_LABELS.full} (${TRANSPORTS.meethtml})`, icon: Link2, onSelect: () => void share('full', 'meethtml') },
+          {
+            label: `${MODE_LABELS.summary} (${TRANSPORTS.brewpage})`,
+            icon: Link2,
+            onSelect: () => void share('summary', 'brewpage'),
+          },
+          {
+            label: `${MODE_LABELS.full} (${TRANSPORTS.brewpage})`,
+            icon: Link2,
+            onSelect: () => void share('full', 'brewpage'),
+          },
+          {
+            label: `${MODE_LABELS.summary} (${TRANSPORTS.meethtml})`,
+            icon: Link2,
+            onSelect: () => void share('summary', 'meethtml'),
+          },
+          {
+            label: `${MODE_LABELS.full} (${TRANSPORTS.meethtml})`,
+            icon: Link2,
+            onSelect: () => void share('full', 'meethtml'),
+          },
         ]}
       />
-      {shared && (
-        <ShareResultDialog record={shared} onClose={() => setShared(null)} />
-      )}
+      {shared && <ShareResultDialog record={shared} onClose={() => setShared(null)} />}
     </>
   );
 }

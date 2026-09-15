@@ -10,7 +10,14 @@ interface SessionPlanSync {
   setSessionPlan: (sessionId: string, plan: null) => void;
 }
 
-interface SessionLoaderDeps extends Pick<SessionStore, 'messagesBySession' | 'streamingBySession' | 'runtimeSessionIdBySession' | 'titleBySession' | 'seenCompactionEvents'> {
+interface SessionLoaderDeps extends Pick<
+  SessionStore,
+  | 'messagesBySession'
+  | 'streamingBySession'
+  | 'runtimeSessionIdBySession'
+  | 'titleBySession'
+  | 'seenCompactionEvents'
+> {
   sessionId: string | null;
   setActiveSessionId: React.Dispatch<React.SetStateAction<string | null>>;
   setLastCompaction: React.Dispatch<React.SetStateAction<CompactionNotice | null>>;
@@ -36,7 +43,7 @@ export function useSessionLoader(deps: SessionLoaderDeps): void {
     plan,
   } = deps;
 
-// Session-switch: render the bucket if cached, else load from disk.
+  // Session-switch: render the bucket if cached, else load from disk.
   useEffect(() => {
     setActiveSessionId(sessionId);
     // A running/finished compaction toast is per-session; don't let a stale
@@ -75,7 +82,7 @@ export function useSessionLoader(deps: SessionLoaderDeps): void {
         return;
       }
       let msgs = data.messages.map(chatFromStored);
-      
+
       // Populate deduplication set from loaded compaction markers to prevent
       // creating duplicates if the same turn triggers compaction again.
       for (const msg of msgs) {
@@ -90,7 +97,7 @@ export function useSessionLoader(deps: SessionLoaderDeps): void {
           }
         }
       }
-      
+
       // Recovery: if the trailing assistant message is a "zombie" (no
       // stop reason, no error info — the turn never reached `turn_done`),
       // mark it interrupted so the user sees a Retry button. This catches
@@ -146,5 +153,4 @@ export function useSessionLoader(deps: SessionLoaderDeps): void {
       cancelled = true;
     };
   }, [sessionId, plan.setSessionPlan, plan.syncVisiblePlan]);
-
 }

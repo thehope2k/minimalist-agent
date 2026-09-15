@@ -10,12 +10,12 @@ import { isAllowedShell, resolveSafeCwd, scrubTerminalEnv } from './harden';
 const SCROLLBACK_MAX_BYTES = 2 * 1024 * 1024;
 
 interface TabEntry {
-  pty:       pty.IPty;
-  title:     string;
-  cwd:       string;
-  shell:     string;
-  buffer:    string;
-  alive:     boolean;
+  pty: pty.IPty;
+  title: string;
+  cwd: string;
+  shell: string;
+  buffer: string;
+  alive: boolean;
   // Set once and never cleared — harmless today since create() always
   // allocates a fresh tabId/TabEntry, but would need resetting if tabId
   // reuse (rather than a fresh randomUUID() per tab) is ever introduced.
@@ -34,30 +34,30 @@ class TerminalManager {
   }
 
   create(cwd: string, shell?: string): TerminalTabInfo {
-    const tabId         = randomUUID();
+    const tabId = randomUUID();
     // A renderer-supplied shell must be a recognized login shell; the default
     // (resolveShell) is our own trusted value and needs no check.
     if (shell !== undefined && !isAllowedShell(shell)) {
       throw new Error(`Refusing to launch terminal with disallowed shell: ${shell}`);
     }
     const resolvedShell = shell ?? this.resolveShell();
-    const safeCwd       = resolveSafeCwd(cwd);
+    const safeCwd = resolveSafeCwd(cwd);
 
     const ptyProcess = pty.spawn(resolvedShell, [], {
       name: 'xterm-256color',
-      cwd:  safeCwd,
-      env:  scrubTerminalEnv(process.env),
+      cwd: safeCwd,
+      env: scrubTerminalEnv(process.env),
       cols: 80,
       rows: 24,
     });
 
     const entry: TabEntry = {
-      pty:    ptyProcess,
-      title:  basename(safeCwd) || safeCwd,
-      cwd:    safeCwd,
-      shell:  resolvedShell,
+      pty: ptyProcess,
+      title: basename(safeCwd) || safeCwd,
+      cwd: safeCwd,
+      shell: resolvedShell,
       buffer: '',
-      alive:  true,
+      alive: true,
     };
     this.tabs.set(tabId, entry);
 
@@ -79,7 +79,7 @@ class TerminalManager {
       // shell binary (e.g. 'zsh') so multi-tab context stays meaningful.
       const shellBin = entry.shell.split('/').pop() ?? entry.shell;
       const nextTitle =
-        currentProcess === shellBin ? (basename(entry.cwd) || entry.cwd) : currentProcess;
+        currentProcess === shellBin ? basename(entry.cwd) || entry.cwd : currentProcess;
       if (nextTitle && nextTitle !== entry.title) {
         entry.title = nextTitle;
         this.broadcast('terminal:titleChange', { tabId, title: nextTitle });
@@ -96,9 +96,9 @@ class TerminalManager {
     return {
       tabId,
       title: entry.title,
-      cwd:   safeCwd,
+      cwd: safeCwd,
       shell: resolvedShell,
-      pid:   ptyProcess.pid,
+      pid: ptyProcess.pid,
       alive: true,
     };
   }
@@ -120,11 +120,11 @@ class TerminalManager {
   listTabs(): TerminalTabInfo[] {
     return [...this.tabs.entries()].map(([tabId, e]) => ({
       tabId,
-      title:    e.title,
-      cwd:      e.cwd,
-      shell:    e.shell,
-      pid:      e.pty.pid,
-      alive:    e.alive,
+      title: e.title,
+      cwd: e.cwd,
+      shell: e.shell,
+      pid: e.pty.pid,
+      alive: e.alive,
       exitCode: e.exitCode,
     }));
   }

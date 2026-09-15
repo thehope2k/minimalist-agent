@@ -1,9 +1,5 @@
 import { useEffect, useState } from 'react';
-import {
-  bootstrap,
-  snapshot as readSnapshot,
-  subscribe,
-} from '@/lib/connections';
+import { bootstrap, snapshot as readSnapshot, subscribe } from '@/lib/connections';
 
 /**
  * Bootstraps the connections+settings store on first mount, then returns

@@ -1,8 +1,4 @@
-import type {
-  FileSearchEntry,
-  LoadedExtension,
-  LoadedSkill,
-} from '@/lib/electron';
+import type { FileSearchEntry, LoadedExtension, LoadedSkill } from '@/lib/electron';
 
 /** Discriminated union of pickable items. */
 export type MentionItem =

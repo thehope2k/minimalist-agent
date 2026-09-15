@@ -17,7 +17,13 @@ import { type Credential, isEncryptionAvailable } from '../storage/credentials';
 import { type AiSettings, getSettings, saveSettings } from '../storage/settings';
 import { invalidateContextFileCache } from '../agent-runtime/system-prompt';
 import { createLogger } from '../logger';
-import { fetchCodeMieBudget, fetchCodeMieIntegrations, fetchCodeMieModels, fetchCodeMieProjects, signInWithCodeMie } from '../codemie/sso';
+import {
+  fetchCodeMieBudget,
+  fetchCodeMieIntegrations,
+  fetchCodeMieModels,
+  fetchCodeMieProjects,
+  signInWithCodeMie,
+} from '../codemie/sso';
 
 const log = createLogger('connections-ipc');
 
@@ -55,13 +61,14 @@ export function registerConnectionsIpc(): void {
     const credential = getCredential(slug);
     return credential?.type === 'codemie_sso' ? null : credential;
   });
-  ipcMain.handle('connections:isEncryptionAvailable', () =>
-    isEncryptionAvailable(),
-  );
+  ipcMain.handle('connections:isEncryptionAvailable', () => isEncryptionAvailable());
 
   ipcMain.handle(
     'connections:test',
-    async (_e, slug: string): Promise<{ ok: true } | { ok: false; error: ReturnType<typeof parseError> }> => {
+    async (
+      _e,
+      slug: string,
+    ): Promise<{ ok: true } | { ok: false; error: ReturnType<typeof parseError> }> => {
       try {
         const auth = await resolveAuthForSlug(slug);
         // Pi/Copilot connections don't run a probe query — a successful auth
@@ -71,7 +78,10 @@ export function registerConnectionsIpc(): void {
         if (!meta) throw new Error(`Connection "${slug}" not found.`);
         // OpenAI-compatible providers: do a real round-trip from main (no CORS)
         // by listing models. Validates the base URL + Bearer key cheaply.
-        if ((meta.providerType === 'openai-compatible' || meta.providerType === 'codemie-sso') && auth.type === 'api') {
+        if (
+          (meta.providerType === 'openai-compatible' || meta.providerType === 'codemie-sso') &&
+          auth.type === 'api'
+        ) {
           const base = auth.baseUrl.replace(/\/+$/, '');
           const ctrl = new AbortController();
           const timeout = setTimeout(() => ctrl.abort(), 15_000);
@@ -82,7 +92,10 @@ export function registerConnectionsIpc(): void {
             });
             if (res.ok) return { ok: true };
             if (res.status === 401 || res.status === 403) {
-              return { ok: false, error: parseError(new Error('Invalid or unauthorized API key.')) };
+              return {
+                ok: false,
+                error: parseError(new Error('Invalid or unauthorized API key.')),
+              };
             }
             // Some providers don't expose /models or gate it differently. A
             // non-auth failure isn't proof the key is bad — accept and let the
@@ -105,15 +118,18 @@ export function registerConnectionsIpc(): void {
 
   // Force-refresh a connection's model catalog (manual "Refresh models").
   // Background/TTL revalidation runs without this handler.
-  ipcMain.handle('connections:refreshModels', (_e, slug: string) =>
-    refreshConnectionModels(slug),
-  );
+  ipcMain.handle('connections:refreshModels', (_e, slug: string) => refreshConnectionModels(slug));
 
   // List models a remote OpenAI-compatible provider advertises via /v1/models.
   // Used by the add-connection flow to merge live ids onto preset metadata.
   ipcMain.handle('codemie:fetchBudget', async (_e, args: { connectionSlug: string }) => {
     const connection = listConnections().find((item) => item.slug === args.connectionSlug);
-    if (!connection || connection.providerType !== 'codemie-sso' || !connection.baseUrl || !connection.codeMieProject) {
+    if (
+      !connection ||
+      connection.providerType !== 'codemie-sso' ||
+      !connection.baseUrl ||
+      !connection.codeMieProject
+    ) {
       return { error: 'Connection is not a CodeMie SSO connection.' };
     }
     const credential = getCredential(connection.slug);
@@ -124,7 +140,11 @@ export function registerConnectionsIpc(): void {
       return { error: 'No CodeMie SSO session is stored for this connection.' };
     }
     try {
-      const budget = await fetchCodeMieBudget(connection.baseUrl, credential.cookies, connection.codeMieProject);
+      const budget = await fetchCodeMieBudget(
+        connection.baseUrl,
+        credential.cookies,
+        connection.codeMieProject,
+      );
       return budget ?? { error: 'CodeMie reported no budget for the selected project.' };
     } catch (error) {
       log.warn('CodeMie budget lookup failed:', error);
@@ -141,7 +161,10 @@ export function registerConnectionsIpc(): void {
     const integrations = await Promise.all(
       projects.map(async (project) => {
         try {
-          return [project, await fetchCodeMieIntegrations(args.baseUrl, session.cookies, project)] as const;
+          return [
+            project,
+            await fetchCodeMieIntegrations(args.baseUrl, session.cookies, project),
+          ] as const;
         } catch (error) {
           log.warn(`CodeMie integration discovery failed for project "${project}":`, error);
           return [project, []] as const;

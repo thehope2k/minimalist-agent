@@ -4,9 +4,7 @@ import { DialogLayout } from './DialogLayout';
 import type { DialogProps, DecisionPayload } from './types';
 
 export function DecisionDialog({ reqId, payload, onRespond }: DialogProps<DecisionPayload>) {
-  const [selectedOption, setSelectedOption] = useState<string | null>(
-    payload.recommended || null
-  );
+  const [selectedOption, setSelectedOption] = useState<string | null>(payload.recommended || null);
   const [customResponse, setCustomResponse] = useState('');
 
   const handleSubmit = () => {
@@ -64,7 +62,7 @@ export function DecisionDialog({ reqId, payload, onRespond }: DialogProps<Decisi
           >
             <div className="font-medium text-fg mb-2">{alt.name}</div>
             <div className="text-sm text-fg-muted mb-3">{alt.description}</div>
-            
+
             {alt.pros.length > 0 && (
               <div className="mb-2">
                 <div className="text-xs font-medium text-green-400 mb-1">Pros:</div>
@@ -75,7 +73,7 @@ export function DecisionDialog({ reqId, payload, onRespond }: DialogProps<Decisi
                 </ul>
               </div>
             )}
-            
+
             {alt.cons.length > 0 && (
               <div>
                 <div className="text-xs font-medium text-red-400 mb-1">Cons:</div>

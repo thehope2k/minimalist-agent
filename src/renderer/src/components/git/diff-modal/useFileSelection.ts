@@ -14,7 +14,7 @@ export function useFileSelection(allFiles: GitFileEntry[], diffCaches: DiffCache
   useEffect(() => {
     setSelected((prev) => {
       if (!prev) return allFiles[0] ?? null;
-      return allFiles.find((f) => f.absolutePath === prev.absolutePath) ?? (allFiles[0] ?? null);
+      return allFiles.find((f) => f.absolutePath === prev.absolutePath) ?? allFiles[0] ?? null;
     });
   }, [allFiles]);
 

@@ -1,10 +1,4 @@
-import {
-  CheckCircle2,
-  FolderOpen,
-  MoreHorizontal,
-  Pencil,
-  Trash2,
-} from 'lucide-react';
+import { CheckCircle2, FolderOpen, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { IconButton, Menu, type MenuItem } from '../ui';
 import {
   deleteExtension as deleteExtensionRpc,
@@ -72,9 +66,7 @@ export function ExtensionMenu({
           label="More"
           size="sm"
           className={
-            variant === 'panel'
-              ? 'bg-elevated/80 hover:bg-elevated-2'
-              : 'hover:bg-elevated'
+            variant === 'panel' ? 'bg-elevated/80 hover:bg-elevated-2' : 'hover:bg-elevated'
           }
         />
       }

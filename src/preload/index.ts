@@ -248,7 +248,6 @@ interface ModelDef {
   contextWindow: number;
 }
 
-
 type ProviderType = import('../shared/provider-types').ProviderType;
 
 interface ConnectionMeta {
@@ -435,8 +434,7 @@ const api = {
   app: {
     getVersion: (): Promise<string> => ipcRenderer.invoke('app:getVersion'),
     openExternal: (url: string): Promise<void> => ipcRenderer.invoke('shell:openExternal', url),
-    getKeepAwake: (): Promise<boolean> =>
-      ipcRenderer.invoke('app:getKeepAwake'),
+    getKeepAwake: (): Promise<boolean> => ipcRenderer.invoke('app:getKeepAwake'),
     setKeepAwake: (enabled: boolean): Promise<boolean> =>
       ipcRenderer.invoke('app:setKeepAwake', enabled),
     setAgentActive: (active: boolean): Promise<void> =>
@@ -460,13 +458,10 @@ const api = {
     onDeviceCode: (
       cb: (u: { userCode: string; verificationUri: string }) => void,
     ): (() => void) => {
-      const handler = (
-        _e: unknown,
-        payload: { userCode: string; verificationUri: string },
-      ) => cb(payload);
+      const handler = (_e: unknown, payload: { userCode: string; verificationUri: string }) =>
+        cb(payload);
       ipcRenderer.on('copilot-oauth:device-code', handler);
-      return () =>
-        ipcRenderer.removeListener('copilot-oauth:device-code', handler);
+      return () => ipcRenderer.removeListener('copilot-oauth:device-code', handler);
     },
   },
   chatgptOAuth: {
@@ -479,30 +474,25 @@ const api = {
     onBrowserOpen: (cb: (url: string) => void): (() => void) => {
       const handler = (_e: unknown, url: string) => cb(url);
       ipcRenderer.on('chatgpt-oauth:browser-open', handler);
-      return () =>
-        ipcRenderer.removeListener('chatgpt-oauth:browser-open', handler);
+      return () => ipcRenderer.removeListener('chatgpt-oauth:browser-open', handler);
     },
   },
   chatgpt: {
     getModels: (): Promise<ModelDef[]> => ipcRenderer.invoke('chatgpt:getModels'),
-    fetchQuota: (
-      args: { connectionSlug: string },
-    ): Promise<ChatGptQuota | { error: string }> =>
+    fetchQuota: (args: { connectionSlug: string }): Promise<ChatGptQuota | { error: string }> =>
       ipcRenderer.invoke('chatgpt:fetchQuota', args),
   },
   copilot: {
-    fetchModels: (
-      args: { refreshToken?: string; connectionSlug?: string },
-    ): Promise<{ models: ModelDef[] } | { error: string }> =>
+    fetchModels: (args: {
+      refreshToken?: string;
+      connectionSlug?: string;
+    }): Promise<{ models: ModelDef[] } | { error: string }> =>
       ipcRenderer.invoke('copilot:fetchModels', args),
-    fetchQuota: (
-      args: { connectionSlug: string },
-    ): Promise<CopilotQuota | { error: string }> =>
+    fetchQuota: (args: { connectionSlug: string }): Promise<CopilotQuota | { error: string }> =>
       ipcRenderer.invoke('copilot:fetchQuota', args),
   },
   chat: {
-    send: (req: ChatSendRequest): Promise<void> =>
-      ipcRenderer.invoke('chat:send', req),
+    send: (req: ChatSendRequest): Promise<void> => ipcRenderer.invoke('chat:send', req),
     abort: (id: string): Promise<void> => ipcRenderer.invoke('chat:abort', id),
     steer: (
       turnId: string,
@@ -528,9 +518,7 @@ const api = {
       ipcRenderer.on('chat:event', handler);
       return () => ipcRenderer.removeListener('chat:event', handler);
     },
-    onCollaborationRequest: (
-      cb: (req: EngagementRequest) => void,
-    ): (() => void) => {
+    onCollaborationRequest: (cb: (req: EngagementRequest) => void): (() => void) => {
       const handler = (_e: unknown, payload: EngagementRequest) => cb(payload);
       ipcRenderer.on('chat:collaboration-request', handler);
       return () => ipcRenderer.removeListener('chat:collaboration-request', handler);
@@ -563,15 +551,21 @@ const api = {
       ipcRenderer.on('planning:updated', handler);
       return () => ipcRenderer.removeListener('planning:updated', handler);
     },
-    onPhaseUpdated: (cb: (sessionId: string, planId: string, phase: Phase) => void): (() => void) => {
+    onPhaseUpdated: (
+      cb: (sessionId: string, planId: string, phase: Phase) => void,
+    ): (() => void) => {
       const handler = (_e: unknown, payload: { sessionId: string; planId: string; phase: Phase }) =>
         cb(payload.sessionId, payload.planId, payload.phase);
       ipcRenderer.on('planning:phase-updated', handler);
       return () => ipcRenderer.removeListener('planning:phase-updated', handler);
     },
-    onPlanRevised: (cb: (sessionId: string, plan: Plan, revision: PlanRevision) => void): (() => void) => {
-      const handler = (_e: unknown, payload: { sessionId: string; plan: Plan; revision: PlanRevision }) =>
-        cb(payload.sessionId, payload.plan, payload.revision);
+    onPlanRevised: (
+      cb: (sessionId: string, plan: Plan, revision: PlanRevision) => void,
+    ): (() => void) => {
+      const handler = (
+        _e: unknown,
+        payload: { sessionId: string; plan: Plan; revision: PlanRevision },
+      ) => cb(payload.sessionId, payload.plan, payload.revision);
       ipcRenderer.on('planning:revised', handler);
       return () => ipcRenderer.removeListener('planning:revised', handler);
     },
@@ -587,19 +581,27 @@ const api = {
       ipcRenderer.on('planning:cancelled', handler);
       return () => ipcRenderer.removeListener('planning:cancelled', handler);
     },
-    onPlanError: (cb: (sessionId: string, planId: string, error: string, phaseId?: string) => void): (() => void) => {
-      const handler = (_e: unknown, payload: { sessionId: string; planId: string; error: string; phaseId?: string }) =>
-        cb(payload.sessionId, payload.planId, payload.error, payload.phaseId);
+    onPlanError: (
+      cb: (sessionId: string, planId: string, error: string, phaseId?: string) => void,
+    ): (() => void) => {
+      const handler = (
+        _e: unknown,
+        payload: { sessionId: string; planId: string; error: string; phaseId?: string },
+      ) => cb(payload.sessionId, payload.planId, payload.error, payload.phaseId);
       ipcRenderer.on('planning:error', handler);
       return () => ipcRenderer.removeListener('planning:error', handler);
     },
-    onApprovalRequired: (cb: (sessionId: string, planId: string, phase: Phase) => void): (() => void) => {
+    onApprovalRequired: (
+      cb: (sessionId: string, planId: string, phase: Phase) => void,
+    ): (() => void) => {
       const handler = (_e: unknown, payload: { sessionId: string; planId: string; phase: Phase }) =>
         cb(payload.sessionId, payload.planId, payload.phase);
       ipcRenderer.on('planning:approval-required', handler);
       return () => ipcRenderer.removeListener('planning:approval-required', handler);
     },
-    onPermissionModeChanged: (cb: (sessionId: string, mode: 'plan' | 'auto') => void): (() => void) => {
+    onPermissionModeChanged: (
+      cb: (sessionId: string, mode: 'plan' | 'auto') => void,
+    ): (() => void) => {
       const handler = (_e: unknown, payload: { sessionId: string; mode: 'plan' | 'auto' }) =>
         cb(payload.sessionId, payload.mode);
       ipcRenderer.on('permission-mode-changed', handler);
@@ -607,35 +609,51 @@ const api = {
     },
   },
   connections: {
-    list: (): Promise<ConnectionMeta[]> =>
-      ipcRenderer.invoke('connections:list'),
+    list: (): Promise<ConnectionMeta[]> => ipcRenderer.invoke('connections:list'),
     getDefaultSlug: (): Promise<string | undefined> =>
       ipcRenderer.invoke('connections:getDefaultSlug'),
     setDefaultSlug: (slug: string | null): Promise<void> =>
       ipcRenderer.invoke('connections:setDefaultSlug', slug),
     save: (meta: ConnectionMeta, credential: Credential): Promise<void> =>
       ipcRenderer.invoke('connections:save', { meta, credential }),
-    delete: (slug: string): Promise<void> =>
-      ipcRenderer.invoke('connections:delete', slug),
+    delete: (slug: string): Promise<void> => ipcRenderer.invoke('connections:delete', slug),
     rename: (slug: string, name: string): Promise<void> =>
       ipcRenderer.invoke('connections:rename', { slug, name }),
-    reorder: (slugs: string[]): Promise<void> =>
-      ipcRenderer.invoke('connections:reorder', slugs),
+    reorder: (slugs: string[]): Promise<void> => ipcRenderer.invoke('connections:reorder', slugs),
     getCredential: (slug: string): Promise<Credential | null> =>
       ipcRenderer.invoke('connections:getCredential', slug),
     isEncryptionAvailable: (): Promise<boolean> =>
       ipcRenderer.invoke('connections:isEncryptionAvailable'),
     test: (slug: string): Promise<{ ok: true } | { ok: false; error: AgentError }> =>
       ipcRenderer.invoke('connections:test', slug),
-    signInWithCodeMie: (args: { baseUrl: string }): Promise<{ cookies: Record<string, string>; expiresAt?: number; models: Array<{ id: string; name: string; shortName: string; description: string; contextWindow: number; supportsVision?: boolean; supportsToolCalls?: boolean; supportsStreaming?: boolean }>; projects: string[]; integrations: Record<string, Array<{ id: string; alias: string }>> }> =>
-      ipcRenderer.invoke('codemie-sso:signIn', args),
-    fetchCodeMieBudget: (
-      args: { connectionSlug: string },
-    ): Promise<{ currentSpending: number; budgetLimit?: number; usedPercent: number; resetAt?: string } | { error: string }> =>
-      ipcRenderer.invoke('codemie:fetchBudget', args),
-    listRemoteModels: (
-      args: { baseUrl: string; apiKey?: string },
-    ): Promise<{ ids: string[] } | { error: string }> =>
+    signInWithCodeMie: (args: {
+      baseUrl: string;
+    }): Promise<{
+      cookies: Record<string, string>;
+      expiresAt?: number;
+      models: Array<{
+        id: string;
+        name: string;
+        shortName: string;
+        description: string;
+        contextWindow: number;
+        supportsVision?: boolean;
+        supportsToolCalls?: boolean;
+        supportsStreaming?: boolean;
+      }>;
+      projects: string[];
+      integrations: Record<string, Array<{ id: string; alias: string }>>;
+    }> => ipcRenderer.invoke('codemie-sso:signIn', args),
+    fetchCodeMieBudget: (args: {
+      connectionSlug: string;
+    }): Promise<
+      | { currentSpending: number; budgetLimit?: number; usedPercent: number; resetAt?: string }
+      | { error: string }
+    > => ipcRenderer.invoke('codemie:fetchBudget', args),
+    listRemoteModels: (args: {
+      baseUrl: string;
+      apiKey?: string;
+    }): Promise<{ ids: string[] } | { error: string }> =>
       ipcRenderer.invoke('connections:listRemoteModels', args),
     refreshModels: (
       slug: string,
@@ -652,8 +670,7 @@ const api = {
   },
   settings: {
     get: (): Promise<AiSettings> => ipcRenderer.invoke('settings:get'),
-    save: (settings: AiSettings): Promise<void> =>
-      ipcRenderer.invoke('settings:save', settings),
+    save: (settings: AiSettings): Promise<void> => ipcRenderer.invoke('settings:save', settings),
     pushRecentFolder: (folder: string): Promise<AiSettings> =>
       ipcRenderer.invoke('settings:pushRecentFolder', folder),
     removeRecentFolder: (folder: string): Promise<AiSettings> =>
@@ -668,14 +685,11 @@ const api = {
   },
   preferences: {
     get: (): Promise<UserPreferences> => ipcRenderer.invoke('preferences:get'),
-    save: (prefs: UserPreferences): Promise<void> =>
-      ipcRenderer.invoke('preferences:save', prefs),
+    save: (prefs: UserPreferences): Promise<void> => ipcRenderer.invoke('preferences:save', prefs),
   },
   sessions: {
     list: (): Promise<SessionSummary[]> => ipcRenderer.invoke('sessions:list'),
-    load: (
-      id: string,
-    ): Promise<{ meta: SessionMeta; messages: StoredMessage[] } | null> =>
+    load: (id: string): Promise<{ meta: SessionMeta; messages: StoredMessage[] } | null> =>
       ipcRenderer.invoke('sessions:load', id),
     create: (opts?: {
       workingDirectory?: string;
@@ -692,28 +706,21 @@ const api = {
     updateMeta: (
       id: string,
       patch: Partial<Omit<SessionMeta, 'id' | 'createdAt'>>,
-    ): Promise<SessionMeta> =>
-      ipcRenderer.invoke('sessions:updateMeta', id, patch),
+    ): Promise<SessionMeta> => ipcRenderer.invoke('sessions:updateMeta', id, patch),
     truncateFrom: (id: string, firstDroppedId: string): Promise<number> =>
       ipcRenderer.invoke('sessions:truncateFrom', id, firstDroppedId),
-    delete: (id: string): Promise<void> =>
-      ipcRenderer.invoke('sessions:delete', id),
+    delete: (id: string): Promise<void> => ipcRenderer.invoke('sessions:delete', id),
     branch: (
       parentId: string,
       upToMessageId: string,
       options?: { withContext?: boolean },
-    ): Promise<unknown> =>
-      ipcRenderer.invoke('sessions:branch', parentId, upToMessageId, options),
+    ): Promise<unknown> => ipcRenderer.invoke('sessions:branch', parentId, upToMessageId, options),
     revealInFolder: (id: string): Promise<void> =>
       ipcRenderer.invoke('sessions:revealInFolder', id),
-    listFiles: (id: string): Promise<unknown[]> =>
-      ipcRenderer.invoke('sessions:listFiles', id),
+    listFiles: (id: string): Promise<unknown[]> => ipcRenderer.invoke('sessions:listFiles', id),
     revealFile: (absPath: string): Promise<void> =>
       ipcRenderer.invoke('sessions:revealFile', absPath),
-    saveExport: (
-      html: string,
-      suggestedName: string,
-    ): Promise<string | null> =>
+    saveExport: (html: string, suggestedName: string): Promise<string | null> =>
       ipcRenderer.invoke('sessions:saveExport', { html, suggestedName }),
     shareExport: (
       html: string,
@@ -722,31 +729,22 @@ const api = {
       backend?: 'brewpage' | 'meethtml',
     ): Promise<SharedExportResult> =>
       ipcRenderer.invoke('sessions:shareExport', { html, filename, ttlDays, backend }),
-    revokeExport: (
-      namespace: string,
-      id: string,
-      ownerToken: string,
-    ): Promise<void> =>
+    revokeExport: (namespace: string, id: string, ownerToken: string): Promise<void> =>
       ipcRenderer.invoke('sessions:revokeExport', { namespace, id, ownerToken }),
   },
   projects: {
     list: (): Promise<Project[]> => ipcRenderer.invoke('projects:list'),
-    create: (input: ProjectInput): Promise<Project> =>
-      ipcRenderer.invoke('projects:create', input),
+    create: (input: ProjectInput): Promise<Project> => ipcRenderer.invoke('projects:create', input),
     reorder: (ids: string[]): Promise<void> => ipcRenderer.invoke('projects:reorder', ids),
     update: (
       id: string,
       patch: Partial<Omit<Project, 'id' | 'createdAt'>>,
-    ): Promise<Project | null> =>
-      ipcRenderer.invoke('projects:update', id, patch),
-    delete: (
-      id: string,
-    ): Promise<{ ok: boolean; sessionsCleared: number }> =>
+    ): Promise<Project | null> => ipcRenderer.invoke('projects:update', id, patch),
+    delete: (id: string): Promise<{ ok: boolean; sessionsCleared: number }> =>
       ipcRenderer.invoke('projects:delete', id),
   },
   fs: {
-    pickDirectory: (): Promise<string | null> =>
-      ipcRenderer.invoke('fs:pickDirectory'),
+    pickDirectory: (): Promise<string | null> => ipcRenderer.invoke('fs:pickDirectory'),
     pickFile: (opts?: { defaultPath?: string; title?: string }): Promise<string | null> =>
       ipcRenderer.invoke('fs:pickFile', opts),
     readFile: (absolutePath: string): Promise<string | null> =>
@@ -757,59 +755,60 @@ const api = {
   files: {
     search: (args: { root: string; query: string; limit?: number }): Promise<unknown[]> =>
       ipcRenderer.invoke('files:search', args),
-    grep: (args: { root: string; query: string; useRegex?: boolean; caseSensitive?: boolean; limit?: number }): Promise<unknown[]> =>
-      ipcRenderer.invoke('files:grep', args),
-    listDirectory: (args: { path: string; root: string; includeHidden?: boolean }): Promise<unknown[]> =>
-      ipcRenderer.invoke('files:listDirectory', args),
-    buildFileTree: (args: { path: string; root: string; includeHidden?: boolean; maxDepth?: number }): Promise<unknown[]> =>
-      ipcRenderer.invoke('files:buildFileTree', args),
+    grep: (args: {
+      root: string;
+      query: string;
+      useRegex?: boolean;
+      caseSensitive?: boolean;
+      limit?: number;
+    }): Promise<unknown[]> => ipcRenderer.invoke('files:grep', args),
+    listDirectory: (args: {
+      path: string;
+      root: string;
+      includeHidden?: boolean;
+    }): Promise<unknown[]> => ipcRenderer.invoke('files:listDirectory', args),
+    buildFileTree: (args: {
+      path: string;
+      root: string;
+      includeHidden?: boolean;
+      maxDepth?: number;
+    }): Promise<unknown[]> => ipcRenderer.invoke('files:buildFileTree', args),
     stat: (absolutePath: string): Promise<FileStatResult> =>
       ipcRenderer.invoke('files:stat', absolutePath),
   },
   skills: {
     getDir: (): Promise<string> => ipcRenderer.invoke('skills:getDir'),
-    getProjectDir: (cwd: string): Promise<string> => ipcRenderer.invoke('skills:getProjectDir', cwd),
-    getReferenceDocPath: (): Promise<string> =>
-      ipcRenderer.invoke('skills:getReferenceDocPath'),
+    getProjectDir: (cwd: string): Promise<string> =>
+      ipcRenderer.invoke('skills:getProjectDir', cwd),
+    getReferenceDocPath: (): Promise<string> => ipcRenderer.invoke('skills:getReferenceDocPath'),
     list: (): Promise<unknown[]> => ipcRenderer.invoke('skills:list'),
-    get: (slug: string): Promise<unknown | null> =>
-      ipcRenderer.invoke('skills:get', slug),
+    get: (slug: string): Promise<unknown | null> => ipcRenderer.invoke('skills:get', slug),
     listFiles: (dirPath: string): Promise<unknown[]> =>
       ipcRenderer.invoke('skills:listFiles', dirPath),
-    delete: (dirPath: string): Promise<boolean> =>
-      ipcRenderer.invoke('skills:delete', dirPath),
-    invalidateCache: (): Promise<void> =>
-      ipcRenderer.invoke('skills:invalidateCache'),
+    delete: (dirPath: string): Promise<boolean> => ipcRenderer.invoke('skills:delete', dirPath),
+    invalidateCache: (): Promise<void> => ipcRenderer.invoke('skills:invalidateCache'),
     openInEditor: (dirPath: string): Promise<string> =>
       ipcRenderer.invoke('skills:openInEditor', dirPath),
     revealInFinder: (dirPath: string): Promise<void> =>
       ipcRenderer.invoke('skills:revealInFinder', dirPath),
-    validate: (
-      dirPath: string,
-      slug: string,
-    ): Promise<{ ok: boolean; report: string }> =>
+    validate: (dirPath: string, slug: string): Promise<{ ok: boolean; report: string }> =>
       ipcRenderer.invoke('skills:validate', dirPath, slug),
   },
   agents: {
     getDir: (): Promise<string> => ipcRenderer.invoke('agents:getDir'),
-    getProjectDir: (cwd: string): Promise<string> => ipcRenderer.invoke('agents:getProjectDir', cwd),
+    getProjectDir: (cwd: string): Promise<string> =>
+      ipcRenderer.invoke('agents:getProjectDir', cwd),
     list: (): Promise<unknown[]> => ipcRenderer.invoke('agents:list'),
-    get: (slug: string): Promise<unknown | null> =>
-      ipcRenderer.invoke('agents:get', slug),
+    get: (slug: string): Promise<unknown | null> => ipcRenderer.invoke('agents:get', slug),
     listFiles: (dirPath: string): Promise<unknown[]> =>
       ipcRenderer.invoke('agents:listFiles', dirPath),
-    delete: (slug: string): Promise<boolean> =>
-      ipcRenderer.invoke('agents:delete', slug),
-    invalidateCache: (): Promise<void> =>
-      ipcRenderer.invoke('agents:invalidateCache'),
+    delete: (slug: string): Promise<boolean> => ipcRenderer.invoke('agents:delete', slug),
+    invalidateCache: (): Promise<void> => ipcRenderer.invoke('agents:invalidateCache'),
     openInEditor: (dirPath: string): Promise<string> =>
       ipcRenderer.invoke('agents:openInEditor', dirPath),
     revealInFinder: (dirPath: string): Promise<void> =>
       ipcRenderer.invoke('agents:revealInFinder', dirPath),
-    validate: (
-      dirPath: string,
-      slug: string,
-    ): Promise<{ ok: boolean; report: string }> =>
+    validate: (dirPath: string, slug: string): Promise<{ ok: boolean; report: string }> =>
       ipcRenderer.invoke('agents:validate', dirPath, slug),
   },
   context: {
@@ -829,26 +828,21 @@ const api = {
   },
   extensions: {
     getDir: (): Promise<string> => ipcRenderer.invoke('extensions:getDir'),
-    getProjectDir: (cwd: string): Promise<string> => ipcRenderer.invoke('extensions:getProjectDir', cwd),
+    getProjectDir: (cwd: string): Promise<string> =>
+      ipcRenderer.invoke('extensions:getProjectDir', cwd),
     getReferenceDocPath: (): Promise<string> =>
       ipcRenderer.invoke('extensions:getReferenceDocPath'),
     list: (cwd?: string): Promise<unknown[]> => ipcRenderer.invoke('extensions:list', cwd),
-    get: (slug: string): Promise<unknown | null> =>
-      ipcRenderer.invoke('extensions:get', slug),
+    get: (slug: string): Promise<unknown | null> => ipcRenderer.invoke('extensions:get', slug),
     listFiles: (dirPath: string): Promise<unknown[]> =>
       ipcRenderer.invoke('extensions:listFiles', dirPath),
-    delete: (dirPath: string): Promise<boolean> =>
-      ipcRenderer.invoke('extensions:delete', dirPath),
-    invalidateCache: (): Promise<void> =>
-      ipcRenderer.invoke('extensions:invalidateCache'),
+    delete: (dirPath: string): Promise<boolean> => ipcRenderer.invoke('extensions:delete', dirPath),
+    invalidateCache: (): Promise<void> => ipcRenderer.invoke('extensions:invalidateCache'),
     openInEditor: (dirPath: string): Promise<string> =>
       ipcRenderer.invoke('extensions:openInEditor', dirPath),
     revealInFinder: (dirPath: string): Promise<void> =>
       ipcRenderer.invoke('extensions:revealInFinder', dirPath),
-    validate: (
-      dirPath: string,
-      slug: string,
-    ): Promise<{ ok: boolean; report: string }> =>
+    validate: (dirPath: string, slug: string): Promise<{ ok: boolean; report: string }> =>
       ipcRenderer.invoke('extensions:validate', dirPath, slug),
 
     /* secrets */
@@ -893,8 +887,7 @@ const api = {
   },
   attachments: {
     pickFiles: (): Promise<unknown[]> => ipcRenderer.invoke('attachments:pickFiles'),
-    readPath: (path: string): Promise<unknown> =>
-      ipcRenderer.invoke('attachments:readPath', path),
+    readPath: (path: string): Promise<unknown> => ipcRenderer.invoke('attachments:readPath', path),
     store: (sessionId: string, draft: unknown): Promise<unknown> =>
       ipcRenderer.invoke('attachments:store', sessionId, draft),
     readAsBase64: (storedPath: string): Promise<string | null> =>
@@ -912,7 +905,12 @@ const api = {
     }) => ipcRenderer.invoke('git:diff', args),
     commitFiles: (args: {
       repoRoot: string;
-      files: Array<{ relativePath: string; absolutePath: string; status: string; content?: string }>;
+      files: Array<{
+        relativePath: string;
+        absolutePath: string;
+        status: string;
+        content?: string;
+      }>;
       message: string;
       amend?: boolean;
     }) => ipcRenderer.invoke('git:commitFiles', args),
@@ -934,13 +932,9 @@ const api = {
       sessionId?: string;
       cwd?: string;
     }) => ipcRenderer.invoke('git:generateCommitMessage', args),
-    mergeState: (repoRoot: string) =>
-      ipcRenderer.invoke('git:mergeState', repoRoot),
-    conflictContent: (args: {
-      repoRoot: string;
-      relativePath: string;
-      absolutePath: string;
-    }) => ipcRenderer.invoke('git:conflictContent', args),
+    mergeState: (repoRoot: string) => ipcRenderer.invoke('git:mergeState', repoRoot),
+    conflictContent: (args: { repoRoot: string; relativePath: string; absolutePath: string }) =>
+      ipcRenderer.invoke('git:conflictContent', args),
     resolveConflict: (args: {
       repoRoot: string;
       relativePath: string;
@@ -953,8 +947,7 @@ const api = {
       ipcRenderer.invoke('git:continueMerge', args),
   },
   terminal: {
-    resolveShell: (): Promise<string> =>
-      ipcRenderer.invoke('terminal:resolveShell'),
+    resolveShell: (): Promise<string> => ipcRenderer.invoke('terminal:resolveShell'),
 
     create: (opts: { cwd: string; shell?: string }): Promise<TerminalTabInfo> =>
       ipcRenderer.invoke('terminal:create', opts),
@@ -968,14 +961,11 @@ const api = {
     getScrollback: (tabId: string): Promise<string | null> =>
       ipcRenderer.invoke('terminal:getScrollback', tabId),
 
-    listTabs: (): Promise<TerminalTabInfo[]> =>
-      ipcRenderer.invoke('terminal:listTabs'),
+    listTabs: (): Promise<TerminalTabInfo[]> => ipcRenderer.invoke('terminal:listTabs'),
 
-    kill: (tabId: string): Promise<void> =>
-      ipcRenderer.invoke('terminal:kill', tabId),
+    kill: (tabId: string): Promise<void> => ipcRenderer.invoke('terminal:kill', tabId),
 
-    listShells: (): Promise<string[]> =>
-      ipcRenderer.invoke('terminal:listShells'),
+    listShells: (): Promise<string[]> => ipcRenderer.invoke('terminal:listShells'),
 
     onData: (cb: (tabId: string, data: string) => void): (() => void) => {
       const h = (_e: unknown, p: { tabId: string; data: string }) => cb(p.tabId, p.data);
@@ -984,15 +974,13 @@ const api = {
     },
 
     onExit: (cb: (tabId: string, exitCode: number) => void): (() => void) => {
-      const h = (_e: unknown, p: { tabId: string; exitCode: number }) =>
-        cb(p.tabId, p.exitCode);
+      const h = (_e: unknown, p: { tabId: string; exitCode: number }) => cb(p.tabId, p.exitCode);
       ipcRenderer.on('terminal:exit', h);
       return () => ipcRenderer.removeListener('terminal:exit', h);
     },
 
     onTitleChange: (cb: (tabId: string, title: string) => void): (() => void) => {
-      const h = (_e: unknown, p: { tabId: string; title: string }) =>
-        cb(p.tabId, p.title);
+      const h = (_e: unknown, p: { tabId: string; title: string }) => cb(p.tabId, p.title);
       ipcRenderer.on('terminal:titleChange', h);
       return () => ipcRenderer.removeListener('terminal:titleChange', h);
     },
@@ -1004,14 +992,12 @@ const api = {
     downloadModel: (): Promise<'ready' | 'not-downloaded'> =>
       ipcRenderer.invoke('voice:downloadModel'),
 
-    startSession: (token: string): Promise<void> =>
-      ipcRenderer.invoke('voice:startSession', token),
+    startSession: (token: string): Promise<void> => ipcRenderer.invoke('voice:startSession', token),
 
     pushChunk: (token: string, samples: Float32Array): Promise<string[]> =>
       ipcRenderer.invoke('voice:pushChunk', token, samples),
 
-    endSession: (token: string): Promise<string[]> =>
-      ipcRenderer.invoke('voice:endSession', token),
+    endSession: (token: string): Promise<string[]> => ipcRenderer.invoke('voice:endSession', token),
 
     onDownloadProgress: (
       cb: (progress: { downloadedBytes: number; totalBytes: number | null }) => void,
@@ -1025,8 +1011,7 @@ const api = {
     getState: (sessionId: string): Promise<BrowserPaneState> =>
       ipcRenderer.invoke('browser:getState', sessionId),
 
-    focus: (sessionId: string): Promise<void> =>
-      ipcRenderer.invoke('browser:focus', sessionId),
+    focus: (sessionId: string): Promise<void> => ipcRenderer.invoke('browser:focus', sessionId),
 
     release: (sessionId: string): Promise<BrowserPaneState> =>
       ipcRenderer.invoke('browser:release', sessionId),

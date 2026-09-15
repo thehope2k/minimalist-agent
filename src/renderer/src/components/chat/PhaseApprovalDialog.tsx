@@ -1,6 +1,6 @@
 /**
  * Phase Approval Dialog - Request user approval for executing a phase.
- * 
+ *
  * Shows when a non-safe phase needs approval based on autonomy level.
  * Extends the existing approval collaboration dialog with plan context.
  */
@@ -16,18 +16,16 @@ interface PhaseApprovalDialogProps {
   onDeny: (reason?: string) => void;
 }
 
-export function PhaseApprovalDialog({
-  phase,
-  onApprove,
-  onDeny,
-}: PhaseApprovalDialogProps) {
+export function PhaseApprovalDialog({ phase, onApprove, onDeny }: PhaseApprovalDialogProps) {
   const [customNote, setCustomNote] = useState('');
   const [showNote, setShowNote] = useState(false);
 
   const riskColor =
-    phase.risk < 30 ? 'text-green-600 dark:text-green-400' :
-    phase.risk < 60 ? 'text-yellow-600 dark:text-yellow-400' :
-    'text-red-600 dark:text-red-400';
+    phase.risk < 30
+      ? 'text-green-600 dark:text-green-400'
+      : phase.risk < 60
+        ? 'text-yellow-600 dark:text-yellow-400'
+        : 'text-red-600 dark:text-red-400';
 
   const handleApprove = () => {
     onApprove(customNote.trim() || undefined);
@@ -48,11 +46,8 @@ export function PhaseApprovalDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" onKeyDown={handleKeyDown}>
       {/* Backdrop - no onClick to prevent accidental dismissal */}
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        aria-hidden="true"
-      />
-      
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" aria-hidden="true" />
+
       <div
         className="relative w-[min(580px,calc(100vw-32px))] max-h-[85vh] flex flex-col rounded-xl border border-border bg-panel shadow-2xl"
         role="dialog"
@@ -61,7 +56,9 @@ export function PhaseApprovalDialog({
       >
         {/* Header - Fixed */}
         <div className="shrink-0 border-b border-border px-5 py-4">
-          <h2 id="phase-approval-title" className="text-lg font-semibold text-fg">Approve Phase?</h2>
+          <h2 id="phase-approval-title" className="text-lg font-semibold text-fg">
+            Approve Phase?
+          </h2>
         </div>
 
         {/* Content - Scrollable */}
@@ -93,13 +90,13 @@ export function PhaseApprovalDialog({
           <div className="flex items-center gap-2 p-3 rounded bg-elevated-1 border border-border">
             <AlertCircle className={`h-5 w-5 ${riskColor}`} />
             <div className="flex-1">
-              <div className="text-sm font-medium text-fg">
-                Risk Level: {phase.risk}/100
-              </div>
+              <div className="text-sm font-medium text-fg">Risk Level: {phase.risk}/100</div>
               <div className="text-xs text-fg-muted">
-                {phase.risk < 30 ? 'Low risk - minimal changes' :
-                 phase.risk < 60 ? 'Medium risk - file modifications' :
-                 'High risk - significant changes'}
+                {phase.risk < 30
+                  ? 'Low risk - minimal changes'
+                  : phase.risk < 60
+                    ? 'Medium risk - file modifications'
+                    : 'High risk - significant changes'}
               </div>
             </div>
           </div>
@@ -114,9 +111,7 @@ export function PhaseApprovalDialog({
             </button>
           ) : (
             <div>
-              <label className="block text-sm font-medium text-fg mb-1.5">
-                Note (optional)
-              </label>
+              <label className="block text-sm font-medium text-fg mb-1.5">Note (optional)</label>
               <Textarea
                 value={customNote}
                 onChange={(e) => setCustomNote(e.target.value)}
@@ -140,7 +135,8 @@ export function PhaseApprovalDialog({
 
         {/* Keyboard hints - Fixed at bottom */}
         <div className="shrink-0 border-t border-border px-5 py-2 text-xs text-fg-subtle">
-          <kbd>⌘Enter</kbd> to approve • <kbd>Esc</kbd> or click Deny to cancel • Clicking outside disabled
+          <kbd>⌘Enter</kbd> to approve • <kbd>Esc</kbd> or click Deny to cancel • Clicking outside
+          disabled
         </div>
       </div>
     </div>

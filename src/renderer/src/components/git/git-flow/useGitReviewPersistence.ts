@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type React from 'react';
-import {
-  buildPersistedState,
-  clearGitReviewState,
-  saveGitReviewState,
-} from '../git-review-state';
+import { buildPersistedState, clearGitReviewState, saveGitReviewState } from '../git-review-state';
 import type { GitFileEntry, GitRepo, LineChange } from '../types';
 
 interface UseGitReviewPersistenceArgs {

@@ -95,11 +95,7 @@ export function FolderPicker({ value, onChange, locked }: Props) {
             open && 'text-fg',
             isDefault && 'italic',
           )}
-          title={
-            isDefault
-              ? `Default working directory: ${home}. Click to change.`
-              : effective
-          }
+          title={isDefault ? `Default working directory: ${home}. Click to change.` : effective}
         >
           {label}
         </Button>
@@ -142,14 +138,9 @@ export function FolderPicker({ value, onChange, locked }: Props) {
                       isSelected && 'bg-elevated/60',
                     )}
                   >
-                    <Folder
-                      className="h-3.5 w-3.5 shrink-0 text-fg-muted"
-                      strokeWidth={1.75}
-                    />
+                    <Folder className="h-3.5 w-3.5 shrink-0 text-fg-muted" strokeWidth={1.75} />
                     <span className="truncate text-sm text-fg">{basename(path)}</span>
-                    <span className="truncate text-xs text-fg-subtle">
-                      in {prettyParent(path)}
-                    </span>
+                    <span className="truncate text-xs text-fg-subtle">in {prettyParent(path)}</span>
                     <span className="ml-auto shrink-0">
                       {isSelected ? (
                         <Check className="h-3.5 w-3.5 text-fg" strokeWidth={2} />
@@ -209,4 +200,3 @@ function prettyParent(p: string): string {
   }
   return parent;
 }
-

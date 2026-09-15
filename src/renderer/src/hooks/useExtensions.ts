@@ -1,9 +1,5 @@
 import { useEffect, useState } from 'react';
-import {
-  bootstrap,
-  snapshot as readSnapshot,
-  subscribe,
-} from '@/lib/extensions';
+import { bootstrap, snapshot as readSnapshot, subscribe } from '@/lib/extensions';
 import type { LoadedExtension } from '@/lib/electron';
 
 export function useExtensions(): LoadedExtension[] | null {

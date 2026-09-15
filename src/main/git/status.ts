@@ -32,11 +32,9 @@ export interface GitStatusResult {
 
 async function findGitRoot(dir: string): Promise<string | null> {
   try {
-    const { stdout } = await execFileAsync(
-      'git',
-      ['-C', dir, 'rev-parse', '--show-toplevel'],
-      { timeout: 5_000 },
-    );
+    const { stdout } = await execFileAsync('git', ['-C', dir, 'rev-parse', '--show-toplevel'], {
+      timeout: 5_000,
+    });
     return stdout.trim();
   } catch {
     return null;
@@ -94,11 +92,9 @@ function parseStatusCode(xy: string): GitFileStatus {
 }
 
 async function getRepoStatus(root: string): Promise<GitFileEntry[]> {
-  const { stdout } = await execFileAsync(
-    'git',
-    ['-C', root, 'status', '--porcelain', '-u'],
-    { timeout: 10_000 },
-  );
+  const { stdout } = await execFileAsync('git', ['-C', root, 'status', '--porcelain', '-u'], {
+    timeout: 10_000,
+  });
 
   const files: GitFileEntry[] = [];
   for (const line of stdout.split('\n')) {

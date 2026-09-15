@@ -7,7 +7,7 @@
  */
 export function throttle<T extends (...args: any[]) => any>(
   fn: T,
-  limitMs: number
+  limitMs: number,
 ): (...args: Parameters<T>) => void {
   let lastCall = 0;
   let timeoutId: NodeJS.Timeout | null = null;

@@ -11,10 +11,7 @@ import type { DraftAttachment, ConnectionMeta } from '@/lib/electron';
  * Attachment state management, including file picker, drag-drop, paste,
  * and vision model validation.
  */
-export function useAttachments(
-  connection: ConnectionMeta | null,
-  model: string | null,
-) {
+export function useAttachments(connection: ConnectionMeta | null, model: string | null) {
   const [attachments, setAttachments] = useState<DraftAttachment[]>([]);
   const [loadingCount, setLoadingCount] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -42,8 +39,7 @@ export function useAttachments(
   // Images stay in the draft even on a non-vision model (so switching models
   // restores them); we just won't send them. This flag drives the
   // strike-through UI + inline notice.
-  const hasUnsendableImages =
-    !supportsVision && attachments.some((a) => a.type === 'image');
+  const hasUnsendableImages = !supportsVision && attachments.some((a) => a.type === 'image');
 
   const visionSuggestion = () => {
     const visionModels = connection?.models.filter((m) => m.supportsVision) ?? [];
@@ -80,9 +76,7 @@ export function useAttachments(
 
       for (const f of dropped) {
         try {
-          const draft = f.path
-            ? await readAttachmentPath(f.path)
-            : await fileToDraft(f);
+          const draft = f.path ? await readAttachmentPath(f.path) : await fileToDraft(f);
           if (draft) out.push(draft);
         } catch (e) {
           setError(e instanceof Error ? e.message : 'Failed to read a file.');

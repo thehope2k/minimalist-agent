@@ -1,10 +1,4 @@
-import {
-  readdirSync,
-  readFileSync,
-  statSync,
-  existsSync,
-  type Dirent,
-} from 'node:fs';
+import { readdirSync, readFileSync, statSync, existsSync, type Dirent } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import ignore from 'ignore';
 
@@ -95,10 +89,8 @@ export function listDirectory(args: {
 
     // For directories, append trailing slash so .gitignore patterns
     // that end with `/` (e.g. `dist/`) match correctly
-    const ignoreCandidate = entry.isDirectory()
-      ? `${relPosix}/`
-      : relPosix;
-    
+    const ignoreCandidate = entry.isDirectory() ? `${relPosix}/` : relPosix;
+
     if (ig.ignores(ignoreCandidate)) {
       continue;
     }

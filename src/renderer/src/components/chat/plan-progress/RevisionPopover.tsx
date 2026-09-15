@@ -24,19 +24,13 @@ function RevisionEntry({
   return (
     <div className="relative pl-5">
       <span className="absolute left-0 top-1.5 h-2 w-2 rounded-full bg-accent ring-4 ring-panel" />
-      {!last && (
-        <span className="absolute bottom-[-18px] left-[3px] top-3.5 w-px bg-border" />
-      )}
+      {!last && <span className="absolute bottom-[-18px] left-[3px] top-3.5 w-px bg-border" />}
 
       <div className="rounded-lg border border-border/60 bg-elevated-1/40 p-3">
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="font-mono text-xs font-semibold text-fg">
-            v{revision.version - 1}
-          </span>
+          <span className="font-mono text-xs font-semibold text-fg">v{revision.version - 1}</span>
           <ArrowRight className="h-3 w-3 text-fg-subtle" />
-          <span className="font-mono text-xs font-semibold text-accent">
-            v{revision.version}
-          </span>
+          <span className="font-mono text-xs font-semibold text-accent">v{revision.version}</span>
           {current && <Badge variant="accent">Current</Badge>}
           <time
             dateTime={new Date(revision.timestamp).toISOString()}
@@ -51,17 +45,13 @@ function RevisionEntry({
             <div className="text-[10px] font-medium uppercase tracking-wider text-fg-subtle">
               Why it changed
             </div>
-            <p className="mt-0.5 text-xs leading-relaxed text-fg">
-              {revision.reason}
-            </p>
+            <p className="mt-0.5 text-xs leading-relaxed text-fg">{revision.reason}</p>
           </div>
           <div>
             <div className="text-[10px] font-medium uppercase tracking-wider text-fg-subtle">
               What changed
             </div>
-            <p className="mt-0.5 text-xs leading-relaxed text-fg-muted">
-              {revision.changeSummary}
-            </p>
+            <p className="mt-0.5 text-xs leading-relaxed text-fg-muted">{revision.changeSummary}</p>
           </div>
         </div>
 
@@ -116,7 +106,8 @@ export function RevisionPopover({ plan }: RevisionPopoverProps) {
             <div className="min-w-0 flex-1">
               <h3 className="text-sm font-semibold text-fg">Revision history</h3>
               <p className="mt-0.5 text-xs text-fg-subtle">
-                {revisions.length} {revisions.length === 1 ? 'update' : 'updates'} · Current version {plan.version}
+                {revisions.length} {revisions.length === 1 ? 'update' : 'updates'} · Current version{' '}
+                {plan.version}
               </p>
             </div>
             <Popover.Close asChild>

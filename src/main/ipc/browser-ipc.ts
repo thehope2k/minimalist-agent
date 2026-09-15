@@ -14,15 +14,11 @@ export function registerBrowserIpc(): void {
     browserPaneManager.getState(sessionId),
   );
 
-  ipcMain.handle('browser:focus', (_e, sessionId: string) =>
-    browserPaneManager.focus(sessionId),
-  );
+  ipcMain.handle('browser:focus', (_e, sessionId: string) => browserPaneManager.focus(sessionId));
 
   ipcMain.handle('browser:release', (_e, sessionId: string) =>
     browserPaneManager.release(sessionId),
   );
 
-  ipcMain.handle('browser:close', (_e, sessionId: string) =>
-    browserPaneManager.close(sessionId),
-  );
+  ipcMain.handle('browser:close', (_e, sessionId: string) => browserPaneManager.close(sessionId));
 }

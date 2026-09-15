@@ -127,8 +127,7 @@ function parseVersionHeading(s: string): { version: string; date: string } | nul
   // Accepts:  [0.1.0] — 2026-05-03
   //           v0.2.0 - 2026-05-03 - Optional title (title goes to intro)
   //           0.3.0 (2026-05-03)
-  const m =
-    /^\[?v?([0-9][\w.+-]*)\]?\s*[—\-–(]\s*(\d{4}-\d{2}-\d{2})/.exec(s.trim());
+  const m = /^\[?v?([0-9][\w.+-]*)\]?\s*[—\-–(]\s*(\d{4}-\d{2}-\d{2})/.exec(s.trim());
   if (!m) return null;
   return { version: m[1], date: m[2] };
 }

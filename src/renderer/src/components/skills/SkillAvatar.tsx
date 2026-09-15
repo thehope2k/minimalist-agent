@@ -37,11 +37,7 @@ export function SkillAvatar({
       <img
         src={`file://${skill.iconPath}`}
         alt=""
-        className={cn(
-          'shrink-0 rounded-md object-cover',
-          dim,
-          className,
-        )}
+        className={cn('shrink-0 rounded-md object-cover', dim, className)}
       />
     );
   }

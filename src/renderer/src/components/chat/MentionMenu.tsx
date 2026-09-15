@@ -37,14 +37,13 @@ export const MentionMenu = function MentionMenuImpl(
   const listRef = useRef<HTMLUListElement | null>(null);
 
   // Filter items based on query
-  const { filteredSkills, filteredExtensions, filteredFiles, items } =
-    useFilteredItems({
-      open,
-      query,
-      skills,
-      extensions,
-      cwd,
-    });
+  const { filteredSkills, filteredExtensions, filteredFiles, items } = useFilteredItems({
+    open,
+    query,
+    skills,
+    extensions,
+    cwd,
+  });
 
   // Keyboard navigation
   const { activeIdx, setActiveIdx } = useKeyboardNav({
@@ -133,9 +132,7 @@ export const MentionMenu = function MentionMenuImpl(
           );
         })}
 
-        {showEmpty && (
-          <li className="px-3 py-3 text-xs text-fg-subtle">No matches.</li>
-        )}
+        {showEmpty && <li className="px-3 py-3 text-xs text-fg-subtle">No matches.</li>}
         {items.length === 0 && !query && skills.length === 0 && !cwd && (
           <li className="px-3 py-3 text-xs text-fg-subtle">
             No skills installed and no working folder set.

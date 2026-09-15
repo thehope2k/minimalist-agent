@@ -24,7 +24,10 @@ import {
   type LoadedAgent,
   scanAgentDirectory,
 } from '../agents/storage';
-import { formatValidationResult as formatAgentValidationResult, validateAgentContent } from '../agents/parse';
+import {
+  formatValidationResult as formatAgentValidationResult,
+  validateAgentContent,
+} from '../agents/parse';
 import {
   deleteExtension,
   type ExtensionFileNode,
@@ -67,23 +70,13 @@ export function registerAssetsIpc(): void {
 
   ipcMain.handle('skills:getDir', (): string => getSkillsDir());
   ipcMain.handle('skills:getProjectDir', (_e, cwd: string): string => getProjectSkillsDir(cwd));
-  ipcMain.handle(
-    'skills:getReferenceDocPath',
-    (): string => Paths.skillsReferenceDoc(),
-  );
+  ipcMain.handle('skills:getReferenceDocPath', (): string => Paths.skillsReferenceDoc());
   ipcMain.handle('skills:list', (): LoadedSkill[] => loadAllSkills());
-  ipcMain.handle(
-    'skills:get',
-    (_e, slug: string): LoadedSkill | null => loadSkillBySlug(slug),
+  ipcMain.handle('skills:get', (_e, slug: string): LoadedSkill | null => loadSkillBySlug(slug));
+  ipcMain.handle('skills:listFiles', (_e, dirPath: string): SkillFileNode[] =>
+    scanSkillDirectory(dirPath),
   );
-  ipcMain.handle(
-    'skills:listFiles',
-    (_e, dirPath: string): SkillFileNode[] => scanSkillDirectory(dirPath),
-  );
-  ipcMain.handle(
-    'skills:delete',
-    (_e, dirPath: string): boolean => deleteSkill(dirPath),
-  );
+  ipcMain.handle('skills:delete', (_e, dirPath: string): boolean => deleteSkill(dirPath));
   ipcMain.handle('skills:invalidateCache', () => invalidateSkillsCache());
   ipcMain.handle('skills:openInEditor', async (_e, dirPath: string) => {
     // `openPath` will use the OS's default handler (e.g. "Open With" pref).
@@ -112,22 +105,12 @@ export function registerAssetsIpc(): void {
 
   ipcMain.handle('agents:getDir', (): string => getAgentsDir());
   ipcMain.handle('agents:getProjectDir', (_e, cwd: string): string => getProjectAgentsDir(cwd));
-  ipcMain.handle(
-    'agents:list',
-    (): LoadedAgent[] => loadAllAgents(),
+  ipcMain.handle('agents:list', (): LoadedAgent[] => loadAllAgents());
+  ipcMain.handle('agents:get', (_e, slug: string): LoadedAgent | null => loadAgentBySlug(slug));
+  ipcMain.handle('agents:listFiles', (_e, dirPath: string): AgentFileNode[] =>
+    scanAgentDirectory(dirPath),
   );
-  ipcMain.handle(
-    'agents:get',
-    (_e, slug: string): LoadedAgent | null => loadAgentBySlug(slug),
-  );
-  ipcMain.handle(
-    'agents:listFiles',
-    (_e, dirPath: string): AgentFileNode[] => scanAgentDirectory(dirPath),
-  );
-  ipcMain.handle(
-    'agents:delete',
-    (_e, slug: string): boolean => deleteAgent(slug),
-  );
+  ipcMain.handle('agents:delete', (_e, slug: string): boolean => deleteAgent(slug));
   ipcMain.handle('agents:invalidateCache', () => {
     invalidateAgentsCache();
   });
@@ -156,43 +139,31 @@ export function registerAssetsIpc(): void {
   // ---- Extensions -------------------------------------------------------
 
   ipcMain.handle('extensions:getDir', (): string => getExtensionsDir());
-  ipcMain.handle('extensions:getProjectDir', (_e, cwd: string): string => getProjectExtensionsDir(cwd));
-  ipcMain.handle(
-    'extensions:getReferenceDocPath',
-    (): string => Paths.extensionsReferenceDoc(),
+  ipcMain.handle('extensions:getProjectDir', (_e, cwd: string): string =>
+    getProjectExtensionsDir(cwd),
   );
-  ipcMain.handle(
-    'extensions:list',
-    (_e, cwd?: string): LoadedExtension[] => loadAllExtensions(cwd),
+  ipcMain.handle('extensions:getReferenceDocPath', (): string => Paths.extensionsReferenceDoc());
+  ipcMain.handle('extensions:list', (_e, cwd?: string): LoadedExtension[] =>
+    loadAllExtensions(cwd),
   );
-  ipcMain.handle(
-    'extensions:get',
-    (_e, slug: string): LoadedExtension | null => loadExtensionBySlug(slug),
+  ipcMain.handle('extensions:get', (_e, slug: string): LoadedExtension | null =>
+    loadExtensionBySlug(slug),
   );
-  ipcMain.handle(
-    'extensions:listFiles',
-    (_e, dirPath: string): ExtensionFileNode[] =>
-      scanExtensionDirectory(dirPath),
+  ipcMain.handle('extensions:listFiles', (_e, dirPath: string): ExtensionFileNode[] =>
+    scanExtensionDirectory(dirPath),
   );
-  ipcMain.handle(
-    'extensions:delete',
-    (_e, dirPath: string): boolean => {
-      const ok = deleteExtension(dirPath);
-      if (ok) getExtensionRegistry().load();
-      return ok;
-    },
-  );
+  ipcMain.handle('extensions:delete', (_e, dirPath: string): boolean => {
+    const ok = deleteExtension(dirPath);
+    if (ok) getExtensionRegistry().load();
+    return ok;
+  });
   ipcMain.handle('extensions:invalidateCache', () => {
     invalidateExtensionsCache();
     getExtensionRegistry().load();
   });
-  ipcMain.handle(
-    'extensions:openInEditor',
-    async (_e, dirPath: string) => shell.openPath(dirPath),
-  );
-  ipcMain.handle(
-    'extensions:revealInFinder',
-    (_e, dirPath: string) => shell.showItemInFolder(dirPath),
+  ipcMain.handle('extensions:openInEditor', async (_e, dirPath: string) => shell.openPath(dirPath));
+  ipcMain.handle('extensions:revealInFinder', (_e, dirPath: string) =>
+    shell.showItemInFolder(dirPath),
   );
   ipcMain.handle(
     'extensions:validate',
@@ -220,9 +191,7 @@ export function registerAssetsIpc(): void {
         lines.push(formatExtensionValidationResult(r));
       } catch (e) {
         allValid = false;
-        lines.push(
-          `✗ Could not read guide.md: ${e instanceof Error ? e.message : String(e)}`,
-        );
+        lines.push(`✗ Could not read guide.md: ${e instanceof Error ? e.message : String(e)}`);
       }
 
       return { ok: allValid, report: lines.join('\n') };
@@ -243,9 +212,8 @@ export function registerAssetsIpc(): void {
   ipcMain.handle('extensions:secrets.encryptionAvailable', (): boolean =>
     isSecretsEncryptionAvailable(),
   );
-  ipcMain.handle(
-    'extensions:secrets.listKeys',
-    (_e, slug: string): string[] => listExtensionSecretKeys(slug),
+  ipcMain.handle('extensions:secrets.listKeys', (_e, slug: string): string[] =>
+    listExtensionSecretKeys(slug),
   );
   ipcMain.handle(
     'extensions:secrets.set',
@@ -261,58 +229,39 @@ export function registerAssetsIpc(): void {
       broadcastMcpStatusChanged();
     },
   );
-  ipcMain.handle(
-    'extensions:secrets.delete',
-    (_e, slug: string, keyName: string): void => {
-      deleteExtensionSecret(slug, keyName);
-      broadcastMcpStatusChanged();
-    },
-  );
-  ipcMain.handle(
-    'extensions:secrets.declared',
-    (_e, slug: string): string[] => {
-      const ext = loadExtensionBySlug(slug);
-      return ext ? listDeclaredSecrets(ext) : [];
-    },
-  );
-  ipcMain.handle(
-    'extensions:secrets.missing',
-    (_e, slug: string): string[] => {
-      const ext = loadExtensionBySlug(slug);
-      return ext ? listMissingSecrets(ext) : [];
-    },
-  );
-  ipcMain.handle(
-    'extensions:consent.has',
-    (_e, slug: string): boolean => {
-      const ext = loadExtensionBySlug(slug);
-      return ext ? hasConsent(ext) : false;
-    },
-  );
-  ipcMain.handle(
-    'extensions:consent.grant',
-    (_e, slug: string): boolean => {
-      const ext = loadExtensionBySlug(slug);
-      if (!ext) return false;
-      grantConsent(ext);
-      broadcastMcpStatusChanged();
-      return true;
-    },
-  );
-  ipcMain.handle(
-    'extensions:consent.revoke',
-    (_e, slug: string): boolean => {
-      const ext = loadExtensionBySlug(slug);
-      if (!ext) return false;
-      revokeConsent(ext);
-      broadcastMcpStatusChanged();
-      return true;
-    },
-  );
+  ipcMain.handle('extensions:secrets.delete', (_e, slug: string, keyName: string): void => {
+    deleteExtensionSecret(slug, keyName);
+    broadcastMcpStatusChanged();
+  });
+  ipcMain.handle('extensions:secrets.declared', (_e, slug: string): string[] => {
+    const ext = loadExtensionBySlug(slug);
+    return ext ? listDeclaredSecrets(ext) : [];
+  });
+  ipcMain.handle('extensions:secrets.missing', (_e, slug: string): string[] => {
+    const ext = loadExtensionBySlug(slug);
+    return ext ? listMissingSecrets(ext) : [];
+  });
+  ipcMain.handle('extensions:consent.has', (_e, slug: string): boolean => {
+    const ext = loadExtensionBySlug(slug);
+    return ext ? hasConsent(ext) : false;
+  });
+  ipcMain.handle('extensions:consent.grant', (_e, slug: string): boolean => {
+    const ext = loadExtensionBySlug(slug);
+    if (!ext) return false;
+    grantConsent(ext);
+    broadcastMcpStatusChanged();
+    return true;
+  });
+  ipcMain.handle('extensions:consent.revoke', (_e, slug: string): boolean => {
+    const ext = loadExtensionBySlug(slug);
+    if (!ext) return false;
+    revokeConsent(ext);
+    broadcastMcpStatusChanged();
+    return true;
+  });
   ipcMain.handle(
     'extensions:mcp.status',
-    (): Array<{ slug: string; ok: boolean; reason?: string }> =>
-      listMcpExtensionsStatus(),
+    (): Array<{ slug: string; ok: boolean; reason?: string }> => listMcpExtensionsStatus(),
   );
 
   // ── Context Panel: project-local config + session pinned assets ──────────
@@ -323,7 +272,11 @@ export function registerAssetsIpc(): void {
    */
   ipcMain.handle(
     'context:listAvailable',
-    (_e, cwd?: string, invalidate?: boolean): { skills: LoadedSkill[]; agents: LoadedAgent[]; extensions: LoadedExtension[] } => {
+    (
+      _e,
+      cwd?: string,
+      invalidate?: boolean,
+    ): { skills: LoadedSkill[]; agents: LoadedAgent[]; extensions: LoadedExtension[] } => {
       if (invalidate) {
         invalidateSkillsCache(cwd);
         invalidateAgentsCache(cwd);
@@ -338,25 +291,21 @@ export function registerAssetsIpc(): void {
   );
 
   /** Pin a scoped asset to a session. scopedSlug: 'user:<slug>' | 'project:<slug>' */
-  ipcMain.handle(
-    'context:pin',
-    (_e, sessionId: string, scopedSlug: string) => pinAsset(sessionId, scopedSlug),
+  ipcMain.handle('context:pin', (_e, sessionId: string, scopedSlug: string) =>
+    pinAsset(sessionId, scopedSlug),
   );
 
   /** Unpin a scoped asset from a session. */
-  ipcMain.handle(
-    'context:unpin',
-    (_e, sessionId: string, scopedSlug: string) => unpinAsset(sessionId, scopedSlug),
+  ipcMain.handle('context:unpin', (_e, sessionId: string, scopedSlug: string) =>
+    unpinAsset(sessionId, scopedSlug),
   );
 
   /**
    * Estimate token cost of all pinned assets for a session.
    * Returns total estimated tokens.
    */
-  ipcMain.handle(
-    'context:estimateTokens',
-    (_e, pinnedAssets: string[], cwd?: string): number =>
-      estimatePinnedTokens(pinnedAssets, cwd),
+  ipcMain.handle('context:estimateTokens', (_e, pinnedAssets: string[], cwd?: string): number =>
+    estimatePinnedTokens(pinnedAssets, cwd),
   );
 
   /**
@@ -365,9 +314,6 @@ export function registerAssetsIpc(): void {
    */
   ipcMain.handle('context:hasProjectAssets', (_e, cwd: string): boolean => {
     const base = join(cwd, '.minimalist-agent');
-    return (
-      existsSync(join(base, 'agents')) ||
-      existsSync(join(base, 'skills'))
-    );
+    return existsSync(join(base, 'agents')) || existsSync(join(base, 'skills'));
   });
 }

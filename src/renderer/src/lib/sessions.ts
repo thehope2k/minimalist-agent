@@ -72,10 +72,7 @@ export async function createSession(opts?: {
   return meta;
 }
 
-export async function setSessionProject(
-  id: string,
-  projectId: string | null,
-): Promise<void> {
+export async function setSessionProject(id: string, projectId: string | null): Promise<void> {
   await window.api.sessions.setProject(id, projectId);
   await reload();
 }
@@ -86,18 +83,12 @@ export async function loadFullSession(
   return window.api.sessions.load(id);
 }
 
-export async function appendMessage(
-  id: string,
-  msg: StoredMessage,
-): Promise<void> {
+export async function appendMessage(id: string, msg: StoredMessage): Promise<void> {
   await window.api.sessions.appendMessage(id, msg);
   await reload();
 }
 
-export async function replaceLastMessage(
-  id: string,
-  msg: StoredMessage,
-): Promise<void> {
+export async function replaceLastMessage(id: string, msg: StoredMessage): Promise<void> {
   await window.api.sessions.replaceLastMessage(id, msg);
   // Intentionally no reload() here.
   // replaceLastMessage is an in-place content update — the session list
@@ -107,10 +98,7 @@ export async function replaceLastMessage(
   // jump in the sidebar while multiple turns ran simultaneously.
 }
 
-export async function rewriteMessages(
-  id: string,
-  messages: StoredMessage[],
-): Promise<void> {
+export async function rewriteMessages(id: string, messages: StoredMessage[]): Promise<void> {
   await window.api.sessions.rewriteMessages(id, messages);
   // No reload needed — rewriteMessages is used for mid-turn insertions
   // (compaction markers, steer messages) which don't affect session metadata.
@@ -125,25 +113,16 @@ export async function updateSessionMeta(
 }
 
 /** Convenience wrapper for the permission-mode pill in MessageInput. */
-export async function setSessionPermissionMode(
-  id: string,
-  mode: PermissionMode,
-): Promise<void> {
+export async function setSessionPermissionMode(id: string, mode: PermissionMode): Promise<void> {
   await updateSessionMeta(id, { permissionMode: mode });
 }
 
-export async function setSessionAutonomyLevel(
-  id: string,
-  level: number,
-): Promise<void> {
+export async function setSessionAutonomyLevel(id: string, level: number): Promise<void> {
   await updateSessionMeta(id, { autonomyLevel: level });
 }
 
 /** Convenience wrapper for the thinking-level pill in MessageInput. */
-export async function setSessionThinkingLevel(
-  id: string,
-  level: ThinkingLevel,
-): Promise<void> {
+export async function setSessionThinkingLevel(id: string, level: ThinkingLevel): Promise<void> {
   await updateSessionMeta(id, { thinkingLevel: level });
 }
 
@@ -174,8 +153,7 @@ export async function branchSession(
  */
 export async function regenerateSessionTitle(id: string): Promise<string | null> {
   const snap = connectionsSnapshot();
-  const slug =
-    snap.defaultSlug ?? snap.connections[0]?.slug ?? undefined;
+  const slug = snap.defaultSlug ?? snap.connections[0]?.slug ?? undefined;
   if (!slug) {
     throw new Error('Add an AI connection in Settings → AI to use this.');
   }
@@ -207,10 +185,7 @@ export async function regenerateSessionTitle(id: string): Promise<string | null>
  * Used by the retry flow to prune the failed user/assistant pair before
  * the new turn replays.
  */
-export async function truncateSessionMessages(
-  id: string,
-  firstDroppedId: string,
-): Promise<void> {
+export async function truncateSessionMessages(id: string, firstDroppedId: string): Promise<void> {
   await window.api.sessions.truncateFrom(id, firstDroppedId);
 }
 

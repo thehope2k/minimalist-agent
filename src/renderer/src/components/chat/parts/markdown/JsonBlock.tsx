@@ -20,8 +20,7 @@ import { CodeBlock } from './CodeBlock';
 // Theme aligned to the app's OKLCH dark tokens.
 const JSON_THEME = {
   ...vscodeTheme,
-  '--w-rjv-font-family':
-    '"JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace',
+  '--w-rjv-font-family': '"JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace',
   '--w-rjv-font-size': '12px',
   '--w-rjv-background-color': 'transparent',
   '--w-rjv-line-height': '1.6',
@@ -36,10 +35,7 @@ function deepParseJson(value: unknown): unknown {
   if (value === null || value === undefined) return value;
   if (typeof value === 'string') {
     const t = value.trim();
-    if (
-      (t.startsWith('{') && t.endsWith('}')) ||
-      (t.startsWith('[') && t.endsWith(']'))
-    ) {
+    if ((t.startsWith('{') && t.endsWith('}')) || (t.startsWith('[') && t.endsWith(']'))) {
       try {
         return deepParseJson(JSON.parse(t));
       } catch {

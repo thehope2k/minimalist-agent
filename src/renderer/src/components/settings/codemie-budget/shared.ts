@@ -38,19 +38,22 @@ export function useBudget(connectionSlug: string, enabled: boolean, refreshKey =
     }
 
     setState((prev) => (prev.status === 'ready' ? prev : { status: 'loading' }));
-    void window.api.connections.fetchCodeMieBudget({ connectionSlug }).then((result) => {
-      if (slugRef.current !== connectionSlug) return;
-      budgetCache.set(connectionSlug, { budget: result, fetchedAt: Date.now() });
-      applyResult(result);
-    }).catch((err: unknown) => {
-      setState({ status: 'error', message: err instanceof Error ? err.message : String(err) });
-    });
+    void window.api.connections
+      .fetchCodeMieBudget({ connectionSlug })
+      .then((result) => {
+        if (slugRef.current !== connectionSlug) return;
+        budgetCache.set(connectionSlug, { budget: result, fetchedAt: Date.now() });
+        applyResult(result);
+      })
+      .catch((err: unknown) => {
+        setState({ status: 'error', message: err instanceof Error ? err.message : String(err) });
+      });
 
     function applyResult(result: CodeMieBudget | { error: string }) {
       if ('error' in result) setState({ status: 'error', message: result.error });
       else setState({ status: 'ready', budget: result });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connectionSlug, enabled, refreshKey]);
 
   return state;

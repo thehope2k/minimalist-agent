@@ -23,12 +23,14 @@ import type { RecentFile } from '@/lib/recent-files';
 import { HighlightedText } from './shared/HighlightedText';
 
 export interface RecentFilesModalProps {
-  onClose:    () => void;
+  onClose: () => void;
   onOpenFile: (absolutePath: string, lineNumber: number) => void;
 }
 
 // ─── path helpers (no node:path in renderer) ─────────────────────────────────
-function basename(p: string): string { return p.split('/').pop() ?? p; }
+function basename(p: string): string {
+  return p.split('/').pop() ?? p;
+}
 function dirname(p: string): string {
   const idx = p.lastIndexOf('/');
   return idx > 0 ? p.slice(0, idx) : '';
@@ -37,21 +39,26 @@ function dirname(p: string): string {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function RecentFilesModal({ onClose, onOpenFile }: RecentFilesModalProps) {
-  const [query,     setQuery]     = useState('');
-  const [entries,   setEntries]   = useState<RecentFile[]>(() => listRecent());
+  const [query, setQuery] = useState('');
+  const [entries, setEntries] = useState<RecentFile[]>(() => listRecent());
   const [activeIdx, setActiveIdx] = useState(0);
 
-  const inputRef      = useRef<HTMLInputElement>(null);
-  const listRef       = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const mouseMovedRef = useRef(false);
 
   // Autofocus on open.
-  useEffect(() => { inputRef.current?.focus(); }, []);
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
 
   // Esc closes (capture so it wins over any other Esc handler).
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.stopPropagation(); onClose(); }
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
     };
     window.addEventListener('keydown', handler, { capture: true });
     return () => window.removeEventListener('keydown', handler, { capture: true });
@@ -153,7 +160,9 @@ export function RecentFilesModal({ onClose, onOpenFile }: RecentFilesModalProps)
         <div
           ref={listRef}
           className="max-h-[54vh] overflow-y-auto scroll-thin pb-1"
-          onMouseMove={() => { mouseMovedRef.current = true; }}
+          onMouseMove={() => {
+            mouseMovedRef.current = true;
+          }}
         >
           {filtered.length === 0 ? (
             <div className="flex items-center justify-center py-9">
@@ -171,7 +180,9 @@ export function RecentFilesModal({ onClose, onOpenFile }: RecentFilesModalProps)
                 query={query}
                 active={i === activeIdx}
                 dataIdx={i}
-                onMouseEnter={() => { if (mouseMovedRef.current) setActiveIdx(i); }}
+                onMouseEnter={() => {
+                  if (mouseMovedRef.current) setActiveIdx(i);
+                }}
                 onMouseDown={(e) => {
                   e.preventDefault();
                   openEntry(entry);
@@ -184,8 +195,8 @@ export function RecentFilesModal({ onClose, onOpenFile }: RecentFilesModalProps)
         {/* ── Hint bar ── */}
         <div className="flex shrink-0 items-center gap-1 border-t border-border/40 px-4 py-2">
           <span className="text-[10px] text-fg-subtle">
-            <Key>↑↓</Key> navigate &nbsp;·&nbsp; <Key>↵</Key> open
-            &nbsp;·&nbsp; <Key>⌘E</Key> toggle
+            <Key>↑↓</Key> navigate &nbsp;·&nbsp; <Key>↵</Key> open &nbsp;·&nbsp; <Key>⌘E</Key>{' '}
+            toggle
           </span>
         </div>
       </div>
@@ -204,15 +215,15 @@ function RecentRow({
   onMouseEnter,
   onMouseDown,
 }: {
-  entry:        RecentFile;
-  query:        string;
-  active:       boolean;
-  dataIdx:      number;
+  entry: RecentFile;
+  query: string;
+  active: boolean;
+  dataIdx: number;
   onMouseEnter: () => void;
-  onMouseDown:  (e: React.MouseEvent) => void;
+  onMouseDown: (e: React.MouseEvent) => void;
 }) {
   const name = basename(entry.absolutePath);
-  const dir  = dirname(entry.absolutePath);
+  const dir = dirname(entry.absolutePath);
 
   return (
     <div
@@ -247,7 +258,5 @@ function RecentRow({
 }
 
 function Key({ children }: { children: React.ReactNode }) {
-  return (
-    <kbd className="rounded border border-border/60 px-1 font-mono">{children}</kbd>
-  );
+  return <kbd className="rounded border border-border/60 px-1 font-mono">{children}</kbd>;
 }

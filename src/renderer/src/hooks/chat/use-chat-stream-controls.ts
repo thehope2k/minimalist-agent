@@ -8,7 +8,10 @@ import type { SessionStore } from './session-store';
 
 const log = createLogger('useChat:stream-controls');
 
-interface ChatStreamControlsDeps extends Pick<SessionStore, 'messagesBySession' | 'streamingBySession' | 'turnIdToSession'> {
+interface ChatStreamControlsDeps extends Pick<
+  SessionStore,
+  'messagesBySession' | 'streamingBySession' | 'turnIdToSession'
+> {
   activeSessionIdRef: React.MutableRefObject<string | null>;
   setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
   setIsStreaming: React.Dispatch<React.SetStateAction<boolean>>;
@@ -48,8 +51,7 @@ export function useChatStreamControls(deps: ChatStreamControlsDeps) {
       const stream = streamingBySession.current.get(sid);
       if (!stream) return { ok: false, reason: 'no running turn' };
       const trimmed = text.trim();
-      if (!trimmed && attachmentDrafts.length === 0)
-        return { ok: false, reason: 'empty message' };
+      if (!trimmed && attachmentDrafts.length === 0) return { ok: false, reason: 'empty message' };
 
       // Store draft attachments before sending (same path as normal send).
       const stored: StoredAttachment[] = [];
@@ -195,7 +197,11 @@ export function useChatStreamControls(deps: ChatStreamControlsDeps) {
             durationMs: m.createdAt != null ? Date.now() - m.createdAt : undefined,
             parts: m.parts.map((p) =>
               p.kind === 'tool' && p.status === 'running'
-                ? { ...p, status: 'error' as const, result: { content: 'Aborted by user', isError: true } }
+                ? {
+                    ...p,
+                    status: 'error' as const,
+                    result: { content: 'Aborted by user', isError: true },
+                  }
                 : p,
             ),
           }
@@ -220,7 +226,6 @@ export function useChatStreamControls(deps: ChatStreamControlsDeps) {
       void window.api?.app.setAgentActive(false);
     }
   }, []);
-
 
   return { steer, triggerManualCompaction, abort };
 }

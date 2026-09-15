@@ -119,10 +119,7 @@ export function UpdateBanner() {
         )}
         {info.state === 'downloading' && (
           <div className="h-1.5 w-32 overflow-hidden rounded bg-elevated">
-            <div
-              className="h-full bg-fg transition-all"
-              style={{ width: `${info.progress}%` }}
-            />
+            <div className="h-full bg-fg transition-all" style={{ width: `${info.progress}%` }} />
           </div>
         )}
         {info.state === 'ready' && (

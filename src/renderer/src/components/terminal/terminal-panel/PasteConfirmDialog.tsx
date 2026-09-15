@@ -1,9 +1,9 @@
 import { Button } from '@/components/ui';
 
 interface PasteConfirmDialogProps {
-  text:      string;
+  text: string;
   onConfirm: () => void;
-  onCancel:  () => void;
+  onCancel: () => void;
 }
 
 /**
@@ -23,8 +23,12 @@ export function PasteConfirmDialog({ text, onConfirm, onCancel }: PasteConfirmDi
           {text}
         </pre>
         <div className="flex justify-end gap-2">
-          <Button variant="ghost" onClick={onCancel}>Cancel</Button>
-          <Button variant="primary" onClick={onConfirm}>Paste</Button>
+          <Button variant="ghost" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={onConfirm}>
+            Paste
+          </Button>
         </div>
       </div>
     </>

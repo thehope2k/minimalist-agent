@@ -46,9 +46,7 @@ export interface AgentChatRequest {
 }
 
 /** Run one chat turn. Yields events ending with `turn_done` or `error`. */
-export function runAgentChat(
-  req: AgentChatRequest,
-): AsyncGenerator<AgentChatEvent> {
+export function runAgentChat(req: AgentChatRequest): AsyncGenerator<AgentChatEvent> {
   if (!req.chatSessionId) {
     throw new Error('runAgentChat: chatSessionId is required.');
   }

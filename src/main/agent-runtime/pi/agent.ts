@@ -22,31 +22,31 @@
 //   credential via `token_update`, and emit a typed expired_oauth_token
 //   error so the UI offers a one-click retry.
 
-import {spawn} from 'node:child_process';
-import {resolveExtensionEnv} from '../../extensions/env-resolver';
-import {buildResolvedMcpServers} from '../../extensions/mcp-config';
-import {createInterface} from 'node:readline';
-import {app} from 'electron';
-import {join} from 'node:path';
-import {resolvePiServerPath} from './spawn-utils';
-import type {StoredAttachment} from '../../storage/sessions';
-import type {AgentChatEvent} from '../events';
-import {parseError} from '../errors';
-import type {AgentError} from '../errors';
-import {buildPromptPrefix, buildSystemPromptAppend,} from '../system-prompt';
-import {extractSkillPaths, formatSkillDirective} from '../../skills/directive';
-import {formatAttachmentsDirective} from '../attachments-directive';
-import type {PermissionMode} from '../permissions';
-import type {ResolvedAuth} from '../auth';
-import type {CollaborationAsk} from '../../../shared/collaboration-types';
-import {listConnections} from '../../storage/connections';
-import {telemetryEnv} from '../../storage/telemetry';
-import {loadAllAgents} from '../../agents/storage';
-import {getSettings} from '../../storage/settings';
-import {createLogger} from '../../logger';
-import {TURN_IDLE_TIMEOUT_MS, WATCHDOG_SWEEP_MS} from '../../../shared/timeouts';
-import {EventQueue, send, type SubprocessHandle} from './subprocess-handle';
-import {dispatchOutbound} from './outbound';
+import { spawn } from 'node:child_process';
+import { resolveExtensionEnv } from '../../extensions/env-resolver';
+import { buildResolvedMcpServers } from '../../extensions/mcp-config';
+import { createInterface } from 'node:readline';
+import { app } from 'electron';
+import { join } from 'node:path';
+import { resolvePiServerPath } from './spawn-utils';
+import type { StoredAttachment } from '../../storage/sessions';
+import type { AgentChatEvent } from '../events';
+import { parseError } from '../errors';
+import type { AgentError } from '../errors';
+import { buildPromptPrefix, buildSystemPromptAppend } from '../system-prompt';
+import { extractSkillPaths, formatSkillDirective } from '../../skills/directive';
+import { formatAttachmentsDirective } from '../attachments-directive';
+import type { PermissionMode } from '../permissions';
+import type { ResolvedAuth } from '../auth';
+import type { CollaborationAsk } from '../../../shared/collaboration-types';
+import { listConnections } from '../../storage/connections';
+import { telemetryEnv } from '../../storage/telemetry';
+import { loadAllAgents } from '../../agents/storage';
+import { getSettings } from '../../storage/settings';
+import { createLogger } from '../../logger';
+import { TURN_IDLE_TIMEOUT_MS, WATCHDOG_SWEEP_MS } from '../../../shared/timeouts';
+import { EventQueue, send, type SubprocessHandle } from './subprocess-handle';
+import { dispatchOutbound } from './outbound';
 
 const log = createLogger('chat-runtime');
 import type {
@@ -110,7 +110,6 @@ export interface MiniCompletionRequest {
 /** Per-chat-session subprocess. */
 const handles = new Map<string, SubprocessHandle>();
 
-
 function forceRetireHandle(key: string, handle: SubprocessHandle, error: AgentError): void {
   for (const q of handle.queues.values()) {
     q.push({ type: 'error', error });
@@ -166,17 +165,15 @@ function resolveVisionSupported(connectionSlug: string, modelId: string): boolea
   return modelDef?.supportsVision ?? true;
 }
 
-function ensureSubprocess(
-  req: ChatRequest,
-  systemPrompt: string,
-): SubprocessHandle {
+function ensureSubprocess(req: ChatRequest, systemPrompt: string): SubprocessHandle {
   const key = req.chatSessionPath;
   const existing = handles.get(key);
   if (existing && !existing.child.killed && existing.connectionSlug !== req.connectionSlug) {
     forceRetireHandle(key, existing, {
       code: 'network_error',
       title: 'Connection changed',
-      message: 'The connection changed while this turn was still running, so it was interrupted. Send your message again.',
+      message:
+        'The connection changed while this turn was still running, so it was interrupted. Send your message again.',
       canRetry: true,
     });
     const fresh = spawnSubprocess(req, systemPrompt);
@@ -254,14 +251,8 @@ function spawnSubprocess(req: ChatRequest, systemPrompt: string): SubprocessHand
     { mode: PermissionMode; sessionId: string; cwd?: string }
   >();
   const turnSignals = new Map<string, AbortSignal>();
-  const pendingMini = new Map<
-    string,
-    { resolve: (r: MsgMiniCompletionResult) => void }
-  >();
-  const pendingLlm = new Map<
-    string,
-    { resolve: (r: MsgLlmQueryResult) => void }
-  >();
+  const pendingMini = new Map<string, { resolve: (r: MsgMiniCompletionResult) => void }>();
+  const pendingLlm = new Map<string, { resolve: (r: MsgLlmQueryResult) => void }>();
 
   const rl = createInterface({ input: child.stdout! });
 
@@ -331,9 +322,7 @@ function spawnSubprocess(req: ChatRequest, systemPrompt: string): SubprocessHand
       handles.delete(key);
     }
     if (code !== 0 && code !== null) {
-      log.error(
-        `exited with code ${code}\n${stderrBuffer.join('')}`,
-      );
+      log.error(`exited with code ${code}\n${stderrBuffer.join('')}`);
     }
   });
 
@@ -360,20 +349,21 @@ function spawnSubprocess(req: ChatRequest, systemPrompt: string): SubprocessHand
   }
 
   const compactionSettings = getSettings().compactionSettings;
-  const runtimeAuth: MsgInit['auth'] = req.auth.type === 'api'
-    ? {
-        provider: 'openai',
-        credential: { type: 'api_key', key: req.auth.apiKey ?? 'local' },
-      }
-    : {
-        provider: req.auth.provider,
-        credential: {
-          type: 'oauth',
-          access: req.auth.accessToken,
-          refresh: req.auth.refreshToken ?? '',
-          expires: req.auth.expiresAt,
-        },
-      };
+  const runtimeAuth: MsgInit['auth'] =
+    req.auth.type === 'api'
+      ? {
+          provider: 'openai',
+          credential: { type: 'api_key', key: req.auth.apiKey ?? 'local' },
+        }
+      : {
+          provider: req.auth.provider,
+          credential: {
+            type: 'oauth',
+            access: req.auth.accessToken,
+            refresh: req.auth.refreshToken ?? '',
+            expires: req.auth.expiresAt,
+          },
+        };
 
   const init: MsgInit = {
     type: 'init',
@@ -388,7 +378,7 @@ function spawnSubprocess(req: ChatRequest, systemPrompt: string): SubprocessHand
     permissionMode: (req.permissionMode ?? 'auto') as MsgInit['permissionMode'],
     autonomyLevel: req.autonomyLevel,
     systemPrompt,
-    availableAgents: loadAllAgents().map(a => ({
+    availableAgents: loadAllAgents().map((a) => ({
       slug: a.slug,
       metadata: a.metadata,
       content: a.content,
@@ -407,9 +397,7 @@ function spawnSubprocess(req: ChatRequest, systemPrompt: string): SubprocessHand
 /*  Public API: chat turn                                        */
 /* ============================================================ */
 
-export async function* runChat(
-  req: ChatRequest,
-): AsyncGenerator<AgentChatEvent> {
+export async function* runChat(req: ChatRequest): AsyncGenerator<AgentChatEvent> {
   // Compute append for subprocess init. May be empty on the very first turn
   // of a new session if initSessionState hasn't completed yet (race with the
   // React useEffect that fires after the send handler). Re-computed after
@@ -431,8 +419,15 @@ export async function* runChat(
   });
 
   // Resolve `@slug` / `@path` mentions.
-  const { skillPaths, extensionGuidePaths, filePaths, folderPaths, cleanMessage, missingSkills, missingFiles } =
-    extractSkillPaths(req.prompt, req.cwd);
+  const {
+    skillPaths,
+    extensionGuidePaths,
+    filePaths,
+    folderPaths,
+    cleanMessage,
+    missingSkills,
+    missingFiles,
+  } = extractSkillPaths(req.prompt, req.cwd);
   if (missingSkills.length > 0) {
     yield {
       type: 'error',
@@ -495,7 +490,9 @@ export async function* runChat(
   const queue = new EventQueue();
   handle.queues.set(req.turnId, queue);
 
-  const finalPrompt = [prefix, directive, attachmentsDirective, cleanMessage].filter(Boolean).join('\n\n');
+  const finalPrompt = [prefix, directive, attachmentsDirective, cleanMessage]
+    .filter(Boolean)
+    .join('\n\n');
   const promptMsg: MsgPrompt = {
     type: 'prompt',
     turnId: req.turnId,
@@ -552,7 +549,8 @@ export async function* runManualCompact(req: {
       error: {
         code: 'unknown_error',
         title: 'No active session',
-        message: 'Start a chat turn before compacting — there is no running session to compact yet.',
+        message:
+          'Start a chat turn before compacting — there is no running session to compact yet.',
         canRetry: false,
       },
     };
@@ -628,9 +626,7 @@ export async function runMiniCompletion(
   }
 
   try {
-    const requestId = `mini_${Date.now().toString(36)}_${Math.random()
-      .toString(36)
-      .slice(2, 8)}`;
+    const requestId = `mini_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
     const result = await new Promise<MsgMiniCompletionResult>((resolve) => {
       handle.pendingMini.set(requestId, { resolve });
       const m: MsgMiniCompletion = {
@@ -656,10 +652,18 @@ export async function runMiniCompletion(
 const SIGKILL_FALLBACK_DELAY_MS = 1000;
 
 function killSubprocess(handle: SubprocessHandle): void {
-  try { send(handle, { type: 'shutdown' }); } catch { /* */ }
+  try {
+    send(handle, { type: 'shutdown' });
+  } catch {
+    /* */
+  }
   setTimeout(() => {
     if (!handle.child.killed) {
-      try { handle.child.kill('SIGKILL'); } catch { /* */ }
+      try {
+        handle.child.kill('SIGKILL');
+      } catch {
+        /* */
+      }
     }
   }, SIGKILL_FALLBACK_DELAY_MS);
 }
@@ -711,7 +715,7 @@ export function sendPlanApprovalResponse(args: {
 }): boolean {
   const handle = handles.get(args.chatSessionPath);
   if (!handle) return false;
-  
+
   send(handle, {
     type: 'planning:approval-response',
     sessionId: handle.chatSessionId,
@@ -719,6 +723,6 @@ export function sendPlanApprovalResponse(args: {
     approved: args.approved,
     notes: args.notes,
   });
-  
+
   return true;
 }

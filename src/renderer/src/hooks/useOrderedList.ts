@@ -13,11 +13,7 @@ interface OrderedList<T> {
   reorder: (newItems: T[]) => void;
 }
 
-function reconcileOrder<T>(
-  items: T[],
-  order: string[],
-  getId: (item: T) => string,
-): T[] {
+function reconcileOrder<T>(items: T[], order: string[], getId: (item: T) => string): T[] {
   const remaining = new Map(items.map((item) => [getId(item), item]));
   const result: T[] = [];
 
@@ -40,9 +36,7 @@ export function useOrderedList<T>(
   kind: ListOrderKind,
   getId: (item: T) => string,
 ): OrderedList<T> {
-  const [order, setOrder] = useState<string[]>(() =>
-    get<string[]>(KEYS.listOrder, [], kind),
-  );
+  const [order, setOrder] = useState<string[]>(() => get<string[]>(KEYS.listOrder, [], kind));
 
   const ordered = useMemo(
     // getId must stay a module-level constant at call sites (getSkillId,

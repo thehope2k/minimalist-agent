@@ -20,10 +20,10 @@ Two destinations:
 
 Two content modes:
 
-| Mode | Label | Contents |
-|---|---|---|
-| `summary` | **Conversation** | The conversation + outcomes (user/assistant turns, diffs, results) |
-| `full` | **Full Log** | The complete log, including thinking blocks and raw tool input/output |
+| Mode      | Label            | Contents                                                              |
+| --------- | ---------------- | --------------------------------------------------------------------- |
+| `summary` | **Conversation** | The conversation + outcomes (user/assistant turns, diffs, results)    |
+| `full`    | **Full Log**     | The complete log, including thinking blocks and raw tool input/output |
 
 ---
 
@@ -65,10 +65,10 @@ non-optional. Two scrubbers run over every text-bearing field:
 
 Share links are hosted on one of two ephemeral backends — **BrewPage** or **meethtml.com**. Both are free, no-signup, and produce unlisted URLs. The user picks the backend explicitly via the action bar.
 
-| Backend | File | Default TTL | Max size |
-|---|---|---|---|
-| [BrewPage](https://brewpage.app) | `export-transport/brewpage.ts` | 15 days (1–30) | 5 MB |
-| [meethtml.com](https://meethtml.com) | `export-transport/meethtml.ts` | 24 hours | 5 MB |
+| Backend                              | File                           | Default TTL    | Max size |
+| ------------------------------------ | ------------------------------ | -------------- | -------- |
+| [BrewPage](https://brewpage.app)     | `export-transport/brewpage.ts` | 15 days (1–30) | 5 MB     |
+| [meethtml.com](https://meethtml.com) | `export-transport/meethtml.ts` | 24 hours       | 5 MB     |
 
 **Privacy posture (both backends):**
 
@@ -83,7 +83,7 @@ Share links are hosted on one of two ephemeral backends — **BrewPage** or **me
 - Max upload size is **5 MB** of HTML on both. Oversized exports throw a clear error suggesting
   **Save…** or **summary** mode instead.
 
-**Revoke:** every share returns an `ownerToken` (BrewPage) or `edit_token` (meethtml, stored as `ownerToken`). The *Share link created* dialog keeps it so you can take the page down early. The `namespace` field on the stored link record determines which backend handles revoke — `minimalist-agent` → BrewPage, `meethtml` → meethtml.com.
+**Revoke:** every share returns an `ownerToken` (BrewPage) or `edit_token` (meethtml, stored as `ownerToken`). The _Share link created_ dialog keeps it so you can take the page down early. The `namespace` field on the stored link record determines which backend handles revoke — `minimalist-agent` → BrewPage, `meethtml` → meethtml.com.
 
 ### Local link record
 
@@ -97,7 +97,7 @@ entries are pruned on read (the host deletes them server-side at TTL anyway).
 
 Every completed assistant message has a lightweight action bar in the footer
 (hover to reveal): **Copy**, **Save .html**, and **Share**. These operate on
-the *response conclusion* — the text after the last tool call in the turn —
+the _response conclusion_ — the text after the last tool call in the turn —
 rather than the full session.
 
 ### Copy
@@ -135,8 +135,8 @@ under `session-shared-links` so you can revoke either later.
 
 1. Open a session and click the **Export** icon in the chat header rail.
 2. Pick a destination + mode:
-   - **Save to file** → *Conversation (.html)* or *Full Log (.html)*
-   - **Share link** → *Conversation (BrewPage)*, *Conversation (meethtml)*, *Full Log (BrewPage)*, or *Full Log (meethtml)*
+   - **Save to file** → _Conversation (.html)_ or _Full Log (.html)_
+   - **Share link** → _Conversation (BrewPage)_, _Conversation (meethtml)_, _Full Log (BrewPage)_, or _Full Log (meethtml)_
 3. For shares, the **Share link created** dialog gives you **Copy**, **Open**, and
    **Revoke**, plus the auto-delete date.
 
@@ -147,6 +147,7 @@ under `session-shared-links` so you can revoke either later.
 For contributors:
 
 **Renderer**
+
 - `lib/session-export/` — export pipeline (`select` → `redact` → `truncate` → `template`)
 - `lib/sessions.ts` — `saveSessionExport`, `shareSessionExport`, `revokeSessionExport`
 - `lib/shared-links.ts` — local record of published links
@@ -154,6 +155,7 @@ For contributors:
 - `components/chat/session-export/ShareResultDialog.tsx` — link surface (copy/open/revoke)
 
 **Main**
+
 - `export-transport/brewpage.ts` — `publishExport` / `revokeExport` (TTL clamp, size limit)
 - `export-transport/meethtml.ts` — `publishExportFallback` / `revokeExportFallback` (24h anonymous pages)
 - IPC: `sessions:saveExport`, `sessions:shareExport` (`backend?: 'brewpage' | 'meethtml'`), `sessions:revokeExport`

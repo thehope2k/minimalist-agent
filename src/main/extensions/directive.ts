@@ -3,9 +3,7 @@ import { loadAllExtensions } from './storage';
 import { listMcpExtensionsStatus } from './mcp-config';
 
 export function formatExtensionsAwareness(cwd?: string): string {
-  const all = cwd
-    ? loadAllExtensions(cwd)
-    : getExtensionRegistry().list();
+  const all = cwd ? loadAllExtensions(cwd) : getExtensionRegistry().list();
 
   if (all.length === 0) return '';
 

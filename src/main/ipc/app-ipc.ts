@@ -1,5 +1,10 @@
 import { app, BrowserWindow, ipcMain, Notification, shell } from 'electron';
-import { checkForUpdates, downloadUpdate, getUpdateInfo, installUpdateAndRestart } from '../auto-update';
+import {
+  checkForUpdates,
+  downloadUpdate,
+  getUpdateInfo,
+  installUpdateAndRestart,
+} from '../auto-update';
 import { classifyExternalUrl, formatBlockedUrlError } from '../../shared/url-safety';
 import { recordRendererLog, revealLogFile, readRecentLogs } from '../logger';
 import type { RendererLogRecord } from '../../shared/log';
@@ -43,29 +48,26 @@ export function registerAppIpc(): void {
   ipcMain.handle('logs:read', () => readRecentLogs());
   // Fire a native OS notification. Renderer gates this on its own
   // `notificationsEnabled` preference + window-focus check.
-  ipcMain.handle(
-    'app:notify',
-    async (_e, payload: { title: string; body?: string }) => {
-      if (!Notification.isSupported()) return false;
-      const icon = await getAppIcon();
-      const n = new Notification({
-        title: payload.title,
-        body: payload.body ?? '',
-        silent: false,
-        ...(icon ? { icon } : {}),
+  ipcMain.handle('app:notify', async (_e, payload: { title: string; body?: string }) => {
+    if (!Notification.isSupported()) return false;
+    const icon = await getAppIcon();
+    const n = new Notification({
+      title: payload.title,
+      body: payload.body ?? '',
+      silent: false,
+      ...(icon ? { icon } : {}),
+    });
+    const win = BrowserWindow.getAllWindows()[0];
+    if (win) {
+      n.on('click', () => {
+        if (win.isMinimized()) win.restore();
+        win.show();
+        win.focus();
       });
-      const win = BrowserWindow.getAllWindows()[0];
-      if (win) {
-        n.on('click', () => {
-          if (win.isMinimized()) win.restore();
-          win.show();
-          win.focus();
-        });
-      }
-      n.show();
-      return true;
-    },
-  );
+    }
+    n.show();
+    return true;
+  });
 
   // ---- Updates -----------------------------------------------------------
 

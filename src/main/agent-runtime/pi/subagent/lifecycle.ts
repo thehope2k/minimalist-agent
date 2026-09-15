@@ -38,12 +38,11 @@ export async function initializeAgent(
   // session model (session-default / omitted), that model is already in use
   // by the running session, so it's valid by definition even if our static
   // catalog hasn't caught up with the latest releases.
-  const usesSessionModel =
-    !agent.metadata.model || agent.metadata.model === SESSION_DEFAULT_MODEL;
+  const usesSessionModel = !agent.metadata.model || agent.metadata.model === SESSION_DEFAULT_MODEL;
   if (!usesSessionModel && !(await isValidModelId(model))) {
     throw new Error(
       `Agent "${agent.metadata.name}" has invalid model configuration: ${await getModelValidationError(model)}. ` +
-      `Check the agent's AGENT.md frontmatter.`
+        `Check the agent's AGENT.md frontmatter.`,
     );
   }
 
@@ -73,13 +72,13 @@ export async function initializeAgent(
     model,
     thinkingLevel: 'low' as const, // Agents should be focused and fast
     auth: { provider: ctx.provider, credential },
-    ...(ctx.baseUrl ? {
-      baseUrl: ctx.baseUrl,
-      customEndpoint: ctx.customEndpoint
-    } : {}),
-    permissionMode: mapAgentPermissionMode(
-      agent.metadata.permissionMode || ctx.permissionMode
-    ),
+    ...(ctx.baseUrl
+      ? {
+          baseUrl: ctx.baseUrl,
+          customEndpoint: ctx.customEndpoint,
+        }
+      : {}),
+    permissionMode: mapAgentPermissionMode(agent.metadata.permissionMode || ctx.permissionMode),
     systemPrompt,
   };
 
@@ -110,7 +109,7 @@ export async function executeAgentTask(
   // Wait for completion with timeout
   const startTime = Date.now();
   while (!handle.finished) {
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     if (Date.now() - startTime > timeout) {
       handle.error = `Agent execution timed out after ${Math.floor(timeout / 60000)} minutes`;

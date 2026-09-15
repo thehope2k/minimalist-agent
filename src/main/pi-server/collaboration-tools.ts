@@ -7,7 +7,10 @@ import { createLogger } from '../../shared/sub-logger';
 import { shouldEngage } from '../../shared/autonomy';
 import { state } from './state';
 import { send } from './transport';
-import type { MsgCollaborationRequest, MsgCollaborationResponse } from '../agent-runtime/pi/protocol';
+import type {
+  MsgCollaborationRequest,
+  MsgCollaborationResponse,
+} from '../agent-runtime/pi/protocol';
 
 const log = createLogger('pi-server');
 
@@ -18,9 +21,7 @@ function requestCollaboration(
   payload: unknown,
 ): Promise<MsgCollaborationResponse> {
   return new Promise((resolve) => {
-    const requestId = `collab_${Date.now().toString(36)}_${Math.random()
-      .toString(36)
-      .slice(2, 8)}`;
+    const requestId = `collab_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
     state.pendingCollaboration.set(requestId, { resolve });
 
     const req: MsgCollaborationRequest = {
@@ -226,14 +227,19 @@ export function createCollaborationTools(sessionId: string): ToolDefinition<any,
             5,
           ),
           recommended: schema.string('Your recommended option'),
-          context: schema.string('Why this decision matters now — the situation/constraint that makes it non-trivial. Always fill this in; the dialog shown to the user has no other place to surface your reasoning.'),
+          context: schema.string(
+            'Why this decision matters now — the situation/constraint that makes it non-trivial. Always fill this in; the dialog shown to the user has no other place to surface your reasoning.',
+          ),
         },
         required: ['question', 'alternatives', 'context'],
       },
-      execute: createCollaborationExecutor(sessionId, 'decision', (result) =>
-        `User selected: ${result.selected_option || result.custom_response || 'no_selection'}${
-          result.custom_response ? `\n\nUser response: ${result.custom_response}` : ''
-        }`,
+      execute: createCollaborationExecutor(
+        sessionId,
+        'decision',
+        (result) =>
+          `User selected: ${result.selected_option || result.custom_response || 'no_selection'}${
+            result.custom_response ? `\n\nUser response: ${result.custom_response}` : ''
+          }`,
       ),
     },
     {
@@ -256,14 +262,19 @@ export function createCollaborationTools(sessionId: string): ToolDefinition<any,
             2,
             4,
           ),
-          context: schema.string('Why this preference matters — what makes the options equivalent/subjective. Always fill this in; the dialog shown to the user has no other place to surface your reasoning.'),
+          context: schema.string(
+            'Why this preference matters — what makes the options equivalent/subjective. Always fill this in; the dialog shown to the user has no other place to surface your reasoning.',
+          ),
         },
         required: ['question', 'options', 'context'],
       },
-      execute: createCollaborationExecutor(sessionId, 'preference', (result) =>
-        `User preference: ${result.selected_option || result.custom_response || 'no_selection'}${
-          result.custom_response ? `\n\nDetails: ${result.custom_response}` : ''
-        }`,
+      execute: createCollaborationExecutor(
+        sessionId,
+        'preference',
+        (result) =>
+          `User preference: ${result.selected_option || result.custom_response || 'no_selection'}${
+            result.custom_response ? `\n\nDetails: ${result.custom_response}` : ''
+          }`,
       ),
     },
     {
@@ -279,8 +290,11 @@ export function createCollaborationTools(sessionId: string): ToolDefinition<any,
         },
         required: ['work_completed'],
       },
-      execute: createCollaborationExecutor(sessionId, 'feedback', (result) =>
-        `User feedback: ${result.feedback || result.custom_response || 'No feedback provided'}`,
+      execute: createCollaborationExecutor(
+        sessionId,
+        'feedback',
+        (result) =>
+          `User feedback: ${result.feedback || result.custom_response || 'No feedback provided'}`,
       ),
     },
     {
@@ -308,8 +322,11 @@ export function createCollaborationTools(sessionId: string): ToolDefinition<any,
         },
         required: ['situation', 'trade_offs', 'what_guidance_needed'],
       },
-      execute: createCollaborationExecutor(sessionId, 'guidance', (result) =>
-        `User guidance: ${result.custom_response || result.guidance || 'No guidance provided'}`,
+      execute: createCollaborationExecutor(
+        sessionId,
+        'guidance',
+        (result) =>
+          `User guidance: ${result.custom_response || result.guidance || 'No guidance provided'}`,
       ),
     },
     {
@@ -327,10 +344,11 @@ export function createCollaborationTools(sessionId: string): ToolDefinition<any,
         },
         required: ['operation', 'risk_level', 'risk_factors', 'reason'],
       },
-      execute: createCollaborationExecutor(sessionId, 'approval', (result) =>
-        `Approved${
-          result.custom_response ? ` - User note: ${result.custom_response}` : ''
-        }`,
+      execute: createCollaborationExecutor(
+        sessionId,
+        'approval',
+        (result) =>
+          `Approved${result.custom_response ? ` - User note: ${result.custom_response}` : ''}`,
       ),
     },
   ];

@@ -8,13 +8,7 @@ interface EmptyStatesProps {
   cwd: string | undefined;
 }
 
-export function EmptyStates({
-  loading,
-  error,
-  hasItems,
-  filterQuery,
-  cwd,
-}: EmptyStatesProps) {
+export function EmptyStates({ loading, error, hasItems, filterQuery, cwd }: EmptyStatesProps) {
   // No CWD set
   if (!cwd) {
     return (
@@ -27,9 +21,7 @@ export function EmptyStates({
           <p className="text-center text-xs text-fg-subtle">
             No working directory set
             <br />
-            <span className="text-fg-muted">
-              Select a folder for this session
-            </span>
+            <span className="text-fg-muted">Select a folder for this session</span>
           </p>
         </div>
       </div>

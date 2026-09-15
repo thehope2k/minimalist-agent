@@ -4,11 +4,7 @@ import { updateSessionMeta } from '@/lib/sessions';
 /**
  * Manages draft title editing with commit on blur/Enter.
  */
-export function useTitleEditor(
-  open: boolean,
-  sessionId: string | null,
-  title: string,
-) {
+export function useTitleEditor(open: boolean, sessionId: string | null, title: string) {
   const [draftTitle, setDraftTitle] = useState(title);
 
   // Reset draft when popover opens or title changes upstream

@@ -11,7 +11,12 @@ interface InstructionsSectionProps {
   onOpenFile: (absolutePath: string, lineNumber: number) => void;
 }
 
-export function InstructionsSection({ skill, onEdit, disabled, onOpenFile }: InstructionsSectionProps) {
+export function InstructionsSection({
+  skill,
+  onEdit,
+  disabled,
+  onOpenFile,
+}: InstructionsSectionProps) {
   return (
     <section>
       <div className="mb-2 flex items-center justify-between">

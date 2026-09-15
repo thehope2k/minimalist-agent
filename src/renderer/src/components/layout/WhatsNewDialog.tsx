@@ -41,17 +41,11 @@ export function WhatsNewDialog({ onClose }: Props) {
 
         <div className="scroll-thin flex-1 overflow-y-auto">
           {CHANGELOG.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-fg-subtle">
-              No release notes yet.
-            </p>
+            <p className="px-4 py-8 text-center text-sm text-fg-subtle">No release notes yet.</p>
           ) : (
             <ul className="divide-y divide-border/60">
               {CHANGELOG.map((entry, i) => (
-                <ReleaseRow
-                  key={entry.version}
-                  entry={entry}
-                  defaultOpen={i === 0}
-                />
+                <ReleaseRow key={entry.version} entry={entry} defaultOpen={i === 0} />
               ))}
             </ul>
           )}
@@ -61,13 +55,7 @@ export function WhatsNewDialog({ onClose }: Props) {
   );
 }
 
-function ReleaseRow({
-  entry,
-  defaultOpen,
-}: {
-  entry: ChangelogEntry;
-  defaultOpen: boolean;
-}) {
+function ReleaseRow({ entry, defaultOpen }: { entry: ChangelogEntry; defaultOpen: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <li>
@@ -116,9 +104,7 @@ function ReleaseRow({
                 {section.groups.map((group, gi) => (
                   <div key={gi}>
                     {group.title && (
-                      <h4 className="mb-1 text-xs font-medium text-fg">
-                        {group.title}
-                      </h4>
+                      <h4 className="mb-1 text-xs font-medium text-fg">{group.title}</h4>
                     )}
                     <ul className="space-y-1.5">
                       {group.items.map((item, ii) => (
@@ -144,8 +130,18 @@ function formatDate(iso: string): string {
   if (!m) return iso;
   const [, y, mo, d] = m;
   const months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
   const monthName = months[Number(mo) - 1] ?? mo;
   return `${monthName} ${Number(d)}, ${y}`;

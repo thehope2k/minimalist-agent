@@ -1,6 +1,6 @@
 /**
  * System prompt guidance for intelligent collaboration.
- * 
+ *
  * Teaches the LLM when and how to engage the user through collaboration tools.
  * The LLM decides when collaboration is valuable based on context, complexity,
  * subjectivity, risk, and autonomy level.
@@ -8,15 +8,13 @@
 
 /**
  * Get collaboration guidance for system prompt injection.
- * 
+ *
  * @param autonomyLevel - User's autonomy setting (0-100)
  * @returns System prompt text teaching collaboration
  */
 export function getCollaborationGuidance(autonomyLevel: number): string {
-  const engagementFrequency = 
-    autonomyLevel < 40 ? 'frequently' :
-    autonomyLevel < 70 ? 'when valuable' :
-    'sparingly';
+  const engagementFrequency =
+    autonomyLevel < 40 ? 'frequently' : autonomyLevel < 70 ? 'when valuable' : 'sparingly';
 
   return `
 ## INTELLIGENT COLLABORATION
@@ -151,16 +149,22 @@ RequestFeedback(
 
 **${autonomyLevel}% = ${autonomyLevel < 30 ? 'Low (Collaborative)' : autonomyLevel < 70 ? 'Medium (Balanced)' : 'High (Independent)'}**
 
-${autonomyLevel < 30 ? `- Engage frequently—pair programming mode
+${
+  autonomyLevel < 30
+    ? `- Engage frequently—pair programming mode
 - Ask before significant operations
 - Request decisions on non-trivial choices
-- Seek feedback after implementations` : autonomyLevel < 70 ? `- Engage when collaboration adds value
+- Seek feedback after implementations`
+    : autonomyLevel < 70
+      ? `- Engage when collaboration adds value
 - Handle routine operations independently
 - Request decisions on complex/ambiguous choices
-- Use judgment—not every decision needs input` : `- Work independently for most operations
+- Use judgment—not every decision needs input`
+      : `- Work independently for most operations
 - Engage only for significant decisions
 - Request approval for destructive/critical ops
-- Minimize interruptions—user trusts you`}
+- Minimize interruptions—user trusts you`
+}
 
 **Example: "Add error handling"**
 - At 20%: RequestDecision (multiple approaches—ask)

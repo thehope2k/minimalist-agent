@@ -118,11 +118,15 @@ interface CopilotUserInfoResponse {
 
 // ── quota derivation ──────────────────────────────────────────────────────────
 
-function fromSnapshot(snap: QuotaSnapshot, resetDate: string, planType: string | null, fallback: boolean): CopilotQuota {
+function fromSnapshot(
+  snap: QuotaSnapshot,
+  resetDate: string,
+  planType: string | null,
+  fallback: boolean,
+): CopilotQuota {
   const pct = snap.percent_remaining ?? 100;
-  const entitlement = (snap.unlimited || snap.entitlement == null || snap.entitlement === -1)
-    ? null
-    : snap.entitlement;
+  const entitlement =
+    snap.unlimited || snap.entitlement == null || snap.entitlement === -1 ? null : snap.entitlement;
   const used = entitlement != null ? Math.round(entitlement * (1 - pct / 100)) : null;
 
   return {
@@ -149,9 +153,7 @@ function fromAICredits(
   const overage = credits.overage;
 
   // Calculate percentage remaining
-  const pctRemaining = included > 0
-    ? Math.round((remaining / included) * 100)
-    : 100;
+  const pctRemaining = included > 0 ? Math.round((remaining / included) * 100) : 100;
 
   // Check if unlimited (included === -1 or very large number)
   const isUnlimited = included === -1 || included >= 999999;
@@ -181,9 +183,10 @@ function fromFreeUser(info: CopilotUserInfoResponse): CopilotQuota {
   } else {
     // fallback: 1st of next month
     const now = new Date();
-    const next = now.getUTCMonth() === 11
-      ? new Date(Date.UTC(now.getUTCFullYear() + 1, 0, 1))
-      : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+    const next =
+      now.getUTCMonth() === 11
+        ? new Date(Date.UTC(now.getUTCFullYear() + 1, 0, 1))
+        : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
     resetDate = next.toISOString().split('T')[0];
   }
 
@@ -291,7 +294,7 @@ export async function fetchCopilotQuota(
   if (isEnterprise && isTokenBilling) {
     const snapshots = info.quota_snapshots;
     const premiumSnap = snapshots?.premium_interactions;
-    
+
     // Check if truly unlimited (entitlement=0 and unlimited=true)
     if (premiumSnap?.unlimited && premiumSnap.entitlement === 0) {
       log.debug('✓ Enterprise account with pooled AI Credits (no per-user limit)');

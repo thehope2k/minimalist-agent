@@ -19,9 +19,7 @@ export function FileBadgeIcon({ att }: { att: StoredAttachment }) {
   }
   if (
     att.mimeType.startsWith('text/') ||
-    /\.(ts|tsx|js|jsx|py|go|rs|cpp|c|h|java|json|ya?ml|html|css|scss|md)$/i.test(
-      att.name,
-    )
+    /\.(ts|tsx|js|jsx|py|go|rs|cpp|c|h|java|json|ya?ml|html|css|scss|md)$/i.test(att.name)
   ) {
     return <FileCode className="h-3.5 w-3.5 text-fg-muted" strokeWidth={1.75} />;
   }

@@ -10,12 +10,7 @@ interface UseAmendPreviewArgs {
   setSelected: React.Dispatch<React.SetStateAction<GitFileEntry | null>>;
 }
 
-export function useAmendPreview({
-  cwd,
-  repos,
-  stagedPaths,
-  setSelected,
-}: UseAmendPreviewArgs) {
+export function useAmendPreview({ cwd, repos, stagedPaths, setSelected }: UseAmendPreviewArgs) {
   const [amendPreview, setAmendPreview] = useState<AmendPreview | null>(null);
   const [selectedAmendFile, setSelectedAmendFile] = useState<LastCommitFileEntry | null>(null);
   const [amendFileDiff, setAmendFileDiff] = useState<GitFileDiff | null>(null);

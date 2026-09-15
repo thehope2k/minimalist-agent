@@ -40,23 +40,15 @@ export function ImageThumbnail({ att }: ImageThumbnailProps) {
         style={{ height: 88, width: 88 }}
       >
         {src ? (
-          <img
-            src={src}
-            alt={att.name}
-            className="h-full w-full object-cover"
-          />
+          <img src={src} alt={att.name} className="h-full w-full object-cover" />
         ) : (
-          <div className="grid h-full w-full place-items-center text-xs text-fg-subtle">
-            …
-          </div>
+          <div className="grid h-full w-full place-items-center text-xs text-fg-subtle">…</div>
         )}
         {copyState !== 'idle' && (
           <div
             className={cn(
               'absolute inset-0 grid place-items-center text-[10px] font-semibold uppercase tracking-wide',
-              copyState === 'copied'
-                ? 'bg-black/65 text-emerald-300'
-                : 'bg-black/65 text-red-300',
+              copyState === 'copied' ? 'bg-black/65 text-emerald-300' : 'bg-black/65 text-red-300',
             )}
           >
             {copyState === 'copied' ? 'Copied' : 'Failed'}

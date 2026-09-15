@@ -32,7 +32,10 @@ export function ToolPack({ parts, isLive }: ToolPackProps) {
         className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs hover:bg-elevated/60"
       >
         <ChevronRight
-          className={cn('h-3 w-3 shrink-0 text-fg-subtle transition-transform', open && 'rotate-90')}
+          className={cn(
+            'h-3 w-3 shrink-0 text-fg-subtle transition-transform',
+            open && 'rotate-90',
+          )}
           strokeWidth={2}
         />
         <Blocks className="h-3.5 w-3.5 shrink-0 text-fg-muted" strokeWidth={1.75} />
@@ -57,7 +60,10 @@ export function ToolPack({ parts, isLive }: ToolPackProps) {
       {open && (
         <div className="space-y-2 border-t border-border/60 p-2">
           {parts.map((part, i) => (
-            <PartView key={partKey(part.kind, part.kind === 'tool' ? part.toolUseId : undefined, i)} part={part} />
+            <PartView
+              key={partKey(part.kind, part.kind === 'tool' ? part.toolUseId : undefined, i)}
+              part={part}
+            />
           ))}
         </div>
       )}

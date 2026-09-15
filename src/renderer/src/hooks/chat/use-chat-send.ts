@@ -3,12 +3,25 @@ import type { ChatMessage } from '@/lib/chat';
 import type { SessionStore } from './session-store';
 
 import { chatToStored, newId } from '@/lib/chat';
-import { appendMessage, createSession, loadFullSession, replaceLastMessage, updateSessionMeta } from '@/lib/sessions';
+import {
+  appendMessage,
+  createSession,
+  loadFullSession,
+  replaceLastMessage,
+  updateSessionMeta,
+} from '@/lib/sessions';
 import type { AgentError, StoredAttachment } from '@/lib/electron';
 import { storeAttachment } from '@/lib/attachments';
 import type { SendArgs } from './types';
 
-interface ChatSendDeps extends Pick<SessionStore, 'messagesBySession' | 'streamingBySession' | 'turnIdToSession' | 'titleBySession' | 'lastSendBySession'> {
+interface ChatSendDeps extends Pick<
+  SessionStore,
+  | 'messagesBySession'
+  | 'streamingBySession'
+  | 'turnIdToSession'
+  | 'titleBySession'
+  | 'lastSendBySession'
+> {
   activeSessionIdRef: React.MutableRefObject<string | null>;
   defaultProjectIdRef: React.MutableRefObject<string | null | undefined>;
   setActiveSessionId: React.Dispatch<React.SetStateAction<string | null>>;
@@ -36,7 +49,7 @@ export function useChatSend(deps: ChatSendDeps) {
     forceRerender,
   } = deps;
 
-const send = useCallback(
+  const send = useCallback(
     async ({
       text,
       connection,
@@ -181,8 +194,7 @@ const send = useCallback(
         const errInfo: AgentError = {
           code: 'unknown_error',
           title: 'Could not start the turn',
-          message:
-            'The request failed before the agent could begin streaming. Try again.',
+          message: 'The request failed before the agent could begin streaming. Try again.',
           canRetry: true,
           originalError: errMsg,
         };
@@ -216,7 +228,6 @@ const send = useCallback(
     },
     [forceRerender],
   );
-
 
   return { send };
 }

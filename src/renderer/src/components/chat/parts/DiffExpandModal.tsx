@@ -11,7 +11,7 @@ import { type ParsedDiff, DIFF_METHOD_WORDS, diffViewerStyles, shortenPath } fro
 // initial bundle. The viewer is only rendered when the user expands a diff
 // chip or opens the split-view modal, so the deferred load is invisible.
 export const LazyDiffViewer = lazy(() =>
-  import('react-diff-viewer-continued').then((m) => ({ default: m.default }))
+  import('react-diff-viewer-continued').then((m) => ({ default: m.default })),
 );
 
 export function DiffExpandModal({

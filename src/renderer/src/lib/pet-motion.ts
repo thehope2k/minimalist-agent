@@ -17,7 +17,10 @@ const VELOCITY_SAMPLE_WINDOW_MS = 120;
 /** Caps an unrealistic flick (e.g. a synthetic pointer jump) from launching the pet off-screen in one frame. */
 const MAX_RELEASE_SPEED_PX_PER_SEC = 900;
 
-export function recordPointerSample(history: PointerSample[], sample: PointerSample): PointerSample[] {
+export function recordPointerSample(
+  history: PointerSample[],
+  sample: PointerSample,
+): PointerSample[] {
   const cutoffMs = sample.timeMs - VELOCITY_SAMPLE_WINDOW_MS;
   return [...history.filter((entry) => entry.timeMs >= cutoffMs), sample];
 }
@@ -43,7 +46,11 @@ function clampSpeed(velocity: Velocity): Velocity {
   return { vx: velocity.vx * scale, vy: velocity.vy * scale };
 }
 
-export function applyFriction(velocity: Velocity, frictionRetainedPerSec: number, deltaSec: number): Velocity {
+export function applyFriction(
+  velocity: Velocity,
+  frictionRetainedPerSec: number,
+  deltaSec: number,
+): Velocity {
   const decay = Math.pow(frictionRetainedPerSec, deltaSec);
   return { vx: velocity.vx * decay, vy: velocity.vy * decay };
 }

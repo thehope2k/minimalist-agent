@@ -44,12 +44,8 @@ export function ChooseScreen({ onPick }: { onPick: (k: ConnectionKind) => void }
       <div className="mx-auto mb-6 grid h-12 w-12 place-items-center rounded-lg bg-accent/15 text-accent">
         <Sparkles className="h-6 w-6" strokeWidth={1.75} />
       </div>
-      <h2 className="text-center text-lg font-semibold text-fg">
-        Add an AI connection
-      </h2>
-      <p className="mt-1 text-center text-sm text-fg-subtle">
-        How would you like to connect?
-      </p>
+      <h2 className="text-center text-lg font-semibold text-fg">Add an AI connection</h2>
+      <p className="mt-1 text-center text-sm text-fg-subtle">How would you like to connect?</p>
 
       <div className="mt-6 space-y-2">
         <Choice

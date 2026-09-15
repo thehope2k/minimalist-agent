@@ -16,24 +16,16 @@ interface FlattenedResult {
  * Handles tree filtering, flattening, and auto-expansion logic.
  * When filtering: auto-expands parent folders to reveal matches.
  */
-export function useTreeFilter({
-  tree,
-  expandedPaths,
-  filterQuery,
-}: UseTreeFilterParams) {
+export function useTreeFilter({ tree, expandedPaths, filterQuery }: UseTreeFilterParams) {
   // Check if any descendant matches the filter
-  const hasDescendantMatch = useCallback(
-    (nodes: FileTreeNode[] | null, query: string): boolean => {
-      if (!nodes) return false;
-      for (const node of nodes) {
-        if (node.name.toLowerCase().includes(query)) return true;
-        if (node.children && hasDescendantMatch(node.children, query))
-          return true;
-      }
-      return false;
-    },
-    [],
-  );
+  const hasDescendantMatch = useCallback((nodes: FileTreeNode[] | null, query: string): boolean => {
+    if (!nodes) return false;
+    for (const node of nodes) {
+      if (node.name.toLowerCase().includes(query)) return true;
+      if (node.children && hasDescendantMatch(node.children, query)) return true;
+    }
+    return false;
+  }, []);
 
   // Flatten tree for rendering (respects expanded state and filter)
   // When filtering: auto-expand parent folders to reveal matches
@@ -45,12 +37,9 @@ export function useTreeFilter({
     const traverse = (nodes: FileTreeNode[], depth: number) => {
       for (const node of nodes) {
         // Filter logic: include if name matches or any descendant matches
-        const nameMatches =
-          !lowerQuery || node.name.toLowerCase().includes(lowerQuery);
+        const nameMatches = !lowerQuery || node.name.toLowerCase().includes(lowerQuery);
         const hasMatchingDescendant =
-          lowerQuery && node.children
-            ? hasDescendantMatch(node.children, lowerQuery)
-            : false;
+          lowerQuery && node.children ? hasDescendantMatch(node.children, lowerQuery) : false;
 
         if (nameMatches || hasMatchingDescendant) {
           result.push({ node, depth });
@@ -63,11 +52,7 @@ export function useTreeFilter({
               (lowerQuery && hasMatchingDescendant)); // Auto-expand to reveal filtered matches
 
           if (shouldExpand) {
-            if (
-              lowerQuery &&
-              hasMatchingDescendant &&
-              !expandedPaths.has(node.absolutePath)
-            ) {
+            if (lowerQuery && hasMatchingDescendant && !expandedPaths.has(node.absolutePath)) {
               autoExpandedPaths.add(node.absolutePath);
             }
             traverse(node.children!, depth + 1); // Non-null: already checked in shouldExpand

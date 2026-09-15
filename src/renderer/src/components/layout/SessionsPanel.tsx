@@ -50,22 +50,22 @@ export function SessionsPanel({
   const [query, setQuery] = useState('');
   const trimmedQuery = query.trim().toLowerCase();
 
-  const heading =
-    view === 'archived' ? 'Archived' : projectFilterLabel(projectFilter, projects);
+  const heading = view === 'archived' ? 'Archived' : projectFilterLabel(projectFilter, projects);
 
   const showProjectDot = view !== 'archived' && projectFilter === 'all';
-  const headerTitle = view === 'all' ? (
-    <ProjectSwitcher
-      value={projectFilter}
-      onChange={onProjectFilterChange}
-      onManage={onManageProjects}
-    />
-  ) : (
-    <h2 className="flex items-center gap-2 text-[15px] font-semibold text-fg">
-      {view === 'archived' && <Archive className="h-4 w-4 text-fg-muted" strokeWidth={1.75} />}
-      {heading}
-    </h2>
-  );
+  const headerTitle =
+    view === 'all' ? (
+      <ProjectSwitcher
+        value={projectFilter}
+        onChange={onProjectFilterChange}
+        onManage={onManageProjects}
+      />
+    ) : (
+      <h2 className="flex items-center gap-2 text-[15px] font-semibold text-fg">
+        {view === 'archived' && <Archive className="h-4 w-4 text-fg-muted" strokeWidth={1.75} />}
+        {heading}
+      </h2>
+    );
 
   if (sessions === null) {
     return (
@@ -97,17 +97,26 @@ export function SessionsPanel({
   /* ---- bulk selection helpers ---- */
   const clearSelection = () => setSelectedIds(new Set());
   const openSearch = () => setSearchMode(true);
-  const closeSearch = () => { setSearchMode(false); setQuery(''); };
-  const toggleSelect = (id: string) => setSelectedIds((prev) => {
-    const next = new Set(prev);
-    next.has(id) ? next.delete(id) : next.add(id);
-    return next;
-  });
+  const closeSearch = () => {
+    setSearchMode(false);
+    setQuery('');
+  };
+  const toggleSelect = (id: string) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
 
   const handleBulkDelete = async () => {
     const ids = [...selectedIds];
     if (!ids.length) return;
-    if (!window.confirm(`Delete ${ids.length} session${ids.length !== 1 ? 's' : ''}? This cannot be undone.`)) return;
+    if (
+      !window.confirm(
+        `Delete ${ids.length} session${ids.length !== 1 ? 's' : ''}? This cannot be undone.`,
+      )
+    )
+      return;
     await Promise.all(ids.map((id) => deleteSession(id)));
     const deletedActive = activeId && selectedIds.has(activeId);
     clearSelection();
@@ -139,9 +148,13 @@ export function SessionsPanel({
                 <span className="px-1 text-xs text-fg-muted">{selectedIds.size} selected</span>
                 <IconButton
                   icon={view === 'archived' ? ArchiveRestore : Archive}
-                  label={view === 'archived' ? 'Restore selected sessions' : 'Archive selected sessions'}
+                  label={
+                    view === 'archived' ? 'Restore selected sessions' : 'Archive selected sessions'
+                  }
                   size="sm"
-                  onClick={() => void (view === 'archived' ? handleBulkRestore() : handleBulkArchive())}
+                  onClick={() =>
+                    void (view === 'archived' ? handleBulkRestore() : handleBulkArchive())
+                  }
                 />
                 <IconButton
                   icon={Trash2}
@@ -155,7 +168,9 @@ export function SessionsPanel({
             )}
             {view === 'all' && selectedIds.size === 0 && onNewSession && (
               <Button
-                variant="outline" size="sm" icon={Plus}
+                variant="outline"
+                size="sm"
+                icon={Plus}
                 onClick={onNewSession}
                 className="border-accent/40 bg-accent/10 text-accent hover:bg-accent/20 hover:text-accent"
               >
@@ -174,7 +189,12 @@ export function SessionsPanel({
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); closeSearch(); } }}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                e.preventDefault();
+                closeSearch();
+              }
+            }}
             placeholder="Search by name…"
             className="h-7 border-0 bg-transparent px-1"
           />
@@ -184,17 +204,16 @@ export function SessionsPanel({
 
       <div className="scroll-thin flex-1 overflow-y-auto px-2 pb-3">
         {view === 'all' && !trimmedQuery && (activeId == null || hasNewSessionDraft) && (
-          <NewSessionRow
-            active={activeId == null}
-            onSelect={onResumeNewSession ?? onNewSession}
-          />
+          <NewSessionRow active={activeId == null} onSelect={onResumeNewSession ?? onNewSession} />
         )}
 
         {items.length === 0 && !(view === 'all' && !trimmedQuery && activeId == null) ? (
           <div className="px-3 py-6 text-center text-xs text-fg-subtle">
-            {trimmedQuery ? `No sessions match “${query.trim()}”`
-            : view === 'archived' ? 'Nothing archived'
-            : 'No sessions yet'}
+            {trimmedQuery
+              ? `No sessions match “${query.trim()}”`
+              : view === 'archived'
+                ? 'Nothing archived'
+                : 'No sessions yet'}
           </div>
         ) : items.length > 0 ? (
           <>
@@ -238,19 +257,16 @@ function NewSessionRow({ active, onSelect }: { active: boolean; onSelect?: () =>
         active ? 'bg-elevated' : 'hover:bg-elevated/60 text-fg-muted',
       )}
     >
-      {active && (
-        <span className="absolute inset-y-1.5 left-0 z-10 w-0.5 rounded-r-sm bg-accent" />
-      )}
+      {active && <span className="absolute inset-y-1.5 left-0 z-10 w-0.5 rounded-r-sm bg-accent" />}
       <Circle
         className={cn('h-4 w-4 shrink-0', active ? 'text-fg-subtle' : 'text-fg-subtle/50')}
         strokeWidth={1.75}
       />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className={cn(
-            'flex-1 truncate text-[0.95rem]',
-            active ? 'text-fg' : 'text-fg-muted',
-          )}>
+          <span
+            className={cn('flex-1 truncate text-[0.95rem]', active ? 'text-fg' : 'text-fg-muted')}
+          >
             New session
           </span>
           {active && <span className="shrink-0 text-xs text-fg-subtle">now</span>}

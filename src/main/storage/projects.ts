@@ -48,7 +48,7 @@ const SCHEMA: FileSchema<ProjectsFile> = {
       return {
         ...data,
         projects: data.projects.map((p) => {
-          if (p.defaultPermissionMode === 'ask' as any) {
+          if (p.defaultPermissionMode === ('ask' as any)) {
             return { ...p, defaultPermissionMode: 'auto' as PermissionMode };
           }
           return p;
@@ -80,7 +80,12 @@ export type ProjectInput = Pick<Project, 'name' | 'rootPath'> &
   Partial<
     Pick<
       Project,
-      'color' | 'defaultPermissionMode' | 'defaultConnectionSlug' | 'defaultAutonomyLevel' | 'defaultModel' | 'includeCoAuthoredBy'
+      | 'color'
+      | 'defaultPermissionMode'
+      | 'defaultConnectionSlug'
+      | 'defaultAutonomyLevel'
+      | 'defaultModel'
+      | 'includeCoAuthoredBy'
     >
   >;
 
@@ -157,10 +162,7 @@ export function deleteProject(id: string): boolean {
  * specific project, so a nested folder picks the deeper rootPath when two
  * projects overlap. `null` if nothing matches (→ Inbox).
  */
-export function findProjectForPath(
-  cwd: string | undefined,
-  projects?: Project[],
-): Project | null {
+export function findProjectForPath(cwd: string | undefined, projects?: Project[]): Project | null {
   if (!cwd) return null;
   const list = projects ?? readAll();
   const norm = normalizePath(cwd);

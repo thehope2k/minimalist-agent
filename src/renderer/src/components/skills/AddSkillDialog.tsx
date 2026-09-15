@@ -47,9 +47,7 @@ export function AddSkillDialog({
     if (!open) return;
     setDescription('');
     setSlug('');
-    setPlaceholder(
-      PLACEHOLDERS[Math.floor(Math.random() * PLACEHOLDERS.length)],
-    );
+    setPlaceholder(PLACEHOLDERS[Math.floor(Math.random() * PLACEHOLDERS.length)]);
     void (projectDir ? Promise.resolve(projectDir) : getSkillsDir()).then(setSkillsDir);
     void getSkillsReferenceDocPath().then(setRefDocPath);
     requestAnimationFrame(() => taRef.current?.focus());
@@ -113,9 +111,7 @@ export function AddSkillDialog({
         </header>
 
         <div className="px-4 pt-4">
-          <h3 className="text-base font-medium text-fg">
-            What would you like to teach?
-          </h3>
+          <h3 className="text-base font-medium text-fg">What would you like to teach?</h3>
           <p className="mt-0.5 text-xs text-fg-subtle">
             Describe it — the agent will scaffold the SKILL.md for you.
           </p>
@@ -134,9 +130,7 @@ export function AddSkillDialog({
         </div>
 
         <div className="px-4 pt-3">
-          <label className="block text-[11px] uppercase tracking-wide text-fg-subtle">
-            Slug
-          </label>
+          <label className="block text-[11px] uppercase tracking-wide text-fg-subtle">Slug</label>
           <input
             type="text"
             value={slug}

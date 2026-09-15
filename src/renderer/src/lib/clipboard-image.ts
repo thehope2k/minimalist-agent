@@ -26,9 +26,7 @@ export async function copyImageSrcToClipboard(src: string): Promise<void> {
   if (!ctx) throw new Error('Canvas context unavailable');
   ctx.drawImage(img, 0, 0, width, height);
 
-  const blob = await new Promise<Blob | null>((resolve) =>
-    canvas.toBlob(resolve, 'image/png'),
-  );
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
   if (!blob) throw new Error('Failed to encode image');
 
   await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);

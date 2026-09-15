@@ -3,11 +3,7 @@
 // secret store. Skips extensions whose required secrets aren't set or
 // whose user-consent hasn't been granted.
 
-import {
-  existsSync,
-  readFileSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import type { LoadedExtension } from './types';
 import { requiresConsent, resolveEnvValue } from './types';

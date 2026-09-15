@@ -1,9 +1,5 @@
 import { useEffect, useState } from 'react';
-import {
-  bootstrapPreferences,
-  preferencesSnapshot,
-  subscribePreferences,
-} from '@/lib/preferences';
+import { bootstrapPreferences, preferencesSnapshot, subscribePreferences } from '@/lib/preferences';
 
 /**
  * Bootstraps the preferences store on first mount, then returns the

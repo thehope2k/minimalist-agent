@@ -2,9 +2,7 @@ export const CODEMIE_API_SUFFIX = '/code-assistant-api';
 
 export function codeMieApiBase(url: string): string {
   const baseUrl = url.trim().replace(/\/+$/, '');
-  return baseUrl.endsWith(CODEMIE_API_SUFFIX)
-    ? baseUrl
-    : `${baseUrl}${CODEMIE_API_SUFFIX}`;
+  return baseUrl.endsWith(CODEMIE_API_SUFFIX) ? baseUrl : `${baseUrl}${CODEMIE_API_SUFFIX}`;
 }
 
 export function codeMieCookieHeader(cookies: Record<string, string>): string {

@@ -22,13 +22,7 @@ export function KeyValueTable({ rows }: { rows: KeyValueRow[] }) {
   );
 }
 
-export function EditButton({
-  onClick,
-  disabled,
-}: {
-  onClick: () => void;
-  disabled?: boolean;
-}) {
+export function EditButton({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) {
   return (
     <button
       type="button"

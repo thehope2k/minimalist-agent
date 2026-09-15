@@ -50,7 +50,13 @@ export function extractConclusion(parts: MessagePart[]): string | null {
 
 function titleFromMarkdown(md: string): string {
   const firstLine = md.split('\n').find((l) => l.trim()) ?? '';
-  return firstLine.replace(/^#+\s*/, '').replace(/[*_`]/g, '').slice(0, 80).trim() || 'Response';
+  return (
+    firstLine
+      .replace(/^#+\s*/, '')
+      .replace(/[*_`]/g, '')
+      .slice(0, 80)
+      .trim() || 'Response'
+  );
 }
 
 function slugify(title: string): string {

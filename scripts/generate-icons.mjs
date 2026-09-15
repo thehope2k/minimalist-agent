@@ -14,11 +14,7 @@
 // Run via `npm run generate-icons` or implicitly through `npm run pack`
 // (wired as the `prepack` script in package.json).
 
-import {
-  existsSync,
-  mkdirSync,
-  rmSync,
-} from 'node:fs';
+import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -82,10 +78,7 @@ const ICONSET_ENTRIES = [
 ];
 
 async function renderPng(size, outPath) {
-  await sharp(Buffer.from(SVG))
-    .resize(size, size)
-    .png({ compressionLevel: 9 })
-    .toFile(outPath);
+  await sharp(Buffer.from(SVG)).resize(size, size).png({ compressionLevel: 9 }).toFile(outPath);
 }
 
 async function main() {
@@ -107,15 +100,10 @@ async function main() {
   // Build the iconset directory required by `iconutil`.
   if (existsSync(iconsetDir)) rmSync(iconsetDir, { recursive: true });
   mkdirSync(iconsetDir, { recursive: true });
-  await Promise.all(
-    ICONSET_ENTRIES.map((e) => renderPng(e.size, join(iconsetDir, e.name))),
-  );
+  await Promise.all(ICONSET_ENTRIES.map((e) => renderPng(e.size, join(iconsetDir, e.name))));
 
   const icnsPath = join(buildDir, 'icon.icns');
-  execSync(
-    `iconutil -c icns "${iconsetDir}" -o "${icnsPath}"`,
-    { stdio: 'inherit' },
-  );
+  execSync(`iconutil -c icns "${iconsetDir}" -o "${icnsPath}"`, { stdio: 'inherit' });
   rmSync(iconsetDir, { recursive: true });
   console.log(`✓ ${icnsPath}`);
 }

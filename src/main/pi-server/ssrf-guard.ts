@@ -174,12 +174,9 @@ function describeBlockedV6(ip: string): string | null {
 }
 
 function intToIpv4(value: number): string {
-  return [
-    (value >>> 24) & 0xff,
-    (value >>> 16) & 0xff,
-    (value >>> 8) & 0xff,
-    value & 0xff,
-  ].join('.');
+  return [(value >>> 24) & 0xff, (value >>> 16) & 0xff, (value >>> 8) & 0xff, value & 0xff].join(
+    '.',
+  );
 }
 
 /**
@@ -258,11 +255,7 @@ const pinningLookup: LookupFunction = (
       const reason = describeBlockedIp(a.address);
       if (reason) {
         log.warn(`blocked ${hostname} → ${a.address}: ${reason}`);
-        callback(
-          new SsrfError(`blocked address ${a.address} for ${hostname}: ${reason}`),
-          '',
-          0,
-        );
+        callback(new SsrfError(`blocked address ${a.address} for ${hostname}: ${reason}`), '', 0);
         return;
       }
     }
@@ -291,9 +284,7 @@ export interface SafeResponse {
   truncatedBytes: boolean;
 }
 
-type OnceResult =
-  | { kind: 'redirect'; location: string }
-  | { kind: 'response'; res: SafeResponse };
+type OnceResult = { kind: 'redirect'; location: string } | { kind: 'response'; res: SafeResponse };
 
 function decompressStream(res: http.IncomingMessage): Readable {
   const enc = String(res.headers['content-encoding'] ?? '').toLowerCase();
@@ -378,10 +369,11 @@ function requestOnce(current: URL, opts: SafeGetOptions): Promise<OnceResult> {
     );
 
     const timer = setTimeout(
-      () => finish(() => {
-        req.destroy();
-        reject(new Error(`request timed out after ${opts.timeoutMs}ms`));
-      }),
+      () =>
+        finish(() => {
+          req.destroy();
+          reject(new Error(`request timed out after ${opts.timeoutMs}ms`));
+        }),
       opts.timeoutMs,
     );
     const onAbort = () =>
@@ -408,10 +400,7 @@ function requestOnce(current: URL, opts: SafeGetOptions): Promise<OnceResult> {
  * encodings. Throws `SsrfError` for blocked targets and `Error` for transport
  * failures.
  */
-export async function safeHttpGet(
-  rawUrl: string,
-  opts: SafeGetOptions,
-): Promise<SafeResponse> {
+export async function safeHttpGet(rawUrl: string, opts: SafeGetOptions): Promise<SafeResponse> {
   const maxRedirects = opts.maxRedirects ?? 5;
   let current = assertAllowedUrl(rawUrl);
 

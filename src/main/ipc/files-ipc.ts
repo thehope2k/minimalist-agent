@@ -9,7 +9,11 @@ import {
 import type { StoredAttachment } from '../storage/sessions';
 import { type FileSearchEntry, searchFiles } from '../files/search';
 import { buildFileTree, listDirectory } from '../files/list-directory';
-import { isWithinAllowedRoots, resolveWithinAllowedRoots, type FileStatResult } from '../files/path-guard';
+import {
+  isWithinAllowedRoots,
+  resolveWithinAllowedRoots,
+  type FileStatResult,
+} from '../files/path-guard';
 
 /** Attachments, file search/tree (mention picker + file explorer), and native fs dialogs. */
 export function registerFilesIpc(): void {
@@ -18,9 +22,7 @@ export function registerFilesIpc(): void {
   ipcMain.handle('attachments:pickFiles', async (event): Promise<DraftAttachment[]> => {
     const win = BrowserWindow.fromWebContents(event.sender);
     const opts = {
-      properties: ['openFile', 'multiSelections'] as Array<
-        'openFile' | 'multiSelections'
-      >,
+      properties: ['openFile', 'multiSelections'] as Array<'openFile' | 'multiSelections'>,
       filters: [
         { name: 'All Files', extensions: ['*'] },
         { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'] },
@@ -28,7 +30,22 @@ export function registerFilesIpc(): void {
         { name: 'Office', extensions: ['docx', 'xlsx', 'pptx', 'doc', 'xls', 'ppt'] },
         {
           name: 'Code',
-          extensions: ['ts', 'tsx', 'js', 'jsx', 'py', 'go', 'rs', 'java', 'c', 'cpp', 'h', 'json', 'yaml', 'yml'],
+          extensions: [
+            'ts',
+            'tsx',
+            'js',
+            'jsx',
+            'py',
+            'go',
+            'rs',
+            'java',
+            'c',
+            'cpp',
+            'h',
+            'json',
+            'yaml',
+            'yml',
+          ],
         },
       ],
     };
@@ -47,16 +64,13 @@ export function registerFilesIpc(): void {
     return out;
   });
 
-  ipcMain.handle(
-    'attachments:readPath',
-    (_e, p: string): DraftAttachment | null => {
-      try {
-        return readPathAsDraft(p);
-      } catch (e) {
-        throw e instanceof Error ? e : new Error(String(e));
-      }
-    },
-  );
+  ipcMain.handle('attachments:readPath', (_e, p: string): DraftAttachment | null => {
+    try {
+      return readPathAsDraft(p);
+    } catch (e) {
+      throw e instanceof Error ? e : new Error(String(e));
+    }
+  });
 
   ipcMain.handle(
     'attachments:store',
@@ -65,9 +79,8 @@ export function registerFilesIpc(): void {
     },
   );
 
-  ipcMain.handle(
-    'attachments:readAsBase64',
-    (_e, storedPath: string): string | null => readStoredAsBase64(storedPath),
+  ipcMain.handle('attachments:readAsBase64', (_e, storedPath: string): string | null =>
+    readStoredAsBase64(storedPath),
   );
 
   ipcMain.handle('attachments:reveal', (_e, storedPath: string) => {
@@ -78,10 +91,7 @@ export function registerFilesIpc(): void {
 
   ipcMain.handle(
     'files:search',
-    (
-      _e,
-      args: { root: string; query: string; limit?: number },
-    ): FileSearchEntry[] => {
+    (_e, args: { root: string; query: string; limit?: number }): FileSearchEntry[] => {
       if (!isWithinAllowedRoots(args.root)) return [];
       return searchFiles({ root: args.root, query: args.query, limit: args.limit });
     },
@@ -91,7 +101,13 @@ export function registerFilesIpc(): void {
     'files:grep',
     async (
       _e,
-      args: { root: string; query: string; useRegex?: boolean; caseSensitive?: boolean; limit?: number },
+      args: {
+        root: string;
+        query: string;
+        useRegex?: boolean;
+        caseSensitive?: boolean;
+        limit?: number;
+      },
     ) => {
       if (!isWithinAllowedRoots(args.root)) return [];
       const { grepFiles } = await import('../files/grep');
@@ -103,10 +119,7 @@ export function registerFilesIpc(): void {
 
   ipcMain.handle(
     'files:listDirectory',
-    (
-      _e,
-      args: { path: string; root: string; includeHidden?: boolean },
-    ) => {
+    (_e, args: { path: string; root: string; includeHidden?: boolean }) => {
       if (!isWithinAllowedRoots(args.path)) return [];
       return listDirectory(args);
     },
@@ -114,10 +127,7 @@ export function registerFilesIpc(): void {
 
   ipcMain.handle(
     'files:buildFileTree',
-    (
-      _e,
-      args: { path: string; root: string; includeHidden?: boolean; maxDepth?: number },
-    ) => {
+    (_e, args: { path: string; root: string; includeHidden?: boolean; maxDepth?: number }) => {
       if (!isWithinAllowedRoots(args.path)) return [];
       return buildFileTree(args);
     },
@@ -146,23 +156,22 @@ export function registerFilesIpc(): void {
         'openDirectory' | 'createDirectory'
       >,
     };
-    const result = win
-      ? await dialog.showOpenDialog(win, opts)
-      : await dialog.showOpenDialog(opts);
-    return result.canceled ? null : result.filePaths[0] ?? null;
+    const result = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
+    return result.canceled ? null : (result.filePaths[0] ?? null);
   });
 
   ipcMain.handle('fs:pickFile', async (event, opts?: { defaultPath?: string; title?: string }) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     const dialogOpts = {
       title: opts?.title ?? 'Select file',
-      defaultPath: opts?.defaultPath ?? (process.platform === 'win32' ? 'C:\\Windows\\System32' : '/bin'),
+      defaultPath:
+        opts?.defaultPath ?? (process.platform === 'win32' ? 'C:\\Windows\\System32' : '/bin'),
       properties: ['openFile'] as Array<'openFile'>,
     };
     const result = win
       ? await dialog.showOpenDialog(win, dialogOpts)
       : await dialog.showOpenDialog(dialogOpts);
-    return result.canceled ? null : result.filePaths[0] ?? null;
+    return result.canceled ? null : (result.filePaths[0] ?? null);
   });
 
   ipcMain.handle('fs:readFile', (_e, absolutePath: string): string | null => {

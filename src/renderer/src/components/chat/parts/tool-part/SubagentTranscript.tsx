@@ -14,7 +14,7 @@ export function SubagentSummaryLine({ subagent }: Props) {
   const elapsedMs = Math.max(0, subagent.updatedAt - subagent.startedAt);
   const tools = subagent.parts.filter((p) => p.kind === 'tool').length;
   const errors = subagent.parts.filter(
-    (p) => p.kind === 'tool' && (p.status === 'error' || p.result?.isError)
+    (p) => p.kind === 'tool' && (p.status === 'error' || p.result?.isError),
   ).length;
   // A subagent is its own billing unit, so its growth is summed separately
   // from the parent turn's total.
@@ -24,20 +24,14 @@ export function SubagentSummaryLine({ subagent }: Props) {
   );
   return (
     <div className="flex items-center gap-2 rounded-md border border-border/70 bg-app/20 px-2 py-1 text-xs">
-      <span className="font-medium text-fg">
-        {subagent.agentName ?? subagent.agentSlug}
-      </span>
+      <span className="font-medium text-fg">{subagent.agentName ?? subagent.agentSlug}</span>
       <span className="text-fg-subtle">· {subagentPhaseLabel(subagent.phase)}</span>
       <span className="text-fg-subtle">· tools {tools}</span>
-      <span className={cn('text-fg-subtle', errors > 0 && 'text-red-300')}>
-        · errors {errors}
-      </span>
+      <span className={cn('text-fg-subtle', errors > 0 && 'text-red-300')}>· errors {errors}</span>
       {contextTokens > 0 && (
         <span className="text-fg-subtle">· +{compactNumber(contextTokens)} tokens</span>
       )}
-      <span className="ml-auto tabular-nums text-fg-subtle">
-        {Math.floor(elapsedMs / 1000)}s
-      </span>
+      <span className="ml-auto tabular-nums text-fg-subtle">{Math.floor(elapsedMs / 1000)}s</span>
     </div>
   );
 }

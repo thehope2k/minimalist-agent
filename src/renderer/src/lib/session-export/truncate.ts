@@ -22,10 +22,7 @@ const DEFAULT_CAPS: Caps = {
   diffLines: 500,
 };
 
-export function truncateModel(
-  model: ExportModel,
-  caps: Caps = DEFAULT_CAPS,
-): ExportModel {
+export function truncateModel(model: ExportModel, caps: Caps = DEFAULT_CAPS): ExportModel {
   for (const row of model.rows) {
     if (row.kind !== 'turn') continue;
     for (const part of row.turn.parts) truncatePart(part, caps);

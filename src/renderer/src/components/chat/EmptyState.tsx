@@ -6,7 +6,8 @@ export function EmptyState() {
       </div>
       <h1 className="text-lg font-medium text-fg">Start a new session</h1>
       <p className="mt-1 max-w-105 text-sm text-fg-muted">
-        Type a message below. The session is created on your first send and saved to disk automatically.
+        Type a message below. The session is created on your first send and saved to disk
+        automatically.
       </p>
     </div>
   );

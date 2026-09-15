@@ -13,13 +13,13 @@ export function useMentionHandling(
   setValue: (text: string) => void,
 ) {
   const { skills, extensions } = useSessionAssets();
-  
+
   const {
     state: mention,
     recompute: recomputeMention,
     reset: resetMention,
   } = useInlineMention(textareaRef);
-  
+
   const mentionHandleRef = useRef<MentionMenuHandle | null>(null);
 
   /**
@@ -29,10 +29,10 @@ export function useMentionHandling(
   const insertMention = (item: MentionItem) => {
     const el = textareaRef.current;
     if (!el || mention.triggerIndex < 0) return;
-    
+
     const before = value.slice(0, mention.triggerIndex);
     const after = value.slice(mention.cursor);
-    
+
     let token: string;
     if (item.kind === 'skill') {
       token = `@${item.skill.slug}`;
@@ -44,17 +44,15 @@ export function useMentionHandling(
       // so the highlight regex and the main-process parser both see a
       // single, unambiguous token rather than stopping at the first space.
       const relPath =
-        item.entry.type === 'directory'
-          ? `${item.entry.relativePath}/`
-          : item.entry.relativePath;
+        item.entry.type === 'directory' ? `${item.entry.relativePath}/` : item.entry.relativePath;
       token = relPath.includes(' ') ? `@\`${relPath}\`` : `@${relPath}`;
     }
-    
+
     const insertion = `${token} `;
     const next = before + insertion + after;
     setValue(next);
     resetMention();
-    
+
     // Restore caret right after the inserted token
     requestAnimationFrame(() => {
       const pos = before.length + insertion.length;
@@ -67,14 +65,14 @@ export function useMentionHandling(
   const triggerMentionFromButton = () => {
     const el = textareaRef.current;
     if (!el) return;
-    
+
     el.focus();
     const cursor = el.selectionStart ?? value.length;
     const before = value.slice(0, cursor);
     const needsSpace = before.length > 0 && !/\s$/.test(before);
     const insertion = `${needsSpace ? ' ' : ''}@`;
     const next = before + insertion + value.slice(cursor);
-    
+
     setValue(next);
     requestAnimationFrame(() => {
       const pos = before.length + insertion.length;

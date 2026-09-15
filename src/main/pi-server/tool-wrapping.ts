@@ -4,13 +4,7 @@
 // here — they ARE the engagement/workflow mechanism, not a side effect to gate.
 import type { ToolDefinition } from '@earendil-works/pi-coding-agent';
 import { withOperation } from './operation-tracker';
-import {
-  captureContent,
-  safeAttr,
-  setAttrs,
-  SpanStatusCode,
-  withSpan,
-} from '../../shared/otel';
+import { captureContent, safeAttr, setAttrs, SpanStatusCode, withSpan } from '../../shared/otel';
 import { describeCatastrophicRm } from './catastrophic-rm-guard';
 import { state } from './state';
 import { send } from './transport';
@@ -37,20 +31,33 @@ export const READ_ONLY_TOOL_NAMES = new Set([
 // bypassed for remote side effects. It goes through the normal
 // requestPermission() round-trip in plan/ask mode, same as Bash/Edit.
 
-export function requestBrowserTool(sessionId: string, command: string): Promise<MsgBrowserToolResult> {
+export function requestBrowserTool(
+  sessionId: string,
+  command: string,
+): Promise<MsgBrowserToolResult> {
   return new Promise((resolve) => {
     const requestId = `browser_${Date.now().toString(36)}_${Math.random()
       .toString(36)
       .slice(2, 8)}`;
     state.pendingBrowserTool.set(requestId, { resolve });
-    const req: MsgBrowserToolRequest = { type: 'browser_tool_request', requestId, sessionId, command };
+    const req: MsgBrowserToolRequest = {
+      type: 'browser_tool_request',
+      requestId,
+      sessionId,
+      command,
+    };
     send(req);
 
     state.turnAbort?.signal.addEventListener('abort', () => {
       const pending = state.pendingBrowserTool.get(requestId);
       if (pending) {
         state.pendingBrowserTool.delete(requestId);
-        pending.resolve({ type: 'browser_tool_result', requestId, output: 'Turn aborted', isError: true });
+        pending.resolve({
+          type: 'browser_tool_result',
+          requestId,
+          output: 'Turn aborted',
+          isError: true,
+        });
       }
     });
   });
@@ -166,9 +173,7 @@ export function wrapWithPermissionGate(
  * uniform. When tracing is disabled `withSpan` uses the API's no-op tracer, so
  * this is effectively free.
  */
-export function instrumentTool(
-  base: ToolDefinition<any, any>,
-): ToolDefinition<any, any> {
+export function instrumentTool(base: ToolDefinition<any, any>): ToolDefinition<any, any> {
   const originalExecute = base.execute.bind(base);
   // Agent delegation + collaboration/planning tools are MA-internal; the file/
   // web/bash tools are the model-callable "function" tools.

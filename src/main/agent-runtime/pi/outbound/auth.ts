@@ -20,10 +20,17 @@ export function handleSessionIdUpdate(msg: MsgSessionIdUpdate, handle: Subproces
   persistRuntimeSessionId(handle.chatSessionId, msg.runtimeSessionId);
 }
 
-export async function handleAuthRefreshRequest(msg: MsgAuthRefreshRequest, handle: SubprocessHandle): Promise<void> {
+export async function handleAuthRefreshRequest(
+  msg: MsgAuthRefreshRequest,
+  handle: SubprocessHandle,
+): Promise<void> {
   const signal = msg.turnId ? handle.turnSignals.get(msg.turnId) : undefined;
   try {
-    const fresh = await resolveAuthForSlug(handle.connectionSlug, signal, `session=${handle.chatSessionId}`);
+    const fresh = await resolveAuthForSlug(
+      handle.connectionSlug,
+      signal,
+      `session=${handle.chatSessionId}`,
+    );
     const result: MsgAuthRefreshResult =
       fresh.type === 'oauth'
         ? {
@@ -50,13 +57,20 @@ export async function handleAuthRefreshRequest(msg: MsgAuthRefreshRequest, handl
   }
 }
 
-export async function handleAuthRequired(msg: MsgAuthRequired, handle: SubprocessHandle): Promise<void> {
+export async function handleAuthRequired(
+  msg: MsgAuthRequired,
+  handle: SubprocessHandle,
+): Promise<void> {
   // Refresh once, push token_update; we don't auto-retry the turn
   // (Pi already errored it). The user can re-send.
   if (handle.refreshing) return;
   handle.refreshing = true;
   try {
-    const fresh = await resolveAuthForSlug(handle.connectionSlug, undefined, `session=${handle.chatSessionId}`);
+    const fresh = await resolveAuthForSlug(
+      handle.connectionSlug,
+      undefined,
+      `session=${handle.chatSessionId}`,
+    );
     if (fresh.type === 'oauth') {
       const upd: MsgTokenUpdate = {
         type: 'token_update',

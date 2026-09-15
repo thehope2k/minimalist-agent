@@ -22,10 +22,7 @@ export type StreamingDownsampler = {
  * would produce an audible click every ~200ms and corrupt the resample
  * timeline (the ratio rarely divides a chunk evenly).
  */
-export function createStreamingDownsampler(
-  fromRate: number,
-  toRate: number,
-): StreamingDownsampler {
+export function createStreamingDownsampler(fromRate: number, toRate: number): StreamingDownsampler {
   if (fromRate === toRate) {
     return { push: (input) => input };
   }

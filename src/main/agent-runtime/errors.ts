@@ -64,7 +64,8 @@ export function extractRetryAfterMs(text: string): number | null {
     }
   }
   // "Please retry after Ns" / "retry in N seconds"
-  const inline = /retry(?:\s+(?:after|in))?\s+(\d+(?:\.\d+)?)\s*(s|sec|seconds?|m|min|minutes?)\b/i.exec(text);
+  const inline =
+    /retry(?:\s+(?:after|in))?\s+(\d+(?:\.\d+)?)\s*(s|sec|seconds?|m|min|minutes?)\b/i.exec(text);
   if (inline) {
     const n = parseFloat(inline[1]);
     const unit = inline[2].toLowerCase();
@@ -89,28 +90,24 @@ const ERROR_DEFINITIONS: Record<ErrorCode, ErrorDef> = {
   },
   expired_oauth_token: {
     title: 'Session expired',
-    message:
-      'Your OAuth session has expired. Re-authenticate from Settings → AI.',
+    message: 'Your OAuth session has expired. Re-authenticate from Settings → AI.',
     canRetry: false,
   },
   rate_limited: {
     title: 'Rate limited',
-    message:
-      'The provider rate-limited this request. Wait a few seconds and retry.',
+    message: 'The provider rate-limited this request. Wait a few seconds and retry.',
     canRetry: true,
     retryDelayMs: 5000,
   },
   service_error: {
     title: 'Service error',
-    message:
-      'The provider API returned a server error. This usually resolves on its own.',
+    message: 'The provider API returned a server error. This usually resolves on its own.',
     canRetry: true,
     retryDelayMs: 2000,
   },
   network_error: {
     title: 'Connection error',
-    message:
-      'Could not reach the provider API. Check your internet connection, VPN, or firewall.',
+    message: 'Could not reach the provider API. Check your internet connection, VPN, or firewall.',
     canRetry: true,
     retryDelayMs: 1000,
   },
@@ -135,8 +132,7 @@ const ERROR_DEFINITIONS: Record<ErrorCode, ErrorDef> = {
   },
   invalid_model: {
     title: 'Invalid model',
-    message:
-      'The selected model id was rejected by the API. Pick another model in Settings → AI.',
+    message: 'The selected model id was rejected by the API. Pick another model in Settings → AI.',
     canRetry: false,
   },
   invalid_request: {
@@ -154,14 +150,12 @@ const ERROR_DEFINITIONS: Record<ErrorCode, ErrorDef> = {
   },
   image_too_large: {
     title: 'Image too large',
-    message:
-      'The image exceeds API limits (max 8000px or 5 MB). Resize and try again.',
+    message: 'The image exceeds API limits (max 8000px or 5 MB). Resize and try again.',
     canRetry: false,
   },
   provider_error: {
     title: 'Provider error',
-    message:
-      'The provider is reporting a transient issue. Retry in a moment.',
+    message: 'The provider is reporting a transient issue. Retry in a moment.',
     canRetry: true,
     retryDelayMs: 5000,
   },
@@ -185,8 +179,7 @@ const ERROR_DEFINITIONS: Record<ErrorCode, ErrorDef> = {
   },
   structured_output_retries_exhausted: {
     title: 'Structured output retries exhausted',
-    message:
-      'The model could not produce valid structured output after multiple attempts.',
+    message: 'The model could not produce valid structured output after multiple attempts.',
     canRetry: true,
   },
   aborted: {
@@ -252,10 +245,7 @@ function hasHtmlErrorPageSignals(textLower: string): boolean {
 }
 
 function isLikelyProxyInterception(textLower: string): boolean {
-  if (
-    textLower.includes('unexpected html error page') ||
-    textLower.includes('network proxy')
-  ) {
+  if (textLower.includes('unexpected html error page') || textLower.includes('network proxy')) {
     return true;
   }
   if (!looksLikeHtmlPayload(textLower)) return false;
@@ -423,9 +413,7 @@ export function parseError(error: unknown): AgentError {
 
   if (
     lower.includes('image') &&
-    (lower.includes('dimension') ||
-      lower.includes('8000') ||
-      lower.includes('5mb')) &&
+    (lower.includes('dimension') || lower.includes('8000') || lower.includes('5mb')) &&
     (lower.includes('exceed') || lower.includes('too large'))
   ) {
     return buildError('image_too_large', original);

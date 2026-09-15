@@ -28,9 +28,7 @@ const EMPTY: MentionState = {
  * Returns the live mention state plus a `recompute` callback for the
  * caller to drive on every input/keyup.
  */
-export function useInlineMention(
-  textareaRef: React.RefObject<HTMLTextAreaElement | null>,
-): {
+export function useInlineMention(textareaRef: React.RefObject<HTMLTextAreaElement | null>): {
   state: MentionState;
   recompute: () => void;
   reset: () => void;

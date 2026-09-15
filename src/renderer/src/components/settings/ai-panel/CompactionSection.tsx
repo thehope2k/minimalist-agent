@@ -43,7 +43,9 @@ export function CompactionSection({ settings }: { settings: AiSettings }) {
         percent={fractionToPercent(compaction?.reserveFraction ?? DEFAULT_RESERVE_FRACTION)}
         floor={compaction?.reserveTokensFloor ?? DEFAULT_RESERVE_TOKENS_FLOOR}
         ceiling={compaction?.reserveTokensCeiling ?? DEFAULT_RESERVE_TOKENS_CEILING}
-        onPercentChange={(v) => void setCompactionSettings({ reserveFraction: percentToFraction(v) })}
+        onPercentChange={(v) =>
+          void setCompactionSettings({ reserveFraction: percentToFraction(v) })
+        }
         onFloorChange={(v) => void setCompactionSettings({ reserveTokensFloor: v })}
         onCeilingChange={(v) => void setCompactionSettings({ reserveTokensCeiling: v })}
         disabled={!enabled}
@@ -55,7 +57,9 @@ export function CompactionSection({ settings }: { settings: AiSettings }) {
         percent={fractionToPercent(compaction?.keepRecentFraction ?? DEFAULT_KEEP_RECENT_FRACTION)}
         floor={compaction?.keepRecentTokensFloor ?? DEFAULT_KEEP_RECENT_TOKENS_FLOOR}
         ceiling={compaction?.keepRecentTokensCeiling ?? DEFAULT_KEEP_RECENT_TOKENS_CEILING}
-        onPercentChange={(v) => void setCompactionSettings({ keepRecentFraction: percentToFraction(v) })}
+        onPercentChange={(v) =>
+          void setCompactionSettings({ keepRecentFraction: percentToFraction(v) })
+        }
         onFloorChange={(v) => void setCompactionSettings({ keepRecentTokensFloor: v })}
         onCeilingChange={(v) => void setCompactionSettings({ keepRecentTokensCeiling: v })}
         disabled={!enabled}

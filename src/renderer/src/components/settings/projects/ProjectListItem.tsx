@@ -23,57 +23,33 @@ export function ProjectListItem({
         style={{ backgroundColor: p.color ?? 'var(--color-accent)' }}
       />
       <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-medium text-fg">
-          {p.name}
-        </div>
-        <div className="truncate text-xs text-fg-subtle">
-          {p.rootPath}
-        </div>
+        <div className="truncate text-sm font-medium text-fg">{p.name}</div>
+        <div className="truncate text-xs text-fg-subtle">{p.rootPath}</div>
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
           <ProjectChip
             prefix="Mode"
-            label={
-              p.defaultPermissionMode
-                ? permissionLabel(p.defaultPermissionMode)
-                : 'Default'
-            }
+            label={p.defaultPermissionMode ? permissionLabel(p.defaultPermissionMode) : 'Default'}
             muted={!p.defaultPermissionMode}
           />
           <ProjectChip
             prefix="Autonomy"
-            label={
-              p.defaultAutonomyLevel !== undefined
-                ? `${p.defaultAutonomyLevel}%`
-                : 'Default'
-            }
+            label={p.defaultAutonomyLevel !== undefined ? `${p.defaultAutonomyLevel}%` : 'Default'}
             muted={p.defaultAutonomyLevel === undefined}
           />
           <ProjectChip
             prefix="Connection"
-            label={
-              p.defaultConnectionSlug
-                ? connectionLabel(p.defaultConnectionSlug)
-                : 'Default'
-            }
+            label={p.defaultConnectionSlug ? connectionLabel(p.defaultConnectionSlug) : 'Default'}
             muted={!p.defaultConnectionSlug}
           />
           <ProjectChip
             prefix="Model"
-            label={
-              p.defaultModel
-                ? p.defaultModel
-                : 'Default'
-            }
+            label={p.defaultModel ? p.defaultModel : 'Default'}
             muted={!p.defaultModel}
           />
           <ProjectChip
             prefix="Co-Author"
             label={
-              p.includeCoAuthoredBy === undefined
-                ? 'Default'
-                : p.includeCoAuthoredBy
-                  ? 'On'
-                  : 'Off'
+              p.includeCoAuthoredBy === undefined ? 'Default' : p.includeCoAuthoredBy ? 'On' : 'Off'
             }
             muted={p.includeCoAuthoredBy === undefined}
           />
@@ -84,18 +60,8 @@ export function ProjectListItem({
         {sessionCount === 1 ? '' : 's'}
       </span>
       <div className="flex shrink-0 items-center gap-1">
-        <IconButton
-          icon={Pencil}
-          label="Edit"
-          size="sm"
-          onClick={() => onEdit(p)}
-        />
-        <IconButton
-          icon={Trash2}
-          label="Delete"
-          size="sm"
-          onClick={() => onDelete(p)}
-        />
+        <IconButton icon={Pencil} label="Edit" size="sm" onClick={() => onEdit(p)} />
+        <IconButton icon={Trash2} label="Delete" size="sm" onClick={() => onDelete(p)} />
       </div>
     </div>
   );

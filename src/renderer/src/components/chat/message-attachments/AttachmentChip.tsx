@@ -20,9 +20,7 @@ export function AttachmentChip({ att }: AttachmentChipProps) {
         <FileBadgeIcon att={att} />
       </div>
       <div className="flex min-w-0 flex-col">
-        <span className="line-clamp-1 break-all text-xs font-medium text-fg">
-          {att.name}
-        </span>
+        <span className="line-clamp-1 break-all text-xs font-medium text-fg">{att.name}</span>
         <span className="text-[10px] text-fg-subtle">{labelFor(att)}</span>
       </div>
     </button>

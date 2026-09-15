@@ -16,9 +16,7 @@ export function ConnectionList({
 }) {
   if (groups.length === 0) {
     return (
-      <div className="px-2.5 py-3 text-center text-sm text-fg-subtle">
-        No connections yet.
-      </div>
+      <div className="px-2.5 py-3 text-center text-sm text-fg-subtle">No connections yet.</div>
     );
   }
   return (
@@ -48,16 +46,8 @@ export function ConnectionList({
                     <div className="text-[10px] text-fg-subtle">Runs locally via Ollama</div>
                   )}
                 </div>
-                {isActive && (
-                  <Check
-                    className="h-3.5 w-3.5 shrink-0 text-fg"
-                    strokeWidth={2}
-                  />
-                )}
-                <ChevronRight
-                  className="h-3.5 w-3.5 shrink-0 text-fg-subtle"
-                  strokeWidth={1.75}
-                />
+                {isActive && <Check className="h-3.5 w-3.5 shrink-0 text-fg" strokeWidth={2} />}
+                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-fg-subtle" strokeWidth={1.75} />
               </button>
             );
           })}

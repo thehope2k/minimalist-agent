@@ -64,9 +64,8 @@ export function applyNestedEvent(
             status: 'running',
           };
       return {
-        parts: idx >= 0
-          ? [...parts.slice(0, idx), next, ...parts.slice(idx + 1)]
-          : [...parts, next],
+        parts:
+          idx >= 0 ? [...parts.slice(0, idx), next, ...parts.slice(idx + 1)] : [...parts, next],
       };
     }
     case 'tool_input_delta': {
@@ -164,9 +163,7 @@ export function applyEvent(msg: ChatMessage, evt: ChatStreamEvent): ChatMessage 
     case 'tool_start': {
       // De-dupe: if we've already pushed this toolUseId (e.g. via a previous
       // stream_event), update its input rather than appending a new card.
-      const idx = msg.parts.findIndex(
-        (p) => p.kind === 'tool' && p.toolUseId === evt.toolUseId,
-      );
+      const idx = msg.parts.findIndex((p) => p.kind === 'tool' && p.toolUseId === evt.toolUseId);
       const existing = idx >= 0 ? (msg.parts[idx] as Extract<MessagePart, { kind: 'tool' }>) : null;
       const next: MessagePart = existing
         ? { ...existing, name: evt.name, input: evt.input ?? existing.input }
@@ -184,9 +181,7 @@ export function applyEvent(msg: ChatMessage, evt: ChatStreamEvent): ChatMessage 
       return { ...msg, parts };
     }
     case 'tool_input_delta': {
-      const idx = msg.parts.findIndex(
-        (p) => p.kind === 'tool' && p.toolUseId === evt.toolUseId,
-      );
+      const idx = msg.parts.findIndex((p) => p.kind === 'tool' && p.toolUseId === evt.toolUseId);
       if (idx < 0) return msg;
       const tool = msg.parts[idx] as Extract<MessagePart, { kind: 'tool' }>;
       const next: MessagePart = {
@@ -207,9 +202,7 @@ export function applyEvent(msg: ChatMessage, evt: ChatStreamEvent): ChatMessage 
       };
     }
     case 'tool_result': {
-      const idx = msg.parts.findIndex(
-        (p) => p.kind === 'tool' && p.toolUseId === evt.toolUseId,
-      );
+      const idx = msg.parts.findIndex((p) => p.kind === 'tool' && p.toolUseId === evt.toolUseId);
       if (idx < 0) return msg;
       const tool = msg.parts[idx] as Extract<MessagePart, { kind: 'tool' }>;
       const next: MessagePart = {
@@ -232,17 +225,16 @@ export function applyEvent(msg: ChatMessage, evt: ChatStreamEvent): ChatMessage 
     }
     case 'tool_progress': {
       if (evt.update.kind !== 'subagent') return msg;
-      const idx = msg.parts.findIndex(
-        (p) => p.kind === 'tool' && p.toolUseId === evt.toolUseId,
-      );
-      const tool = idx >= 0
-        ? (msg.parts[idx] as Extract<MessagePart, { kind: 'tool' }>)
-        : ({
-            kind: 'tool',
-            toolUseId: evt.toolUseId,
-            name: 'Agent',
-            status: 'running',
-          } as Extract<MessagePart, { kind: 'tool' }>);
+      const idx = msg.parts.findIndex((p) => p.kind === 'tool' && p.toolUseId === evt.toolUseId);
+      const tool =
+        idx >= 0
+          ? (msg.parts[idx] as Extract<MessagePart, { kind: 'tool' }>)
+          : ({
+              kind: 'tool',
+              toolUseId: evt.toolUseId,
+              name: 'Agent',
+              status: 'running',
+            } as Extract<MessagePart, { kind: 'tool' }>);
       const now = Date.now();
       const existing =
         tool.subagent && tool.subagent.execId === evt.update.execId
@@ -289,7 +281,8 @@ export function applyEvent(msg: ChatMessage, evt: ChatStreamEvent): ChatMessage 
           usage: nested.usage ?? nextSub.usage,
           latestCallUsage: nested.latestCallUsage ?? nextSub.latestCallUsage,
           contextCheckpointIndex: nested.checkpointIndex ?? nextSub.contextCheckpointIndex,
-          pendingRoundOutputTokens: nested.pendingRoundOutputTokens ?? nextSub.pendingRoundOutputTokens,
+          pendingRoundOutputTokens:
+            nested.pendingRoundOutputTokens ?? nextSub.pendingRoundOutputTokens,
           stopReason: nested.stopReason ?? nextSub.stopReason,
           error: nested.error ?? nextSub.error,
           errorInfo: nested.errorInfo ?? nextSub.errorInfo,

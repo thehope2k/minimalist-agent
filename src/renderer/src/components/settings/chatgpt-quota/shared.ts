@@ -36,20 +36,23 @@ export function useQuota(connectionSlug: string, enabled: boolean, refreshKey = 
     }
 
     setState((prev) => (prev.status === 'ok' ? prev : { status: 'loading' }));
-    void window.api.chatgpt.fetchQuota({ connectionSlug }).then((result) => {
-      if (slugRef.current !== connectionSlug) return;
-      quotaCache.set(connectionSlug, { quota: result, fetchedAt: Date.now() });
-      applyResult(result);
-    }).catch((err: unknown) => {
-      const message = err instanceof Error ? err.message : String(err);
-      setState({ status: 'error', message });
-    });
+    void window.api.chatgpt
+      .fetchQuota({ connectionSlug })
+      .then((result) => {
+        if (slugRef.current !== connectionSlug) return;
+        quotaCache.set(connectionSlug, { quota: result, fetchedAt: Date.now() });
+        applyResult(result);
+      })
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err);
+        setState({ status: 'error', message });
+      });
 
     function applyResult(result: ChatGptQuota | { error: string }) {
       if ('error' in result) setState({ status: 'error', message: result.error });
       else setState({ status: 'ok', quota: result });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connectionSlug, enabled, refreshKey]);
 
   return state;

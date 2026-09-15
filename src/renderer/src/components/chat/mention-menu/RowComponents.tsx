@@ -59,7 +59,10 @@ export function SkillRow({
         <div className="flex items-center gap-2">
           <span className="truncate text-fg">{skill.metadata.name}</span>
           {isPinned && (
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" title="Pinned to session" />
+            <span
+              className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent"
+              title="Pinned to session"
+            />
           )}
           {skill.source === 'project' && (
             <span className="shrink-0 rounded px-1 py-0.5 text-[9px] font-medium uppercase tracking-wide text-fg-subtle ring-1 ring-border">
@@ -70,9 +73,7 @@ export function SkillRow({
             {skill.slug}
           </span>
         </div>
-        <div className="truncate text-xs text-fg-subtle">
-          {skill.metadata.description}
-        </div>
+        <div className="truncate text-xs text-fg-subtle">{skill.metadata.description}</div>
       </div>
     </li>
   );
@@ -113,9 +114,7 @@ export function ExtensionRow({
             {extension.slug}
           </span>
         </div>
-        <div className="truncate text-xs text-fg-subtle">
-          {displayDescription(extension)}
-        </div>
+        <div className="truncate text-xs text-fg-subtle">{displayDescription(extension)}</div>
       </div>
     </li>
   );
@@ -131,13 +130,7 @@ interface FileRowProps {
   onMouseDown: (e: React.MouseEvent) => void;
 }
 
-export function FileRow({
-  entry,
-  active,
-  dataIdx,
-  onMouseEnter,
-  onMouseDown,
-}: FileRowProps) {
+export function FileRow({ entry, active, dataIdx, onMouseEnter, onMouseDown }: FileRowProps) {
   const Icon = entry.type === 'directory' ? FolderIcon : FileIcon;
   // Show parent path as a quiet suffix so users can disambiguate same-named files.
   const parent = entry.relativePath.includes('/')
@@ -163,9 +156,7 @@ export function FileRow({
       />
       <span className="truncate text-fg">{entry.name}</span>
       {parent && (
-        <span className="ml-auto truncate font-mono text-[11px] text-fg-subtle">
-          {parent}
-        </span>
+        <span className="ml-auto truncate font-mono text-[11px] text-fg-subtle">{parent}</span>
       )}
     </li>
   );

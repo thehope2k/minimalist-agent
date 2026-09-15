@@ -19,7 +19,7 @@ export function useSessionManagement(
 ) {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [streamingSessionIds, setStreamingSessionIds] = useState<ReadonlySet<string>>(
-    () => new Set()
+    () => new Set(),
   );
   const [seedSubmit, setSeedSubmit] = useState<SeedSubmit | null>(null);
   const intentNewChatRef = useRef(false);

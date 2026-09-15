@@ -28,9 +28,7 @@ function hasRecursiveFlag(tokens: string[]): boolean {
 }
 
 function hasForceFlag(tokens: string[]): boolean {
-  return tokens.some(
-    (t) => t === '-f' || t === '--force' || /^-[a-zA-Z]*f[a-zA-Z]*$/.test(t),
-  );
+  return tokens.some((t) => t === '-f' || t === '--force' || /^-[a-zA-Z]*f[a-zA-Z]*$/.test(t));
 }
 
 function splitSegments(command: string): string[] {
@@ -59,7 +57,10 @@ function stripQuotes(s: string): string {
   return s.replace(/["']/g, '');
 }
 
-function expandTarget(target: string, assignments: Map<string, string>): { path: string; unresolved: boolean } {
+function expandTarget(
+  target: string,
+  assignments: Map<string, string>,
+): { path: string; unresolved: boolean } {
   let unresolved = false;
   let out = stripQuotes(target);
   if (out === '~' || out.startsWith('~/')) {
@@ -93,12 +94,11 @@ function isFilesystemRoot(p: string): boolean {
 }
 
 /** `null` if `resolvedTarget` is outside every guarded category; otherwise the reason. */
-function checkGuardedTarget(
-  resolvedTarget: string,
-  guardedRoots: Set<string>,
-): string | null {
-  if (isFilesystemRoot(resolvedTarget)) return `target resolves to the filesystem root (${resolvedTarget})`;
-  if (resolvedTarget === homedir()) return `target resolves to the home directory (${resolvedTarget})`;
+function checkGuardedTarget(resolvedTarget: string, guardedRoots: Set<string>): string | null {
+  if (isFilesystemRoot(resolvedTarget))
+    return `target resolves to the filesystem root (${resolvedTarget})`;
+  if (resolvedTarget === homedir())
+    return `target resolves to the home directory (${resolvedTarget})`;
   if (guardedRoots.has(resolvedTarget)) {
     return `target resolves to the working directory or one of its parents (${resolvedTarget})`;
   }
@@ -122,7 +122,9 @@ function checkTarget(
   // An unresolved variable feeding a glob can't be verified safe, so it's
   // treated the same as a match rather than assumed harmless.
   if (unresolved) {
-    return isGlob ? `unresolved variable "${rawTarget}" expands to a glob this check can't verify is safe` : null;
+    return isGlob
+      ? `unresolved variable "${rawTarget}" expands to a glob this check can't verify is safe`
+      : null;
   }
 
   const resolvedTarget = resolve(cwd, expanded);

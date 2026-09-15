@@ -41,9 +41,25 @@ type CodeMieModel = {
   multimodal?: boolean;
   features?: { streaming?: boolean; tools?: boolean };
 };
-type CodeMieUser = { username?: string; applications?: string[]; applications_admin?: string[]; applicationsAdmin?: string[] };
-type CodeMieIntegration = { id?: string; alias?: string; project_name?: string; credential_type?: string };
-type CodeMieBudgetRow = { project_name?: string; current_spending?: number; budget_limit?: number; total?: number; budget_reset_at?: string };
+type CodeMieUser = {
+  username?: string;
+  applications?: string[];
+  applications_admin?: string[];
+  applicationsAdmin?: string[];
+};
+type CodeMieIntegration = {
+  id?: string;
+  alias?: string;
+  project_name?: string;
+  credential_type?: string;
+};
+type CodeMieBudgetRow = {
+  project_name?: string;
+  current_spending?: number;
+  budget_limit?: number;
+  total?: number;
+  budget_reset_at?: string;
+};
 type CodeMieBudgetResponse = { data?: { rows?: CodeMieBudgetRow[] } };
 
 export interface CodeMieIntegrationOption {
@@ -64,17 +80,24 @@ export interface CodeMieSsoResult {
 }
 
 function decodeCallbackToken(encoded: string): CodeMieSsoResult {
-  const payload = JSON.parse(Buffer.from(encoded, 'base64').toString('utf8')) as CodeMieCallbackPayload;
+  const payload = JSON.parse(
+    Buffer.from(encoded, 'base64').toString('utf8'),
+  ) as CodeMieCallbackPayload;
   if (!payload.cookies || Object.keys(payload.cookies).length === 0) {
     throw new Error('CodeMie returned no session cookies.');
   }
-  return { cookies: payload.cookies, expiresAt: readTokenExpiry(payload.cookies.codemie_access_token) };
+  return {
+    cookies: payload.cookies,
+    expiresAt: readTokenExpiry(payload.cookies.codemie_access_token),
+  };
 }
 
 function readTokenExpiry(token: string | undefined): number | undefined {
   if (!token) return undefined;
   try {
-    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8')) as { exp?: number };
+    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8')) as {
+      exp?: number;
+    };
     return typeof payload.exp === 'number' ? payload.exp * 1000 : undefined;
   } catch {
     return undefined;
@@ -104,13 +127,20 @@ export async function signInWithCodeMie(baseUrl: string): Promise<CodeMieSsoResu
         }
         try {
           const callbackUrl = new URL(request.url ?? '/', 'http://localhost');
-          const encoded = callbackUrl.searchParams.get('token') ?? callbackUrl.searchParams.get('auth') ?? callbackUrl.searchParams.get('data');
+          const encoded =
+            callbackUrl.searchParams.get('token') ??
+            callbackUrl.searchParams.get('auth') ??
+            callbackUrl.searchParams.get('data');
           if (!encoded) throw new Error('CodeMie did not return an authentication token.');
           const result = decodeCallbackToken(encoded);
-          response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }).end(CALLBACK_SUCCESS_PAGE);
+          response
+            .writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+            .end(CALLBACK_SUCCESS_PAGE);
           finish(result);
         } catch (error) {
-          response.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' }).end('Authentication failed. Return to Minimalist Agent.');
+          response
+            .writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' })
+            .end('Authentication failed. Return to Minimalist Agent.');
           finish(error instanceof Error ? error : new Error(String(error)));
         }
       });
@@ -123,7 +153,10 @@ export async function signInWithCodeMie(baseUrl: string): Promise<CodeMieSsoResu
         }
         try {
           await shell.openExternal(`${codeMieApiBase(baseUrl)}/v1/auth/login/${address.port}`);
-          timeout = setTimeout(() => finish(new Error('CodeMie sign-in timed out.')), LOGIN_TIMEOUT_MS);
+          timeout = setTimeout(
+            () => finish(new Error('CodeMie sign-in timed out.')),
+            LOGIN_TIMEOUT_MS,
+          );
         } catch (error) {
           finish(error instanceof Error ? error : new Error(String(error)));
         }
@@ -135,20 +168,33 @@ export async function signInWithCodeMie(baseUrl: string): Promise<CodeMieSsoResu
   }
 }
 
-async function fetchCodeMieJson<T>(baseUrl: string, path: string, cookies: Record<string, string>): Promise<T> {
+async function fetchCodeMieJson<T>(
+  baseUrl: string,
+  path: string,
+  cookies: Record<string, string>,
+): Promise<T> {
   const response = await fetch(`${codeMieApiBase(baseUrl)}${path}`, {
     headers: { Cookie: codeMieCookieHeader(cookies) },
   });
   if (!response.ok) {
-    const message = response.status === 401 || response.status === 403
-      ? 'CodeMie session is not authorized.'
-      : `CodeMie returned HTTP ${response.status}.`;
+    const message =
+      response.status === 401 || response.status === 403
+        ? 'CodeMie session is not authorized.'
+        : `CodeMie returned HTTP ${response.status}.`;
     throw new Error(message);
   }
   return response.json() as Promise<T>;
 }
 
-function toCodeMieModel({ id, base_name, deployment_name, label, provider, multimodal, features }: CodeMieModel): ModelDef | null {
+function toCodeMieModel({
+  id,
+  base_name,
+  deployment_name,
+  label,
+  provider,
+  multimodal,
+  features,
+}: CodeMieModel): ModelDef | null {
   const modelId = id ?? base_name ?? deployment_name ?? label;
   if (!modelId) return null;
   const displayName = label?.trim() || modelId;
@@ -164,8 +210,15 @@ function toCodeMieModel({ id, base_name, deployment_name, label, provider, multi
   };
 }
 
-export async function fetchCodeMieModels(baseUrl: string, cookies: Record<string, string>): Promise<ModelDef[]> {
-  const models = await fetchCodeMieJson<CodeMieModel[]>(baseUrl, '/v1/llm_models?include_all=true', cookies);
+export async function fetchCodeMieModels(
+  baseUrl: string,
+  cookies: Record<string, string>,
+): Promise<ModelDef[]> {
+  const models = await fetchCodeMieJson<CodeMieModel[]>(
+    baseUrl,
+    '/v1/llm_models?include_all=true',
+    cookies,
+  );
   if (!Array.isArray(models)) return [];
   const byId = new Map<string, ModelDef>();
   for (const model of models) {
@@ -175,7 +228,10 @@ export async function fetchCodeMieModels(baseUrl: string, cookies: Record<string
   return [...byId.values()].sort((left, right) => left.name.localeCompare(right.name));
 }
 
-export async function fetchCodeMieProjects(baseUrl: string, cookies: Record<string, string>): Promise<string[]> {
+export async function fetchCodeMieProjects(
+  baseUrl: string,
+  cookies: Record<string, string>,
+): Promise<string[]> {
   const user = await fetchCodeMieJson<CodeMieUser>(baseUrl, '/v1/user', cookies);
   const adminProjects = user.applications_admin ?? user.applicationsAdmin ?? [];
   return [...new Set([...(user.applications ?? []), ...adminProjects])]
@@ -183,15 +239,23 @@ export async function fetchCodeMieProjects(baseUrl: string, cookies: Record<stri
     .sort((left, right) => left.localeCompare(right, undefined, { sensitivity: 'base' }));
 }
 
-export async function fetchCodeMieBudget(baseUrl: string, cookies: Record<string, string>, project: string): Promise<CodeMieBudget | null> {
+export async function fetchCodeMieBudget(
+  baseUrl: string,
+  cookies: Record<string, string>,
+  project: string,
+): Promise<CodeMieBudget | null> {
   const [user, budget] = await Promise.all([
     fetchCodeMieJson<CodeMieUser>(baseUrl, '/v1/user', cookies),
     fetchCodeMieJson<CodeMieBudgetResponse>(baseUrl, '/v1/analytics/budget_usage', cookies),
   ]);
-  const projectNames = [project, user.username ? `${user.username} (cli)` : '']
-    .map((name) => name.trim().toLowerCase());
-  const row = budget.data?.rows?.find(({ project_name }) => projectNames.includes(project_name?.trim().toLowerCase() ?? ''));
-  if (!row || typeof row.current_spending !== 'number' || typeof row.total !== 'number') return null;
+  const projectNames = [project, user.username ? `${user.username} (cli)` : ''].map((name) =>
+    name.trim().toLowerCase(),
+  );
+  const row = budget.data?.rows?.find(({ project_name }) =>
+    projectNames.includes(project_name?.trim().toLowerCase() ?? ''),
+  );
+  if (!row || typeof row.current_spending !== 'number' || typeof row.total !== 'number')
+    return null;
   return {
     currentSpending: row.current_spending,
     budgetLimit: typeof row.budget_limit === 'number' ? row.budget_limit : undefined,
@@ -203,13 +267,19 @@ export async function fetchCodeMieBudget(baseUrl: string, cookies: Record<string
 function integrationRows(response: unknown): CodeMieIntegration[] {
   const rows = Array.isArray(response)
     ? response
-    : typeof response === 'object' && response !== null && Array.isArray((response as { data?: unknown[] }).data)
+    : typeof response === 'object' &&
+        response !== null &&
+        Array.isArray((response as { data?: unknown[] }).data)
       ? (response as { data: unknown[] }).data
       : [];
   return rows.filter((row): row is CodeMieIntegration => typeof row === 'object' && row !== null);
 }
 
-export async function fetchCodeMieIntegrations(baseUrl: string, cookies: Record<string, string>, project: string): Promise<CodeMieIntegrationOption[]> {
+export async function fetchCodeMieIntegrations(
+  baseUrl: string,
+  cookies: Record<string, string>,
+  project: string,
+): Promise<CodeMieIntegrationOption[]> {
   const integrations = new Map<string, CodeMieIntegrationOption>();
   const seenRowIds = new Set<string>();
   for (let page = 0; page < 20; page++) {
@@ -218,7 +288,9 @@ export async function fetchCodeMieIntegrations(baseUrl: string, cookies: Record<
       per_page: '50',
       filters: JSON.stringify({ type: ['LiteLLM'] }),
     });
-    const rows = integrationRows(await fetchCodeMieJson<unknown>(baseUrl, `/v1/settings/user?${params}`, cookies));
+    const rows = integrationRows(
+      await fetchCodeMieJson<unknown>(baseUrl, `/v1/settings/user?${params}`, cookies),
+    );
     let sawNewRow = false;
     for (const { id, alias, project_name, credential_type } of rows) {
       if (!id || seenRowIds.has(id)) continue;

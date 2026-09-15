@@ -25,14 +25,10 @@ export function useViewNavigation() {
   const inAgents = view === 'agents';
   const inExtensions = view === 'extensions';
 
-  const activeSkill = inSkills
-    ? skills?.find((s) => s.slug === activeSkillSlug) ?? null
-    : null;
-  const activeAgent = inAgents
-    ? agents?.find((a) => a.slug === activeAgentSlug) ?? null
-    : null;
+  const activeSkill = inSkills ? (skills?.find((s) => s.slug === activeSkillSlug) ?? null) : null;
+  const activeAgent = inAgents ? (agents?.find((a) => a.slug === activeAgentSlug) ?? null) : null;
   const activeExtension = inExtensions
-    ? extensions?.find((e) => e.slug === activeExtensionSlug) ?? null
+    ? (extensions?.find((e) => e.slug === activeExtensionSlug) ?? null)
     : null;
 
   // Reset active item if it no longer exists after a reload

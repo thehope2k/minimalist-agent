@@ -22,16 +22,17 @@ export function AgentResultSection({ toolName, text, isError }: Props) {
         className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-xs hover:bg-elevated"
       >
         <ChevronRight
-          className={cn('h-3 w-3 shrink-0 text-fg-subtle transition-transform', open && 'rotate-90')}
+          className={cn(
+            'h-3 w-3 shrink-0 text-fg-subtle transition-transform',
+            open && 'rotate-90',
+          )}
           strokeWidth={2}
         />
         <span className="shrink-0 font-medium text-fg">{isError ? 'Error' : 'Result'}</span>
         {!open && preview && (
           <>
             <span className="shrink-0 text-fg-subtle">·</span>
-            <span className="min-w-0 flex-1 truncate text-fg-subtle">
-              {preview}
-            </span>
+            <span className="min-w-0 flex-1 truncate text-fg-subtle">{preview}</span>
           </>
         )}
       </button>

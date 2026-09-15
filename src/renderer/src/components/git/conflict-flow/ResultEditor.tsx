@@ -3,9 +3,7 @@ import type { OnMount } from '@monaco-editor/react';
 import { Loader2 } from 'lucide-react';
 import { RESULT_OPTIONS } from './types';
 
-const Editor = lazy(() =>
-  import('@monaco-editor/react').then((m) => ({ default: m.Editor })),
-);
+const Editor = lazy(() => import('@monaco-editor/react').then((m) => ({ default: m.Editor })));
 
 type Props = {
   value: string;

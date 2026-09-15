@@ -1,11 +1,4 @@
-import {
-  Archive,
-  Bot,
-  Inbox,
-  Plug,
-  Settings,
-  Sparkles,
-} from 'lucide-react';
+import { Archive, Bot, Inbox, Plug, Settings, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { View, NavTabProps } from './types';
 
@@ -15,9 +8,7 @@ function NavTab({ icon: Icon, label, active, onClick }: NavTabProps) {
       onClick={onClick}
       className={cn(
         'titlebar-no-drag relative flex h-8 items-center gap-1.5 rounded-md px-3 text-sm font-medium transition-all duration-150',
-        active
-          ? 'bg-accent/15 text-accent'
-          : 'text-fg-muted hover:bg-elevated hover:text-fg',
+        active ? 'bg-accent/15 text-accent' : 'text-fg-muted hover:bg-elevated hover:text-fg',
       )}
     >
       <Icon

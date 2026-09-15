@@ -15,13 +15,7 @@ import { app, BrowserWindow } from 'electron';
 import pkg from 'electron-updater';
 const { autoUpdater } = pkg;
 
-export type UpdateState =
-  | 'idle'
-  | 'checking'
-  | 'available'
-  | 'downloading'
-  | 'ready'
-  | 'error';
+export type UpdateState = 'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'error';
 
 export interface UpdateInfo {
   state: UpdateState;

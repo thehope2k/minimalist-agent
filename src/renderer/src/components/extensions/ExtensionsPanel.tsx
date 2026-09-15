@@ -19,11 +19,7 @@ type Props = {
   onStartChatWithSubmission?: (submit: SeedSubmit) => void;
 };
 
-export function ExtensionsPanel({
-  activeSlug,
-  onSelect,
-  onStartChatWithSubmission,
-}: Props) {
+export function ExtensionsPanel({ activeSlug, onSelect, onStartChatWithSubmission }: Props) {
   const extensions = useExtensions();
   const { ordered: orderedExtensions, reorder } = useOrderedList(
     extensions,
@@ -66,9 +62,7 @@ export function ExtensionsPanel({
         <Plug className="h-4 w-4 text-fg-muted" strokeWidth={1.75} />
         <span>Extensions</span>
         {extensions && (
-          <span className="text-xs tabular-nums text-fg-subtle">
-            {extensions.length}
-          </span>
+          <span className="text-xs tabular-nums text-fg-subtle">{extensions.length}</span>
         )}
         <div className="flex-1" />
         <button
@@ -137,9 +131,8 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
       <Plug className="h-6 w-6 text-fg-subtle" strokeWidth={1.5} />
       <div className="text-sm font-medium text-fg">No extensions yet</div>
       <p className="max-w-65 text-xs text-fg-subtle">
-        Extensions add capabilities — a CLI you want the agent to use, an MCP
-        server, or just a usage guide. Describe what you want, and the agent
-        will set it up for you.
+        Extensions add capabilities — a CLI you want the agent to use, an MCP server, or just a
+        usage guide. Describe what you want, and the agent will set it up for you.
       </p>
       <button
         type="button"

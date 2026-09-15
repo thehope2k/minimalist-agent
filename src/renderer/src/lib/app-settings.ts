@@ -58,5 +58,3 @@ export function setPetLastY(value: number | null): void {
 export function setPetSoundEnabled(value: boolean): void {
   saveAppSettings({ ...getAppSettings(), petSoundEnabled: value });
 }
-
-

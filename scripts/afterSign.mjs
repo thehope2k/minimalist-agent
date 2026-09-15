@@ -25,8 +25,10 @@ export default async function afterSign(context) {
   execFileSync('codesign', [
     '--force',
     '--deep',
-    '--sign', '-',
-    '--identifier', BUNDLE_ID,
+    '--sign',
+    '-',
+    '--identifier',
+    BUNDLE_ID,
     appPath,
   ]);
 }

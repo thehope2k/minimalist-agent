@@ -3,7 +3,9 @@ import type { PanelImperativeHandle } from 'react-resizable-panels';
 import type { View } from '../layout/TopBar';
 import { deleteSession } from '@/lib/sessions';
 
-type SessionListEntry = NonNullable<ReturnType<typeof import('@/hooks/useSessions').useSessions>>[number];
+type SessionListEntry = NonNullable<
+  ReturnType<typeof import('@/hooks/useSessions').useSessions>
+>[number];
 
 /**
  * Global keyboard shortcuts:
@@ -41,11 +43,7 @@ export function useKeyboardShortcuts(
       const t = e.target as HTMLElement;
       // xterm.js focuses an internal textarea for key capture
       if (t.tagName === 'TEXTAREA' && t.closest('.xterm')) return false;
-      return (
-        t.tagName === 'INPUT' ||
-        t.tagName === 'TEXTAREA' ||
-        t.isContentEditable
-      );
+      return t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable;
     };
 
     const handler = (e: KeyboardEvent) => {
@@ -54,7 +52,8 @@ export function useKeyboardShortcuts(
 
       // Cmd+T — toggle terminal (sessions/chat view only)
       if (e.key === 't' && !e.shiftKey && !e.altKey) {
-        if (view === 'settings' || view === 'skills' || view === 'agents' || view === 'extensions') return;
+        if (view === 'settings' || view === 'skills' || view === 'agents' || view === 'extensions')
+          return;
         e.preventDefault();
         toggleTerminal();
         return;
@@ -62,7 +61,8 @@ export function useKeyboardShortcuts(
 
       // Cmd+B — toggle file explorer (sessions/chat view only)
       if (e.key === 'b' && !e.shiftKey && !e.altKey) {
-        if (view === 'settings' || view === 'skills' || view === 'agents' || view === 'extensions') return;
+        if (view === 'settings' || view === 'skills' || view === 'agents' || view === 'extensions')
+          return;
         e.preventDefault();
         toggleFileExplorer();
         return;
@@ -70,7 +70,8 @@ export function useKeyboardShortcuts(
 
       // Cmd+Shift+B — toggle context panel (sessions/chat view only)
       if (e.key === 'b' && e.shiftKey && !e.altKey) {
-        if (view === 'settings' || view === 'skills' || view === 'agents' || view === 'extensions') return;
+        if (view === 'settings' || view === 'skills' || view === 'agents' || view === 'extensions')
+          return;
         e.preventDefault();
         toggleContextPanel();
         return;
@@ -133,5 +134,13 @@ export function useKeyboardShortcuts(
 
     window.addEventListener('keydown', handler, { capture: true });
     return () => window.removeEventListener('keydown', handler, { capture: true });
-  }, [toggleTerminal, toggleFileExplorer, toggleContextPanel, view, setView, terminalOpenRef, terminalPanelRef]);
+  }, [
+    toggleTerminal,
+    toggleFileExplorer,
+    toggleContextPanel,
+    view,
+    setView,
+    terminalOpenRef,
+    terminalPanelRef,
+  ]);
 }

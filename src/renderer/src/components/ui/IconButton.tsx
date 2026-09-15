@@ -21,7 +21,10 @@ type Props = React.ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const ButtonInner = forwardRef<HTMLButtonElement, Props>(
-  ({ icon: Icon, size = 'sm', label, className, iconClassName, tooltipSide: _side, ...rest }, ref) => (
+  (
+    { icon: Icon, size = 'sm', label, className, iconClassName, tooltipSide: _side, ...rest },
+    ref,
+  ) => (
     <button
       ref={ref}
       aria-label={label}
@@ -40,15 +43,13 @@ const ButtonInner = forwardRef<HTMLButtonElement, Props>(
 );
 ButtonInner.displayName = 'IconButtonInner';
 
-export const IconButton = forwardRef<HTMLButtonElement, Props>(
-  (props, ref) => {
-    const { label, tooltipSide = 'bottom' } = props;
-    if (!label) return <ButtonInner ref={ref} {...props} />;
-    return (
-      <Tooltip content={label} side={tooltipSide}>
-        <ButtonInner ref={ref} {...props} />
-      </Tooltip>
-    );
-  },
-);
+export const IconButton = forwardRef<HTMLButtonElement, Props>((props, ref) => {
+  const { label, tooltipSide = 'bottom' } = props;
+  if (!label) return <ButtonInner ref={ref} {...props} />;
+  return (
+    <Tooltip content={label} side={tooltipSide}>
+      <ButtonInner ref={ref} {...props} />
+    </Tooltip>
+  );
+});
 IconButton.displayName = 'IconButton';

@@ -95,18 +95,21 @@ export function ConnectionRow({
             value={renameValue}
             onChange={(e) => setRenameValue(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') { e.preventDefault(); commitRename(); }
-              if (e.key === 'Escape') { e.preventDefault(); setRenaming(false); }
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                commitRename();
+              }
+              if (e.key === 'Escape') {
+                e.preventDefault();
+                setRenaming(false);
+              }
             }}
             onBlur={commitRename}
             className="w-full rounded border border-accent bg-elevated px-1.5 py-0.5 text-sm font-medium text-fg outline-none"
           />
         ) : (
           <div className="flex items-center gap-2">
-            <span
-              className="truncate text-sm font-medium text-fg"
-              onDoubleClick={startRename}
-            >
+            <span className="truncate text-sm font-medium text-fg" onDoubleClick={startRename}>
               {conn.name}
             </span>
             {isDefault && <Badge>Default</Badge>}
@@ -122,11 +125,7 @@ export function ConnectionRow({
                 className="inline-flex items-center gap-0.5 rounded px-1 text-fg-muted transition-colors hover:bg-elevated hover:text-fg"
               >
                 {conn.models.length} {conn.models.length === 1 ? 'model' : 'models'}
-                <ChevronDown
-                  className="h-3 w-3"
-                  strokeWidth={1.75}
-                  aria-hidden="true"
-                />
+                <ChevronDown className="h-3 w-3" strokeWidth={1.75} aria-hidden="true" />
               </button>
             </Popover.Trigger>
             <Popover.Portal>
@@ -167,15 +166,9 @@ export function ConnectionRow({
             </Popover.Portal>
           </Popover.Root>
         </div>
-        {conn.providerType === 'github-copilot' && (
-          <CopilotQuotaBar connectionSlug={conn.slug} />
-        )}
-        {conn.providerType === 'openai-codex' && (
-          <ChatGptQuotaBar connectionSlug={conn.slug} />
-        )}
-        {conn.providerType === 'codemie-sso' && (
-          <CodeMieBudgetBar connectionSlug={conn.slug} />
-        )}
+        {conn.providerType === 'github-copilot' && <CopilotQuotaBar connectionSlug={conn.slug} />}
+        {conn.providerType === 'openai-codex' && <ChatGptQuotaBar connectionSlug={conn.slug} />}
+        {conn.providerType === 'codemie-sso' && <CodeMieBudgetBar connectionSlug={conn.slug} />}
       </div>
       <Menu trigger={<IconButton icon={MoreHorizontal} label="More" />} items={items} />
     </div>

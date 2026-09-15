@@ -57,10 +57,7 @@ export function ModelList({
                     <span className="truncate text-sm text-fg">{m.name}</span>
                     {m.supportsVision ? (
                       <span title="Vision supported">
-                        <Eye
-                          className="h-3.5 w-3.5 shrink-0 text-fg-muted"
-                          strokeWidth={1.75}
-                        />
+                        <Eye className="h-3.5 w-3.5 shrink-0 text-fg-muted" strokeWidth={1.75} />
                       </span>
                     ) : (
                       <span title="No vision support">
@@ -82,10 +79,7 @@ export function ModelList({
                   )}
                 </div>
                 {isActive && (
-                  <Check
-                    className="mt-0.5 h-3.5 w-3.5 shrink-0 text-fg"
-                    strokeWidth={2}
-                  />
+                  <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-fg" strokeWidth={2} />
                 )}
               </button>
             );

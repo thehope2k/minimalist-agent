@@ -85,15 +85,7 @@ export function useCommitFlow(
         setCommitting(false);
       }
     },
-    [
-      repos,
-      stagedPaths,
-      stagedHunks,
-      diffCaches,
-      partialContentRefs,
-      loadStatus,
-      clearPersisted,
-    ],
+    [repos, stagedPaths, stagedHunks, diffCaches, partialContentRefs, loadStatus, clearPersisted],
   );
 
   const handleGenerateMessage = useCallback(

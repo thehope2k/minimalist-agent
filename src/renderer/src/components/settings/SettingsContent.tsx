@@ -6,10 +6,7 @@ import { ProjectsPanel } from './panels/ProjectsPanel';
 import { StubPanel } from './panels/StubPanel';
 import { TerminalSettingsPanel } from './panels/TerminalSettingsPanel';
 import { TelemetryPanel } from './panels/TelemetryPanel';
-import {
-  SETTINGS_CATEGORIES,
-  type SettingsCategory,
-} from './SettingsCategoriesPanel';
+import { SETTINGS_CATEGORIES, type SettingsCategory } from './SettingsCategoriesPanel';
 
 export function SettingsContent({ category }: { category: SettingsCategory }) {
   const meta = SETTINGS_CATEGORIES.find((c) => c.id === category);

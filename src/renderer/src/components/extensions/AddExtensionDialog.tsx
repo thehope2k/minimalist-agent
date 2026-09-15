@@ -4,10 +4,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { ArrowUp, Plug, X } from 'lucide-react';
-import {
-  getExtensionsDir,
-  getExtensionsReferenceDocPath,
-} from '@/lib/extensions';
+import { getExtensionsDir, getExtensionsReferenceDocPath } from '@/lib/extensions';
 import { useExtensions } from '@/hooks/useExtensions';
 
 // Kick off path resolution at module load — the IPC round-trips are slow
@@ -41,9 +38,7 @@ export function AddExtensionDialog({
   projectDir?: string;
 }) {
   const existingExtensions = useExtensions();
-  const takenSlugs = new Set(
-    (existingExtensions ?? []).map((e) => e.slug.toLowerCase()),
-  );
+  const takenSlugs = new Set((existingExtensions ?? []).map((e) => e.slug.toLowerCase()));
 
   const [description, setDescription] = useState('');
   const [slug, setSlug] = useState('');
@@ -58,9 +53,7 @@ export function AddExtensionDialog({
     if (!open) return;
     setDescription('');
     setSlug('');
-    setPlaceholder(
-      PLACEHOLDERS[Math.floor(Math.random() * PLACEHOLDERS.length)],
-    );
+    setPlaceholder(PLACEHOLDERS[Math.floor(Math.random() * PLACEHOLDERS.length)]);
     void (projectDir ? Promise.resolve(projectDir) : getExtensionsDir()).then(setExtDir);
     void getExtensionsReferenceDocPath().then(setRefDocPath);
     requestAnimationFrame(() => taRef.current?.focus());
@@ -68,8 +61,7 @@ export function AddExtensionDialog({
 
   if (!open) return null;
 
-  const slugTaken =
-    slug.length > 0 && SLUG_RE.test(slug) && takenSlugs.has(slug.toLowerCase());
+  const slugTaken = slug.length > 0 && SLUG_RE.test(slug) && takenSlugs.has(slug.toLowerCase());
   const slugError =
     slug.length > 0 && !SLUG_RE.test(slug)
       ? 'Lowercase, hyphenated, ≤30 chars (e.g. `linear`).'
@@ -126,12 +118,10 @@ export function AddExtensionDialog({
         </header>
 
         <div className="px-4 pt-4">
-          <h3 className="text-base font-medium text-fg">
-            What should the agent be able to do?
-          </h3>
+          <h3 className="text-base font-medium text-fg">What should the agent be able to do?</h3>
           <p className="mt-0.5 text-xs text-fg-subtle">
-            Describe the integration. The agent will research it, write the
-            config + guide, and verify it loads.
+            Describe the integration. The agent will research it, write the config + guide, and
+            verify it loads.
           </p>
         </div>
 
@@ -148,9 +138,7 @@ export function AddExtensionDialog({
         </div>
 
         <div className="px-4 pt-3">
-          <label className="block text-[11px] uppercase tracking-wide text-fg-subtle">
-            Slug
-          </label>
+          <label className="block text-[11px] uppercase tracking-wide text-fg-subtle">Slug</label>
           <input
             type="text"
             value={slug}

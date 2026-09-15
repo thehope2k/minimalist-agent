@@ -65,7 +65,7 @@ export async function executeBrowserToolCommand(
       return {
         output: [
           'browser_tool commands:',
-          '  open                          — create/focus the session\'s browser window',
+          "  open                          — create/focus the session's browser window",
           '  navigate <url>',
           '  back / forward',
           '  snapshot                      — accessibility tree with @eN refs',
@@ -86,7 +86,9 @@ export async function executeBrowserToolCommand(
 
     case 'open': {
       const state = browserPaneManager.ensureOpen(sessionId);
-      return { output: `Browser window open. url=${state.url || '(blank)'} title=${JSON.stringify(state.title)}` };
+      return {
+        output: `Browser window open. url=${state.url || '(blank)'} title=${JSON.stringify(state.title)}`,
+      };
     }
 
     case 'navigate': {
@@ -105,7 +107,9 @@ export async function executeBrowserToolCommand(
 
     case 'snapshot': {
       const snapshot = await browserPaneManager.snapshot(sessionId);
-      return { output: `url=${snapshot.url}\ntitle=${JSON.stringify(snapshot.title)}\n\n${formatSnapshot(snapshot.nodes, snapshot.truncatedCount)}` };
+      return {
+        output: `url=${snapshot.url}\ntitle=${JSON.stringify(snapshot.title)}\n\n${formatSnapshot(snapshot.nodes, snapshot.truncatedCount)}`,
+      };
     }
 
     case 'click': {
@@ -140,20 +144,30 @@ export async function executeBrowserToolCommand(
       if (modifier && !KEY_MODIFIERS.has(modifier)) {
         throw new Error(`Unknown modifier "${modifier}" — expected one of shift|control|alt|meta.`);
       }
-      await browserPaneManager.key(sessionId, key, modifier ? [modifier as 'shift' | 'control' | 'alt' | 'meta'] : undefined);
+      await browserPaneManager.key(
+        sessionId,
+        key,
+        modifier ? [modifier as 'shift' | 'control' | 'alt' | 'meta'] : undefined,
+      );
       return { output: `Sent key ${key}${modifier ? `+${modifier}` : ''}.` };
     }
 
     case 'scroll': {
       const direction = requireArg(args[0], 'scroll <up|down|left|right> [amount]').toLowerCase();
       if (!SCROLL_DIRECTIONS.has(direction)) {
-        throw new Error(`Unknown scroll direction "${direction}" — expected one of up|down|left|right.`);
+        throw new Error(
+          `Unknown scroll direction "${direction}" — expected one of up|down|left|right.`,
+        );
       }
       const amount = args[1] !== undefined ? Number(args[1]) : undefined;
       if (amount !== undefined && !Number.isFinite(amount)) {
         throw new Error(`scroll amount must be a number, got "${args[1]}".`);
       }
-      await browserPaneManager.scroll(sessionId, direction as 'up' | 'down' | 'left' | 'right', amount);
+      await browserPaneManager.scroll(
+        sessionId,
+        direction as 'up' | 'down' | 'left' | 'right',
+        amount,
+      );
       return { output: `Scrolled ${direction}${amount !== undefined ? ` by ${amount}` : ''}.` };
     }
 
@@ -161,7 +175,9 @@ export async function executeBrowserToolCommand(
       const annotated = args.includes('--annotated');
       const buffer = await browserPaneManager.screenshot(sessionId, { annotated });
       return {
-        output: annotated ? 'Screenshot captured with @eN ref annotations.' : 'Screenshot captured.',
+        output: annotated
+          ? 'Screenshot captured with @eN ref annotations.'
+          : 'Screenshot captured.',
         imageBase64: buffer.toString('base64'),
         imageMimeType: 'image/png',
       };
@@ -170,27 +186,37 @@ export async function executeBrowserToolCommand(
     case 'evaluate': {
       const expression = requireArg(args.join(' '), 'evaluate <js>');
       const value = await browserPaneManager.evaluate(sessionId, expression);
-      const serialized = typeof value === 'string' ? value : (JSON.stringify(value, null, 2) ?? String(value));
+      const serialized =
+        typeof value === 'string' ? value : (JSON.stringify(value, null, 2) ?? String(value));
       if (serialized.length <= MAX_EVALUATE_OUTPUT_CHARS) return { output: serialized };
       const truncated = serialized.slice(0, MAX_EVALUATE_OUTPUT_CHARS);
-      return { output: `${truncated}\n\n[... truncated; ${serialized.length - MAX_EVALUATE_OUTPUT_CHARS} more chars]` };
+      return {
+        output: `${truncated}\n\n[... truncated; ${serialized.length - MAX_EVALUATE_OUTPUT_CHARS} more chars]`,
+      };
     }
 
     case 'console': {
       const limit = args[0] !== undefined ? Number(args[0]) : DEFAULT_CONSOLE_LIMIT;
-      if (!Number.isFinite(limit)) throw new Error(`console limit must be a number, got "${args[0]}".`);
+      if (!Number.isFinite(limit))
+        throw new Error(`console limit must be a number, got "${args[0]}".`);
       const level = args[1]?.toLowerCase();
       if (level && !CONSOLE_LEVELS.has(level)) {
         throw new Error(`Unknown console level "${level}" — expected one of log|info|warn|error.`);
       }
-      const entries = browserPaneManager.consoleLogs(sessionId, limit, level as 'log' | 'info' | 'warn' | 'error' | undefined);
+      const entries = browserPaneManager.consoleLogs(
+        sessionId,
+        limit,
+        level as 'log' | 'info' | 'warn' | 'error' | undefined,
+      );
       if (entries.length === 0) return { output: '(no console output captured)' };
       return { output: entries.map((e) => `[${e.level}] ${e.message}`).join('\n') };
     }
 
     case 'release': {
       const state = browserPaneManager.release(sessionId);
-      return { output: `Control released back to the user. window ${state.open ? 'still open' : 'closed'}.` };
+      return {
+        output: `Control released back to the user. window ${state.open ? 'still open' : 'closed'}.`,
+      };
     }
 
     case 'close': {

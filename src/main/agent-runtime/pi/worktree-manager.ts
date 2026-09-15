@@ -12,7 +12,16 @@
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { join, dirname } from 'path';
-import { existsSync, mkdirSync, copyFileSync, readFileSync, statSync, readdirSync, appendFileSync, writeFileSync } from 'fs';
+import {
+  existsSync,
+  mkdirSync,
+  copyFileSync,
+  readFileSync,
+  statSync,
+  readdirSync,
+  appendFileSync,
+  writeFileSync,
+} from 'fs';
 import { minimatch } from 'minimatch';
 import { createLogger } from '../../logger';
 
@@ -81,7 +90,7 @@ async function ensureWorktreeInGitignore(gitRoot: string): Promise<void> {
 
     if (existsSync(gitignorePath)) {
       content = readFileSync(gitignorePath, 'utf-8');
-      
+
       // Check if pattern already exists
       const lines = content.split('\n');
       for (const line of lines) {
@@ -101,7 +110,7 @@ async function ensureWorktreeInGitignore(gitRoot: string): Promise<void> {
     if (needsUpdate) {
       // Add the pattern
       const entry = `\n# Agent worktrees (Minimalist Agent)\n${worktreePattern}\n`;
-      
+
       if (existsSync(gitignorePath)) {
         // Append to existing file
         const needsNewline = content.length > 0 && !content.endsWith('\n');
@@ -110,7 +119,7 @@ async function ensureWorktreeInGitignore(gitRoot: string): Promise<void> {
         // Create new .gitignore
         writeFileSync(gitignorePath, entry);
       }
-      
+
       log.debug(`Added ${worktreePattern} to .gitignore`);
     }
 
@@ -159,7 +168,9 @@ async function getBaseRef(cwd: string, baseRef: 'fresh' | 'head'): Promise<strin
 
   // Try to get origin/HEAD (fresh checkout)
   try {
-    const { stdout } = await execFileAsync('git', ['symbolic-ref', 'refs/remotes/origin/HEAD'], { cwd });
+    const { stdout } = await execFileAsync('git', ['symbolic-ref', 'refs/remotes/origin/HEAD'], {
+      cwd,
+    });
     return stdout.trim().replace('refs/remotes/', '');
   } catch {
     // Fallback to local HEAD if no remote configured
@@ -178,7 +189,7 @@ async function getBaseRef(cwd: string, baseRef: 'fresh' | 'head'): Promise<strin
  */
 function readWorktreeInclude(baseCwd: string): string[] {
   const includeFile = join(baseCwd, '.worktreeinclude');
-  
+
   if (!existsSync(includeFile)) {
     // No config file - return sensible defaults
     return ['.env', '.env.local', '.npmrc', '.mvn/settings.xml'];
@@ -188,8 +199,8 @@ function readWorktreeInclude(baseCwd: string): string[] {
     const content = readFileSync(includeFile, 'utf-8');
     return content
       .split('\n')
-      .map(line => line.trim())
-      .filter(line => line && !line.startsWith('#')); // Skip comments and empty lines
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith('#')); // Skip comments and empty lines
   } catch (err) {
     log.warn('Failed to read .worktreeinclude:', err);
     return [];
@@ -211,10 +222,7 @@ async function isGitIgnored(filepath: string, cwd: string): Promise<boolean> {
 /**
  * Find all files matching patterns and copy them to worktree.
  */
-async function copyWorktreeIncludes(
-  baseCwd: string,
-  worktreePath: string,
-): Promise<void> {
+async function copyWorktreeIncludes(baseCwd: string, worktreePath: string): Promise<void> {
   const patterns = readWorktreeInclude(baseCwd);
   if (patterns.length === 0) {
     return;
@@ -225,7 +233,7 @@ async function copyWorktreeIncludes(
   for (const pattern of patterns) {
     // Handle both glob patterns and direct file paths
     const isGlob = pattern.includes('*') || pattern.includes('?');
-    
+
     if (isGlob) {
       // Glob pattern - find all matching files
       const matches = findFilesMatchingPattern(baseCwd, pattern);
@@ -244,20 +252,20 @@ async function copyWorktreeIncludes(
  */
 function findFilesMatchingPattern(baseCwd: string, pattern: string): string[] {
   const matches: string[] = [];
-  
+
   function searchDir(dir: string, baseDir: string = baseCwd) {
     try {
       const entries = readdirSync(dir, { withFileTypes: true });
-      
+
       for (const entry of entries) {
         const fullPath = join(dir, entry.name);
         const relativePath = fullPath.substring(baseDir.length + 1);
-        
+
         // Skip .git and node_modules
         if (entry.name === '.git' || entry.name === 'node_modules') {
           continue;
         }
-        
+
         if (entry.isDirectory()) {
           searchDir(fullPath, baseDir);
         } else if (minimatch(relativePath, pattern)) {
@@ -268,7 +276,7 @@ function findFilesMatchingPattern(baseCwd: string, pattern: string): string[] {
       // Ignore permission errors, etc.
     }
   }
-  
+
   searchDir(baseCwd);
   return matches;
 }
@@ -282,7 +290,7 @@ async function copyFileIfGitIgnored(
   relativePath: string,
 ): Promise<void> {
   const sourcePath = join(baseCwd, relativePath);
-  
+
   if (!existsSync(sourcePath)) {
     return; // File doesn't exist
   }
@@ -295,11 +303,11 @@ async function copyFileIfGitIgnored(
   }
 
   const destPath = join(worktreePath, relativePath);
-  
+
   try {
     // Ensure parent directory exists
     mkdirSync(dirname(destPath), { recursive: true });
-    
+
     // Copy file
     copyFileSync(sourcePath, destPath);
     log.debug(`Copied ${relativePath}`);
@@ -314,7 +322,7 @@ async function copyFileIfGitIgnored(
 
 /**
  * Create an isolated git worktree for an agent execution.
- * 
+ *
  * Returns the worktree path on success, or original cwd on fallback.
  */
 export async function createAgentWorktree(
@@ -355,11 +363,9 @@ export async function createAgentWorktree(
     log.debug(`Creating worktree at ${worktreePath} from ${baseRef}`);
 
     // Create git worktree
-    await execFileAsync(
-      'git',
-      ['worktree', 'add', worktreePath, '-b', branchName, baseRef],
-      { cwd: gitRoot },
-    );
+    await execFileAsync('git', ['worktree', 'add', worktreePath, '-b', branchName, baseRef], {
+      cwd: gitRoot,
+    });
 
     // Copy local config files
     await copyWorktreeIncludes(gitRoot, worktreePath);
@@ -381,7 +387,7 @@ export async function createAgentWorktree(
   } catch (err) {
     log.error(`Failed to create worktree for ${execId}:`, err);
     log.debug(`Falling back to original CWD`);
-    
+
     return {
       path: baseCwd,
       branch: '',
@@ -392,7 +398,7 @@ export async function createAgentWorktree(
 
 /**
  * Remove an agent worktree after execution completes.
- * 
+ *
  * Cleanup policy:
  * - If worktree is clean (no changes, no commits) → remove immediately
  * - If worktree has changes or commits → keep for user review
@@ -412,11 +418,9 @@ export async function removeAgentWorktree(execId: string): Promise<void> {
 
   try {
     // Check if worktree has uncommitted changes
-    const { stdout: statusOutput } = await execFileAsync(
-      'git',
-      ['status', '--porcelain'],
-      { cwd: worktreePath },
-    );
+    const { stdout: statusOutput } = await execFileAsync('git', ['status', '--porcelain'], {
+      cwd: worktreePath,
+    });
 
     const hasUncommittedChanges = statusOutput.trim().length > 0;
 
@@ -439,18 +443,10 @@ export async function removeAgentWorktree(execId: string): Promise<void> {
     // Clean worktree - remove it
     log.debug(`Removing clean worktree ${execId}`);
 
-    await execFileAsync(
-      'git',
-      ['worktree', 'remove', worktreePath, '--force'],
-      { cwd: baseCwd },
-    );
+    await execFileAsync('git', ['worktree', 'remove', worktreePath, '--force'], { cwd: baseCwd });
 
     // Delete the branch
-    await execFileAsync(
-      'git',
-      ['branch', '-D', branch],
-      { cwd: baseCwd },
-    );
+    await execFileAsync('git', ['branch', '-D', branch], { cwd: baseCwd });
 
     worktreeRegistry.delete(execId);
     log.debug(`Cleaned up ${execId}`);
@@ -464,11 +460,9 @@ export async function removeAgentWorktree(execId: string): Promise<void> {
  */
 export async function cleanupAllWorktrees(): Promise<void> {
   log.debug(`Cleaning up ${worktreeRegistry.size} worktrees`);
-  
-  const promises = Array.from(worktreeRegistry.keys()).map(execId => 
-    removeAgentWorktree(execId),
-  );
-  
+
+  const promises = Array.from(worktreeRegistry.keys()).map((execId) => removeAgentWorktree(execId));
+
   await Promise.all(promises);
 }
 
@@ -508,11 +502,9 @@ export async function cleanupOrphanedWorktrees(baseCwd: string, maxAgeDays = 7):
         }
 
         // Check if clean
-        const { stdout: statusOutput } = await execFileAsync(
-          'git',
-          ['status', '--porcelain'],
-          { cwd: worktreePath },
-        );
+        const { stdout: statusOutput } = await execFileAsync('git', ['status', '--porcelain'], {
+          cwd: worktreePath,
+        });
 
         if (statusOutput.trim().length > 0) {
           log.debug(`Keeping orphaned ${execId} (has changes)`);
@@ -522,19 +514,12 @@ export async function cleanupOrphanedWorktrees(baseCwd: string, maxAgeDays = 7):
         // Old and clean - remove it
         log.debug(`Removing orphaned worktree ${execId}`);
 
-        await execFileAsync(
-          'git',
-          ['worktree', 'remove', worktreePath, '--force'],
-          { cwd: gitRoot },
-        );
+        await execFileAsync('git', ['worktree', 'remove', worktreePath, '--force'], {
+          cwd: gitRoot,
+        });
 
         const branchName = `agent/${execId}`;
-        await execFileAsync(
-          'git',
-          ['branch', '-D', branchName],
-          { cwd: gitRoot },
-        ).catch(() => {}); // Branch might not exist
-
+        await execFileAsync('git', ['branch', '-D', branchName], { cwd: gitRoot }).catch(() => {}); // Branch might not exist
       } catch (err) {
         log.warn(`Failed to cleanup orphaned ${execId}:`, err);
       }

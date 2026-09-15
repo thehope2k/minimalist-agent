@@ -18,9 +18,21 @@ const REACTION_CLASSNAME: Partial<Record<Exclude<PetReaction, null>, string>> = 
   fidget: 'fidgeting',
 };
 
-export function PetPanda({ baseState, isStreaming, reaction, reactionNonce, gaze, onClick }: PetPandaProps) {
+export function PetPanda({
+  baseState,
+  isStreaming,
+  reaction,
+  reactionNonce,
+  gaze,
+  onClick,
+}: PetPandaProps) {
   const reactionClassName = reaction ? (REACTION_CLASSNAME[reaction] ?? 'reacting') : null;
-  const className = ['pet-panda', `state-${baseState}`, isStreaming && 'is-streaming', reactionClassName]
+  const className = [
+    'pet-panda',
+    `state-${baseState}`,
+    isStreaming && 'is-streaming',
+    reactionClassName,
+  ]
     .filter(Boolean)
     .join(' ');
   const gazeStyle = { '--gaze-x': `${gaze.x}px`, '--gaze-y': `${gaze.y}px` } as React.CSSProperties;
@@ -41,13 +53,51 @@ export function PetPanda({ baseState, isStreaming, reaction, reactionNonce, gaze
     >
       <svg viewBox="0 0 72 44">
         <g className="pet-panda-body" key={`body-${reactionNonce}`}>
-          <ellipse className="pet-panda-leg-bl fur-dark" cx="22" cy="36" rx="5" ry="7" style={{ transformOrigin: '22px 32px' }} />
-          <ellipse className="pet-panda-leg-br fur-dark" cx="50" cy="36" rx="5" ry="7" style={{ transformOrigin: '50px 32px' }} />
+          <ellipse
+            className="pet-panda-leg-bl fur-dark"
+            cx="22"
+            cy="36"
+            rx="5"
+            ry="7"
+            style={{ transformOrigin: '22px 32px' }}
+          />
+          <ellipse
+            className="pet-panda-leg-br fur-dark"
+            cx="50"
+            cy="36"
+            rx="5"
+            ry="7"
+            style={{ transformOrigin: '50px 32px' }}
+          />
           <ellipse className="fur" cx="38" cy="27" rx="22" ry="13" />
-          <circle className="pet-panda-tail fur" cx="64" cy="24" r="3" style={{ transformOrigin: '64px 24px' }} />
-          <ellipse className="pet-panda-leg-fl fur-dark" cx="16" cy="37" rx="5" ry="8" style={{ transformOrigin: '16px 32px' }} />
-          <ellipse className="pet-panda-leg-fr fur-dark" cx="46" cy="37" rx="5" ry="8" style={{ transformOrigin: '46px 32px' }} />
-          <g className="pet-panda-head" style={{ transformOrigin: '14px 16px' }} key={`head-${reactionNonce}`}>
+          <circle
+            className="pet-panda-tail fur"
+            cx="64"
+            cy="24"
+            r="3"
+            style={{ transformOrigin: '64px 24px' }}
+          />
+          <ellipse
+            className="pet-panda-leg-fl fur-dark"
+            cx="16"
+            cy="37"
+            rx="5"
+            ry="8"
+            style={{ transformOrigin: '16px 32px' }}
+          />
+          <ellipse
+            className="pet-panda-leg-fr fur-dark"
+            cx="46"
+            cy="37"
+            rx="5"
+            ry="8"
+            style={{ transformOrigin: '46px 32px' }}
+          />
+          <g
+            className="pet-panda-head"
+            style={{ transformOrigin: '14px 16px' }}
+            key={`head-${reactionNonce}`}
+          >
             <g className="pet-panda-ears">
               <circle className="fur-dark" cx="5" cy="6" r="5" />
               <circle className="fur-dark" cx="23" cy="6" r="5" />

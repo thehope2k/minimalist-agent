@@ -22,7 +22,9 @@ export function ActionButtons({ terminalOpen, onToggleTerminal }: ActionButtonsP
       <IconButton
         icon={HelpCircle}
         label="Help"
-        onClick={() => void window.api.app.openExternal('https://github.com/thehope2k/minimalist-agent')}
+        onClick={() =>
+          void window.api.app.openExternal('https://github.com/thehope2k/minimalist-agent')
+        }
       />
     </div>
   );

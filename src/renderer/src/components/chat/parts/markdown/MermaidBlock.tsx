@@ -31,8 +31,7 @@ async function getMermaid() {
       suppressErrorRendering: true,
       theme: 'dark',
       layout: 'elk',
-      fontFamily:
-        '-apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif',
       flowchart: { htmlLabels: true },
     });
     initialized = true;
@@ -113,10 +112,7 @@ export function MermaidBlock({ code }: { code: string }) {
                 className="flex items-center gap-1 hover:text-fg"
               >
                 <ChevronDown
-                  className={cn(
-                    'h-3 w-3 transition-transform',
-                    showSource && 'rotate-180',
-                  )}
+                  className={cn('h-3 w-3 transition-transform', showSource && 'rotate-180')}
                 />
                 {showSource ? 'Hide source' : 'Show source'}
               </button>
@@ -156,7 +152,11 @@ export function MermaidBlock({ code }: { code: string }) {
       </div>
 
       {expanded && (
-        <ExpandModal title="Diagram" onClose={() => setExpanded(false)} className="w-[min(95vw,1800px)] h-[90vh]">
+        <ExpandModal
+          title="Diagram"
+          onClose={() => setExpanded(false)}
+          className="w-[min(95vw,1800px)] h-[90vh]"
+        >
           <ZoomPan className="flex-1" fitOnMount>
             {/* SVG rendered at its natural dimensions — ZoomPan scales to fit on open */}
             <div

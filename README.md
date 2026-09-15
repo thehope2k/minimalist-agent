@@ -116,7 +116,7 @@ Get the latest release for your platform from
 the [Releases page](https://github.com/thehope2k/minimalist-agent/releases).
 
 | Platform              | File                            |
-|-----------------------|---------------------------------|
+| --------------------- | ------------------------------- |
 | macOS (Apple Silicon) | `Minimalist-Agent-arm64.dmg`    |
 | macOS (Intel)         | `Minimalist-Agent-x64.dmg`      |
 | Windows               | `Minimalist-Agent-x64.exe`      |
@@ -126,12 +126,12 @@ the [Releases page](https://github.com/thehope2k/minimalist-agent/releases).
 
 1. **Launch the app** (see macOS Gatekeeper note below if blocked)
 2. **Add a connection** — Settings → Connections
-    - **GitHub Copilot** — Sign in via device flow
-    - **ChatGPT** — Sign in via browser OAuth
-    - **OpenAI-compatible** — Choose a preset (StepFun, DeepSeek, Moonshot, Together AI, Groq, OpenRouter, xAI) or enter
-      a custom endpoint; paste your API key
-    - **CodeMie SSO** — Sign in with EPAM SSO, then select a CodeMie project, optional LiteLLM integration, and model
-    - **Local** — Point to your Ollama endpoint
+   - **GitHub Copilot** — Sign in via device flow
+   - **ChatGPT** — Sign in via browser OAuth
+   - **OpenAI-compatible** — Choose a preset (StepFun, DeepSeek, Moonshot, Together AI, Groq, OpenRouter, xAI) or enter
+     a custom endpoint; paste your API key
+   - **CodeMie SSO** — Sign in with EPAM SSO, then select a CodeMie project, optional LiteLLM integration, and model
+   - **Local** — Point to your Ollama endpoint
 3. **Start chatting** — `Cmd+N` for new session
 
 ### macOS — Gatekeeper

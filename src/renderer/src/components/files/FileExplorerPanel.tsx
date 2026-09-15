@@ -94,11 +94,7 @@ export function FileExplorerPanel({
     <div className="flex h-full flex-col bg-panel" ref={containerRef} tabIndex={-1}>
       <TreeHeader cwd={cwd} onClose={onClose} />
 
-      <FilterInput
-        value={filterQuery}
-        onChange={setFilterQuery}
-        inputRef={filterInputRef}
-      />
+      <FilterInput value={filterQuery} onChange={setFilterQuery} inputRef={filterInputRef} />
 
       <div ref={scrollContainerRef} className="min-h-0 flex-1 overflow-y-auto">
         <EmptyStates

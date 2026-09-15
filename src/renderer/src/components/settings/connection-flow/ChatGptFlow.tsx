@@ -12,17 +12,20 @@ export function ChatGptFlow({ onBack, onClose, onSaved, editingMeta }: FlowProps
   const editing = !!editingMeta;
   const [name, setName] = useState(editingMeta?.name ?? 'ChatGPT');
   const [models, setModels] = useState<ModelDef[]>(editingMeta?.models ?? []);
-  const [model, setModel] = useState<string>(
-    editingMeta?.defaultModel ?? '',
-  );
+  const [model, setModel] = useState<string>(editingMeta?.defaultModel ?? '');
 
   // Load the Pi SDK’s openai-codex model catalog on mount.
   useEffect(() => {
-    window.api?.chatgpt?.getModels().then((list) => {
-      if (list.length === 0) return;
-      setModels(list);
-      setModel((prev) => list.find((m) => m.id === prev)?.id ?? list[0].id);
-    }).catch(() => {/* keep empty list */});
+    window.api?.chatgpt
+      ?.getModels()
+      .then((list) => {
+        if (list.length === 0) return;
+        setModels(list);
+        setModel((prev) => list.find((m) => m.id === prev)?.id ?? list[0].id);
+      })
+      .catch(() => {
+        /* keep empty list */
+      });
   }, []);
   const [step, setStep] = useState<Step>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -61,8 +64,7 @@ export function ChatGptFlow({ onBack, onClose, onSaved, editingMeta }: FlowProps
       setStep('saving');
 
       // Use the Pi SDK model list fetched on mount.
-      const finalDefaultModel =
-        models.find((m) => m.id === model)?.id ?? models[0]?.id ?? model;
+      const finalDefaultModel = models.find((m) => m.id === model)?.id ?? models[0]?.id ?? model;
 
       const meta: ConnectionMeta = editing
         ? {
@@ -90,9 +92,7 @@ export function ChatGptFlow({ onBack, onClose, onSaved, editingMeta }: FlowProps
       onClose();
     } catch (e) {
       setStep('idle');
-      setError(
-        e instanceof Error ? e.message : 'ChatGPT authorization failed.',
-      );
+      setError(e instanceof Error ? e.message : 'ChatGPT authorization failed.');
     } finally {
       inFlight.current = false;
     }
@@ -115,14 +115,15 @@ export function ChatGptFlow({ onBack, onClose, onSaved, editingMeta }: FlowProps
         <div className="space-y-3">
           <p className="text-xs text-fg-subtle">
             Sign in with your ChatGPT account. Your browser will open to{' '}
-            <code className="mx-1 rounded bg-elevated px-1 py-0.5 text-[11px] text-fg-muted">auth.openai.com</code>
-            and redirect back automatically — no code to copy.
-            Model availability varies by plan — if a model returns an error,
-            switch to another from the picker.
+            <code className="mx-1 rounded bg-elevated px-1 py-0.5 text-[11px] text-fg-muted">
+              auth.openai.com
+            </code>
+            and redirect back automatically — no code to copy. Model availability varies by plan —
+            if a model returns an error, switch to another from the picker.
           </p>
           <p className="text-xs text-fg-subtle">
-            Chat runs through the agent runtime, including permission prompts,
-            plan/auto modes, and tool streaming.
+            Chat runs through the agent runtime, including permission prompts, plan/auto modes, and
+            tool streaming.
           </p>
           <Button
             variant="primary"
@@ -141,8 +142,8 @@ export function ChatGptFlow({ onBack, onClose, onSaved, editingMeta }: FlowProps
           <div className="flex items-center gap-2 rounded-lg border border-border bg-elevated/40 px-4 py-3">
             <Loader2 className="h-4 w-4 shrink-0 animate-spin text-fg-muted" />
             <p className="text-xs text-fg-subtle">
-              Browser opened. Complete sign-in on the OpenAI page — this
-              dialog will close automatically.
+              Browser opened. Complete sign-in on the OpenAI page — this dialog will close
+              automatically.
             </p>
           </div>
           <Button variant="link" onClick={cancel}>

@@ -85,9 +85,10 @@ export function CopilotQuotaPill({
 
   const hasOverage = quota.overageCount > 0;
   // True % for labels/tooltip — uncapped, so 132% shows correctly.
-  const displayPct = quota.entitlement && quota.used != null
-    ? Math.round((quota.used / quota.entitlement) * 100)
-    : Math.round(100 - quota.percentRemaining);
+  const displayPct =
+    quota.entitlement && quota.used != null
+      ? Math.round((quota.used / quota.entitlement) * 100)
+      : Math.round(100 - quota.percentRemaining);
   const isRed = hasOverage || displayPct >= 90;
   const isOrange = !isRed && displayPct >= 75;
 
@@ -103,16 +104,19 @@ export function CopilotQuotaPill({
     return isAICredits ? `$${val.toFixed(0)}` : val.toLocaleString();
   };
 
-  const label = quota.entitlement != null && quota.used != null
-    ? `${formatCompact(quota.used)}/${formatCompact(quota.entitlement)}`
-    : `${displayPct}%`;
+  const label =
+    quota.entitlement != null && quota.used != null
+      ? `${formatCompact(quota.used)}/${formatCompact(quota.entitlement)}`
+      : `${displayPct}%`;
 
   const planLabel = quota.planType ? (PLAN_LABELS[quota.planType] ?? quota.planType) : '';
   const tooltipParts: string[] = [];
   if (planLabel) tooltipParts.push(planLabel);
   tooltipParts.push(`${displayPct}% used`);
   if (hasOverage) {
-    const overageStr = isAICredits ? `$${quota.overageCount.toFixed(2)}` : quota.overageCount.toLocaleString();
+    const overageStr = isAICredits
+      ? `$${quota.overageCount.toFixed(2)}`
+      : quota.overageCount.toLocaleString();
     tooltipParts.push(`+${overageStr} over limit`);
   }
   if (quota.resetDate) tooltipParts.push(`resets ${formatResetDate(quota.resetDate)}`);
@@ -127,7 +131,8 @@ export function CopilotQuotaPill({
         disabled={isRefreshing}
         className={`inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] leading-none tabular-nums transition-opacity cursor-pointer hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50 ${refreshFailed ? 'border-orange-400/40 text-orange-400' : colorClass}`}
       >
-        {isRefreshing ? '…' : label}{refreshFailed && !isRefreshing ? ' ⚠' : ''}
+        {isRefreshing ? '…' : label}
+        {refreshFailed && !isRefreshing ? ' ⚠' : ''}
       </button>
     </Tooltip>
   );

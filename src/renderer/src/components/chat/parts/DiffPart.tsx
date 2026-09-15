@@ -43,7 +43,14 @@ interface DiffPartProps {
   contextDeltaGroupSize?: number;
 }
 
-export function DiffPart({ name, input, result, status, contextDelta, contextDeltaGroupSize }: DiffPartProps) {
+export function DiffPart({
+  name,
+  input,
+  result,
+  status,
+  contextDelta,
+  contextDeltaGroupSize,
+}: DiffPartProps) {
   // Tool names may vary in case, so match them case-insensitively.
   const isWrite = name.toLowerCase() === 'write';
   const cwd = useCwd();
@@ -66,10 +73,7 @@ export function DiffPart({ name, input, result, status, contextDelta, contextDel
     const Icon = isRunning ? Loader2 : isWrite ? FileText : FilePenLine;
     return (
       <div className="flex items-center gap-2 rounded-md border border-border bg-elevated/40 px-2.5 py-1.5 text-xs text-fg-subtle">
-        <Icon
-          className={cn('h-3.5 w-3.5', isRunning && 'animate-spin')}
-          strokeWidth={1.75}
-        />
+        <Icon className={cn('h-3.5 w-3.5', isRunning && 'animate-spin')} strokeWidth={1.75} />
         <span>{isWrite ? 'Writing file…' : 'Editing file…'}</span>
       </div>
     );
@@ -85,17 +89,10 @@ export function DiffPart({ name, input, result, status, contextDelta, contextDel
           'overflow-hidden rounded-md border text-xs transition-colors',
           // Visual weight comes from the +/- pill badges — the chip itself
           // stays neutral so it lives in the same family as Bash/Read.
-          erroredOrFailed
-            ? 'border-red-500/30 bg-red-500/5'
-            : 'border-border bg-elevated/40',
+          erroredOrFailed ? 'border-red-500/30 bg-red-500/5' : 'border-border bg-elevated/40',
         )}
       >
-        <div
-          className={cn(
-            'flex w-full items-center gap-2 px-2.5 py-1.5',
-            'hover:bg-elevated/40',
-          )}
-        >
+        <div className={cn('flex w-full items-center gap-2 px-2.5 py-1.5', 'hover:bg-elevated/40')}>
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
@@ -116,10 +113,7 @@ export function DiffPart({ name, input, result, status, contextDelta, contextDel
               strokeWidth={1.75}
             />
             <span
-              className={cn(
-                'shrink-0 font-medium',
-                erroredOrFailed ? 'text-red-300' : 'text-fg',
-              )}
+              className={cn('shrink-0 font-medium', erroredOrFailed ? 'text-red-300' : 'text-fg')}
             >
               {isWrite ? 'Write' : 'Edit'}
             </span>
@@ -143,7 +137,10 @@ export function DiffPart({ name, input, result, status, contextDelta, contextDel
           </button>
           <span className="flex shrink-0 items-center gap-1.5 text-fg-muted">
             <CopyButton text={parsed.newValue} className="opacity-100" />
-            <ContextDeltaBadge contextDelta={contextDelta} contextDeltaGroupSize={contextDeltaGroupSize} />
+            <ContextDeltaBadge
+              contextDelta={contextDelta}
+              contextDeltaGroupSize={contextDeltaGroupSize}
+            />
             <button
               type="button"
               onClick={() => setModalOpen(true)}
@@ -169,7 +166,9 @@ export function DiffPart({ name, input, result, status, contextDelta, contextDel
               <WrittenView filePath={parsed.filePath} content={parsed.newValue} />
             ) : (
               <div className="scroll-thin overflow-x-auto bg-panel">
-                <Suspense fallback={<div className="h-16 animate-pulse rounded bg-elevated/40 m-4" />}>
+                <Suspense
+                  fallback={<div className="h-16 animate-pulse rounded bg-elevated/40 m-4" />}
+                >
                   <LazyDiffViewer
                     oldValue={parsed.oldValue}
                     newValue={parsed.newValue}
@@ -196,11 +195,7 @@ export function DiffPart({ name, input, result, status, contextDelta, contextDel
         )}
       </div>
       {modalOpen && (
-        <DiffExpandModal
-          parsed={parsed}
-          name={name}
-          onClose={() => setModalOpen(false)}
-        />
+        <DiffExpandModal parsed={parsed} name={name} onClose={() => setModalOpen(false)} />
       )}
     </>
   );
@@ -221,5 +216,3 @@ function StatusIcon({
   }
   return <CheckCircle2 className="h-3 w-3 text-emerald-400" strokeWidth={2} />;
 }
-
-

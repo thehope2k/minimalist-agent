@@ -10,7 +10,11 @@ import { PartView } from '../PartView';
 import { groupMessageParts } from '../group-parts';
 import { emptyTurnLabel } from '../utils';
 
-export function AssistantMessage({ message, sessionId, plan }: {
+export function AssistantMessage({
+  message,
+  sessionId,
+  plan,
+}: {
   message: ChatMessage;
   sessionId?: string;
   plan?: Plan | null;
@@ -34,7 +38,9 @@ export function AssistantMessage({ message, sessionId, plan }: {
           );
         })}
         {!message.isStreaming && <TurnSummaryCard parts={message.parts} />}
-        {message.isStreaming && <StreamStatus parts={message.parts} startedAt={message.createdAt} />}
+        {message.isStreaming && (
+          <StreamStatus parts={message.parts} startedAt={message.createdAt} />
+        )}
         {plan && sessionId && (
           <div className="mt-3 border-t border-border/30 pt-3">
             <PlanProgress sessionId={sessionId} plan={plan} />
@@ -44,7 +50,12 @@ export function AssistantMessage({ message, sessionId, plan }: {
     );
   }
 
-  if (!message.errorInfo && !message.error && message.stopReason && message.stopReason !== 'end_turn') {
+  if (
+    !message.errorInfo &&
+    !message.error &&
+    message.stopReason &&
+    message.stopReason !== 'end_turn'
+  ) {
     return (
       <AssistantCard>
         <p className="text-sm text-fg-muted italic">{emptyTurnLabel(message.stopReason)}</p>

@@ -28,7 +28,11 @@ import type { ToolDefinition } from '@earendil-works/pi-coding-agent';
 import type { McpServerConfig } from '../agent-runtime/pi/protocol';
 import { createLogger } from '../../shared/sub-logger';
 import { withTimeout } from '../../shared/with-timeout';
-import { MCP_CALL_CEILING_MS, MCP_CONNECT_CEILING_MS, MCP_POOL_BUDGET_MS } from '../../shared/timeouts';
+import {
+  MCP_CALL_CEILING_MS,
+  MCP_CONNECT_CEILING_MS,
+  MCP_POOL_BUDGET_MS,
+} from '../../shared/timeouts';
 
 const log = createLogger('mcp');
 
@@ -119,9 +123,11 @@ interface McpContentBlock {
  * text placeholder so the model still sees *something* without us depending on
  * Pi's richer content union (keeps the adapter resilient across SDK versions).
  */
-function mapToolResult(
-  raw: unknown,
-): { isError: boolean; content: Array<{ type: 'text'; text: string }>; details: Record<string, unknown> } {
+function mapToolResult(raw: unknown): {
+  isError: boolean;
+  content: Array<{ type: 'text'; text: string }>;
+  details: Record<string, unknown>;
+} {
   const result = (raw ?? {}) as { content?: McpContentBlock[]; isError?: boolean };
   const blocks = Array.isArray(result.content) ? result.content : [];
 
@@ -130,7 +136,10 @@ function mapToolResult(
       return { type: 'text' as const, text: b.text };
     }
     if (b.type === 'image' || b.type === 'audio') {
-      return { type: 'text' as const, text: `[${b.type}${b.mimeType ? ` ${b.mimeType}` : ''} content omitted]` };
+      return {
+        type: 'text' as const,
+        text: `[${b.type}${b.mimeType ? ` ${b.mimeType}` : ''} content omitted]`,
+      };
     }
     if (b.type === 'resource') {
       return { type: 'text' as const, text: `[resource: ${JSON.stringify(b.resource ?? b)}]` };
@@ -139,7 +148,12 @@ function mapToolResult(
   });
 
   if (content.length === 0) {
-    content.push({ type: 'text' as const, text: result.isError ? 'Tool returned an error with no content.' : 'Tool returned no content.' });
+    content.push({
+      type: 'text' as const,
+      text: result.isError
+        ? 'Tool returned an error with no content.'
+        : 'Tool returned no content.',
+    });
   }
 
   return { isError: result.isError === true, content, details: {} };
@@ -210,14 +224,15 @@ async function connectOne(
   connectTimeoutMs: number,
   callTimeoutMs: number,
 ): Promise<{ client: Client; tools: ToolDefinition<any, any>[]; diagnostic: McpServerDiagnostic }> {
-  const client = new Client(
-    { name: 'minimalist-agent', version: '1.0.0' },
-    { capabilities: {} },
-  );
+  const client = new Client({ name: 'minimalist-agent', version: '1.0.0' }, { capabilities: {} });
   const transport = buildTransport(cfg);
 
   await withTimeout(client.connect(transport), connectTimeoutMs, `mcp ${cfg.slug} connect`);
-  const listed = await withTimeout(client.listTools(), connectTimeoutMs, `mcp ${cfg.slug} listTools`);
+  const listed = await withTimeout(
+    client.listTools(),
+    connectTimeoutMs,
+    `mcp ${cfg.slug} listTools`,
+  );
 
   const tools = adaptTools(cfg.slug, client, (listed.tools ?? []) as any, callTimeoutMs);
   return {
@@ -248,21 +263,26 @@ export async function connectMcpServers(
   log.info(`Connecting ${configs.length} MCP server(s)…`);
 
   const settled = await withTimeout(
-    Promise.allSettled(
-      configs.map((cfg) => connectOne(cfg, connectTimeoutMs, callTimeoutMs)),
-    ),
+    Promise.allSettled(configs.map((cfg) => connectOne(cfg, connectTimeoutMs, callTimeoutMs))),
     totalBudgetMs,
     'mcp pool',
   ).catch((e) => {
     // Global budget blown: degrade to "no MCP tools" rather than hanging boot.
-    log.warn(`MCP pool exceeded ${totalBudgetMs}ms budget: ${errMsg(e)}. Continuing without late servers.`);
+    log.warn(
+      `MCP pool exceeded ${totalBudgetMs}ms budget: ${errMsg(e)}. Continuing without late servers.`,
+    );
     return [] as PromiseSettledResult<Awaited<ReturnType<typeof connectOne>>>[];
   });
 
   configs.forEach((cfg, i) => {
     const outcome = settled[i];
     if (!outcome) {
-      result.diagnostics.push({ slug: cfg.slug, transport: cfg.transport, ok: false, error: 'connect exceeded global budget' });
+      result.diagnostics.push({
+        slug: cfg.slug,
+        transport: cfg.transport,
+        ok: false,
+        error: 'connect exceeded global budget',
+      });
       return;
     }
     if (outcome.status === 'fulfilled') {

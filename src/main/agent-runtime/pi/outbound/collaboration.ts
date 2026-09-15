@@ -8,7 +8,10 @@ import type { EngagementRequest } from '../../../../shared/collaboration-types';
 
 const log = createLogger('chat-runtime');
 
-export function handleCollaborationRequest(msg: MsgCollaborationRequest, handle: SubprocessHandle): void {
+export function handleCollaborationRequest(
+  msg: MsgCollaborationRequest,
+  handle: SubprocessHandle,
+): void {
   if (!handle.askCollaboration) {
     log.warn('Collaboration request received but no askCollaboration callback');
     // Return a default "no" response
@@ -37,7 +40,8 @@ export function handleCollaborationRequest(msg: MsgCollaborationRequest, handle:
   // otherwise reaps subprocesses silent for TURN_IDLE_TIMEOUT_MS) knows
   // this silence is expected, not a hang.
   handle.pendingCollaborationRequests++;
-  handle.askCollaboration(engagementRequest)
+  handle
+    .askCollaboration(engagementRequest)
     .then((response: any) => {
       send(handle, {
         type: 'collaboration_response',

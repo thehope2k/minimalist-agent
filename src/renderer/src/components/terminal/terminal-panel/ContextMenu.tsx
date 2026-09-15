@@ -1,13 +1,13 @@
 import { cn } from '@/lib/utils';
 
 interface TerminalContextMenuProps {
-  x:            number;
-  y:            number;
+  x: number;
+  y: number;
   hasSelection: boolean;
-  onCopy:       () => void;
-  onPaste:      () => void;
-  onClear:      () => void;
-  onClose:      () => void;
+  onCopy: () => void;
+  onPaste: () => void;
+  onClear: () => void;
+  onClose: () => void;
 }
 
 export function TerminalContextMenu({

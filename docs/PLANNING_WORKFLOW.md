@@ -7,6 +7,7 @@ Intelligent multi-phase execution for complex tasks. When facing work that requi
 ## What It Is
 
 A system that breaks down complex tasks into manageable phases:
+
 - **Safe phases** (read-only) execute automatically
 - **Non-safe phases** (writes/executes) request approval based on risk vs. autonomy level **in Plan mode**; in Auto mode phases run directly and autonomy instead governs the model's own `RequestApproval` calls (see [Autonomy Level](#autonomy-level))
 - **Plans adapt** mid-execution based on discoveries
@@ -22,6 +23,7 @@ A system that breaks down complex tasks into manageable phases:
 ### Plan Creation
 
 Agent analyzes your request and creates phases:
+
 ```
 User: "Refactor auth to use JWT tokens"
 
@@ -35,6 +37,7 @@ Plan created:
 ```
 
 Each phase has:
+
 - **Name and description**
 - **Actions** to perform
 - **Risk level** (0-100)
@@ -42,11 +45,12 @@ Each phase has:
 
 ### Phase Execution
 
-**This risk-vs-autonomy gate applies in Plan permission mode.** In Auto permission mode, phases execute directly with no phase-approval dialog — autonomy instead governs the model's own `RequestApproval` tool calls made *during* phase execution (see [COLLABORATION.md](COLLABORATION.md)). Don't read "autonomy controls phase approval" as true in both modes; it's Plan-mode-only.
+**This risk-vs-autonomy gate applies in Plan permission mode.** In Auto permission mode, phases execute directly with no phase-approval dialog — autonomy instead governs the model's own `RequestApproval` tool calls made _during_ phase execution (see [COLLABORATION.md](COLLABORATION.md)). Don't read "autonomy controls phase approval" as true in both modes; it's Plan-mode-only.
 
 In Plan mode, phases execute sequentially. When a phase's risk exceeds your autonomy level, you'll be asked to approve it.
 
 **Approval Logic (Plan mode only):**
+
 - If `phase.risk <= autonomyLevel`: executes automatically
 - If `phase.risk > autonomyLevel`: shows approval dialog
 
@@ -57,17 +61,20 @@ In Plan mode, phases execute sequentially. When a phase's risk exceeds your auto
 Backend validates all safety classifications to catch AI mistakes:
 
 **Safe operations:**
+
 - Read, Grep, Find, Ls (file inspection)
 - Analysis and design work
 - Documentation reading
 
 **Non-safe operations:**
+
 - Write, Edit (file modifications)
 - Bash (command execution)
 - Package installations
 - Configuration changes
 
 **Safety Validation:**
+
 - AI classifies each phase (safe/non-safe, risk 0-100)
 - Backend independently analyzes phase actions
 - If mismatch detected → warning logged, backend classification used
@@ -76,6 +83,7 @@ Backend validates all safety classifications to catch AI mistakes:
 ### Risk Levels
 
 Visual color coding:
+
 - **0-30 (Green):** Low risk, simple changes
 - **31-60 (Yellow):** Medium risk, significant impact
 - **61-100 (Red):** High risk, critical changes
@@ -83,6 +91,7 @@ Visual color coding:
 ### Dynamic Revision
 
 Plans can change mid-execution:
+
 - Agent discovers new information
 - Errors or blockers encountered
 - User provides feedback
@@ -97,6 +106,7 @@ Version tracking shows v1 → v2 → v3 with change explanations.
 ### Plan Progress Widget
 
 Collapsible widget showing plan status:
+
 ```
 ┌─────────────────────────────────────┐
 │ ▼ Implementation Plan  v2    3/5    │
@@ -118,6 +128,7 @@ Collapsible widget showing plan status:
 ```
 
 **Features:**
+
 - Click to collapse/expand
 - Phase status indicators (✓ complete, ⏵ running, ○ pending, ⊘ skipped, ! error)
 - Duration tracking
@@ -128,18 +139,21 @@ Collapsible widget showing plan status:
 ### Phase Approval Dialog
 
 Modal for approving non-safe phases:
+
 - Shows phase name, description, actions
 - Risk assessment with color coding
 - Optional user notes/instructions
 - **Actions:** Approve / Deny
 
 **Keyboard shortcuts:**
+
 - `Enter` — Approve
 - `Esc` — Deny
 
 ### Plan Revision Notification
 
 Inline alert when plan changes:
+
 - Shows version change (v1 → v2)
 - Reason for revision
 - Summary of changes
@@ -148,6 +162,7 @@ Inline alert when plan changes:
 ### Error Recovery Notification
 
 Error alerts with recovery options:
+
 - Shows error message
 - Phase that failed
 - **Recovery options:** Retry Phase / Skip Phase / Cancel Plan
@@ -163,7 +178,7 @@ Error alerts with recovery options:
 The autonomy slider (0-100) has **different effects depending on permission mode**:
 
 - **Plan mode:** controls phase-approval frequency directly (below). This is the mode PLANNING_WORKFLOW's phase-gate description is about.
-- **Auto mode:** phases execute with no phase-approval dialog at all; autonomy instead governs whether the model *itself* chooses to call `RequestApproval` mid-phase. See [COLLABORATION.md](COLLABORATION.md) for the Auto-mode contract (`shouldEngage()` in `shared/autonomy.ts`).
+- **Auto mode:** phases execute with no phase-approval dialog at all; autonomy instead governs whether the model _itself_ chooses to call `RequestApproval` mid-phase. See [COLLABORATION.md](COLLABORATION.md) for the Auto-mode contract (`shouldEngage()` in `shared/autonomy.ts`).
 
 In Plan mode:
 
@@ -179,12 +194,14 @@ In Plan mode:
 ## Plan Controls
 
 **Pause:**
+
 - Stops execution at current phase
 - State preserved
 - Shows "⏸ Plan paused" status
 - Note: Currently no Resume button (must cancel and restart)
 
 **Cancel:**
+
 - Stops execution immediately
 - Completed work preserved
 - Remaining phases not executed
@@ -199,6 +216,7 @@ In Plan mode:
 ### When to Use Planning
 
 ✅ **Good for:**
+
 - Multi-file refactorings
 - Feature implementations touching multiple components
 - System migrations (auth, database, API)
@@ -206,6 +224,7 @@ In Plan mode:
 - Exploration before implementation
 
 ❌ **Not ideal for:**
+
 - Single-file edits
 - Simple one-step operations
 - Exploratory questions without execution
@@ -214,17 +233,20 @@ In Plan mode:
 ### Writing Effective Requests
 
 **Be specific:**
+
 ```
 ❌ "Improve the codebase"
 ✓ "Refactor user authentication to use bcrypt instead of plain-text passwords"
 ```
 
 **Mention constraints:**
+
 ```
 ✓ "Add dark mode support - don't change the color palette, only add theme switching"
 ```
 
 **Indicate risk tolerance:**
+
 ```
 ✓ "Optimize database queries (review plan before making schema changes)"
 ```
@@ -241,6 +263,7 @@ In Plan mode:
 ## Revising Plans Mid-Execution
 
 **To modify a plan:**
+
 1. Send a message asking AI to revise: "Can we simplify this by using X instead?"
 2. AI will use the `RevisePlan` tool to update remaining phases
 3. Completed phases remain unchanged
@@ -248,6 +271,7 @@ In Plan mode:
 5. Revision notification appears explaining changes
 
 **Example:**
+
 ```
 You: "Wait, we already have auth middleware. Can we just extend it?"
 AI: [Uses RevisePlan tool]
@@ -286,6 +310,7 @@ A: Phase is marked as "skipped" and execution continues with the next phase. Den
 For contributors:
 
 **Backend:**
+
 - PlanManager orchestrates lifecycle
 - Risk scoring done by AI (validated for sanity by backend)
 - RevisionDetector analyzes findings for plan revision triggers
@@ -293,18 +318,21 @@ For contributors:
 - Event-driven architecture (all updates via events)
 
 **Frontend:**
+
 - useChat hook manages planning state
 - 4 UI components (PlanProgress, PhaseApprovalDialog, PlanRevisionNotification, PlanErrorNotification)
 - Full ARIA support for accessibility
 - Keyboard navigation throughout
 
 **Integration:**
+
 - 3 custom tools in Pi SDK: CreatePlan, ReportPhaseProgress, RevisePlan
 - ~1,800 token system prompt injection teaches planning workflow
 - IPC bridge for plan state queries (cache-based for performance)
 - Plans tied to session lifecycle
 
 **Safety Layer:**
+
 - AI provides initial safety classification
 - Backend independently analyzes phase actions
 - Mismatch detection warns and overrides AI

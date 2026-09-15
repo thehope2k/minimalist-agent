@@ -44,9 +44,7 @@ export function AddAgentDialog({
     if (!open) return;
     setDescription('');
     setSlug('');
-    setPlaceholder(
-      PLACEHOLDERS[Math.floor(Math.random() * PLACEHOLDERS.length)],
-    );
+    setPlaceholder(PLACEHOLDERS[Math.floor(Math.random() * PLACEHOLDERS.length)]);
     void (projectDir ? Promise.resolve(projectDir) : getAgentsDir()).then(setAgentsDir);
     requestAnimationFrame(() => taRef.current?.focus());
   }, [open]);
@@ -58,9 +56,7 @@ export function AddAgentDialog({
       ? 'Lowercase, hyphenated, ≤30 chars (e.g. `code-reviewer`).'
       : null;
   const canSubmit =
-    description.trim().length > 0 &&
-    (slug.length === 0 || SLUG_RE.test(slug)) &&
-    !!agentsDir;
+    description.trim().length > 0 && (slug.length === 0 || SLUG_RE.test(slug)) && !!agentsDir;
 
   const handleSubmit = () => {
     if (!canSubmit || !agentsDir) return;
@@ -106,9 +102,7 @@ export function AddAgentDialog({
         </header>
 
         <div className="px-4 pt-4">
-          <h3 className="text-base font-medium text-fg">
-            What should this agent do?
-          </h3>
+          <h3 className="text-base font-medium text-fg">What should this agent do?</h3>
           <p className="mt-0.5 text-xs text-fg-subtle">
             Describe it — the agent will scaffold the AGENT.md for you.
           </p>
@@ -127,9 +121,7 @@ export function AddAgentDialog({
         </div>
 
         <div className="px-4 pt-3">
-          <label className="block text-[11px] uppercase tracking-wide text-fg-subtle">
-            Slug
-          </label>
+          <label className="block text-[11px] uppercase tracking-wide text-fg-subtle">Slug</label>
           <input
             type="text"
             value={slug}
@@ -182,11 +174,7 @@ export function AddAgentDialog({
  * Build the prompt that coaches the model to create an AGENT.md file.
  * The format spec is inlined here — no static reference doc on disk.
  */
-function buildAgentScaffoldPrompt(
-  description: string,
-  slug: string,
-  agentsDir: string,
-): string {
+function buildAgentScaffoldPrompt(description: string, slug: string, agentsDir: string): string {
   const chosenSlug = slug || '<chosen-slug>';
   const target = `${agentsDir}/${chosenSlug}/AGENT.md`;
   const slugInstructions = slug

@@ -21,17 +21,19 @@ export async function buildDiffContext(args: BuildDiffContextArgs): Promise<stri
   // Fetch fresh diffs for ALL staged files in parallel.
   const diffs = await Promise.all(
     staged.map((f) =>
-      window.api.git.diff({
-        repoRoot: f.repoRoot,
-        relativePath: f.relativePath,
-        absolutePath: f.absolutePath,
-        status: f.status,
-      }).catch(() => null),
+      window.api.git
+        .diff({
+          repoRoot: f.repoRoot,
+          relativePath: f.relativePath,
+          absolutePath: f.absolutePath,
+          status: f.status,
+        })
+        .catch(() => null),
     ),
   );
 
   // Group by repo, keeping diff index aligned.
-  const byRepo = new Map<string, Array<{ file: GitFileEntry; diff: typeof diffs[0] }>>();
+  const byRepo = new Map<string, Array<{ file: GitFileEntry; diff: (typeof diffs)[0] }>>();
   staged.forEach((file, i) => {
     const group = byRepo.get(file.repoRoot) ?? [];
     group.push({ file, diff: diffs[i] });
@@ -52,7 +54,7 @@ export async function buildDiffContext(args: BuildDiffContextArgs): Promise<stri
     const firstRoot = roots[0];
     const [lastMsg, lastDiff] = await Promise.all([
       firstRoot ? window.api.git.lastCommitMessage(firstRoot) : Promise.resolve(null),
-      firstRoot ? window.api.git.lastCommitDiff(firstRoot)   : Promise.resolve(null),
+      firstRoot ? window.api.git.lastCommitDiff(firstRoot) : Promise.resolve(null),
     ]);
     if (lastMsg) {
       lines.push('AMENDING COMMIT:');
@@ -77,11 +79,14 @@ export async function buildDiffContext(args: BuildDiffContextArgs): Promise<stri
     return n + d.modified.split('\n').filter((l) => l.trim() && !origSet.has(l.trim())).length;
   }, 0);
   if (!amend) {
-    lines.push(`${totalFiles} file${totalFiles !== 1 ? 's' : ''} changed, ~${totalAdded} additions`, '');
+    lines.push(
+      `${totalFiles} file${totalFiles !== 1 ? 's' : ''} changed, ~${totalAdded} additions`,
+      '',
+    );
   }
 
   // One section per repo with actual +/- lines.
-// One section per repo with all meaningful +/- lines, budget-governed.
+  // One section per repo with all meaningful +/- lines, budget-governed.
   for (const [root, entries] of byRepo) {
     const branch = branchMap.get(root);
     const repoName = root.split('/').filter(Boolean).pop() ?? root;
@@ -89,22 +94,39 @@ export async function buildDiffContext(args: BuildDiffContextArgs): Promise<stri
 
     for (const { file, diff } of entries) {
       const statusLabel =
-        file.status === 'A' || file.status === '?' ? 'new file'
-        : file.status === 'D' ? 'deleted'
-        : file.status === 'R' ? 'renamed'
-        : 'modified';
+        file.status === 'A' || file.status === '?'
+          ? 'new file'
+          : file.status === 'D'
+            ? 'deleted'
+            : file.status === 'R'
+              ? 'renamed'
+              : 'modified';
       lines.push(`[${statusLabel}] ${file.relativePath}`);
       if (diff) {
-        const origSet = new Set(diff.original.split('\n').map((l) => l.trim()).filter(Boolean));
-        const modSet  = new Set(diff.modified.split('\n').map((l) => l.trim()).filter(Boolean));
+        const origSet = new Set(
+          diff.original
+            .split('\n')
+            .map((l) => l.trim())
+            .filter(Boolean),
+        );
+        const modSet = new Set(
+          diff.modified
+            .split('\n')
+            .map((l) => l.trim())
+            .filter(Boolean),
+        );
         // Only lines with real semantic content (not pure punctuation/closers).
         const meaningful = (l: string) => l.length > 12 && !/^[{};()\[\],./\\]*$/.test(l);
-        const removed = diff.original.split('\n').map((l) => l.trim())
-          .filter((l) => l && !modSet.has(l)  && meaningful(l));
-        const added   = diff.modified.split('\n').map((l) => l.trim())
+        const removed = diff.original
+          .split('\n')
+          .map((l) => l.trim())
+          .filter((l) => l && !modSet.has(l) && meaningful(l));
+        const added = diff.modified
+          .split('\n')
+          .map((l) => l.trim())
           .filter((l) => l && !origSet.has(l) && meaningful(l));
         removed.forEach((l) => lines.push('- ' + l.slice(0, 120)));
-        added.forEach((l)   => lines.push('+ ' + l.slice(0, 120)));
+        added.forEach((l) => lines.push('+ ' + l.slice(0, 120)));
       }
     }
     lines.push('');

@@ -25,9 +25,7 @@ export function useFileContent(absolutePath: string, viewerType: ViewerType) {
       window.api.fs
         .readFile(absolutePath)
         .then((text) => {
-          text !== null
-            ? setContent(text)
-            : setError('File too large or unreadable.');
+          text !== null ? setContent(text) : setError('File too large or unreadable.');
         })
         .catch(() => setError('Failed to read file.'))
         .finally(() => setLoading(false));

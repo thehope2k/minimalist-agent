@@ -24,7 +24,9 @@ export function CodeMieSsoFlow({ onBack, onClose, onSaved, editingMeta }: FlowPr
   const [baseUrl, setBaseUrl] = useState(editingMeta?.baseUrl ?? EPAM_CODEMIE_API_URL);
   const [projects, setProjects] = useState<string[]>([]);
   const [project, setProject] = useState(editingMeta?.codeMieProject ?? '');
-  const [integrationsByProject, setIntegrationsByProject] = useState<Record<string, Integration[]>>({});
+  const [integrationsByProject, setIntegrationsByProject] = useState<Record<string, Integration[]>>(
+    {},
+  );
   const [integrationId, setIntegrationId] = useState(editingMeta?.codeMieIntegrationId ?? '');
   const [models, setModels] = useState<ModelDef[]>(editingMeta?.models ?? []);
   const [model, setModel] = useState(editingMeta?.defaultModel ?? '');
@@ -58,8 +60,16 @@ export function CodeMieSsoFlow({ onBack, onClose, onSaved, editingMeta }: FlowPr
       setProjects(session.projects);
       setProject(selectedProject);
       setIntegrationsByProject(session.integrations);
-      setIntegrationId(projectIntegrations.some(({ id }) => id === integrationId) ? integrationId : projectIntegrations[0]?.id ?? '');
-      setCredential({ type: 'codemie_sso', cookies: session.cookies, expiresAt: session.expiresAt });
+      setIntegrationId(
+        projectIntegrations.some(({ id }) => id === integrationId)
+          ? integrationId
+          : (projectIntegrations[0]?.id ?? ''),
+      );
+      setCredential({
+        type: 'codemie_sso',
+        cookies: session.cookies,
+        expiresAt: session.expiresAt,
+      });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'CodeMie sign-in failed.');
     } finally {
@@ -126,7 +136,10 @@ export function CodeMieSsoFlow({ onBack, onClose, onSaved, editingMeta }: FlowPr
         </Button>
       </div>
       {showAdvanced && (
-        <Field label="CodeMie API URL" hint="EPAM production is preselected. Change this only for preview or development.">
+        <Field
+          label="CodeMie API URL"
+          hint="EPAM production is preselected. Change this only for preview or development."
+        >
           <Input value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} mono />
         </Field>
       )}
@@ -138,27 +151,45 @@ export function CodeMieSsoFlow({ onBack, onClose, onSaved, editingMeta }: FlowPr
       )}
       {projects.length > 0 && (
         <Field label="Project">
-          <Select value={project} onChange={selectProject} options={projects.map((id) => ({ value: id, label: id }))} />
+          <Select
+            value={project}
+            onChange={selectProject}
+            options={projects.map((id) => ({ value: id, label: id }))}
+          />
         </Field>
       )}
       {availableIntegrations.length > 0 && (
-        <Field label="LiteLLM integration" hint="Optional model gateway configured for the selected project.">
+        <Field
+          label="LiteLLM integration"
+          hint="Optional model gateway configured for the selected project."
+        >
           <Select
             value={integrationId}
             onChange={setIntegrationId}
-            options={[{ value: '', label: 'None' }, ...availableIntegrations.map(({ id, alias }) => ({ value: id, label: alias }))]}
+            options={[
+              { value: '', label: 'None' },
+              ...availableIntegrations.map(({ id, alias }) => ({ value: id, label: alias })),
+            ]}
           />
         </Field>
       )}
       {models.length > 0 && (
         <Field label="Default model">
-          <Select value={model} onChange={setModel} options={models.map((item) => ({ value: item.id, label: item.name }))} />
+          <Select
+            value={model}
+            onChange={setModel}
+            options={models.map((item) => ({ value: item.id, label: item.name }))}
+          />
         </Field>
       )}
       {error && <ErrorBox>{error}</ErrorBox>}
       <Actions>
-        <Button variant="ghost" onClick={onClose}>Cancel</Button>
-        <Button variant="primary" onClick={save} disabled={!credential || !model || !project}>Save connection</Button>
+        <Button variant="ghost" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button variant="primary" onClick={save} disabled={!credential || !model || !project}>
+          Save connection
+        </Button>
       </Actions>
     </FormShell>
   );

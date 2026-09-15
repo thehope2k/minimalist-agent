@@ -60,9 +60,7 @@ export function ImageLightbox({ src, name, onClose, onReveal }: ImageLightboxPro
       ) : (
         <div className="text-sm text-white/60">Loading…</div>
       )}
-      <div className="text-[11px] text-white/40">
-        Press Esc or click outside to close
-      </div>
+      <div className="text-[11px] text-white/40">Press Esc or click outside to close</div>
     </div>
   );
 }

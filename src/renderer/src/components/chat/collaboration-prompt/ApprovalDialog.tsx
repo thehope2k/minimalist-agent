@@ -31,9 +31,11 @@ export function ApprovalDialog({ reqId, payload, onRespond }: DialogProps<Approv
   };
 
   const riskColor =
-    payload.risk_level >= 80 ? 'text-red-400' :
-    payload.risk_level >= 50 ? 'text-yellow-400' :
-    'text-green-400';
+    payload.risk_level >= 80
+      ? 'text-red-400'
+      : payload.risk_level >= 50
+        ? 'text-yellow-400'
+        : 'text-green-400';
 
   return (
     <DialogLayout
@@ -89,9 +91,7 @@ export function ApprovalDialog({ reqId, payload, onRespond }: DialogProps<Approv
       )}
 
       <div className="space-y-2">
-        <label className="text-sm font-medium text-fg-subtle">
-          Note (optional):
-        </label>
+        <label className="text-sm font-medium text-fg-subtle">Note (optional):</label>
         <Textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}

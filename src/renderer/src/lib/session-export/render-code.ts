@@ -7,19 +7,48 @@ type ShikiHighlighter = {
 };
 
 const LANGS = [
-  'bash', 'sh', 'zsh',
-  'json', 'jsonc', 'json5',
-  'js', 'jsx', 'ts', 'tsx',
-  'html', 'css', 'scss',
-  'md', 'mdx', 'yaml', 'toml', 'ini',
-  'python', 'go', 'rust', 'sql',
-  'diff', 'dockerfile', 'graphql', 'xml',
+  'bash',
+  'sh',
+  'zsh',
+  'json',
+  'jsonc',
+  'json5',
+  'js',
+  'jsx',
+  'ts',
+  'tsx',
+  'html',
+  'css',
+  'scss',
+  'md',
+  'mdx',
+  'yaml',
+  'toml',
+  'ini',
+  'python',
+  'go',
+  'rust',
+  'sql',
+  'diff',
+  'dockerfile',
+  'graphql',
+  'xml',
 ] as const;
 
 const LANG_ALIASES: Record<string, string> = {
-  shell: 'bash', console: 'bash', yml: 'yaml', py: 'python', rs: 'rust',
-  golang: 'go', typescript: 'ts', javascript: 'js', typescriptreact: 'tsx',
-  javascriptreact: 'jsx', plaintext: 'text', txt: 'text', jsonc: 'json',
+  shell: 'bash',
+  console: 'bash',
+  yml: 'yaml',
+  py: 'python',
+  rs: 'rust',
+  golang: 'go',
+  typescript: 'ts',
+  javascript: 'js',
+  typescriptreact: 'tsx',
+  javascriptreact: 'jsx',
+  plaintext: 'text',
+  txt: 'text',
+  jsonc: 'json',
 };
 
 const THEME = 'github-dark-default';
@@ -49,10 +78,7 @@ export function normalizeLang(raw?: string): string {
 }
 
 function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 /** Highlight to a self-contained `<pre>` string; falls back to escaped text. */

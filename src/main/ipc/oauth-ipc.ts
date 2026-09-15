@@ -92,69 +92,60 @@ export function registerOAuthIpc(): void {
    *
    * Works for all plan types including org-managed seats.
    */
-  ipcMain.handle(
-    'copilot:fetchQuota',
-    async (
-      _e,
-      args: { connectionSlug: string },
-    ) => {
-      try {
-        // copilot_internal/user uses the GitHub OAuth token (long-lived,
-        // stored as refreshToken) - same credential as /copilot_internal/v2/token.
-        const cred = getCredential(args.connectionSlug);
-        if (!cred || cred.type !== 'oauth' || !cred.refreshToken) {
-          return { error: 'No GitHub OAuth token stored for this connection.' };
-        }
-        const { fetchCopilotQuota } = await import('../copilot/quota');
-        const result = await fetchCopilotQuota(cred.refreshToken);
-        if ('error' in result) {
-          log.error('fetchQuota:', result.error);
-        }
-        return result;
-      } catch (e) {
-        return { error: e instanceof Error ? e.message : String(e) };
+  ipcMain.handle('copilot:fetchQuota', async (_e, args: { connectionSlug: string }) => {
+    try {
+      // copilot_internal/user uses the GitHub OAuth token (long-lived,
+      // stored as refreshToken) - same credential as /copilot_internal/v2/token.
+      const cred = getCredential(args.connectionSlug);
+      if (!cred || cred.type !== 'oauth' || !cred.refreshToken) {
+        return { error: 'No GitHub OAuth token stored for this connection.' };
       }
-    },
-  );
+      const { fetchCopilotQuota } = await import('../copilot/quota');
+      const result = await fetchCopilotQuota(cred.refreshToken);
+      if ('error' in result) {
+        log.error('fetchQuota:', result.error);
+      }
+      return result;
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : String(e) };
+    }
+  });
 
   /**
    * Fetch Codex rate-limit usage for a ChatGPT OAuth connection.
    * Uses the same wham/usage endpoint the Codex CLI polls, authenticated
    * with a freshly-resolved (auto-refreshed) ChatGPT access token.
    */
-  ipcMain.handle(
-    'chatgpt:fetchQuota',
-    async (
-      _e,
-      args: { connectionSlug: string },
-    ) => {
-      try {
-        const meta = listConnections().find((c) => c.slug === args.connectionSlug);
-        if (!meta || meta.providerType !== 'openai-codex') {
-          return { error: 'Connection is not a ChatGPT (Codex) OAuth connection.' };
-        }
-        const auth = await resolveAuthForSlug(args.connectionSlug);
-        if (auth.type !== 'oauth') {
-          return { error: 'Resolved auth is not ChatGPT OAuth.' };
-        }
-        const { fetchChatGptQuota } = await import('../chatgpt/quota');
-        const result = await fetchChatGptQuota(auth.accessToken);
-        if ('error' in result) {
-          log.error('chatgpt:fetchQuota:', result.error);
-        }
-        return result;
-      } catch (e) {
-        return { error: e instanceof Error ? e.message : String(e) };
+  ipcMain.handle('chatgpt:fetchQuota', async (_e, args: { connectionSlug: string }) => {
+    try {
+      const meta = listConnections().find((c) => c.slug === args.connectionSlug);
+      if (!meta || meta.providerType !== 'openai-codex') {
+        return { error: 'Connection is not a ChatGPT (Codex) OAuth connection.' };
       }
-    },
-  );
+      const auth = await resolveAuthForSlug(args.connectionSlug);
+      if (auth.type !== 'oauth') {
+        return { error: 'Resolved auth is not ChatGPT OAuth.' };
+      }
+      const { fetchChatGptQuota } = await import('../chatgpt/quota');
+      const result = await fetchChatGptQuota(auth.accessToken);
+      if ('error' in result) {
+        log.error('chatgpt:fetchQuota:', result.error);
+      }
+      return result;
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : String(e) };
+    }
+  });
 
   // ---- ChatGPT (Codex) model discovery ---------------------------
 
   ipcMain.handle('chatgpt:getModels', async (): Promise<ModelDef[]> => {
     const { getBuiltinModels } = await import('@earendil-works/pi-ai/providers/all');
     const raw = getBuiltinModels('openai-codex') as Array<{
-      id: string; name: string; contextWindow: number; reasoning?: boolean;
+      id: string;
+      name: string;
+      contextWindow: number;
+      reasoning?: boolean;
     }>;
     return raw
       .sort((a, b) => b.id.localeCompare(a.id))

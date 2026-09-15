@@ -81,10 +81,9 @@ export function ConnectionsSection({
     >
       {!encryptionAvailable && connections.length > 0 && (
         <div className="mb-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-200">
-          OS keychain encryption is unavailable on this machine — API keys and
-          OAuth tokens are stored as <b>plaintext</b> on disk (owner-readable
-          only). Avoid storing long-lived secrets here; prefer a host with a
-          working keychain.
+          OS keychain encryption is unavailable on this machine — API keys and OAuth tokens are
+          stored as <b>plaintext</b> on disk (owner-readable only). Avoid storing long-lived secrets
+          here; prefer a host with a working keychain.
         </div>
       )}
       <div className="space-y-2">

@@ -31,10 +31,7 @@ export function collectFileSummaries(parts: MessagePart[]): FileSummary[] {
 
   // Group by file path, preserving first-seen insertion order.
   const order: string[] = [];
-  const groups = new Map<
-    string,
-    Array<{ parsed: ParsedDiff; opKind: 'edit' | 'write' }>
-  >();
+  const groups = new Map<string, Array<{ parsed: ParsedDiff; opKind: 'edit' | 'write' }>>();
   for (const entry of raw) {
     if (!groups.has(entry.filePath)) {
       order.push(entry.filePath);
@@ -56,9 +53,7 @@ export function collectFileSummaries(parts: MessagePart[]): FileSummary[] {
   });
 }
 
-function mergeOps(
-  ops: Array<{ parsed: ParsedDiff; opKind: 'edit' | 'write' }>,
-): ParsedDiff {
+function mergeOps(ops: Array<{ parsed: ParsedDiff; opKind: 'edit' | 'write' }>): ParsedDiff {
   const { filePath } = ops[0].parsed;
 
   // If the last op is a Write it defines the authoritative final state.
@@ -80,4 +75,3 @@ function mergeOps(
     newValue: ops.map((o) => o.parsed.newValue).join(EDIT_SEP),
   };
 }
-

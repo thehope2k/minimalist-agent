@@ -7,8 +7,7 @@ export interface SearchModalProps {
 }
 
 export type SearchItem =
-  | { kind: 'file'; entry: FileSearchEntry }
-  | { kind: 'grep'; entry: ContentMatchEntry };
+  { kind: 'file'; entry: FileSearchEntry } | { kind: 'grep'; entry: ContentMatchEntry };
 
 export const FILES_LIMIT = 20;
 export const GREP_LIMIT = 60;

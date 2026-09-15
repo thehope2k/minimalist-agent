@@ -36,16 +36,14 @@ interface ModeMeta {
 const MODES: Record<PermissionMode, ModeMeta> = {
   plan: {
     label: 'Plan',
-    description:
-      'Read-only. Agent researches and proposes a plan; no edits or commands run.',
+    description: 'Read-only. Agent researches and proposes a plan; no edits or commands run.',
     icon: Compass,
     pill: 'border-sky-400/30 bg-sky-400/10 text-sky-300 hover:bg-sky-400/15 hover:text-sky-200',
     iconTone: 'text-sky-300',
   },
   auto: {
     label: 'Auto',
-    description:
-      'Intelligent execution. Agent adapts collaboration based on autonomy level.',
+    description: 'Intelligent execution. Agent adapts collaboration based on autonomy level.',
     icon: Zap,
     pill: 'border-amber-400/30 bg-amber-400/10 text-amber-300 hover:bg-amber-400/15 hover:text-amber-200',
     iconTone: 'text-amber-300',
@@ -160,10 +158,7 @@ function ModeItem({
         selected && 'bg-elevated/60',
       )}
     >
-      <Icon
-        className={cn('mt-0.5 h-3.5 w-3.5 shrink-0', meta.iconTone)}
-        strokeWidth={2}
-      />
+      <Icon className={cn('mt-0.5 h-3.5 w-3.5 shrink-0', meta.iconTone)} strokeWidth={2} />
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
           <span className="text-sm font-medium text-fg">{meta.label}</span>

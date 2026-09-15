@@ -85,8 +85,9 @@ export function capModelOutputToCompactionReserve<M extends CompactionModelInfo>
 ): M {
   return {
     ...model,
-    maxTokens: model.maxTokens && model.maxTokens > 0
-      ? Math.min(model.maxTokens, reserveTokens)
-      : reserveTokens,
+    maxTokens:
+      model.maxTokens && model.maxTokens > 0
+        ? Math.min(model.maxTokens, reserveTokens)
+        : reserveTokens,
   };
 }

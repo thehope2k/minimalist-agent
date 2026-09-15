@@ -30,9 +30,7 @@ export function useSessionStore(): SessionStore {
   const turnIdToSession = useRef<Map<string, string>>(new Map());
   const runtimeSessionIdBySession = useRef<Map<string, string>>(new Map());
   const titleBySession = useRef<Map<string, string | undefined>>(new Map());
-  const lastSendBySession = useRef<Map<string, { args: SendArgs; assistantId: string }>>(
-    new Map(),
-  );
+  const lastSendBySession = useRef<Map<string, { args: SendArgs; assistantId: string }>>(new Map());
   const seenCompactionEvents = useRef<Set<string>>(new Set());
 
   return {

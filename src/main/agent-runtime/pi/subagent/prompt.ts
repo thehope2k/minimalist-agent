@@ -27,13 +27,16 @@ export function buildAgentSystemPrompt(agent: LoadedAgent): string {
   return parts.join('\n');
 }
 
-export function mapAgentPermissionMode(
-  mode: 'plan' | 'auto' | undefined,
-): 'plan' | 'auto' {
+export function mapAgentPermissionMode(mode: 'plan' | 'auto' | undefined): 'plan' | 'auto' {
   return mode || 'auto';
 }
 
-export function formatAgentResult(agent: LoadedAgent, output: string[], error?: string, execId?: string): string {
+export function formatAgentResult(
+  agent: LoadedAgent,
+  output: string[],
+  error?: string,
+  execId?: string,
+): string {
   if (error) {
     return [
       `❌ Agent "${agent.metadata.name}" failed:`,
@@ -42,7 +45,9 @@ export function formatAgentResult(agent: LoadedAgent, output: string[], error?: 
       '',
       'The agent was unable to complete the task.',
       execId ? `[exec: ${execId}]` : '',
-    ].filter(Boolean).join('\n');
+    ]
+      .filter(Boolean)
+      .join('\n');
   }
 
   if (output.length === 0) {

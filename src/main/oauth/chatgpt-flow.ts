@@ -39,10 +39,7 @@ function waitForManualCodePrompt(signal?: AbortSignal): Promise<string> {
   });
 }
 
-function answerLoginPrompt(prompt: {
-  type: string;
-  signal?: AbortSignal;
-}): Promise<string> {
+function answerLoginPrompt(prompt: { type: string; signal?: AbortSignal }): Promise<string> {
   if (prompt.type === 'select') return Promise.resolve('browser');
   return waitForManualCodePrompt(prompt.signal);
 }
@@ -55,9 +52,7 @@ function answerLoginPrompt(prompt: {
  * `onBrowserOpen` is called with the auth URL so the caller can open
  * the browser and show a "waiting…" UI. `cancelLogin()` aborts.
  */
-export function startLogin(
-  onBrowserOpen: (url: string) => void,
-): Promise<ChatGptTokens> {
+export function startLogin(onBrowserOpen: (url: string) => void): Promise<ChatGptTokens> {
   if (inFlight) {
     inFlight.abort.abort();
     inFlight = null;
@@ -102,9 +97,7 @@ export function cancelLogin(): void {
  * Refresh a ChatGPT token. The Pi SDK re-runs the id_token →
  * OpenAI API key exchange, returning fresh credentials.
  */
-export async function refreshChatGptTokens(
-  refreshToken: string,
-): Promise<ChatGptTokens> {
+export async function refreshChatGptTokens(refreshToken: string): Promise<ChatGptTokens> {
   const oauth = openaiCodexProvider().auth.oauth!;
   const creds = await oauth.refresh(
     { type: 'oauth', access: '', refresh: refreshToken, expires: 0 },

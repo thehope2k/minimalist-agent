@@ -3,10 +3,7 @@
 
 import { Paths } from '../storage/paths';
 import { installReferenceDoc } from '../asset-tiers/install-reference';
-import {
-  EXTENSIONS_REFERENCE_MD,
-  EXTENSIONS_REFERENCE_VERSION,
-} from './reference-doc';
+import { EXTENSIONS_REFERENCE_MD, EXTENSIONS_REFERENCE_VERSION } from './reference-doc';
 
 export function installExtensionsReferenceDoc(): void {
   installReferenceDoc({

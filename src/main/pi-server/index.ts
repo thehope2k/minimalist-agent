@@ -44,12 +44,28 @@ import { getBuiltinModel, builtinModels } from '@earendil-works/pi-ai/providers/
 import type { Api, Model, OAuthCredential } from '@earendil-works/pi-ai';
 import { configureHttpIdleTimeout } from './http-idle-timeout';
 import { initOperationTracker, reportOperation, withOperation } from './operation-tracker';
-import { AUTO_COMPACTION_TIMEOUT_MS, HTTP_IDLE_TIMEOUT_MS, MINI_COMPLETION_CEILING_MS } from '../../shared/timeouts';
+import {
+  AUTO_COMPACTION_TIMEOUT_MS,
+  HTTP_IDLE_TIMEOUT_MS,
+  MINI_COMPLETION_CEILING_MS,
+} from '../../shared/timeouts';
 import { withTimeout } from '../../shared/with-timeout';
 import { send } from './transport';
 import { state } from './state';
-import { errMessage, delay, isTransientOAuthRefreshError, writeAuthCredential, InMemoryCredentialStore, OAUTH_REFRESH_RETRY_DELAY_MS } from './credential-store';
-import { mapThinkingLevel, applyVisionInput, withResolvedBaseUrl, isLocalhostUrl } from './model-utils';
+import {
+  errMessage,
+  delay,
+  isTransientOAuthRefreshError,
+  writeAuthCredential,
+  InMemoryCredentialStore,
+  OAUTH_REFRESH_RETRY_DELAY_MS,
+} from './credential-store';
+import {
+  mapThinkingLevel,
+  applyVisionInput,
+  withResolvedBaseUrl,
+  isLocalhostUrl,
+} from './model-utils';
 import { wrapWithPermissionGate, instrumentTool, requestBrowserTool } from './tool-wrapping';
 import { createCollaborationTools, promoteToAutoAfterApproval } from './collaboration-tools';
 import { createPlanningTools } from './planning-tools';
@@ -92,7 +108,10 @@ import { fileURLToPath } from 'node:url';
 import type { LoadedAgent } from '../agents/types';
 import { PlanManager } from '../agent-runtime/planning/manager';
 import { createLogger } from '../../shared/sub-logger';
-import { capModelOutputToCompactionReserve, resolveCompactionSettings } from '../../shared/compaction';
+import {
+  capModelOutputToCompactionReserve,
+  resolveCompactionSettings,
+} from '../../shared/compaction';
 import {
   initOtel,
   shutdownOtel,
@@ -170,7 +189,14 @@ function buildWrappedTools(
     sessionModel: string; // Parent session's model for agent resolution
     getCredential: () => Promise<RuntimeCredential>;
     baseUrl?: string;
-    customEndpoint?: { api: 'openai-completions' | 'anthropic-messages'; supportsImages?: boolean; contextWindow?: number; maxTokens?: number; reasoning?: boolean; thinkingFormat?: 'qwen' };
+    customEndpoint?: {
+      api: 'openai-completions' | 'anthropic-messages';
+      supportsImages?: boolean;
+      contextWindow?: number;
+      maxTokens?: number;
+      reasoning?: boolean;
+      thinkingFormat?: 'qwen';
+    };
     permissionMode: 'plan' | 'auto';
   },
 ): ToolDefinition<any, any>[] {
@@ -194,15 +220,21 @@ function buildWrappedTools(
     // gate so plan/auto modes stay in control.
     wrapWithPermissionGate(createWebFetchTool()),
     wrapWithPermissionGate(createWebSearchTool()),
-    wrapWithPermissionGate(createBrowserTool(() => state.init?.sessionId ?? '', requestBrowserTool)),
+    wrapWithPermissionGate(
+      createBrowserTool(() => state.init?.sessionId ?? '', requestBrowserTool),
+    ),
   ];
 
   // Add Agent tool if we have the necessary context
   if (agentContext) {
-    tools.push(wrapWithPermissionGate(createAgentTool({
-      ...agentContext,
-      cwd,
-    })));
+    tools.push(
+      wrapWithPermissionGate(
+        createAgentTool({
+          ...agentContext,
+          cwd,
+        }),
+      ),
+    );
   }
 
   // Add collaboration tools (not wrapped with permission gate - they ARE the engagement)
@@ -239,7 +271,11 @@ function compactionObservabilityExtension(): InlineExtension {
               `Auto-compaction (${event.reason}) silent for ${AUTO_COMPACTION_TIMEOUT_MS / 1000}s — ` +
                 'force-aborting so the turn can proceed without it.',
             );
-            try { state.session?.abortCompaction(); } catch { /* */ }
+            try {
+              state.session?.abortCompaction();
+            } catch {
+              /* */
+            }
           }, AUTO_COMPACTION_TIMEOUT_MS);
         }
         if (event.reason === 'manual' || !isOtelEnabled()) return;
@@ -251,7 +287,8 @@ function compactionObservabilityExtension(): InlineExtension {
             'gen_ai.request.model': state.model?.id ?? state.init?.model ?? '',
             'minimalist_agent.compaction.reason': event.reason,
             'minimalist_agent.compaction.reserve_tokens': state.compactionSettings?.reserveTokens,
-            'minimalist_agent.compaction.keep_recent_tokens': state.compactionSettings?.keepRecentTokens,
+            'minimalist_agent.compaction.keep_recent_tokens':
+              state.compactionSettings?.keepRecentTokens,
           },
         });
         state.autoCompactionSpan = span;
@@ -274,7 +311,7 @@ async function handleInit(msg: MsgInit): Promise<void> {
   state.planManager = new PlanManager(sessionsDir);
 
   // Store available agents (passed from main process)
-  state.availableAgents = (msg.availableAgents || []).map(a => ({
+  state.availableAgents = (msg.availableAgents || []).map((a) => ({
     slug: a.slug,
     metadata: a.metadata,
     content: a.content,
@@ -303,51 +340,60 @@ async function handleInit(msg: MsgInit): Promise<void> {
     // The openai-completions provider passes baseUrl directly to the OpenAI
     // SDK client which appends /chat/completions — so the URL must include
     // /v1. Append it automatically so users can type http://localhost:11434.
-    const apiBase = msg.customEndpoint!.api === 'openai-completions' && !rawBase.endsWith('/v1')
-      ? `${rawBase}/v1`
-      : rawBase;
+    const apiBase =
+      msg.customEndpoint!.api === 'openai-completions' && !rawBase.endsWith('/v1')
+        ? `${rawBase}/v1`
+        : rawBase;
     // Localhost endpoints (Ollama, LM Studio) don’t need auth.
-    const apiKey = isLocalhostUrl(rawBase) ? 'not-needed' : (msg.auth?.credential.type === 'api_key' ? msg.auth.credential.key : '');
+    const apiKey = isLocalhostUrl(rawBase)
+      ? 'not-needed'
+      : msg.auth?.credential.type === 'api_key'
+        ? msg.auth.credential.key
+        : '';
     const ce = msg.customEndpoint!;
     modelRegistry.registerProvider('custom-endpoint', {
       baseUrl: apiBase,
       apiKey,
       api: ce.api,
       authHeader: true,
-      models: [{
-        id: modelId,
-        name: modelId,
-        reasoning: ce.reasoning ?? true,
-        // 'qwen' forces enable_thinking:false so local Ollama Qwen3 models
-        // don't stall ~30s before the first token. Remote OpenAI-compatible
-        // providers (StepFun, DeepSeek, …) omit this and reason natively.
-        ...(ce.thinkingFormat ? { compat: { thinkingFormat: ce.thinkingFormat } } : {}),
-        input: ce.supportsImages ? ['text', 'image'] : ['text'],
-        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-        contextWindow: ce.contextWindow ?? 131_072,
-        maxTokens: ce.maxTokens ?? 8_192,
-      }],
+      models: [
+        {
+          id: modelId,
+          name: modelId,
+          reasoning: ce.reasoning ?? true,
+          // 'qwen' forces enable_thinking:false so local Ollama Qwen3 models
+          // don't stall ~30s before the first token. Remote OpenAI-compatible
+          // providers (StepFun, DeepSeek, …) omit this and reason natively.
+          ...(ce.thinkingFormat ? { compat: { thinkingFormat: ce.thinkingFormat } } : {}),
+          input: ce.supportsImages ? ['text', 'image'] : ['text'],
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+          contextWindow: ce.contextWindow ?? 131_072,
+          maxTokens: ce.maxTokens ?? 8_192,
+        },
+      ],
     } as never);
-    const resolved = (modelRegistry as unknown as { find: (p: string, id: string) => Model<Api> | undefined })
-      .find('custom-endpoint', modelId);
+    const resolved = (
+      modelRegistry as unknown as { find: (p: string, id: string) => Model<Api> | undefined }
+    ).find('custom-endpoint', modelId);
     if (!resolved) fatal(`Could not resolve custom-endpoint model: ${modelId}`);
     model = resolved!;
   } else {
     // Resolve the Pi model. Dynamic model ids are passed at runtime so we
     // cast the provider string to its literal type for the typed catalog.
     model = getBuiltinModel(msg.auth.provider as 'github-copilot', msg.model as never);
-    
+
     // Validate that the model resolved successfully
     if (!model) {
       // Show common models as examples
-      const exampleModels = 'gpt-5.5, gpt-5.4, claude-opus-4.7, claude-sonnet-4.6, gemini-3.5-flash';
-      
+      const exampleModels =
+        'gpt-5.5, gpt-5.4, claude-opus-4.7, claude-sonnet-4.6, gemini-3.5-flash';
+
       fatal(
         `Failed to resolve model "${msg.model}" for provider "${msg.auth.provider}". ` +
-        `This usually means the model ID is invalid or not supported by this provider. ` +
-        `Common models: ${exampleModels}. ` +
-        `You can also use "session-default" to inherit the session model. ` +
-        `Check your connection settings or agent configuration.`
+          `This usually means the model ID is invalid or not supported by this provider. ` +
+          `Common models: ${exampleModels}. ` +
+          `You can also use "session-default" to inherit the session model. ` +
+          `Check your connection settings or agent configuration.`,
       );
     }
     model = await withResolvedBaseUrl(model, modelRuntime);
@@ -373,7 +419,7 @@ async function handleInit(msg: MsgInit): Promise<void> {
     piServerPath: PI_SERVER_PATH,
     availableAgents: state.availableAgents,
     provider: msg.auth.provider,
-    sessionModel: msg.model,  // Pass parent model for session-default resolution
+    sessionModel: msg.model, // Pass parent model for session-default resolution
     getCredential: async (): Promise<RuntimeCredential> => {
       if (!state.credentialStore) throw new Error('Credential store not initialized');
       const cred = await state.credentialStore.read(msg.auth.provider);
@@ -389,10 +435,12 @@ async function handleInit(msg: MsgInit): Promise<void> {
       const auth = await state.modelRuntime?.getAuth(msg.auth.provider);
       return { type: 'api_key', key: auth?.auth.apiKey || '' };
     },
-    ...(hasCustomEndpoint ? {
-      baseUrl: msg.baseUrl,
-      customEndpoint: msg.customEndpoint,
-    } : {}),
+    ...(hasCustomEndpoint
+      ? {
+          baseUrl: msg.baseUrl,
+          customEndpoint: msg.customEndpoint,
+        }
+      : {}),
     permissionMode: msg.permissionMode as 'plan' | 'auto',
   };
 
@@ -501,11 +549,13 @@ function forwardEvent(piEvent: AgentSessionEvent): void {
         });
         setAttrs(span, {
           'gen_ai.operation.name': 'chat',
-          'gen_ai.provider.name': (m as { provider?: string }).provider ?? state.init?.auth.provider,
+          'gen_ai.provider.name':
+            (m as { provider?: string }).provider ?? state.init?.auth.provider,
           'gen_ai.system': state.init?.auth.provider, // deprecated alias, kept for older backends
           'gen_ai.request.model': model,
           'gen_ai.conversation.id': state.init?.sessionId,
-          'gen_ai.request.max_tokens': (state.model as { maxTokens?: number } | undefined)?.maxTokens,
+          'gen_ai.request.max_tokens': (state.model as { maxTokens?: number } | undefined)
+            ?.maxTokens,
           'server.address': serverAddress(),
         });
         state.modelSpan = span;
@@ -524,7 +574,7 @@ function forwardEvent(piEvent: AgentSessionEvent): void {
         state.modelFirstTokenSeen = true;
         const ttft = Date.now() - (state.modelSpanStartMs ?? Date.now());
         state.modelSpan.setAttribute('gen_ai.server.time_to_first_token', ttft / 1000);
-        state.modelSpan.addEvent('gen_ai.first_token', { 'time_to_first_token_ms': ttft });
+        state.modelSpan.addEvent('gen_ai.first_token', { time_to_first_token_ms: ttft });
       }
     } else if (t === 'message_end' && state.modelSpan) {
       const m = (piEvent as { message?: AssistantMsg }).message;
@@ -548,8 +598,7 @@ function forwardEvent(piEvent: AgentSessionEvent): void {
   // error so the UI knows the turn failed.
   if (t === 'message_end' || t === 'agent_end' || t === 'turn_end') {
     const msg = (piEvent as { message?: unknown }).message as
-      | { stopReason?: string; errorMessage?: string }
-      | undefined;
+      { stopReason?: string; errorMessage?: string } | undefined;
     if (msg && (msg.stopReason === 'error' || msg.errorMessage)) {
       const text = `${msg.errorMessage ?? ''}`.toLowerCase();
       if (
@@ -576,12 +625,20 @@ function forwardEvent(piEvent: AgentSessionEvent): void {
     clearTimeout(state.compactionWatchdog);
     state.compactionWatchdog = undefined;
   }
-  if (t === 'compaction_end' && (piEvent as { aborted?: boolean }).aborted && state.autoCompactionSpan) {
+  if (
+    t === 'compaction_end' &&
+    (piEvent as { aborted?: boolean }).aborted &&
+    state.autoCompactionSpan
+  ) {
     const span = state.autoCompactionSpan;
     state.autoCompactionSpan = undefined;
     setAttrs(span, { 'minimalist_agent.compaction.aborted': true });
     span.setStatus({ code: SpanStatusCode.OK });
-    try { span.end(); } catch { /* */ }
+    try {
+      span.end();
+    } catch {
+      /* */
+    }
   }
 
   const turnId = state.currentTurnId;
@@ -609,12 +666,20 @@ function forwardEvent(piEvent: AgentSessionEvent): void {
       } else {
         span.setStatus({ code: SpanStatusCode.OK });
       }
-      try { span.end(); } catch { /* */ }
+      try {
+        span.end();
+      } catch {
+        /* */
+      }
     }
     if (ev.type === 'error') {
       // Close any dangling model span before the turn span is ended.
       if (state.modelSpan) {
-        try { state.modelSpan.end(); } catch { /* */ }
+        try {
+          state.modelSpan.end();
+        } catch {
+          /* */
+        }
         state.modelSpan = undefined;
       }
       state.currentTurnId = undefined;
@@ -633,7 +698,11 @@ function flushPendingTurnDone(): void {
   state.pendingTurnDone = undefined;
   send(pending);
   if (state.modelSpan) {
-    try { state.modelSpan.end(); } catch { /* */ }
+    try {
+      state.modelSpan.end();
+    } catch {
+      /* */
+    }
     state.modelSpan = undefined;
   }
   state.currentTurnId = undefined;
@@ -776,7 +845,11 @@ async function handlePrompt(msg: MsgPrompt): Promise<void> {
     // try/catch normally handles this).
     flushPendingTurnDone();
     if (state.modelSpan) {
-      try { state.modelSpan.end(); } catch { /* */ }
+      try {
+        state.modelSpan.end();
+      } catch {
+        /* */
+      }
       state.modelSpan = undefined;
     }
     // Note: token usage is deliberately NOT rolled up onto the invoke_agent
@@ -791,7 +864,11 @@ async function handlePrompt(msg: MsgPrompt): Promise<void> {
         safeAttr([{ role: 'assistant', content: state.turnAssistantText }]),
       );
     }
-    try { turnSpan.end(); } catch { /* */ }
+    try {
+      turnSpan.end();
+    } catch {
+      /* */
+    }
     state.turnSpan = undefined;
     state.turnContext = undefined;
     state.turnAssistantText = undefined;
@@ -814,7 +891,11 @@ function detectPlanPreservationInstructions(): string | undefined {
     if (!Array.isArray(content)) continue;
     for (const block of content) {
       const name = (block as { type?: string; name?: string }).name;
-      if ((block as { type?: string }).type === 'tool_use' && name && PLAN_TRACKING_TOOL_NAMES.has(name)) {
+      if (
+        (block as { type?: string }).type === 'tool_use' &&
+        name &&
+        PLAN_TRACKING_TOOL_NAMES.has(name)
+      ) {
         sawPlanTool = true;
         break;
       }
@@ -844,38 +925,39 @@ async function handleManualCompact(msg: MsgManualCompact): Promise<void> {
   // `state.currentTurnId`.
   const run = async (): Promise<void> => {
     const planInstructions = detectPlanPreservationInstructions();
-    const combinedInstructions = [msg.customInstructions, planInstructions].filter(Boolean).join('\n\n') || undefined;
+    const combinedInstructions =
+      [msg.customInstructions, planInstructions].filter(Boolean).join('\n\n') || undefined;
 
     state.currentTurnId = msg.turnId;
     try {
-      await withSpan(
-        'compaction',
-        async (span) => {
-          setAttrs(span, {
-            'gen_ai.operation.name': 'chat',
-            'gen_ai.provider.name': state.init?.auth.provider ?? '',
-            'gen_ai.conversation.id': state.init?.sessionId ?? '',
-            'gen_ai.request.model': state.model?.id ?? state.init?.model ?? '',
-            'minimalist_agent.compaction.reason': 'manual',
-            'minimalist_agent.compaction.plan_preserved': !!planInstructions,
-          });
-          try {
-            await state.session!.compact(combinedInstructions);
-            const last = state.session!.sessionManager.getBranch().at(-1);
-            if (last?.type === 'compaction') {
-              setAttrs(span, {
-                'minimalist_agent.compaction.tokens_before': last.tokensBefore,
-                'gen_ai.usage.input_tokens': last.usage?.input,
-                'gen_ai.usage.output_tokens': last.usage?.output,
-              });
-            }
-            span.setStatus({ code: SpanStatusCode.OK });
-          } catch (e) {
-            recordException(span, e);
-            log.warn('manual compact() threw (compaction_end already reported failure):', errMessage(e));
+      await withSpan('compaction', async (span) => {
+        setAttrs(span, {
+          'gen_ai.operation.name': 'chat',
+          'gen_ai.provider.name': state.init?.auth.provider ?? '',
+          'gen_ai.conversation.id': state.init?.sessionId ?? '',
+          'gen_ai.request.model': state.model?.id ?? state.init?.model ?? '',
+          'minimalist_agent.compaction.reason': 'manual',
+          'minimalist_agent.compaction.plan_preserved': !!planInstructions,
+        });
+        try {
+          await state.session!.compact(combinedInstructions);
+          const last = state.session!.sessionManager.getBranch().at(-1);
+          if (last?.type === 'compaction') {
+            setAttrs(span, {
+              'minimalist_agent.compaction.tokens_before': last.tokensBefore,
+              'gen_ai.usage.input_tokens': last.usage?.input,
+              'gen_ai.usage.output_tokens': last.usage?.output,
+            });
           }
-        },
-      );
+          span.setStatus({ code: SpanStatusCode.OK });
+        } catch (e) {
+          recordException(span, e);
+          log.warn(
+            'manual compact() threw (compaction_end already reported failure):',
+            errMessage(e),
+          );
+        }
+      });
     } finally {
       if (state.currentTurnId === msg.turnId) {
         const out: MsgEvent = { type: 'event', turnId: msg.turnId, event: { type: 'turn_done' } };
@@ -949,15 +1031,16 @@ async function handleMiniCompletion(msg: MsgMiniCompletion): Promise<void> {
     return;
   }
   try {
-    const model = !msg.model || msg.model === state.model?.id
-      ? state.model!
-      : getBuiltinModel(state.init.auth.provider as 'github-copilot', msg.model as never);
+    const model =
+      !msg.model || msg.model === state.model?.id
+        ? state.model!
+        : getBuiltinModel(state.init.auth.provider as 'github-copilot', msg.model as never);
 
     if (msg.model && !model) {
       sendMiniError(
         msg.requestId,
         `Failed to resolve model "${msg.model}" for provider "${state.init.auth.provider}". ` +
-        `Use a valid model ID or omit the model parameter to use the default.`
+          `Use a valid model ID or omit the model parameter to use the default.`,
       );
       return;
     }
@@ -1025,10 +1108,11 @@ async function handleLlmQuery(msg: MsgLlmQuery): Promise<void> {
       model?: string;
       tools?: never[];
     };
-    const model = !req.model || req.model === state.model.id
-      ? state.model
-      : getBuiltinModel(state.init.auth.provider as 'github-copilot', req.model as never);
-    
+    const model =
+      !req.model || req.model === state.model.id
+        ? state.model
+        : getBuiltinModel(state.init.auth.provider as 'github-copilot', req.model as never);
+
     // Validate model resolved successfully
     if (req.model && !model) {
       const out: MsgLlmQueryResult = {
@@ -1039,8 +1123,10 @@ async function handleLlmQuery(msg: MsgLlmQuery): Promise<void> {
       send(out);
       return;
     }
-    const resolvedModel = state.modelRuntime ? await withResolvedBaseUrl(model, state.modelRuntime) : model;
-    
+    const resolvedModel = state.modelRuntime
+      ? await withResolvedBaseUrl(model, state.modelRuntime)
+      : model;
+
     const result = await withOperation('llm_query', () =>
       tracedCompletion(
         {
@@ -1107,16 +1193,16 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
             state.init.auth.provider as 'github-copilot',
             msg.model as never,
           );
-          
+
           // Validate model resolved successfully
           if (!newModel) {
             log.error(
               `Failed to resolve model "${msg.model}" for provider "${state.init.auth.provider}". ` +
-              `Model change ignored.`
+                `Model change ignored.`,
             );
             return;
           }
-          
+
           newModel = await withResolvedBaseUrl(newModel, state.modelRuntime!);
           // Re-apply the image-input gate for the newly selected model so a
           // mid-conversation switch to a non-vision model downgrades existing
@@ -1167,20 +1253,24 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
 
     case 'token_update':
       if (state.credentialStore && state.init) {
-        await writeAuthCredential(
-          state.credentialStore,
-          state.init.auth.provider,
-          msg.credential,
-        );
+        await writeAuthCredential(state.credentialStore, state.init.auth.provider, msg.credential);
       }
       return;
 
     case 'abort':
-      try { state.session?.abort(); } catch { /* */ }
+      try {
+        state.session?.abort();
+      } catch {
+        /* */
+      }
       // session.abort() does NOT cancel an in-flight auto-compaction summarization
       // call (it only aborts the main agent loop) — without this, clicking Stop
       // during a stalled compaction call does nothing and the turn stays hung.
-      try { state.session?.abortCompaction(); } catch { /* */ }
+      try {
+        state.session?.abortCompaction();
+      } catch {
+        /* */
+      }
       state.turnAbort?.abort();
       return;
 
@@ -1188,13 +1278,13 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
       const pending = state.pendingPermission.get(msg.requestId);
       if (!pending) return;
       state.pendingPermission.delete(msg.requestId);
-      
+
       // If the user approved a write tool while in plan mode, promote the
       // session to auto so the approved tool isn't immediately re-blocked.
       if (msg.action === 'allow') {
         promoteToAutoAfterApproval();
       }
-      
+
       pending.resolve(msg);
       return;
     }
@@ -1230,12 +1320,12 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
     case 'planning:approval-response': {
       // Handle approval/denial from user
       const { sessionId, phaseId, approved, notes } = msg;
-      
+
       if (!state.planManager) {
         log.warn('Approval response received but planManager not initialized');
         return;
       }
-      
+
       try {
         if (approved) {
           state.planManager.approvePhase(sessionId, phaseId, notes);
@@ -1249,7 +1339,7 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
       } catch (error) {
         log.error('Failed to handle approval response:', error);
       }
-      
+
       return;
     }
 
@@ -1278,8 +1368,16 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
 
     case 'shutdown':
       state.shuttingDown = true;
-      try { state.unsubscribe?.(); } catch { /* */ }
-      try { state.session?.dispose(); } catch { /* */ }
+      try {
+        state.unsubscribe?.();
+      } catch {
+        /* */
+      }
+      try {
+        state.session?.dispose();
+      } catch {
+        /* */
+      }
       await closeMcpClients(state.mcpClients);
       await shutdownOtel();
       process.exit(0);

@@ -55,7 +55,9 @@ export function ChatGptQuotaPill({
   const headline = quota.primary ?? quota.secondary;
   if (!headline) {
     return (
-      <Tooltip content={['No rate-limit data reported', ...failureNote, 'click to refresh'].join(' · ')}>
+      <Tooltip
+        content={['No rate-limit data reported', ...failureNote, 'click to refresh'].join(' · ')}
+      >
         <button
           type="button"
           onClick={refresh}
@@ -82,7 +84,9 @@ export function ChatGptQuotaPill({
   if (planLabel) tooltipParts.push(planLabel);
   tooltipParts.push(`${formatWindowLabel(headline.windowMinutes)} window: ${displayPct}% used`);
   if (quota.secondary && quota.secondary !== headline) {
-    tooltipParts.push(`${formatWindowLabel(quota.secondary.windowMinutes)} window: ${Math.round(quota.secondary.usedPercent)}% used`);
+    tooltipParts.push(
+      `${formatWindowLabel(quota.secondary.windowMinutes)} window: ${Math.round(quota.secondary.usedPercent)}% used`,
+    );
   }
   const resetsAt = formatResetsAt(headline.resetsAt);
   if (resetsAt) tooltipParts.push(`resets ${resetsAt}`);
@@ -97,7 +101,8 @@ export function ChatGptQuotaPill({
         disabled={isRefreshing}
         className={`inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] leading-none tabular-nums transition-opacity cursor-pointer hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50 ${refreshFailed ? 'border-orange-400/40 text-orange-400' : colorClass}`}
       >
-        {isRefreshing ? '…' : `${displayPct}%`}{refreshFailed && !isRefreshing ? ' ⚠' : ''}
+        {isRefreshing ? '…' : `${displayPct}%`}
+        {refreshFailed && !isRefreshing ? ' ⚠' : ''}
       </button>
     </Tooltip>
   );

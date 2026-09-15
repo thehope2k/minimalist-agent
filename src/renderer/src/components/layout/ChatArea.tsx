@@ -2,7 +2,11 @@ import { useEffect } from 'react';
 import { useChat } from '@/hooks/useChat';
 import { useAiData } from '@/hooks/useAiData';
 import { useProjects } from '@/hooks/useProjects';
-import { setSessionPermissionMode, setSessionAutonomyLevel, setSessionThinkingLevel } from '@/lib/sessions';
+import {
+  setSessionPermissionMode,
+  setSessionAutonomyLevel,
+  setSessionThinkingLevel,
+} from '@/lib/sessions';
 import { homedir } from '@/lib/path';
 import { ChatHeader } from './chat-area/ChatHeader';
 import { ChatContent } from './chat-area/ChatContent';
@@ -119,8 +123,7 @@ export function ChatArea({
   const last = messages[messages.length - 1];
   const lastTextLen = last
     ? last.parts.reduce(
-        (n, p) =>
-          p.kind === 'text' || p.kind === 'thinking' ? n + p.text.length : n + 1,
+        (n, p) => (p.kind === 'text' || p.kind === 'thinking' ? n + p.text.length : n + 1),
         0,
       )
     : 0;

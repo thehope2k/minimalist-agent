@@ -1,6 +1,6 @@
 /**
  * Plan lifecycle management.
- * 
+ *
  * Handles plan creation, phase execution tracking, revision, and persistence.
  */
 
@@ -39,7 +39,10 @@ export interface PlanManagerEvents {
 
 export declare interface PlanManager {
   on<E extends keyof PlanManagerEvents>(event: E, listener: PlanManagerEvents[E]): this;
-  emit<E extends keyof PlanManagerEvents>(event: E, ...args: Parameters<PlanManagerEvents[E]>): boolean;
+  emit<E extends keyof PlanManagerEvents>(
+    event: E,
+    ...args: Parameters<PlanManagerEvents[E]>
+  ): boolean;
 }
 
 /**
@@ -54,11 +57,11 @@ export class PlanManager extends EventEmitter {
     super();
     this.revisionDetector = new RevisionDetector();
     this.storage = new PlanStorage(sessionsDir);
-    
+
     // Throttle storage saves to avoid excessive disk I/O during rapid updates
     this.throttledSave = throttle(
       (sessionId: string, plan: Plan) => this.storage.savePlan(sessionId, plan),
-      500 // Save at most once per 500ms
+      500, // Save at most once per 500ms
     );
   }
 
@@ -81,7 +84,7 @@ export class PlanManager extends EventEmitter {
       // Validate risk score is reasonable
       if (p.estimated_risk < 0 || p.estimated_risk > 100) {
         log.warn(
-          `Phase "${p.name}" has invalid risk score ${p.estimated_risk}. Clamping to 0-100.`
+          `Phase "${p.name}" has invalid risk score ${p.estimated_risk}. Clamping to 0-100.`,
         );
         p.estimated_risk = Math.max(0, Math.min(100, p.estimated_risk));
       }
@@ -90,7 +93,7 @@ export class PlanManager extends EventEmitter {
       if (p.is_safe && p.estimated_risk >= 20) {
         log.warn(
           `Phase "${p.name}" marked as safe but has risk ${p.estimated_risk} >= 20. ` +
-          `Treating as non-safe.`
+            `Treating as non-safe.`,
         );
         p.is_safe = false;
       }
@@ -101,8 +104,8 @@ export class PlanManager extends EventEmitter {
         name: p.name,
         description: p.description,
         actions: p.actions,
-        isSafe: p.is_safe,           // Trust LLM's classification
-        risk: p.estimated_risk,      // Trust LLM's risk score
+        isSafe: p.is_safe, // Trust LLM's classification
+        risk: p.estimated_risk, // Trust LLM's risk score
         status: 'pending',
       };
     });
@@ -148,7 +151,7 @@ export class PlanManager extends EventEmitter {
     phaseId: string,
     status: PhaseStatus,
     findings?: string,
-    error?: string
+    error?: string,
   ): void {
     const plan = this.activePlans.get(sessionId);
     if (!plan) {
@@ -195,7 +198,7 @@ export class PlanManager extends EventEmitter {
     sessionId: string,
     phaseId: string,
     autonomyLevel: number,
-    permissionMode: string
+    permissionMode: string,
   ): boolean {
     const plan = this.activePlans.get(sessionId);
     if (!plan) return false;
@@ -214,10 +217,10 @@ export class PlanManager extends EventEmitter {
       phase.approvalStatus = 'awaiting';
       plan.lastUpdatedAt = Date.now();
       this.storage.savePlan(sessionId, plan);
-      
+
       // Emit event to trigger approval dialog
       this.emit('phase-approval-required', plan.id, phase);
-      
+
       log.debug(`Phase ${phase.index} (${phase.name}) requires approval - event emitted`);
       return true;
     }
@@ -234,7 +237,7 @@ export class PlanManager extends EventEmitter {
    * 1. Sets plan.status = 'error'
    * 2. Sets phase.status = 'error' with error message
    * 3. Emits 'plan-error' event
-   * 
+   *
    * Use when:
    * - Tool execution fails during a phase
    * - Phase operation throws an exception
@@ -260,14 +263,16 @@ export class PlanManager extends EventEmitter {
     }
 
     // Find the index where we should start replacing phases
-    const firstPendingIndex = plan.phases.findIndex((p) => p.status === 'pending' || p.status === 'blocked');
+    const firstPendingIndex = plan.phases.findIndex(
+      (p) => p.status === 'pending' || p.status === 'blocked',
+    );
     if (firstPendingIndex === -1) {
       throw new Error('Cannot revise plan: no pending phases');
     }
 
     // Keep completed phases, replace pending ones
     const completedPhases = plan.phases.slice(0, firstPendingIndex);
-    
+
     // Create new phases with LLM's risk assessment
     const newPhases: Phase[] = input.revised_phases.map((p, index) => {
       const phaseId = randomUUID();
@@ -275,7 +280,7 @@ export class PlanManager extends EventEmitter {
       // Validate risk score is reasonable
       if (p.estimated_risk < 0 || p.estimated_risk > 100) {
         log.warn(
-          `Revised phase "${p.name}" has invalid risk score ${p.estimated_risk}. Clamping to 0-100.`
+          `Revised phase "${p.name}" has invalid risk score ${p.estimated_risk}. Clamping to 0-100.`,
         );
         p.estimated_risk = Math.max(0, Math.min(100, p.estimated_risk));
       }
@@ -284,7 +289,7 @@ export class PlanManager extends EventEmitter {
       if (p.is_safe && p.estimated_risk >= 20) {
         log.warn(
           `Revised phase "${p.name}" marked as safe but has risk ${p.estimated_risk} >= 20. ` +
-          `Treating as non-safe.`
+            `Treating as non-safe.`,
         );
         p.is_safe = false;
       }
@@ -295,8 +300,8 @@ export class PlanManager extends EventEmitter {
         name: p.name,
         description: p.description,
         actions: p.actions,
-        isSafe: p.is_safe,           // Trust LLM's classification
-        risk: p.estimated_risk,      // Trust LLM's risk score
+        isSafe: p.is_safe, // Trust LLM's classification
+        risk: p.estimated_risk, // Trust LLM's risk score
         status: 'pending',
       };
     });
@@ -338,21 +343,17 @@ export class PlanManager extends EventEmitter {
     if (!phase) return false;
 
     const remainingPhases = plan.phases.filter((p) => p.status === 'pending');
-    
+
     return this.revisionDetector.shouldRevise(phase, findings, remainingPhases).should;
   }
 
   /**
    * Check if a phase requires user approval before execution.
    */
-  shouldPhaseRequireApproval(
-    phase: Phase,
-    autonomyLevel: number,
-    permissionMode: string
-  ): boolean {
+  shouldPhaseRequireApproval(phase: Phase, autonomyLevel: number, permissionMode: string): boolean {
     // Safe phases (read-only, risk < 20) never need approval
     if (phase.isSafe || phase.risk < 20) return false;
-    
+
     // Auto permission mode bypasses the risk-vs-autonomy gate (the model is
     // trusted to self-police below the user's autonomy budget), but it must
     // NOT bypass the irreversible floor. Without this, a single approval
@@ -362,7 +363,7 @@ export class PlanManager extends EventEmitter {
     // shared/autonomy.ts documents as "no autonomy setting should let this run
     // unattended". Keep that guarantee real regardless of mode.
     if (permissionMode === 'auto') return isAlwaysConfirm(phase.risk);
-    
+
     // Single autonomy contract (shared with the collaboration tools):
     // the user's autonomy level IS the threshold — engage when risk meets it,
     // and always engage past the irreversible floor. See shared/autonomy.ts.
@@ -384,7 +385,7 @@ export class PlanManager extends EventEmitter {
       log.warn(`Cannot approve phase: Phase ${phaseId} not found in plan ${plan.id}`);
       throw new Error(`Phase ${phaseId} not found in plan ${plan.id}`);
     }
-    
+
     // Check for status conflicts
     if (phase.status === 'complete' || phase.status === 'skipped') {
       log.warn(`Phase ${phaseId} already ${phase.status}, ignoring approval`);
@@ -400,7 +401,7 @@ export class PlanManager extends EventEmitter {
     this.storage.savePlan(sessionId, plan);
     this.emit('phase-updated', plan.id, phase);
     this.emit('plan-updated', plan);
-    
+
     log.debug(`Phase ${phase.index} (${phase.name}) approved for session ${sessionId}`);
   }
 
@@ -419,13 +420,13 @@ export class PlanManager extends EventEmitter {
       log.warn(`Cannot deny phase: Phase ${phaseId} not found in plan ${plan.id}`);
       throw new Error(`Phase ${phaseId} not found in plan ${plan.id}`);
     }
-    
+
     // Check for status conflicts
     if (phase.status === 'complete') {
       log.warn(`Phase ${phaseId} already complete, cannot deny`);
       return; // Already complete, don't mark as skipped
     }
-    
+
     if (phase.status === 'skipped') {
       log.debug(`Phase ${phaseId} already skipped, updating reason`);
       // Update reason if already skipped
@@ -445,7 +446,7 @@ export class PlanManager extends EventEmitter {
     this.storage.savePlan(sessionId, plan);
     this.emit('phase-updated', plan.id, phase);
     this.emit('plan-updated', plan);
-    
+
     log.debug(`Phase ${phase.index} (${phase.name}) denied and skipped for session ${sessionId}`);
   }
 
@@ -456,28 +457,33 @@ export class PlanManager extends EventEmitter {
   getNextPendingPhase(sessionId: string): Phase | null {
     const plan = this.activePlans.get(sessionId);
     if (!plan) return null;
-    
+
     // Find first phase that's pending and all previous are complete/skipped
-    return plan.phases.find((p, idx) => {
-      if (p.status !== 'pending') return false;
-      
-      // Check all previous phases
-      for (let i = 0; i < idx; i++) {
-        const prev = plan.phases[i];
-        if (prev.status !== 'complete' && prev.status !== 'skipped') {
-          return false; // Previous phase not done yet
+    return (
+      plan.phases.find((p, idx) => {
+        if (p.status !== 'pending') return false;
+
+        // Check all previous phases
+        for (let i = 0; i < idx; i++) {
+          const prev = plan.phases[i];
+          if (prev.status !== 'complete' && prev.status !== 'skipped') {
+            return false; // Previous phase not done yet
+          }
         }
-      }
-      
-      return true;
-    }) || null;
+
+        return true;
+      }) || null
+    );
   }
 
   /**
    * Validate phase progression and provide helpful warnings.
    * Returns validation result with optional warning and suggestion.
    */
-  validatePhaseProgression(sessionId: string, phaseIndex: number): {
+  validatePhaseProgression(
+    sessionId: string,
+    phaseIndex: number,
+  ): {
     valid: boolean;
     warning?: string;
     suggestion?: string;
@@ -485,7 +491,7 @@ export class PlanManager extends EventEmitter {
   } {
     const plan = this.activePlans.get(sessionId);
     if (!plan) return { valid: true };
-    
+
     const phase = plan.phases[phaseIndex];
     if (!phase) {
       return {
@@ -493,7 +499,7 @@ export class PlanManager extends EventEmitter {
         warning: `Phase ${phaseIndex} not found in plan`,
       };
     }
-    
+
     // Check if there are incomplete previous phases
     const incompletePrevious: number[] = [];
     for (let i = 0; i < phaseIndex; i++) {
@@ -502,11 +508,11 @@ export class PlanManager extends EventEmitter {
         incompletePrevious.push(i);
       }
     }
-    
+
     if (incompletePrevious.length > 0) {
       const expectedPhase = incompletePrevious[0];
       const expectedPhaseName = plan.phases[expectedPhase].name;
-      
+
       return {
         valid: true, // Not an error, just a warning
         warning: `Working on Phase ${phaseIndex} but Phase ${expectedPhase} (${expectedPhaseName}) is still pending`,
@@ -514,7 +520,7 @@ export class PlanManager extends EventEmitter {
         expectedPhase,
       };
     }
-    
+
     return { valid: true };
   }
 
@@ -540,9 +546,7 @@ export class PlanManager extends EventEmitter {
    */
   private isAllPhasesComplete(plan: Plan): boolean {
     return plan.phases.every(
-      (p) => p.status === 'complete' || p.status === 'skipped' || p.status === 'error'
+      (p) => p.status === 'complete' || p.status === 'skipped' || p.status === 'error',
     );
   }
-
-
 }

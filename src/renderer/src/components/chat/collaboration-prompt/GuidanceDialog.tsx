@@ -49,7 +49,7 @@ export function GuidanceDialog({ reqId, payload, onRespond }: DialogProps<Guidan
           {payload.trade_offs.map((tradeOff, idx) => (
             <div key={idx} className="p-3 rounded bg-elevated-1 border border-border">
               <div className="font-medium text-fg mb-2">{tradeOff.option}</div>
-              
+
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
                   <div className="text-xs font-medium text-green-400 mb-1">Pros:</div>
@@ -59,7 +59,7 @@ export function GuidanceDialog({ reqId, payload, onRespond }: DialogProps<Guidan
                     ))}
                   </ul>
                 </div>
-                
+
                 <div>
                   <div className="text-xs font-medium text-red-400 mb-1">Cons:</div>
                   <ul className="text-xs text-fg-muted space-y-0.5 list-disc list-inside">
@@ -81,9 +81,7 @@ export function GuidanceDialog({ reqId, payload, onRespond }: DialogProps<Guidan
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm font-medium text-fg-subtle">
-          Your guidance:
-        </label>
+        <label className="text-sm font-medium text-fg-subtle">Your guidance:</label>
         <Textarea
           value={guidance}
           onChange={(e) => setGuidance(e.target.value)}

@@ -1,10 +1,10 @@
 /**
  * Collaboration tools for intelligent agent autonomy.
- * 
+ *
  * These tools allow the LLM to engage the user when collaboration would be
  * valuable - for complex decisions, subjective preferences, risky operations,
  * trade-off discussions, or work validation.
- * 
+ *
  * LLM decides WHEN to use these based on context, complexity, and autonomy level.
  */
 
@@ -21,7 +21,8 @@ export interface EngagementRequest {
   turnId: string;
   sessionId: string;
   type: EngagementType;
-  payload: DecisionPayload | PreferencePayload | FeedbackPayload | GuidancePayload | ApprovalPayload;
+  payload:
+    DecisionPayload | PreferencePayload | FeedbackPayload | GuidancePayload | ApprovalPayload;
 }
 
 /**
@@ -86,9 +87,7 @@ export interface ApprovalPayload {
  * Collaboration callback used by the agent runtime to surface engagement
  * requests to the UI during a live turn.
  */
-export type CollaborationAsk = (
-  request: EngagementRequest,
-) => Promise<EngagementResponse>;
+export type CollaborationAsk = (request: EngagementRequest) => Promise<EngagementResponse>;
 
 /**
  * User's response to an engagement request.

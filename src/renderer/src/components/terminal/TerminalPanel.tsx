@@ -7,18 +7,18 @@ import { IconButton } from '@/components/ui';
 import { cn } from '@/lib/utils';
 
 interface TerminalPanelProps {
-  isOpen:     boolean;
+  isOpen: boolean;
   initialCwd: string | undefined;
-  onClose:    () => void;
+  onClose: () => void;
   onOpenPath: (absolutePath: string, lineNumber: number) => void;
 }
 
 export function TerminalPanel({ isOpen, initialCwd, onClose, onOpenPath }: TerminalPanelProps) {
-  const manager       = useTerminalManager();
-  const managerRef    = useRef(manager);
-  managerRef.current  = manager;
-  const isOpenRef     = useRef(isOpen);
-  isOpenRef.current   = isOpen;
+  const manager = useTerminalManager();
+  const managerRef = useRef(manager);
+  managerRef.current = manager;
+  const isOpenRef = useRef(isOpen);
+  isOpenRef.current = isOpen;
   const initialCwdRef = useRef(initialCwd);
   initialCwdRef.current = initialCwd;
 
@@ -26,7 +26,9 @@ export function TerminalPanel({ isOpen, initialCwd, onClose, onOpenPath }: Termi
   const tabRefs = useRef<Map<string, React.RefObject<TerminalInstanceHandle | null>>>(new Map());
   const getTabRef = (tabId: string) => {
     if (!tabRefs.current.has(tabId)) {
-      tabRefs.current.set(tabId, { current: null } as React.RefObject<TerminalInstanceHandle | null>);
+      tabRefs.current.set(tabId, {
+        current: null,
+      } as React.RefObject<TerminalInstanceHandle | null>);
     }
     return tabRefs.current.get(tabId)!;
   };
@@ -39,7 +41,7 @@ export function TerminalPanel({ isOpen, initialCwd, onClose, onOpenPath }: Termi
   }, [manager.tabs]);
 
   // Search bar state.
-  const [searchOpen, setSearchOpen]   = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -56,21 +58,25 @@ export function TerminalPanel({ isOpen, initialCwd, onClose, onOpenPath }: Termi
     setSearchQuery('');
   }, []);
 
-  const findNext = useCallback((q = searchQuery) => {
-    if (q) activeHandle()?.findNext(q, { caseSensitive: false });
-  }, [searchQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+  const findNext = useCallback(
+    (q = searchQuery) => {
+      if (q) activeHandle()?.findNext(q, { caseSensitive: false });
+    },
+    [searchQuery],
+  ); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const findPrevious = useCallback((q = searchQuery) => {
-    if (q) activeHandle()?.findPrevious(q, { caseSensitive: false });
-  }, [searchQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+  const findPrevious = useCallback(
+    (q = searchQuery) => {
+      if (q) activeHandle()?.findPrevious(q, { caseSensitive: false });
+    },
+    [searchQuery],
+  ); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Seed first tab on panel open.
   useEffect(() => {
     if (!isOpen) return;
     if (managerRef.current.tabs.length === 0) {
-      void managerRef.current.createTab(
-        initialCwdRef.current ?? window.env?.homedir ?? '/'
-      );
+      void managerRef.current.createTab(initialCwdRef.current ?? window.env?.homedir ?? '/');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
@@ -186,10 +192,13 @@ export function TerminalPanel({ isOpen, initialCwd, onClose, onOpenPath }: Termi
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
-                if (e.target.value) activeHandle()?.findNext(e.target.value, { caseSensitive: false });
+                if (e.target.value)
+                  activeHandle()?.findNext(e.target.value, { caseSensitive: false });
               }}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') { e.shiftKey ? findPrevious() : findNext(); }
+                if (e.key === 'Enter') {
+                  e.shiftKey ? findPrevious() : findNext();
+                }
                 if (e.key === 'Escape') closeSearch();
               }}
               placeholder="Find in terminal…"
@@ -197,9 +206,13 @@ export function TerminalPanel({ isOpen, initialCwd, onClose, onOpenPath }: Termi
                 'w-48 bg-transparent text-sm text-fg outline-none placeholder:text-fg-subtle',
               )}
             />
-            <IconButton icon={ChevronUp}   label="Previous match (Shift+Enter)" onClick={() => findPrevious()} />
-            <IconButton icon={ChevronDown} label="Next match (Enter)"           onClick={() => findNext()} />
-            <IconButton icon={X}           label="Close search (Esc)"           onClick={closeSearch} />
+            <IconButton
+              icon={ChevronUp}
+              label="Previous match (Shift+Enter)"
+              onClick={() => findPrevious()}
+            />
+            <IconButton icon={ChevronDown} label="Next match (Enter)" onClick={() => findNext()} />
+            <IconButton icon={X} label="Close search (Esc)" onClick={closeSearch} />
           </div>
         )}
 

@@ -17,9 +17,8 @@ let knownModelIdsPromise: Promise<Set<string>> | null = null;
 async function loadKnownModelIds(): Promise<Set<string>> {
   if (!knownModelIdsPromise) {
     knownModelIdsPromise = (async () => {
-      const { getBuiltinModels, getBuiltinProviders } = await import(
-        '@earendil-works/pi-ai/providers/all'
-      );
+      const { getBuiltinModels, getBuiltinProviders } =
+        await import('@earendil-works/pi-ai/providers/all');
       const ids = new Set<string>();
       for (const provider of getBuiltinProviders()) {
         for (const model of getBuiltinModels(provider)) ids.add(model.id);
@@ -61,10 +60,7 @@ export async function getModelValidationError(modelId: string): Promise<string> 
  * @param sessionModel - Current session's model
  * @returns The resolved model ID
  */
-export function resolveAgentModel(
-  agentModel: string | undefined,
-  sessionModel: string,
-): string {
+export function resolveAgentModel(agentModel: string | undefined, sessionModel: string): string {
   if (!agentModel || agentModel === SESSION_DEFAULT_MODEL) {
     return sessionModel;
   }

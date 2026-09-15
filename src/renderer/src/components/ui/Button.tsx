@@ -8,12 +8,9 @@ type Size = 'sm' | 'md';
 const VARIANT_CLASS: Record<Variant, string> = {
   primary:
     'bg-accent text-accent-fg hover:bg-accent-hover disabled:bg-elevated disabled:text-fg-subtle',
-  outline:
-    'border border-border bg-transparent text-fg hover:bg-elevated disabled:opacity-50',
-  ghost:
-    'bg-transparent text-fg-muted hover:bg-elevated hover:text-fg disabled:opacity-50',
-  link:
-    'bg-transparent text-accent hover:underline disabled:opacity-50 px-0 py-0',
+  outline: 'border border-border bg-transparent text-fg hover:bg-elevated disabled:opacity-50',
+  ghost: 'bg-transparent text-fg-muted hover:bg-elevated hover:text-fg disabled:opacity-50',
+  link: 'bg-transparent text-accent hover:underline disabled:opacity-50 px-0 py-0',
 };
 
 const SIZE_CLASS: Record<Size, string> = {
@@ -64,9 +61,7 @@ export const Button = forwardRef<HTMLButtonElement, Props>(
         Icon && <Icon className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
       )}
       {children}
-      {IconRight && (
-        <IconRight className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-      )}
+      {IconRight && <IconRight className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />}
     </button>
   ),
 );

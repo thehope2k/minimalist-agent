@@ -1,6 +1,6 @@
 /**
  * Plan cache - shared state for active plans.
- * 
+ *
  * Separate module to avoid circular dependencies between ipc.ts and the agent runtime.
  */
 

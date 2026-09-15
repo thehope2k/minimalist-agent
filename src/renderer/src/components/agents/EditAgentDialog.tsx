@@ -27,7 +27,7 @@ const COPY: Record<
   metadata: {
     title: 'Edit metadata',
     subtitle:
-      "Describe the change — the agent will update the AGENT.md frontmatter and leave the system prompt alone.",
+      'Describe the change — the agent will update the AGENT.md frontmatter and leave the system prompt alone.',
     placeholder: 'Change model to haiku and restrict to read-only tools',
     intentTag: 'edit-agent-metadata',
     chipLabel: 'Edit metadata',
@@ -114,9 +114,7 @@ export function EditAgentDialog({
         </header>
 
         <div className="px-4 pt-4">
-          <h3 className="text-base font-medium text-fg">
-            What would you like to change?
-          </h3>
+          <h3 className="text-base font-medium text-fg">What would you like to change?</h3>
           <p className="mt-0.5 text-xs text-fg-subtle">{copy.subtitle}</p>
         </div>
 
@@ -133,9 +131,7 @@ export function EditAgentDialog({
         </div>
 
         <div className="px-4 pt-3 pb-1">
-          <p className="truncate font-mono text-[11px] text-fg-subtle">
-            → {agent.path}/AGENT.md
-          </p>
+          <p className="truncate font-mono text-[11px] text-fg-subtle">→ {agent.path}/AGENT.md</p>
         </div>
 
         <footer className="mt-3 flex items-center justify-end gap-2 border-t border-border/60 bg-elevated/30 px-4 py-3">
@@ -166,11 +162,7 @@ export function EditAgentDialog({
 
 /* ---------- prompt builder ---------- */
 
-function buildEditPrompt(
-  mode: EditAgentMode,
-  description: string,
-  agent: LoadedAgent,
-): string {
+function buildEditPrompt(mode: EditAgentMode, description: string, agent: LoadedAgent): string {
   const target = `${agent.path}/AGENT.md`;
   if (mode === 'metadata') {
     return `<agent_edit_metadata>

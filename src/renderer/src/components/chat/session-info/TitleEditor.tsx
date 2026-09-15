@@ -5,12 +5,7 @@ interface TitleEditorProps {
   onReset: () => void;
 }
 
-export function TitleEditor({
-  draftTitle,
-  onChangeTitle,
-  onCommit,
-  onReset,
-}: TitleEditorProps) {
+export function TitleEditor({ draftTitle, onChangeTitle, onCommit, onReset }: TitleEditorProps) {
   return (
     <div>
       <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-fg-subtle">

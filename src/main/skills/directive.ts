@@ -28,10 +28,7 @@ export interface SkillExtraction {
  * `@slug` tokens. Does NOT read the SKILL.md / guide.md files — that's
  * the model's job (enforced by the directive prose).
  */
-export function extractSkillPaths(
-  message: string,
-  cwd?: string,
-): SkillExtraction {
+export function extractSkillPaths(message: string, cwd?: string): SkillExtraction {
   const skills = loadAllSkills(cwd);
   const skillSlugs = skills.map((s) => s.slug);
 
@@ -58,12 +55,8 @@ export function extractSkillPaths(
   }
 
   // Absolutize resolved file / folder paths (tokens are relative to cwd).
-  const filePaths: string[] = parsed.files.map((rel) =>
-    cwd ? join(cwd, rel) : rel,
-  );
-  const folderPaths: string[] = parsed.folders.map((rel) =>
-    cwd ? join(cwd, rel) : rel,
-  );
+  const filePaths: string[] = parsed.files.map((rel) => (cwd ? join(cwd, rel) : rel));
+  const folderPaths: string[] = parsed.folders.map((rel) => (cwd ? join(cwd, rel) : rel));
 
   // Replace mentions with semantic markers so sentence structure is preserved.
   const skillNames = new Map(skills.map((s) => [s.slug, s.metadata.name]));

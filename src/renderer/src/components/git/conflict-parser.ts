@@ -105,11 +105,7 @@ export function hasConflictMarkers(content: string): boolean {
  * `resolution` replaces them. An empty resolution string means "delete the
  * entire block" (useful for the "Ignore — remove markers" action).
  */
-export function resolveBlock(
-  content: string,
-  block: ConflictBlock,
-  resolution: string,
-): string {
+export function resolveBlock(content: string, block: ConflictBlock, resolution: string): string {
   const lines = content.split('\n');
   const before = lines.slice(0, block.startLine - 1);
   const after = lines.slice(block.endLine);

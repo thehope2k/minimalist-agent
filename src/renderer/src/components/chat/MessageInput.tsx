@@ -63,13 +63,7 @@ export function MessageInput({
   }, [sessionId]);
 
   // Model picker — resolves connection/model from overrides, defaults
-  const {
-    data,
-    connection,
-    model,
-    pickerOverride,
-    setPickerOverride,
-  } = useModelPicker(
+  const { data, connection, model, pickerOverride, setPickerOverride } = useModelPicker(
     sessionId,
     projectDefaultConnectionSlug,
     projectDefaultModel,
@@ -163,10 +157,7 @@ export function MessageInput({
   // dependency array) keep the handler reading current values without
   // re-subscribing the window listener on every render.
   const voiceShortcutBlocked =
-    isStreaming ||
-    voice.modelStatus === 'downloading' ||
-    voice.transcribing ||
-    voice.starting;
+    isStreaming || voice.modelStatus === 'downloading' || voice.transcribing || voice.starting;
   const voiceShortcutBlockedRef = useRef(voiceShortcutBlocked);
   voiceShortcutBlockedRef.current = voiceShortcutBlocked;
   const handleToggleVoiceRef = useRef(handleToggleVoice);
@@ -185,16 +176,10 @@ export function MessageInput({
 
   // Send / steer logic
   const canSend =
-    !isStreaming &&
-    (!!value.trim() || attachments.length > 0) &&
-    !!connection &&
-    !!model;
+    !isStreaming && (!!value.trim() || attachments.length > 0) && !!connection && !!model;
 
   const canSteer =
-    isStreaming &&
-    !!streamingTurnId &&
-    (!!value.trim() || attachments.length > 0) &&
-    !!onSteer;
+    isStreaming && !!streamingTurnId && (!!value.trim() || attachments.length > 0) && !!onSteer;
 
   const handleSend = () => {
     if (!canSend || !connection || !model) return;
@@ -372,9 +357,7 @@ export function MessageInput({
               }}
               disabled={!connection}
               placeholder={
-                connection
-                  ? 'Ask anything…'
-                  : 'Add a connection in Settings → AI to start chatting'
+                connection ? 'Ask anything…' : 'Add a connection in Settings → AI to start chatting'
               }
               mention={mention}
               mentionHandleRef={mentionHandleRef}
@@ -399,9 +382,7 @@ export function MessageInput({
               hasUnsendableImages={hasUnsendableImages}
               onPickFiles={handlePickFiles}
               onTriggerMention={triggerMentionFromButton}
-              onPickerChange={(slug, modelId) =>
-                setPickerOverride({ slug, modelId })
-              }
+              onPickerChange={(slug, modelId) => setPickerOverride({ slug, modelId })}
               onSend={handleSend}
               onAbort={onAbort}
               onSteer={() => void handleSteer()}

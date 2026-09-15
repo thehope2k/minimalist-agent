@@ -132,7 +132,9 @@ async function downloadMoonshineModel(
     await pipeline(stream, bunzip2(), extractTar({ cwd: dir, strip: 1 }));
 
     if (digest() !== MOONSHINE_SHA256) {
-      throw new Error('Voice model download failed integrity check (checksum mismatch). Please try again.');
+      throw new Error(
+        'Voice model download failed integrity check (checksum mismatch). Please try again.',
+      );
     }
     if (!isMoonshineModelReady()) {
       throw new Error('Voice model download completed but expected files are missing.');
@@ -160,7 +162,9 @@ async function downloadVadModel(
     await pipeline(stream, createWriteStream(destPath));
 
     if (digest() !== VAD_SHA256) {
-      throw new Error('Voice activity detector download failed integrity check (checksum mismatch). Please try again.');
+      throw new Error(
+        'Voice activity detector download failed integrity check (checksum mismatch). Please try again.',
+      );
     }
   } catch (error) {
     rmSync(destPath, { force: true });

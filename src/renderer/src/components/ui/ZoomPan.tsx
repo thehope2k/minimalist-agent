@@ -39,7 +39,16 @@ export function ZoomPan({ children, className, fitOnMount }: ZoomPanProps) {
   const innerRef = useRef<HTMLDivElement>(null);
 
   // Mutable state that must never be stale in event handlers.
-  const s = useRef({ zoom: 1, x: 0, y: 0, dragging: false, startX: 0, startY: 0, originX: 0, originY: 0 });
+  const s = useRef({
+    zoom: 1,
+    x: 0,
+    y: 0,
+    dragging: false,
+    startX: 0,
+    startY: 0,
+    originX: 0,
+    originY: 0,
+  });
 
   // React state — only for things that trigger visible re-renders.
   const [zoom, setZoomDisplay] = useState(1);
@@ -124,8 +133,7 @@ export function ZoomPan({ children, className, fitOnMount }: ZoomPanProps) {
     s.current.x = nx;
     s.current.y = ny;
     if (innerRef.current) {
-      innerRef.current.style.transform =
-        `translate(${nx}px, ${ny}px) scale(${s.current.zoom})`;
+      innerRef.current.style.transform = `translate(${nx}px, ${ny}px) scale(${s.current.zoom})`;
     }
   };
 

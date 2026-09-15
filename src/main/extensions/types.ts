@@ -150,9 +150,7 @@ const MCP_TOOL_PREFIX = 'mcp__';
  * parts. Returns null for anything that isn't shaped like one — including
  * built-in tool names, which this must never mistake for MCP tools.
  */
-export function parseMcpToolName(
-  fullToolName: string,
-): { slug: string; tool: string } | null {
+export function parseMcpToolName(fullToolName: string): { slug: string; tool: string } | null {
   if (!fullToolName.startsWith(MCP_TOOL_PREFIX)) return null;
   const rest = fullToolName.slice(MCP_TOOL_PREFIX.length);
   const sep = rest.indexOf('__');

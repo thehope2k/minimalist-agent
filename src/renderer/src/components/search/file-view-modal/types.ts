@@ -6,13 +6,7 @@ export interface FileViewModalProps {
   onOpenFile: (absolutePath: string, lineNumber: number) => void;
 }
 
-export type ViewerType =
-  | 'markdown'
-  | 'image-raster'
-  | 'image-svg'
-  | 'json'
-  | 'html'
-  | 'code';
+export type ViewerType = 'markdown' | 'image-raster' | 'image-svg' | 'json' | 'html' | 'code';
 
 // Extension sets
 export const MD_EXTS = new Set(['.md', '.mdx']);

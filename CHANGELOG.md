@@ -1526,8 +1526,8 @@ actions.
 
 - Rename: replaced `window.prompt` (disabled by Electron) with an inline input that auto-focuses in the row; Enter/blur
   saves, Escape cancels
-- Regenerate title: now surfaces failures via an alert instead of silently doing nothing; shows a *"Regenerating
-  title…"* placeholder while the LLM call is in-flight
+- Regenerate title: now surfaces failures via an alert instead of silently doing nothing; shows a _"Regenerating
+  title…"_ placeholder while the LLM call is in-flight
 
 **Datatable**
 

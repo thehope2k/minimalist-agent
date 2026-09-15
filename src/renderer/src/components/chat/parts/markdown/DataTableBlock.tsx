@@ -95,10 +95,7 @@ function DataTable({ data }: { data: DataTableSchema }) {
       </thead>
       <tbody>
         {data.rows.map((row, i) => (
-          <tr
-            key={i}
-            className={cn(i % 2 !== 0 && 'bg-elevated/20')}
-          >
+          <tr key={i} className={cn(i % 2 !== 0 && 'bg-elevated/20')}>
             {data.columns.map((col) => {
               const val = row[col.key];
               return (
@@ -148,10 +145,7 @@ export function DataTableBlock({ code }: { code: string }) {
   const handleClose = useCallback(() => setExpanded(false), []);
 
   const data = useMemo(() => parseDataTable(code), [code]);
-  const toMarkdown = useMemo(
-    () => (data ? toMarkdownTable(data) : ''),
-    [data],
-  );
+  const toMarkdown = useMemo(() => (data ? toMarkdownTable(data) : ''), [data]);
 
   // Streaming or invalid JSON → degrade gracefully
   if (!data) {
@@ -166,9 +160,7 @@ export function DataTableBlock({ code }: { code: string }) {
       <div className="group my-2 overflow-hidden rounded-md border border-border bg-panel">
         {/* Header bar */}
         <div className="flex items-center justify-between border-b border-border/60 px-3 py-1.5">
-          <span className="text-[11px] font-medium text-fg-muted truncate pr-2">
-            {title}
-          </span>
+          <span className="text-[11px] font-medium text-fg-muted truncate pr-2">{title}</span>
           <div className="flex shrink-0 items-center gap-0.5">
             <button
               type="button"

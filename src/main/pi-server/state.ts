@@ -63,14 +63,8 @@ export interface State {
    *  compaction events still reach the renderer. Flushed in handlePrompt. */
   pendingTurnDone?: MsgEvent;
   unsubscribe?: () => void;
-  pendingPermission: Map<
-    string,
-    { resolve: (r: MsgPreToolUseResponse) => void }
-  >;
-  pendingCollaboration: Map<
-    string,
-    { resolve: (r: MsgCollaborationResponse) => void }
-  >;
+  pendingPermission: Map<string, { resolve: (r: MsgPreToolUseResponse) => void }>;
+  pendingCollaboration: Map<string, { resolve: (r: MsgCollaborationResponse) => void }>;
   pendingAuthRefresh: Map<string, { resolve: (r: MsgAuthRefreshResult) => void }>;
   pendingBrowserTool: Map<string, { resolve: (r: MsgBrowserToolResult) => void }>;
   planManager?: PlanManager;

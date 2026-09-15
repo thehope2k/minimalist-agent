@@ -1,10 +1,4 @@
-import {
-  existsSync,
-  readFileSync,
-  readdirSync,
-  rmSync,
-  statSync,
-} from 'node:fs';
+import { existsSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { Paths, projectConfigRoot } from '../storage/paths';
 import { parseExtensionConfig, parseExtensionGuide } from './parse';
@@ -28,7 +22,11 @@ export function getProjectExtensionsDir(cwd: string): string {
 
 /* ---------- single-extension loader ---------- */
 
-function loadExtensionFromDir(slug: string, dir: string, scope: ExtensionScope): LoadedExtension | null {
+function loadExtensionFromDir(
+  slug: string,
+  dir: string,
+  scope: ExtensionScope,
+): LoadedExtension | null {
   const extDir = join(dir, slug);
   const configPath = join(extDir, CONFIG_FILE);
   const guidePath = join(extDir, GUIDE_FILE);
@@ -78,10 +76,7 @@ export function invalidateExtensionsCache(cwd?: string): void {
 
 /* ---------- directory-level loader ---------- */
 
-function loadExtensionsFromDirectory(
-  dir: string,
-  scope: ExtensionScope,
-): LoadedExtension[] {
+function loadExtensionsFromDirectory(dir: string, scope: ExtensionScope): LoadedExtension[] {
   if (!existsSync(dir)) return [];
   const items: LoadedExtension[] = [];
   let entries: string[] = [];

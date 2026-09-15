@@ -26,17 +26,9 @@ type Props = {
   onStartChatWithSubmission?: (submit: SeedSubmit) => void;
 };
 
-export function SkillsPanel({
-  activeSlug,
-  onSelect,
-  onStartChatWithSubmission,
-}: Props) {
+export function SkillsPanel({ activeSlug, onSelect, onStartChatWithSubmission }: Props) {
   const skills = useSkills();
-  const { ordered: orderedSkills, reorder } = useOrderedList(
-    skills,
-    'skills',
-    getSkillId,
-  );
+  const { ordered: orderedSkills, reorder } = useOrderedList(skills, 'skills', getSkillId);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -60,11 +52,7 @@ export function SkillsPanel({
       <header className="flex h-10 shrink-0 items-center gap-2 border-b border-border px-3 text-[15px] font-semibold text-fg">
         <Sparkles className="h-4 w-4 text-fg-muted" strokeWidth={1.75} />
         <span>Skills</span>
-        {skills && (
-          <span className="text-xs tabular-nums text-fg-subtle">
-            {skills.length}
-          </span>
-        )}
+        {skills && <span className="text-xs tabular-nums text-fg-subtle">{skills.length}</span>}
         <div className="flex-1" />
         <button
           type="button"
@@ -131,8 +119,8 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
       <Sparkles className="h-6 w-6 text-fg-subtle" strokeWidth={1.5} />
       <div className="text-sm font-medium text-fg">No skills yet</div>
       <p className="max-w-65 text-xs text-fg-subtle">
-        Skills are reusable instruction sets. Describe what you want one to
-        do — the agent will scaffold it for you.
+        Skills are reusable instruction sets. Describe what you want one to do — the agent will
+        scaffold it for you.
       </p>
       <button
         type="button"

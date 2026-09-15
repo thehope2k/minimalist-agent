@@ -58,5 +58,7 @@ export function configureHttpIdleTimeout(timeoutMs: number): void {
   );
   undici.setGlobalDispatcher(dispatcher);
   undici.install?.();
-  log.info(`HTTP idle timeout configured: ${timeoutMs === 0 ? 'disabled' : `${timeoutMs / 1000}s`}`);
+  log.info(
+    `HTTP idle timeout configured: ${timeoutMs === 0 ? 'disabled' : `${timeoutMs / 1000}s`}`,
+  );
 }

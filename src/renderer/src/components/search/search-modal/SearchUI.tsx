@@ -15,7 +15,5 @@ export function EmptyHint({ children }: { children: React.ReactNode }) {
 }
 
 export function Key({ children }: { children: React.ReactNode }) {
-  return (
-    <kbd className="rounded border border-border/60 px-1 font-mono">{children}</kbd>
-  );
+  return <kbd className="rounded border border-border/60 px-1 font-mono">{children}</kbd>;
 }

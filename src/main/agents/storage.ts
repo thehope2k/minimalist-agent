@@ -25,7 +25,11 @@ export function getProjectAgentsDir(cwd: string): string {
 
 /* ---------- single-agent loader ---------- */
 
-function loadAgentFromDir(slug: string, dir: string, source: import('./types').AgentSource): LoadedAgent | null {
+function loadAgentFromDir(
+  slug: string,
+  dir: string,
+  source: import('./types').AgentSource,
+): LoadedAgent | null {
   const agentDir = join(dir, slug);
   const agentFile = join(agentDir, 'AGENT.md');
 
@@ -102,9 +106,7 @@ export function loadAllAgents(cwd?: string): LoadedAgent[] {
   if (cached) return cached;
 
   const userAgents = loadAgentsFromDirectory(getAgentsDir(), 'user');
-  const projectAgents = cwd
-    ? loadAgentsFromDirectory(getProjectAgentsDir(cwd), 'project')
-    : [];
+  const projectAgents = cwd ? loadAgentsFromDirectory(getProjectAgentsDir(cwd), 'project') : [];
 
   const agents = mergeTiers(userAgents, projectAgents);
   cache.set(cwd, agents);

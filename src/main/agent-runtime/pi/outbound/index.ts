@@ -18,7 +18,12 @@ import type {
   MsgSessionIdUpdate,
   SubprocessOutbound,
 } from '../protocol';
-import { handleEvent, handleOperationUpdate, handleReady, handleSubprocessFatalError } from './lifecycle';
+import {
+  handleEvent,
+  handleOperationUpdate,
+  handleReady,
+  handleSubprocessFatalError,
+} from './lifecycle';
 import { handlePermissionModeChanged, handlePreToolUseRequest } from './permissions';
 import { handleCollaborationRequest } from './collaboration';
 import {

@@ -3,7 +3,12 @@ import type { ChatMessage } from '@/lib/chat';
 import type { SessionStore } from './session-store';
 
 import { chatFromStored, chatToStored, newId, partsToContent } from '@/lib/chat';
-import { appendMessage, loadFullSession, replaceLastMessage, truncateSessionMessages } from '@/lib/sessions';
+import {
+  appendMessage,
+  loadFullSession,
+  replaceLastMessage,
+  truncateSessionMessages,
+} from '@/lib/sessions';
 import type { AgentError, ConnectionMeta, PermissionMode } from '@/lib/electron';
 import { createLogger } from '@/lib/logger';
 import type { SendArgs } from './types';
@@ -17,7 +22,10 @@ interface RetryFallback {
   permissionMode: PermissionMode;
 }
 
-interface ChatRetryDeps extends Pick<SessionStore, 'messagesBySession' | 'streamingBySession' | 'turnIdToSession' | 'lastSendBySession'> {
+interface ChatRetryDeps extends Pick<
+  SessionStore,
+  'messagesBySession' | 'streamingBySession' | 'turnIdToSession' | 'lastSendBySession'
+> {
   activeSessionIdRef: React.MutableRefObject<string | null>;
   setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
   setIsStreaming: React.Dispatch<React.SetStateAction<boolean>>;
@@ -41,10 +49,7 @@ export function useChatRetry(deps: ChatRetryDeps) {
   } = deps;
 
   const retryImpl = useCallback(
-    async (
-      sid: string,
-      fallback?: RetryFallback,
-    ) => {
+    async (sid: string, fallback?: RetryFallback) => {
       const last = lastSendBySession.current.get(sid);
       if (last) {
         // Hot path: retry within the same app run.
@@ -72,12 +77,9 @@ export function useChatRetry(deps: ChatRetryDeps) {
             errorInfo: undefined,
             error: undefined,
             durationMs:
-              failedMsg.createdAt != null
-                ? Date.now() - failedMsg.createdAt
-                : failedMsg.durationMs,
+              failedMsg.createdAt != null ? Date.now() - failedMsg.createdAt : failedMsg.durationMs,
           };
-          const withFinalized =
-            [...current.slice(0, idx), finalized, ...current.slice(idx + 1)];
+          const withFinalized = [...current.slice(0, idx), finalized, ...current.slice(idx + 1)];
           messagesBySession.current.set(sid, withFinalized);
           if (sid === activeSessionIdRef.current) setMessages(withFinalized);
           const stored = chatToStored(finalized);
@@ -93,11 +95,8 @@ export function useChatRetry(deps: ChatRetryDeps) {
         // full replacement messages, so the chat never flashes to a truncated
         // or empty state during the disk I/O below.
         const userBeforeId =
-          idx > 0 && current[idx - 1].role === 'user'
-            ? current[idx - 1].id
-            : null;
-        const cutFrom =
-          idx > 0 && current[idx - 1].role === 'user' ? idx - 1 : idx;
+          idx > 0 && current[idx - 1].role === 'user' ? current[idx - 1].id : null;
+        const cutFrom = idx > 0 && current[idx - 1].role === 'user' ? idx - 1 : idx;
         const withoutFailed = idx < 0 ? current : current.slice(0, cutFrom);
         messagesBySession.current.set(sid, withoutFailed);
         const dropFromId = userBeforeId ?? failedAssistantId;
@@ -196,8 +195,7 @@ export function useChatRetry(deps: ChatRetryDeps) {
         const errInfo: AgentError = {
           code: 'unknown_error',
           title: 'Retry failed',
-          message:
-            'Could not restart the turn. Check the diagnostics below and try again.',
+          message: 'Could not restart the turn. Check the diagnostics below and try again.',
           canRetry: true,
           originalError: errMsg,
         };
@@ -212,9 +210,7 @@ export function useChatRetry(deps: ChatRetryDeps) {
         let next: ChatMessage[];
         try {
           const disk = await loadFullSession(sid);
-          next = disk
-            ? [...disk.messages.map(chatFromStored), errBubble]
-            : [errBubble];
+          next = disk ? [...disk.messages.map(chatFromStored), errBubble] : [errBubble];
         } catch {
           next = [...(messagesBySession.current.get(sid) ?? []), errBubble];
         }
@@ -248,7 +244,6 @@ export function useChatRetry(deps: ChatRetryDeps) {
     },
     [retryImpl],
   );
-
 
   return { retry };
 }

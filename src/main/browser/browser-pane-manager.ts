@@ -8,7 +8,12 @@
 
 import { BrowserWindow } from 'electron';
 import { createLogger } from '../logger';
-import { BrowserCDP, MAX_Z_INDEX, type AccessibilitySnapshot, type ConsoleLogEntry } from './browser-cdp';
+import {
+  BrowserCDP,
+  MAX_Z_INDEX,
+  type AccessibilitySnapshot,
+  type ConsoleLogEntry,
+} from './browser-cdp';
 
 const log = createLogger('browser-pane');
 
@@ -109,8 +114,8 @@ class BrowserPaneManager {
     if (!entry.agentControl) {
       throw new Error(
         'The user deliberately took control of this window — they may be actively using it right now. ' +
-        'Do not call "open" to reclaim it as routine error recovery. Stop and tell the user what you were ' +
-        'trying to do, and only reclaim if they explicitly ask you to continue.',
+          'Do not call "open" to reclaim it as routine error recovery. Stop and tell the user what you were ' +
+          'trying to do, and only reclaim if they explicitly ask you to continue.',
       );
     }
     return entry;
@@ -129,7 +134,9 @@ class BrowserPaneManager {
         document.documentElement.appendChild(badge);
       })()`);
     } catch (err) {
-      log.warn(`control badge injection failed: ${err instanceof Error ? err.message : String(err)}`);
+      log.warn(
+        `control badge injection failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
   }
 
@@ -158,7 +165,11 @@ class BrowserPaneManager {
         partition: `persist:browser-pane-${sessionId}`,
       },
     });
-    const entry: PaneEntry = { window, cdp: new BrowserCDP(window.webContents), agentControl: true };
+    const entry: PaneEntry = {
+      window,
+      cdp: new BrowserCDP(window.webContents),
+      agentControl: true,
+    };
     this.panes.set(sessionId, entry);
 
     // `navigate` validates its own argument, but a redirect, link, or
@@ -174,7 +185,9 @@ class BrowserPaneManager {
     window.webContents.setWindowOpenHandler(({ url }) => {
       if (isAllowedNavigateUrl(url)) {
         this.navigate(sessionId, url).catch((err) => {
-          log.warn(`window-open navigate failed: ${err instanceof Error ? err.message : String(err)}`);
+          log.warn(
+            `window-open navigate failed: ${err instanceof Error ? err.message : String(err)}`,
+          );
         });
       }
       return { action: 'deny' };
@@ -205,7 +218,9 @@ class BrowserPaneManager {
     try {
       parsed = new URL(url);
     } catch {
-      throw new Error(`navigate: "${url}" is not a valid absolute URL (include the scheme, e.g. "https://...").`);
+      throw new Error(
+        `navigate: "${url}" is not a valid absolute URL (include the scheme, e.g. "https://...").`,
+      );
     }
     if (!ALLOWED_NAVIGATE_SCHEMES.has(parsed.protocol)) {
       throw new Error(
@@ -214,7 +229,10 @@ class BrowserPaneManager {
     }
 
     const existing = this.panes.get(sessionId);
-    const entry = existing && !existing.window.isDestroyed() ? this.requireControlledPane(sessionId) : this.open(sessionId);
+    const entry =
+      existing && !existing.window.isDestroyed()
+        ? this.requireControlledPane(sessionId)
+        : this.open(sessionId);
     await entry.window.loadURL(url);
     return { url: entry.window.webContents.getURL(), title: entry.window.webContents.getTitle() };
   }
@@ -252,11 +270,19 @@ class BrowserPaneManager {
     return this.requireControlledPane(sessionId).cdp.typeText(text);
   }
 
-  key(sessionId: string, key: string, modifiers?: Array<'shift' | 'control' | 'alt' | 'meta'>): Promise<void> {
+  key(
+    sessionId: string,
+    key: string,
+    modifiers?: Array<'shift' | 'control' | 'alt' | 'meta'>,
+  ): Promise<void> {
     return this.requireControlledPane(sessionId).cdp.sendKey(key, modifiers);
   }
 
-  scroll(sessionId: string, direction: 'up' | 'down' | 'left' | 'right', amount = DEFAULT_SCROLL_AMOUNT): Promise<void> {
+  scroll(
+    sessionId: string,
+    direction: 'up' | 'down' | 'left' | 'right',
+    amount = DEFAULT_SCROLL_AMOUNT,
+  ): Promise<void> {
     const cdp = this.requireControlledPane(sessionId).cdp;
     const deltas: Record<typeof direction, [number, number]> = {
       up: [0, -amount],
@@ -276,7 +302,11 @@ class BrowserPaneManager {
     return this.requireControlledPane(sessionId).cdp.evaluate(expression);
   }
 
-  consoleLogs(sessionId: string, limit: number, level?: ConsoleLogEntry['level']): ConsoleLogEntry[] {
+  consoleLogs(
+    sessionId: string,
+    limit: number,
+    level?: ConsoleLogEntry['level'],
+  ): ConsoleLogEntry[] {
     return this.requirePane(sessionId).cdp.getConsoleLogs(limit, level);
   }
 
@@ -284,7 +314,11 @@ class BrowserPaneManager {
     const entry = this.panes.get(sessionId);
     if (entry && !entry.window.isDestroyed()) {
       entry.agentControl = false;
-      void entry.cdp.evaluate(`(() => { const el = document.getElementById(${JSON.stringify(CONTROL_BADGE_ID)}); if (el) el.remove(); })()`).catch(() => {});
+      void entry.cdp
+        .evaluate(
+          `(() => { const el = document.getElementById(${JSON.stringify(CONTROL_BADGE_ID)}); if (el) el.remove(); })()`,
+        )
+        .catch(() => {});
     }
     this.emitState(sessionId);
     return this.getState(sessionId);

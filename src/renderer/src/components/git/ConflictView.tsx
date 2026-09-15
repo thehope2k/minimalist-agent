@@ -70,13 +70,14 @@ export function ConflictView({ file, onResolved }: ConflictViewProps) {
 
   // Accept conflict block resolution
   const handleAccept = useCallback(
-    (block: typeof conflictBlocks[0], side: 'ours' | 'theirs' | 'both', index: number) => {
+    (block: (typeof conflictBlocks)[0], side: 'ours' | 'theirs' | 'both', index: number) => {
       let resolution: string;
       if (side === 'ours') {
         resolution = block.oursContent;
       } else if (side === 'theirs') {
         resolution = block.theirsContent;
-      } else { // both
+      } else {
+        // both
         resolution = block.oursContent + '\n' + block.theirsContent;
       }
       const resolved = resolveBlock(resultText, block, resolution);
@@ -91,12 +92,12 @@ export function ConflictView({ file, onResolved }: ConflictViewProps) {
 
   // Ignore conflict block (just removes markers without choosing content)
   const handleIgnore = useCallback(
-    (block: typeof conflictBlocks[0], index: number) => {
+    (block: (typeof conflictBlocks)[0], index: number) => {
       // For ignore, we just remove the markers and keep all content
       let result = resultText;
       const lines = result.split('\n');
       // Remove <<<<<<, ======, >>>>>>lines
-      lines.splice(block.endLine - 1, 1); // >>>>>>>  
+      lines.splice(block.endLine - 1, 1); // >>>>>>>
       lines.splice(block.separatorLine - 1, 1); // =======
       if (block.baseLine > 0) {
         lines.splice(block.baseLine - 1, 1); // ||||||| (if exists)
@@ -124,12 +125,7 @@ export function ConflictView({ file, onResolved }: ConflictViewProps) {
   }, []);
 
   // Conflict widgets (accept buttons)
-  useConflictWidgets(
-    resultEditorRef.current,
-    conflictBlocks,
-    handleAccept,
-    handleIgnore,
-  );
+  useConflictWidgets(resultEditorRef.current, conflictBlocks, handleAccept, handleIgnore);
 
   // Mark resolved
   const handleMarkResolved = async () => {
@@ -160,32 +156,29 @@ export function ConflictView({ file, onResolved }: ConflictViewProps) {
     }
   }, []);
 
-  const onResultMount: OnMount = useCallback((editor, monaco) => {
-    resultEditorRef.current = editor;
-    monacoRef.current = monaco;
-    registerAppMonacoTheme(monaco);
+  const onResultMount: OnMount = useCallback(
+    (editor, monaco) => {
+      resultEditorRef.current = editor;
+      monacoRef.current = monaco;
+      registerAppMonacoTheme(monaco);
 
-    const model = editor.getModel();
-    if (model) {
-      decoCollectionRef.current = editor.createDecorationsCollection();
-    }
+      const model = editor.getModel();
+      if (model) {
+        decoCollectionRef.current = editor.createDecorationsCollection();
+      }
 
-    // Keyboard navigation
-    editor.addCommand(
-      monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.Comma,
-      () => {
+      // Keyboard navigation
+      editor.addCommand(monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.Comma, () => {
         const current = focusedBlockIndexRef.current;
         handleNavigate(current - 1);
-      },
-    );
-    editor.addCommand(
-      monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.Period,
-      () => {
+      });
+      editor.addCommand(monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.Period, () => {
         const current = focusedBlockIndexRef.current;
         handleNavigate(current + 1);
-      },
-    );
-  }, [handleNavigate]);
+      });
+    },
+    [handleNavigate],
+  );
 
   if (loading) {
     return (

@@ -30,9 +30,7 @@ export function ExtensionRow({
 
   return (
     <div className="group/ext relative border-b border-border last:border-b-0">
-      {active && (
-        <span className="absolute inset-y-2 left-0 z-10 w-0.5 rounded-r-sm bg-accent" />
-      )}
+      {active && <span className="absolute inset-y-2 left-0 z-10 w-0.5 rounded-r-sm bg-accent" />}
       <div className="flex items-stretch">
         <div className="flex w-5 shrink-0 items-center justify-center">
           <DragHandle
@@ -50,9 +48,7 @@ export function ExtensionRow({
           <ExtensionAvatar extension={ext} size="md" />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <div className="truncate text-[0.95rem] font-medium text-fg">
-                {displayName(ext)}
-              </div>
+              <div className="truncate text-[0.95rem] font-medium text-fg">{displayName(ext)}</div>
               {isMcpBacked(ext) && (
                 <span className="rounded bg-elevated-2 px-1.5 py-px font-mono text-[10px] uppercase tracking-wide text-fg-muted">
                   MCP
@@ -69,9 +65,7 @@ export function ExtensionRow({
               )}
               <McpStatusBadge status={mcpStatus} />
             </div>
-            <div className="mt-0.5 truncate text-xs text-fg-subtle">
-              {displayDescription(ext)}
-            </div>
+            <div className="mt-0.5 truncate text-xs text-fg-subtle">{displayDescription(ext)}</div>
           </div>
         </button>
       </div>
@@ -84,11 +78,7 @@ export function ExtensionRow({
         )}
         onClick={(e) => e.stopPropagation()}
       >
-        <ExtensionMenu
-          extension={ext}
-          onAfterDelete={onAfterDelete}
-          onOpenChange={setMenuOpen}
-        />
+        <ExtensionMenu extension={ext} onAfterDelete={onAfterDelete} onOpenChange={setMenuOpen} />
       </div>
     </div>
   );

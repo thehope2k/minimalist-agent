@@ -34,9 +34,7 @@ export async function fetchOpenAICompatibleModelIds(
       }
       return { error: `Provider returned HTTP ${res.status}.` };
     }
-    const json = (await res.json()) as
-      | { data?: Array<{ id?: unknown }> }
-      | Array<{ id?: unknown }>;
+    const json = (await res.json()) as { data?: Array<{ id?: unknown }> } | Array<{ id?: unknown }>;
     const rows = Array.isArray(json) ? json : (json.data ?? []);
     const ids = rows
       .map((r) => r?.id)

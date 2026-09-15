@@ -8,7 +8,14 @@
 //
 // On write: bump to current version, write atomically (via .tmp + rename).
 
-import { existsSync, readFileSync, writeFileSync, renameSync, copyFileSync, mkdirSync } from 'node:fs';
+import {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  renameSync,
+  copyFileSync,
+  mkdirSync,
+} from 'node:fs';
 import { join, basename } from 'node:path';
 import { Paths, MIGRATION_BACKUP_RETENTION } from './paths';
 import { readdirSync, rmSync } from 'node:fs';

@@ -158,10 +158,7 @@ export const ChatScroll = forwardRef<ChatScrollHandle, Props>(function ChatScrol
         style={{ right: 'calc(1rem + max(0rem, (100% - 64rem) / 2))' }}
       >
         <div
-          className={cn(
-            'transition-opacity duration-150',
-            atTop ? 'opacity-0' : 'opacity-100',
-          )}
+          className={cn('transition-opacity duration-150', atTop ? 'opacity-0' : 'opacity-100')}
           aria-hidden={atTop}
         >
           <IconButton
@@ -173,10 +170,7 @@ export const ChatScroll = forwardRef<ChatScrollHandle, Props>(function ChatScrol
           />
         </div>
         <div
-          className={cn(
-            'transition-opacity duration-150',
-            atBottom ? 'opacity-0' : 'opacity-100',
-          )}
+          className={cn('transition-opacity duration-150', atBottom ? 'opacity-0' : 'opacity-100')}
           aria-hidden={atBottom}
         >
           <IconButton

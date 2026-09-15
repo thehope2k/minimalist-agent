@@ -17,7 +17,7 @@ Higher autonomy = fewer questions, more independence.
 Lower autonomy = frequent collaboration, more control.
 
 **Current implementation:** Auto mode always executes. Agent uses collaboration tools based on autonomy level. The
-autonomy level *is* the engagement threshold — the agent acts on its own below it and engages at or above it (see
+autonomy level _is_ the engagement threshold — the agent acts on its own below it and engages at or above it (see
 `src/shared/autonomy.ts`).
 
 **Original vision (not yet implemented):** In Auto mode, agent intelligently decides:
@@ -182,7 +182,7 @@ The autonomy budget is enforced in code (`src/shared/autonomy.ts`), not just pro
 a `RequestApproval` below the autonomy threshold is auto-approved without
 interrupting, and operations at/above risk 85 (`ALWAYS_CONFIRM`) always prompt
 regardless of autonomy — so even 100% autonomy can't silently run irreversible
-operations. The agent's own risk *score* is still trusted, so gross
+operations. The agent's own risk _score_ is still trusted, so gross
 mis-scoring of a destructive op as low-risk could still slip through; categorical
 (rm -rf / .env / sudo) hard-blocks are future work.
 

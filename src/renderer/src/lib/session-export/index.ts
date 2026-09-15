@@ -36,11 +36,12 @@ export async function exportSessionHtml(
 }
 
 function suggestName(title: string, mode: string): string {
-  const slug = (title || 'session')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 48) || 'session';
+  const slug =
+    (title || 'session')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 48) || 'session';
   const date = new Date().toISOString().slice(0, 10);
   const modeSlug = MODE_SLUGS[mode as keyof typeof MODE_SLUGS] ?? mode;
   return `${slug}-${modeSlug}-${date}`;

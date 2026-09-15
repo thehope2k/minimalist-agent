@@ -30,22 +30,16 @@ export function FileViewModal({
   const viewerType = useMemo(() => getViewerType(absolutePath), [absolutePath]);
   const [showSource, setShowSource] = useState(false);
 
-  const { content, base64, loading, error } = useFileContent(
-    absolutePath,
-    viewerType,
-  );
+  const { content, base64, loading, error } = useFileContent(absolutePath, viewerType);
 
   const filename = basename(absolutePath);
-  const isImage =
-    viewerType === 'image-raster' || viewerType === 'image-svg';
+  const isImage = viewerType === 'image-raster' || viewerType === 'image-svg';
   const imageSrc = useMemo(() => {
     if (viewerType === 'image-raster') {
       return base64 ? `data:${getMimeType(absolutePath)};base64,${base64}` : '';
     }
     if (viewerType === 'image-svg') {
-      return content
-        ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(content)}`
-        : '';
+      return content ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(content)}` : '';
     }
     return '';
   }, [viewerType, base64, content, absolutePath]);
@@ -69,27 +63,21 @@ export function FileViewModal({
         )}
       </div>
 
-      {canCopyText && (
-        <CopyButton text={content ?? ''} className="shrink-0 opacity-100" />
-      )}
-      {canCopyImage && (
-        <CopyImageButton src={imageSrc} className="shrink-0 opacity-100" />
-      )}
+      {canCopyText && <CopyButton text={content ?? ''} className="shrink-0 opacity-100" />}
+      {canCopyImage && <CopyImageButton src={imageSrc} className="shrink-0 opacity-100" />}
 
       {/* Source toggle for markdown and HTML */}
-      {(viewerType === 'markdown' || viewerType === 'html') &&
-        !loading &&
-        !error && (
-          <button
-            type="button"
-            onClick={() => setShowSource((v) => !v)}
-            title={showSource ? 'Show rendered preview' : 'Show source'}
-            className="flex shrink-0 items-center gap-1.5 rounded px-2 py-1 text-[11px] text-fg-muted transition-colors hover:bg-elevated hover:text-fg"
-          >
-            <Code className="h-3.5 w-3.5" strokeWidth={1.75} />
-            {showSource ? 'Preview' : 'Source'}
-          </button>
-        )}
+      {(viewerType === 'markdown' || viewerType === 'html') && !loading && !error && (
+        <button
+          type="button"
+          onClick={() => setShowSource((v) => !v)}
+          title={showSource ? 'Show rendered preview' : 'Show source'}
+          className="flex shrink-0 items-center gap-1.5 rounded px-2 py-1 text-[11px] text-fg-muted transition-colors hover:bg-elevated hover:text-fg"
+        >
+          <Code className="h-3.5 w-3.5" strokeWidth={1.75} />
+          {showSource ? 'Preview' : 'Source'}
+        </button>
+      )}
     </div>
   );
 

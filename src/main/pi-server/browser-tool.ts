@@ -5,10 +5,7 @@
 // `browser_tool_result` (see protocol.ts and agent.ts's handleOutbound).
 
 import { Type } from 'typebox';
-import {
-  defineTool,
-  type ToolDefinition,
-} from '@earendil-works/pi-coding-agent';
+import { defineTool, type ToolDefinition } from '@earendil-works/pi-coding-agent';
 import type { MsgBrowserToolResult } from '../agent-runtime/pi/protocol';
 
 const browserToolSchema = Type.Object({
@@ -56,7 +53,12 @@ export function createBrowserTool(
       if (!command) {
         return {
           isError: true,
-          content: [{ type: 'text', text: 'browser_tool: empty command. Run "--help" for the command list.' }],
+          content: [
+            {
+              type: 'text',
+              text: 'browser_tool: empty command. Run "--help" for the command list.',
+            },
+          ],
         } as never;
       }
 
@@ -68,9 +70,9 @@ export function createBrowserTool(
         } as never;
       }
 
-      const content: Array<{ type: 'text'; text: string } | { type: 'image'; data: string; mimeType: string }> = [
-        { type: 'text', text: result.output },
-      ];
+      const content: Array<
+        { type: 'text'; text: string } | { type: 'image'; data: string; mimeType: string }
+      > = [{ type: 'text', text: result.output }];
       if (result.imageBase64 && result.imageMimeType) {
         content.push({ type: 'image', data: result.imageBase64, mimeType: result.imageMimeType });
       }

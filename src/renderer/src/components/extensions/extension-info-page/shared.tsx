@@ -16,13 +16,7 @@ export function KeyValueTable({ rows }: { rows: KeyValueRow[] }) {
   );
 }
 
-export function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
+export function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
       <div className="mb-2">

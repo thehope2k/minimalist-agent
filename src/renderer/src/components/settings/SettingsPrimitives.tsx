@@ -26,11 +26,7 @@ export function SettingsSection({
 }
 
 export function SettingsCard({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="overflow-hidden rounded-lg border border-border bg-panel">
-      {children}
-    </div>
-  );
+  return <div className="overflow-hidden rounded-lg border border-border bg-panel">{children}</div>;
 }
 
 export function SettingsDivider() {
@@ -74,9 +70,7 @@ export function SettingsToggle({
     <SettingsRow
       label={label}
       description={description}
-      control={
-        <Toggle value={checked} onChange={onCheckedChange} disabled={disabled} />
-      }
+      control={<Toggle value={checked} onChange={onCheckedChange} disabled={disabled} />}
     />
   );
 }

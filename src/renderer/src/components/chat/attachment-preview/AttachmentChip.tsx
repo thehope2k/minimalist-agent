@@ -4,7 +4,12 @@ import { cn } from '@/lib/utils';
 import type { DraftAttachment } from '@/lib/electron';
 import { ExpandModal } from '@/components/ui';
 
-export function AttachmentChip({ attachment, onRemove, disabled, excluded }: {
+export function AttachmentChip({
+  attachment,
+  onRemove,
+  disabled,
+  excluded,
+}: {
   attachment: DraftAttachment;
   onRemove: () => void;
   disabled?: boolean;
@@ -12,9 +17,8 @@ export function AttachmentChip({ attachment, onRemove, disabled, excluded }: {
 }) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const isImage = attachment.type === 'image';
-  const source = isImage && attachment.base64
-    ? `data:${attachment.mimeType};base64,${attachment.base64}`
-    : null;
+  const source =
+    isImage && attachment.base64 ? `data:${attachment.mimeType};base64,${attachment.base64}` : null;
 
   return (
     <div className="group relative shrink-0 select-none">
@@ -46,7 +50,11 @@ export function AttachmentChip({ attachment, onRemove, disabled, excluded }: {
           {lightboxOpen && source && (
             <ExpandModal title={attachment.name} onClose={() => setLightboxOpen(false)}>
               <div className="scroll-thin flex-1 overflow-auto p-4">
-                <img src={source} alt={attachment.name} className="mx-auto block max-w-full rounded" />
+                <img
+                  src={source}
+                  alt={attachment.name}
+                  className="mx-auto block max-w-full rounded"
+                />
               </div>
             </ExpandModal>
           )}
@@ -57,7 +65,10 @@ export function AttachmentChip({ attachment, onRemove, disabled, excluded }: {
             <FileBadgeIcon attachment={attachment} />
           </div>
           <div className="flex max-w-[140px] min-w-0 flex-col">
-            <span className="line-clamp-2 break-all text-xs font-medium text-fg" title={attachment.name}>
+            <span
+              className="line-clamp-2 break-all text-xs font-medium text-fg"
+              title={attachment.name}
+            >
               {attachment.name}
             </span>
             <span className="text-[10px] text-fg-subtle">{labelFor(attachment)}</span>
@@ -84,8 +95,12 @@ export function RemoveButton({ name, onRemove }: { name: string; onRemove: () =>
 }
 
 function FileBadgeIcon({ attachment }: { attachment: DraftAttachment }) {
-  if (attachment.type === 'pdf') return <FileText className="h-4 w-4 text-fg-muted" strokeWidth={1.75} />;
-  if (attachment.mimeType.startsWith('text/') || /\.(ts|tsx|js|jsx|py|go|rs|cpp|c|h|java|json|ya?ml|html|css|scss|md)$/i.test(attachment.name)) {
+  if (attachment.type === 'pdf')
+    return <FileText className="h-4 w-4 text-fg-muted" strokeWidth={1.75} />;
+  if (
+    attachment.mimeType.startsWith('text/') ||
+    /\.(ts|tsx|js|jsx|py|go|rs|cpp|c|h|java|json|ya?ml|html|css|scss|md)$/i.test(attachment.name)
+  ) {
     return <FileCode className="h-4 w-4 text-fg-muted" strokeWidth={1.75} />;
   }
   return <FileIcon className="h-4 w-4 text-fg-muted" strokeWidth={1.75} />;
@@ -93,7 +108,8 @@ function FileBadgeIcon({ attachment }: { attachment: DraftAttachment }) {
 
 function labelFor(attachment: DraftAttachment): string {
   if (attachment.type === 'pdf') return 'PDF';
-  if (attachment.mimeType.startsWith('image/')) return attachment.mimeType.split('/')[1].toUpperCase();
+  if (attachment.mimeType.startsWith('image/'))
+    return attachment.mimeType.split('/')[1].toUpperCase();
   const extension = attachment.name.split('.').pop();
   return extension ? extension.toUpperCase() : 'FILE';
 }

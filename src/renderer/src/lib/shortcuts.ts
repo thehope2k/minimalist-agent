@@ -21,8 +21,7 @@
 // covers any edge case (e.g. unit-test environments running under jsdom).
 export const IS_MAC = (() => {
   if (typeof navigator === 'undefined') return false;
-  const uad = (navigator as Navigator & { userAgentData?: { platform: string } })
-    .userAgentData;
+  const uad = (navigator as Navigator & { userAgentData?: { platform: string } }).userAgentData;
   if (uad?.platform) return uad.platform === 'macOS';
   return /Macintosh|MacIntel|MacPPC|Mac68K/.test(navigator.userAgent);
 })();
@@ -185,25 +184,75 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
     title: 'Side Panels',
     shortcuts: [
-      { macKeys: ['⌘', 'B'],       winKeys: ['Ctrl', 'B'],             label: 'Open / close file explorer',     condition: 'Filter input auto-focused on open' },
-      { macKeys: ['⌘', '⇧', 'B'],   winKeys: ['Ctrl', 'Shift', 'B'],    label: 'Open / close context panel',     condition: 'Shows available skills, agents, extensions for this session' },
-      { macKeys: ['⌘', 'T'],       winKeys: ['Ctrl', 'T'],             label: 'Open / close terminal panel' },
-      { macKeys: ['↑'],            winKeys: ['↑'],                     label: 'Move selection up',              condition: 'File explorer is open and focused' },
-      { macKeys: ['↓'],            winKeys: ['↓'],                     label: 'Move selection down',            condition: 'File explorer is open and focused' },
-      { macKeys: ['→'],            winKeys: ['→'],                     label: 'Expand folder',                  condition: 'Folder selected' },
-      { macKeys: ['←'],            winKeys: ['←'],                     label: 'Collapse folder',                condition: 'Folder selected' },
-      { macKeys: ['↵'],            winKeys: ['Enter'],                 label: 'Open file',                      condition: 'File selected' },
-      { macKeys: ['⌘', 'F'],       winKeys: ['Ctrl', 'F'],             label: 'Focus filter input',             condition: 'File explorer is open' },
-      { macKeys: ['Esc'],          winKeys: ['Esc'],                   label: 'Close file explorer',            condition: 'File explorer is open' },
+      {
+        macKeys: ['⌘', 'B'],
+        winKeys: ['Ctrl', 'B'],
+        label: 'Open / close file explorer',
+        condition: 'Filter input auto-focused on open',
+      },
+      {
+        macKeys: ['⌘', '⇧', 'B'],
+        winKeys: ['Ctrl', 'Shift', 'B'],
+        label: 'Open / close context panel',
+        condition: 'Shows available skills, agents, extensions for this session',
+      },
+      { macKeys: ['⌘', 'T'], winKeys: ['Ctrl', 'T'], label: 'Open / close terminal panel' },
+      {
+        macKeys: ['↑'],
+        winKeys: ['↑'],
+        label: 'Move selection up',
+        condition: 'File explorer is open and focused',
+      },
+      {
+        macKeys: ['↓'],
+        winKeys: ['↓'],
+        label: 'Move selection down',
+        condition: 'File explorer is open and focused',
+      },
+      { macKeys: ['→'], winKeys: ['→'], label: 'Expand folder', condition: 'Folder selected' },
+      { macKeys: ['←'], winKeys: ['←'], label: 'Collapse folder', condition: 'Folder selected' },
+      { macKeys: ['↵'], winKeys: ['Enter'], label: 'Open file', condition: 'File selected' },
+      {
+        macKeys: ['⌘', 'F'],
+        winKeys: ['Ctrl', 'F'],
+        label: 'Focus filter input',
+        condition: 'File explorer is open',
+      },
+      {
+        macKeys: ['Esc'],
+        winKeys: ['Esc'],
+        label: 'Close file explorer',
+        condition: 'File explorer is open',
+      },
     ],
   },
   {
     title: 'Terminal',
     shortcuts: [
-      { macKeys: ['⌘', '⇧', 'T'],   winKeys: ['Ctrl', 'Shift', 'T'], label: 'New terminal tab',          condition: 'Terminal panel is open' },
-      { macKeys: ['⌘', '⇧', 'W'],   winKeys: ['Ctrl', 'Shift', 'W'], label: 'Close active terminal tab', condition: 'Terminal panel is open' },
-      { macKeys: ['⌘', '←'],        winKeys: ['Ctrl', '←'],          label: 'Previous terminal tab',     condition: 'Terminal panel is open, focus not in a text field' },
-      { macKeys: ['⌘', '→'],        winKeys: ['Ctrl', '→'],          label: 'Next terminal tab',         condition: 'Terminal panel is open, focus not in a text field' },
+      {
+        macKeys: ['⌘', '⇧', 'T'],
+        winKeys: ['Ctrl', 'Shift', 'T'],
+        label: 'New terminal tab',
+        condition: 'Terminal panel is open',
+      },
+      {
+        macKeys: ['⌘', '⇧', 'W'],
+        winKeys: ['Ctrl', 'Shift', 'W'],
+        label: 'Close active terminal tab',
+        condition: 'Terminal panel is open',
+      },
+      {
+        macKeys: ['⌘', '←'],
+        winKeys: ['Ctrl', '←'],
+        label: 'Previous terminal tab',
+        condition: 'Terminal panel is open, focus not in a text field',
+      },
+      {
+        macKeys: ['⌘', '→'],
+        winKeys: ['Ctrl', '→'],
+        label: 'Next terminal tab',
+        condition: 'Terminal panel is open, focus not in a text field',
+      },
       {
         macKeys: ['↵'],
         winKeys: ['Enter'],
@@ -216,10 +265,30 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
         label: 'Cancel terminal tab rename',
         condition: 'Inline tab rename field is focused',
       },
-      { macKeys: ['⌘', '⇧', '↑'],   winKeys: ['Ctrl', 'Shift', '↑'], label: 'Expand terminal panel',     condition: 'Terminal panel is open, focus not in a text field' },
-      { macKeys: ['⌘', '⇧', '↓'],   winKeys: ['Ctrl', 'Shift', '↓'], label: 'Shrink terminal panel',     condition: 'Terminal panel is open, focus not in a text field' },
-      { macKeys: ['⌘', 'K'],        winKeys: ['Ctrl', 'K'],          label: 'Clear terminal',            condition: 'Terminal canvas has focus' },
-      { macKeys: ['⌘', 'F'],        winKeys: ['Ctrl', 'F'],          label: 'Find in terminal output',   condition: 'Terminal panel is open, focus not in a text field' },
+      {
+        macKeys: ['⌘', '⇧', '↑'],
+        winKeys: ['Ctrl', 'Shift', '↑'],
+        label: 'Expand terminal panel',
+        condition: 'Terminal panel is open, focus not in a text field',
+      },
+      {
+        macKeys: ['⌘', '⇧', '↓'],
+        winKeys: ['Ctrl', 'Shift', '↓'],
+        label: 'Shrink terminal panel',
+        condition: 'Terminal panel is open, focus not in a text field',
+      },
+      {
+        macKeys: ['⌘', 'K'],
+        winKeys: ['Ctrl', 'K'],
+        label: 'Clear terminal',
+        condition: 'Terminal canvas has focus',
+      },
+      {
+        macKeys: ['⌘', 'F'],
+        winKeys: ['Ctrl', 'F'],
+        label: 'Find in terminal output',
+        condition: 'Terminal panel is open, focus not in a text field',
+      },
     ],
   },
   {

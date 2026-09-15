@@ -56,10 +56,34 @@ export function GitLeftPanel(props: GitLeftPanelProps) {
     onSelectAmendFile,
   } = props;
 
-  if (statusLoading && !repos.length) return <div className="flex h-full items-center justify-center"><span className="text-xs text-fg-subtle">Loading…</span></div>;
-  if (statusError === 'no_cwd') return <div className="flex h-full items-center justify-center p-6"><p className="text-center text-xs text-fg-subtle">Set a working directory for this session to use git review</p></div>;
-  if (statusError === 'no_git_repos') return <div className="flex h-full items-center justify-center p-6"><p className="text-center text-xs text-fg-subtle">No git repositories found in this directory</p></div>;
-  if (statusError) return <div className="flex h-full items-center justify-center p-6"><p className="text-center text-xs text-red-400">{statusError}</p></div>;
+  if (statusLoading && !repos.length)
+    return (
+      <div className="flex h-full items-center justify-center">
+        <span className="text-xs text-fg-subtle">Loading…</span>
+      </div>
+    );
+  if (statusError === 'no_cwd')
+    return (
+      <div className="flex h-full items-center justify-center p-6">
+        <p className="text-center text-xs text-fg-subtle">
+          Set a working directory for this session to use git review
+        </p>
+      </div>
+    );
+  if (statusError === 'no_git_repos')
+    return (
+      <div className="flex h-full items-center justify-center p-6">
+        <p className="text-center text-xs text-fg-subtle">
+          No git repositories found in this directory
+        </p>
+      </div>
+    );
+  if (statusError)
+    return (
+      <div className="flex h-full items-center justify-center p-6">
+        <p className="text-center text-xs text-red-400">{statusError}</p>
+      </div>
+    );
 
   return (
     <>

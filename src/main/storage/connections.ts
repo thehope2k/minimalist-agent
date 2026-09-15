@@ -11,12 +11,7 @@
 
 import { Paths } from './paths';
 import { type FileSchema, load, save } from './json-store';
-import {
-  type Credential,
-  deleteCredential,
-  getCredential,
-  setCredential,
-} from './credentials';
+import { type Credential, deleteCredential, getCredential, setCredential } from './credentials';
 
 import type { OAuthProvider, ProviderType } from '../../shared/provider-types';
 export type { ProviderType };
@@ -184,10 +179,7 @@ export function updateConnectionModels(
     ...prev,
     models,
     modelsFetchedAt: fetchedAt,
-    defaultModel:
-      defaultStillValid || models.length === 0
-        ? prev.defaultModel
-        : models[0].id,
+    defaultModel: defaultStillValid || models.length === 0 ? prev.defaultModel : models[0].id,
   };
   d.connections[idx] = next;
   save(SCHEMA, d);
@@ -205,10 +197,7 @@ const MAX_CONNECTION_NAME_LENGTH = 100;
  * surface, and an empty or unbounded name would render as a blank, unclickable
  * row in the picker with no way to fix it from the UI.
  */
-export function renameConnection(
-  slug: string,
-  name: string,
-): ConnectionMeta | null {
+export function renameConnection(slug: string, name: string): ConnectionMeta | null {
   const trimmed = name.trim().slice(0, MAX_CONNECTION_NAME_LENGTH);
   if (!trimmed) return null;
   const d = load(SCHEMA);

@@ -220,7 +220,7 @@ function metaSchema(id: string): FileSchema<SessionMeta> {
       // v8 → v9: migrate 'ask' → 'auto' (breaking change).
       (prev) => {
         const session = prev as SessionMeta;
-        if (session.permissionMode === 'ask' as any) {
+        if (session.permissionMode === ('ask' as any)) {
           return { ...session, permissionMode: 'auto' };
         }
         return session;
@@ -271,7 +271,10 @@ export function listSessions(): SessionSummary[] {
       const meta = load(metaSchema(id));
       out.push({ ...meta, id });
     } catch (err) {
-      log.warn(`Skipping corrupt/unreadable session ${id}:`, err instanceof Error ? err.message : String(err));
+      log.warn(
+        `Skipping corrupt/unreadable session ${id}:`,
+        err instanceof Error ? err.message : String(err),
+      );
     }
   }
   return out.sort((a, b) => b.lastMessageAt - a.lastMessageAt);
@@ -336,10 +339,7 @@ export function createSession(opts?: {
  * Re-assign a session to a project (or Inbox if `projectId === null`).
  * Returns the updated meta.
  */
-export function setSessionProject(
-  id: string,
-  projectId: string | null,
-): SessionMeta {
+export function setSessionProject(id: string, projectId: string | null): SessionMeta {
   return updateSessionMeta(id, { projectId });
 }
 
@@ -379,10 +379,7 @@ export function appendMessage(id: string, msg: StoredMessage): void {
   const meta = load(metaSchema(id));
   meta.id = id;
   meta.lastMessageAt = msg.createdAt;
-  if (
-    msg.role === 'user' &&
-    (meta.title === 'New session' || meta.title.trim() === '')
-  ) {
+  if (msg.role === 'user' && (meta.title === 'New session' || meta.title.trim() === '')) {
     meta.title = makeTitle(msg.content);
   }
   save(metaSchema(id), meta);
@@ -440,7 +437,7 @@ export function rewriteMessages(id: string, messages: StoredMessage[]): void {
   const mp = messagesPath(id);
   const lines = messages.map((m) => JSON.stringify(m));
   writeFileSync(mp, lines.length ? lines.join('\n') + '\n' : '', 'utf-8');
-  
+
   // Update lastMessageAt from the last message's createdAt
   if (messages.length > 0) {
     const lastMsg = messages[messages.length - 1];
@@ -504,9 +501,15 @@ export function unpinAsset(sessionId: string, scopedSlug: string): SessionMeta {
 /** Resolves auth + model for the "Fork with context" branch-summarization
  *  call. Scoped to GitHub Copilot connections; returns undefined (falls
  *  back to a clean cutoff) on any resolution failure. */
-async function resolveForkSummarizer(
-  parentMeta: SessionMeta,
-): Promise<{ model: Model<Api>; apiKey: string | undefined; headers?: Record<string, string>; env?: Record<string, string> } | undefined> {
+async function resolveForkSummarizer(parentMeta: SessionMeta): Promise<
+  | {
+      model: Model<Api>;
+      apiKey: string | undefined;
+      headers?: Record<string, string>;
+      env?: Record<string, string>;
+    }
+  | undefined
+> {
   if (!parentMeta.connectionSlug || !parentMeta.model) return undefined;
   const conn = listConnections().find((c) => c.slug === parentMeta.connectionSlug);
   if (!conn || conn.providerType !== 'github-copilot') return undefined;
@@ -549,9 +552,7 @@ export async function branchSession(
   const now = Date.now();
 
   const parentTitle = parent.meta.title?.trim();
-  const title = parentTitle
-    ? `Branch: ${parentTitle}`.slice(0, 80)
-    : 'New session';
+  const title = parentTitle ? `Branch: ${parentTitle}`.slice(0, 80) : 'New session';
 
   const meta: SessionMeta = {
     id,
@@ -601,14 +602,13 @@ export async function branchSession(
  * No-op if the message id isn't found; returns the number of messages
  * remaining after truncation.
  */
-export function truncateMessagesFrom(
-  id: string,
-  firstDroppedId: string,
-): number {
+export function truncateMessagesFrom(id: string, firstDroppedId: string): number {
   ensureSessionDir(id);
   const mp = messagesPath(id);
   if (!existsSync(mp)) return 0;
-  const lines = readFileSync(mp, 'utf-8').split('\n').filter((l) => l.trim());
+  const lines = readFileSync(mp, 'utf-8')
+    .split('\n')
+    .filter((l) => l.trim());
   let cut = -1;
   for (let i = 0; i < lines.length; i++) {
     try {

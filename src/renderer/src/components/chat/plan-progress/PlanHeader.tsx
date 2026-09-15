@@ -19,9 +19,7 @@ export function PlanHeader({ plan, collapsed, onToggle }: PlanHeaderProps) {
     >
       <div className="flex items-center gap-2 flex-1 min-w-0">
         <span className="font-medium text-fg text-sm truncate">
-          {plan.task.length > 50
-            ? plan.task.substring(0, 50) + '...'
-            : plan.task}
+          {plan.task.length > 50 ? plan.task.substring(0, 50) + '...' : plan.task}
         </span>
         {plan.version > 1 && (
           <span className="text-xs px-1.5 py-0.5 rounded-full bg-accent/20 text-accent font-medium">

@@ -87,9 +87,7 @@ function extractText(children: ReactNode): string {
     'props' in (children as { props?: { children?: ReactNode } }) &&
     (children as { props?: { children?: ReactNode } }).props
   ) {
-    return extractText(
-      (children as { props: { children?: ReactNode } }).props.children,
-    );
+    return extractText((children as { props: { children?: ReactNode } }).props.children);
   }
   return '';
 }
@@ -122,10 +120,7 @@ const COMPONENTS: Components = {
 
     if (isInline) {
       return (
-        <code
-          {...rest}
-          className="rounded bg-elevated px-1 py-px font-mono text-[0.85em] text-fg"
-        >
+        <code {...rest} className="rounded bg-elevated px-1 py-px font-mono text-[0.85em] text-fg">
           {children}
         </code>
       );
@@ -168,14 +163,10 @@ const COMPONENTS: Components = {
     <thead className="bg-elevated/60 text-left text-fg-muted">{children}</thead>
   ),
   th: ({ children }) => (
-    <th className="border-b border-border px-3 py-1.5 font-medium">
-      {children}
-    </th>
+    <th className="border-b border-border px-3 py-1.5 font-medium">{children}</th>
   ),
   td: ({ children }) => (
-    <td className="border-b border-border/60 px-3 py-1.5 align-top">
-      {children}
-    </td>
+    <td className="border-b border-border/60 px-3 py-1.5 align-top">{children}</td>
   ),
 
   blockquote: ({ children }) => (
@@ -225,4 +216,7 @@ function MarkdownInner({ text, allowRawHtml = true }: MarkdownProps) {
  * cheap on huge inputs — assistant text-deltas would otherwise force a full
  * re-parse on every keystroke from the model.
  */
-export const Markdown = memo(MarkdownInner, (a, b) => a.text === b.text && a.allowRawHtml === b.allowRawHtml);
+export const Markdown = memo(
+  MarkdownInner,
+  (a, b) => a.text === b.text && a.allowRawHtml === b.allowRawHtml,
+);

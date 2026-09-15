@@ -7,7 +7,6 @@ Please **do not** open a public GitHub issue for security vulnerabilities.
 Send a report to: **nguyenthehop2000@gmail.com**  
 _(or use GitHub's [private vulnerability reporting](https://github.com/thehope2k/minimalist-agent/security/advisories/new) if enabled on the repo)_
 
-
 Include:
 
 - A description of the vulnerability and its potential impact
@@ -36,7 +35,7 @@ feature ever makes is a one-time model download on first use. See
 ## Scope
 
 | In scope                           | Out of scope                                                        |
-|------------------------------------|---------------------------------------------------------------------|
+| ---------------------------------- | ------------------------------------------------------------------- |
 | Credential leakage or exfiltration | Issues in `node_modules` dependencies (report upstream)             |
 | Privilege escalation via IPC       | UI cosmetic bugs                                                    |
 | OAuth flow bypasses                | Agent tool outputs (the agent runs with your permissions by design) |

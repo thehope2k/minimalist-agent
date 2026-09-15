@@ -127,9 +127,7 @@ export function useFileTree({ cwd, sessionId, isOpen, filterQuery }: UseFileTree
 
     const unloaded: FileTreeNode[] = [];
     collectUnloadedExpanded(tree, expandedPaths, loadedDirs.current, unloaded);
-    const toLoad = unloaded.filter(
-      (node) => !loadingDirs.current.has(node.absolutePath),
-    );
+    const toLoad = unloaded.filter((node) => !loadingDirs.current.has(node.absolutePath));
     if (toLoad.length === 0) return;
 
     let cancelled = false;

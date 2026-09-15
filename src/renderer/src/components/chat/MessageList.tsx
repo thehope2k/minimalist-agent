@@ -34,9 +34,10 @@ export function MessageList({
             onRetry={m.id === retriableId ? onRetry : undefined}
             isRetrying={m.id === retriableId && !!isStreaming}
             onContinue={onContinue}
-            onBranch={m.role === 'user' && !m.isStreaming && onBranch
-              ? (withContext) => onBranch(m.id, withContext)
-              : undefined
+            onBranch={
+              m.role === 'user' && !m.isStreaming && onBranch
+                ? (withContext) => onBranch(m.id, withContext)
+                : undefined
             }
             sessionId={sessionId}
             plan={getPlanForMessage?.(sessionId, m.id) ?? null}

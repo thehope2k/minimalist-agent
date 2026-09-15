@@ -129,7 +129,8 @@ interface DesktopPetProps {
 }
 
 export function DesktopPet({ isStreaming }: DesktopPetProps) {
-  const { baseState, reaction, reactionNonce, triggerClick, clearReaction } = usePetSignal(isStreaming);
+  const { baseState, reaction, reactionNonce, triggerClick, clearReaction } =
+    usePetSignal(isStreaming);
 
   const [x, setX] = useState(() => clampX(getAppSettings().petLastX ?? HORIZONTAL_MARGIN_PX));
   const [y, setY] = useState(() => clampY(getAppSettings().petLastY ?? restingY()));
@@ -191,18 +192,27 @@ export function DesktopPet({ isStreaming }: DesktopPetProps) {
 
   const displayState: PetBaseState = dashPhase || momentumActive ? 'walk' : baseState;
 
-  const gazeEnabled = (displayState === 'idle' || displayState === 'sit') && !isDragging && reaction === null;
+  const gazeEnabled =
+    (displayState === 'idle' || displayState === 'sit') && !isDragging && reaction === null;
   const gaze = useCursorGaze({ x: x + PET_WIDTH_PX / 2, y: y + PET_HEIGHT_PX / 2 }, gazeEnabled);
   const localGaze = { x: gaze.x * facing, y: gaze.y };
 
-  useMotionLoop(baseState === 'walk' && !dashPhase && !isDragging && !momentumActive, (deltaSec) => {
-    setX((current) => {
-      const { next, arrived } = stepToward(current, walkTargetRef.current, WALK_SPEED_PX_PER_SEC, deltaSec);
-      setFacing(walkTargetRef.current > current ? 1 : -1);
-      if (arrived) walkTargetRef.current = randomWalkTarget();
-      return next;
-    });
-  });
+  useMotionLoop(
+    baseState === 'walk' && !dashPhase && !isDragging && !momentumActive,
+    (deltaSec) => {
+      setX((current) => {
+        const { next, arrived } = stepToward(
+          current,
+          walkTargetRef.current,
+          WALK_SPEED_PX_PER_SEC,
+          deltaSec,
+        );
+        setFacing(walkTargetRef.current > current ? 1 : -1);
+        if (arrived) walkTargetRef.current = randomWalkTarget();
+        return next;
+      });
+    },
+  );
 
   useMotionLoop(dashPhase !== null && !isDragging, (deltaSec) => {
     const target = dashPhase === 'out' ? dashTargetXRef.current : dashHomeXRef.current;
@@ -215,7 +225,11 @@ export function DesktopPet({ isStreaming }: DesktopPetProps) {
   });
 
   useMotionLoop(momentumActive, (deltaSec) => {
-    const nextVelocity = applyFriction(velocityRef.current, MOMENTUM_FRICTION_RETAINED_PER_SEC, deltaSec);
+    const nextVelocity = applyFriction(
+      velocityRef.current,
+      MOMENTUM_FRICTION_RETAINED_PER_SEC,
+      deltaSec,
+    );
     velocityRef.current = nextVelocity;
 
     if (Math.abs(nextVelocity.vx) > FACING_FLIP_VELOCITY_THRESHOLD_PX_PER_SEC) {
@@ -254,7 +268,10 @@ export function DesktopPet({ isStreaming }: DesktopPetProps) {
 
   const handlePointerDown = (event: React.PointerEvent) => {
     event.currentTarget.setPointerCapture(event.pointerId);
-    dragPointerOffsetRef.current = { dx: event.clientX - xRef.current, dy: event.clientY - yRef.current };
+    dragPointerOffsetRef.current = {
+      dx: event.clientX - xRef.current,
+      dy: event.clientY - yRef.current,
+    };
     dragStartClientRef.current = { x: event.clientX, y: event.clientY };
     draggedBeyondThresholdRef.current = false;
     pointerHistoryRef.current = [{ x: event.clientX, y: event.clientY, timeMs: performance.now() }];

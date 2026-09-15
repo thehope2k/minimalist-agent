@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import { useCwd } from '@/contexts/CwdContext';
 import type { MessagePart } from '@/lib/chat';
 import { collectFileSummaries, type FileSummary } from './turn-summary';
-import { shortenPath, diffViewerStyles, DIFF_METHOD_WORDS, } from './diff-utils';
+import { shortenPath, diffViewerStyles, DIFF_METHOD_WORDS } from './diff-utils';
 import { DiffExpandModal, LazyDiffViewer } from './DiffExpandModal';
 import { WrittenView } from './WrittenView';
 
@@ -51,10 +51,7 @@ export function TurnSummaryCard({ parts }: { parts: MessagePart[] }) {
         className="inline-flex items-center gap-1.5 rounded border border-border/30 bg-panel/30 px-2 py-0.5 text-xs hover:bg-elevated/40 transition-colors text-fg-muted hover:text-fg"
       >
         <ChevronRight
-          className={cn(
-            'h-3 w-3 shrink-0 transition-transform',
-            cardOpen && 'rotate-90',
-          )}
+          className={cn('h-3 w-3 shrink-0 transition-transform', cardOpen && 'rotate-90')}
           strokeWidth={2}
         />
         <GitCommit className="h-3 w-3 shrink-0" strokeWidth={1.75} />
@@ -185,7 +182,9 @@ function FileRow({
             <WrittenView filePath={merged.filePath} content={merged.newValue} />
           ) : (
             <div className="scroll-thin overflow-x-auto bg-panel">
-              <Suspense fallback={<div className="h-16 animate-pulse rounded bg-elevated/40 m-4" />}>
+              <Suspense
+                fallback={<div className="h-16 animate-pulse rounded bg-elevated/40 m-4" />}
+              >
                 <LazyDiffViewer
                   oldValue={merged.oldValue}
                   newValue={merged.newValue}

@@ -1,5 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import { createServer, type IncomingHttpHeaders, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
+import {
+  createServer,
+  type IncomingHttpHeaders,
+  type IncomingMessage,
+  type Server,
+  type ServerResponse,
+} from 'node:http';
 import { Readable } from 'node:stream';
 import { createLogger } from '../logger';
 import { codeMieApiBase, codeMieCookieHeader, isLoopbackAddress } from './shared';
@@ -22,7 +28,8 @@ const proxies = new Map<string, ActiveProxy>();
 function requestHeaders(source: IncomingHttpHeaders, config: CodeMieProxyConfig): Headers {
   const headers = new Headers();
   for (const [name, value] of Object.entries(source)) {
-    if (typeof value === 'string' && !EXCLUDED_REQUEST_HEADERS.has(name.toLowerCase())) headers.set(name, value);
+    if (typeof value === 'string' && !EXCLUDED_REQUEST_HEADERS.has(name.toLowerCase()))
+      headers.set(name, value);
   }
   headers.set('Cookie', codeMieCookieHeader(config.cookies));
   headers.set('X-CodeMie-Request-ID', randomUUID());
@@ -33,16 +40,22 @@ function requestHeaders(source: IncomingHttpHeaders, config: CodeMieProxyConfig)
 }
 
 function responseHeaders(headers: Headers): Record<string, string> {
-  return Object.fromEntries([...headers].filter(([name]) => !EXCLUDED_RESPONSE_HEADERS.has(name.toLowerCase())));
+  return Object.fromEntries(
+    [...headers].filter(([name]) => !EXCLUDED_RESPONSE_HEADERS.has(name.toLowerCase())),
+  );
 }
 
 function requestBody(request: IncomingMessage): ReadableStream | undefined {
   return request.method === 'GET' || request.method === 'HEAD'
     ? undefined
-    : Readable.toWeb(request) as ReadableStream;
+    : (Readable.toWeb(request) as ReadableStream);
 }
 
-async function forwardRequest(slug: string, request: IncomingMessage, response: ServerResponse): Promise<void> {
+async function forwardRequest(
+  slug: string,
+  request: IncomingMessage,
+  response: ServerResponse,
+): Promise<void> {
   const proxy = proxies.get(slug);
   if (!proxy) throw new Error(`CodeMie proxy "${slug}" is unavailable.`);
   const upstream = await fetch(`${proxy.config.targetBaseUrl.replace(/\/+$/, '')}${request.url}`, {
@@ -83,7 +96,10 @@ async function startProxy(server: Server): Promise<string> {
   return `http://127.0.0.1:${address.port}`;
 }
 
-export async function ensureCodeMieProxy(slug: string, config: CodeMieProxyConfig): Promise<string> {
+export async function ensureCodeMieProxy(
+  slug: string,
+  config: CodeMieProxyConfig,
+): Promise<string> {
   const normalizedConfig = { ...config, targetBaseUrl: codeMieApiBase(config.targetBaseUrl) };
   const existing = proxies.get(slug);
   if (existing) {

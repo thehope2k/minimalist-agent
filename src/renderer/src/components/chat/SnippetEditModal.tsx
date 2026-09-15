@@ -24,7 +24,10 @@ export function SnippetEditModal({ attachment, onSave, onClose }: Props) {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.preventDefault(); onClose(); }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
@@ -97,8 +100,12 @@ export function SnippetEditModal({ attachment, onSave, onClose }: Props) {
             {content.split('\n').length} lines · Esc to cancel
           </span>
           <div className="flex gap-2">
-            <Button variant="ghost" onClick={onClose}>Cancel</Button>
-            <Button variant="primary" onClick={handleSave}>Save</Button>
+            <Button variant="ghost" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={handleSave}>
+              Save
+            </Button>
           </div>
         </div>
       </div>

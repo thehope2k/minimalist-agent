@@ -7,23 +7,27 @@ Full built-in terminal emulator with real PTY support — runs interactive proce
 ## Features
 
 **Multiple tabs**
+
 - `Cmd+Shift+T` — new tab
 - `Cmd+←/→` — switch tabs
 - `Cmd+Shift+W` — close tab
 - Double-click tab to rename
 
 **Panel control**
+
 - `Cmd+T` — toggle panel open/close
 - `Cmd+Shift+↑/↓` — resize panel (3% steps)
 - Panel state persists across restarts
 
 **Search & copy**
+
 - `Cmd+F` — in-terminal search with live highlighting
 - Copy-on-select (auto-copies selected text)
 - Right-click context menu (Copy / Paste / Clear)
 - `Cmd+K` — clear scrollback
 
 **Smart features**
+
 - Tab titles auto-show current folder when at shell prompt
 - URL `Cmd+Click` opens in system browser
 - 2 MB scrollback buffer per tab (persists when panel is closed)

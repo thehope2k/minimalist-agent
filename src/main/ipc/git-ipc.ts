@@ -37,7 +37,12 @@ export function registerGitIpc(): void {
       _e,
       args: {
         repoRoot: string;
-        files: Array<{ relativePath: string; absolutePath: string; status: string; content?: string }>;
+        files: Array<{
+          relativePath: string;
+          absolutePath: string;
+          status: string;
+          content?: string;
+        }>;
         message: string;
         amend?: boolean;
       },
@@ -90,7 +95,14 @@ export function registerGitIpc(): void {
     'git:generateCommitMessage',
     async (
       _e,
-      args: { connectionSlug: string; model?: string; diffContext: string; userContext?: string; sessionId?: string; cwd?: string },
+      args: {
+        connectionSlug: string;
+        model?: string;
+        diffContext: string;
+        userContext?: string;
+        sessionId?: string;
+        cwd?: string;
+      },
     ) => {
       try {
         const { resolveAuthForSlug } = await import('../auth/resolve');
@@ -128,10 +140,7 @@ export function registerGitIpc(): void {
 
   ipcMain.handle(
     'git:conflictContent',
-    async (
-      _e,
-      args: { repoRoot: string; relativePath: string; absolutePath: string },
-    ) => {
+    async (_e, args: { repoRoot: string; relativePath: string; absolutePath: string }) => {
       const { getConflictContent } = await import('../git/merge');
       return getConflictContent(args.repoRoot, args.relativePath, args.absolutePath);
     },
@@ -148,16 +157,10 @@ export function registerGitIpc(): void {
     },
   );
 
-  ipcMain.handle(
-    'git:abortOperation',
-    async (_e, args: { repoRoot: string; type: string }) => {
-      const { abortOperation } = await import('../git/merge');
-      return abortOperation(
-        args.repoRoot,
-        args.type as import('../git/merge').MergeOperationType,
-      );
-    },
-  );
+  ipcMain.handle('git:abortOperation', async (_e, args: { repoRoot: string; type: string }) => {
+    const { abortOperation } = await import('../git/merge');
+    return abortOperation(args.repoRoot, args.type as import('../git/merge').MergeOperationType);
+  });
 
   ipcMain.handle(
     'git:continueMerge',

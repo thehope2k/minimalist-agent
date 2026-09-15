@@ -30,7 +30,7 @@ const COPY: Record<
   metadata: {
     title: 'Edit metadata',
     subtitle:
-      "Describe the change — the agent will update the SKILL.md frontmatter and leave the body alone.",
+      'Describe the change — the agent will update the SKILL.md frontmatter and leave the body alone.',
     placeholder: 'Tighten the description to one sentence',
     intentTag: 'edit-skill-metadata',
     chipLabel: 'Edit metadata',
@@ -119,9 +119,7 @@ export function EditSkillDialog({
         </header>
 
         <div className="px-4 pt-4">
-          <h3 className="text-base font-medium text-fg">
-            What would you like to change?
-          </h3>
+          <h3 className="text-base font-medium text-fg">What would you like to change?</h3>
           <p className="mt-0.5 text-xs text-fg-subtle">{copy.subtitle}</p>
         </div>
 
@@ -138,9 +136,7 @@ export function EditSkillDialog({
         </div>
 
         <div className="px-4 pt-3 pb-1">
-          <p className="truncate font-mono text-[11px] text-fg-subtle">
-            → {skill.path}/SKILL.md
-          </p>
+          <p className="truncate font-mono text-[11px] text-fg-subtle">→ {skill.path}/SKILL.md</p>
         </div>
 
         <footer className="mt-3 flex items-center justify-end gap-2 border-t border-border/60 bg-elevated/30 px-4 py-3">

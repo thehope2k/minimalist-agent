@@ -57,23 +57,14 @@ export interface SubprocessHandle {
   /** turnId → event queue. */
   queues: Map<string, EventQueue>;
   /** turnId → permission context (mode + sessionId + cwd). */
-  permissionContext: Map<
-    string,
-    { mode: PermissionMode; sessionId: string; cwd?: string }
-  >;
+  permissionContext: Map<string, { mode: PermissionMode; sessionId: string; cwd?: string }>;
   /** turnId → the request's AbortSignal, so a mid-turn round-trip to main
    *  (e.g. an auth_refresh_request triggered by the subprocess) can be
    *  cancelled the moment the user hits Stop, not just bounded by a ceiling. */
   turnSignals: Map<string, AbortSignal>;
   /** RequestId → resolver for mini_completion / llm_query. */
-  pendingMini: Map<
-    string,
-    { resolve: (r: MsgMiniCompletionResult) => void }
-  >;
-  pendingLlm: Map<
-    string,
-    { resolve: (r: MsgLlmQueryResult) => void }
-  >;
+  pendingMini: Map<string, { resolve: (r: MsgMiniCompletionResult) => void }>;
+  pendingLlm: Map<string, { resolve: (r: MsgLlmQueryResult) => void }>;
   stderrBuffer: string[];
   /** The chat session this subprocess serves. */
   chatSessionId: string;

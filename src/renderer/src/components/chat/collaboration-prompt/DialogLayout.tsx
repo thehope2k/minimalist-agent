@@ -12,15 +12,24 @@ type Props = {
 /**
  * Shared dialog layout: overlay + panel + header + scrollable body + footer.
  */
-export function DialogLayout({ title, children, footer, onBackdropClick, onKeyDown, maxHeight = false }: Props) {
+export function DialogLayout({
+  title,
+  children,
+  footer,
+  onBackdropClick,
+  onKeyDown,
+  maxHeight = false,
+}: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" onKeyDown={onKeyDown}>
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         {...(onBackdropClick ? { onClick: onBackdropClick } : { 'aria-hidden': 'true' })}
       />
-      
-      <div className={`relative w-[min(640px,calc(100vw-32px))] ${maxHeight ? 'max-h-[85vh]' : ''} ${maxHeight ? 'flex flex-col' : ''} rounded-xl border border-border bg-panel shadow-2xl`}>
+
+      <div
+        className={`relative w-[min(640px,calc(100vw-32px))] ${maxHeight ? 'max-h-[85vh]' : ''} ${maxHeight ? 'flex flex-col' : ''} rounded-xl border border-border bg-panel shadow-2xl`}
+      >
         <div className="shrink-0 border-b border-border px-5 py-4">
           <h2 className="text-lg font-semibold text-fg">{title}</h2>
         </div>
@@ -29,9 +38,7 @@ export function DialogLayout({ title, children, footer, onBackdropClick, onKeyDo
           {children}
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-border px-5 py-4">
-          {footer}
-        </div>
+        <div className="flex justify-end gap-2 border-t border-border px-5 py-4">{footer}</div>
       </div>
     </div>
   );

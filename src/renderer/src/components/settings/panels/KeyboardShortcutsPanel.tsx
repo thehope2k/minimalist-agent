@@ -7,8 +7,8 @@ export function KeyboardShortcutsPanel() {
   return (
     <div className="mx-auto max-w-190 px-8 py-10">
       <p className="mb-8 text-sm text-fg-muted">
-        All keyboard shortcuts available in the app. Shortcut rebinding is not
-        yet supported — more shortcuts will appear here as features ship.
+        All keyboard shortcuts available in the app. Shortcut rebinding is not yet supported — more
+        shortcuts will appear here as features ship.
       </p>
 
       {SHORTCUT_GROUPS.map((group) => (
@@ -32,9 +32,7 @@ export function KeyboardShortcutsPanel() {
                       {shortcut.soon && <Badge variant="soon">Soon</Badge>}
                     </div>
                     {shortcut.condition && (
-                      <div className="mt-0.5 text-xs text-fg-subtle">
-                        {shortcut.condition}
-                      </div>
+                      <div className="mt-0.5 text-xs text-fg-subtle">{shortcut.condition}</div>
                     )}
                   </div>
 
@@ -55,15 +53,15 @@ function KeyChips({ keys }: { keys: string[] }) {
     <div className="flex shrink-0 items-center gap-1.5">
       {keys.map((key, i) => (
         <span key={i} className="flex items-center gap-1.5">
-          {i > 0 && (
-            <span className="text-[11px] text-fg-subtle select-none">+</span>
-          )}
-          <kbd className={
-            'inline-flex min-w-[2rem] items-center justify-center rounded-md ' +
-            'border border-border-strong bg-elevated-2 ' +
-            'px-2.5 py-1 font-mono text-[15px] font-semibold leading-none text-fg ' +
-            'shadow-[0_2px_0_0_rgba(0,0,0,0.4)]'
-          }>
+          {i > 0 && <span className="text-[11px] text-fg-subtle select-none">+</span>}
+          <kbd
+            className={
+              'inline-flex min-w-[2rem] items-center justify-center rounded-md ' +
+              'border border-border-strong bg-elevated-2 ' +
+              'px-2.5 py-1 font-mono text-[15px] font-semibold leading-none text-fg ' +
+              'shadow-[0_2px_0_0_rgba(0,0,0,0.4)]'
+            }
+          >
             {key}
           </kbd>
         </span>

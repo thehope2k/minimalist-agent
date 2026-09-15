@@ -33,7 +33,14 @@ type Props = {
   footer?: ReactNode;
 };
 
-export function Menu({ trigger, items, menuWidth = 192, open: openProp, onOpenChange, footer }: Props) {
+export function Menu({
+  trigger,
+  items,
+  menuWidth = 192,
+  open: openProp,
+  onOpenChange,
+  footer,
+}: Props) {
   const [openInternal, setOpenInternal] = useState(false);
   // If the parent passes `open`, use controlled mode; otherwise self-manage.
   const controlled = openProp !== undefined;
@@ -75,14 +82,10 @@ export function Menu({ trigger, items, menuWidth = 192, open: openProp, onOpenCh
                 className={cn(
                   'flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm transition-colors',
                   'hover:bg-elevated',
-                  item.variant === 'destructive'
-                    ? 'text-red-300 hover:text-red-200'
-                    : 'text-fg',
+                  item.variant === 'destructive' ? 'text-red-300 hover:text-red-200' : 'text-fg',
                 )}
               >
-                {item.icon && (
-                  <item.icon className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-                )}
+                {item.icon && <item.icon className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />}
                 <span className="flex-1 truncate">{item.label}</span>
               </button>
             ),
@@ -90,9 +93,7 @@ export function Menu({ trigger, items, menuWidth = 192, open: openProp, onOpenCh
           {footer && (
             <>
               <div className="my-1 h-px bg-border" />
-              <div className="px-2.5 py-1 text-[11px] leading-snug text-fg-subtle">
-                {footer}
-              </div>
+              <div className="px-2.5 py-1 text-[11px] leading-snug text-fg-subtle">{footer}</div>
             </>
           )}
         </Popover.Content>

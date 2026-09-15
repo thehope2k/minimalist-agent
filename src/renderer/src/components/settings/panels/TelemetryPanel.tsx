@@ -45,9 +45,7 @@ export function TelemetryPanel() {
   const update = (patch: Partial<TelemetrySettings>) => {
     const next = { ...settings, ...patch };
     setSettings(next);
-    void saveTelemetrySettings(next).then(() =>
-      getTracesPath().then(setTracesPath),
-    );
+    void saveTelemetrySettings(next).then(() => getTracesPath().then(setTracesPath));
   };
 
   if (!loaded) {
@@ -102,10 +100,7 @@ export function TelemetryPanel() {
             <>
               <SettingsDivider />
               <div className="px-4 py-3">
-                <Field
-                  label="Output file"
-                  hint={`Leave empty to use the default: ${tracesPath}`}
-                >
+                <Field label="Output file" hint={`Leave empty to use the default: ${tracesPath}`}>
                   <Input
                     mono
                     placeholder={tracesPath}

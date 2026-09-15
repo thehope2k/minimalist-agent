@@ -24,7 +24,7 @@ export function AttachmentPreview({
 
   return (
     <div className="scroll-thin flex gap-2 overflow-x-auto border-b border-border/50 px-3 py-2.5">
-      {attachments.map((attachment, index) => (
+      {attachments.map((attachment, index) =>
         attachment.type === 'snippet' ? (
           <SnippetAttachmentChip
             key={`${attachment.path}-${index}`}
@@ -41,8 +41,8 @@ export function AttachmentPreview({
             disabled={disabled}
             excluded={attachment.type === 'image' && !supportsVision}
           />
-        )
-      ))}
+        ),
+      )}
       {Array.from({ length: loadingCount }, (_, index) => (
         <LoadingChip key={`loading-${index}`} />
       ))}

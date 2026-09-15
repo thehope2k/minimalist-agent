@@ -9,6 +9,7 @@ Reusable agent configurations stored as `AGENT.md` files — spawn specialized s
 An agent definition system that lets you create, configure, and spawn specialized sub-agents for focused tasks. Each agent is a folder containing an `AGENT.md` file with YAML frontmatter (metadata) and markdown body (system prompt).
 
 **Key capabilities:**
+
 - **Global registry** — agents stored under `<userData>/agents/<slug>/` and available across all sessions
 - **UI management** — dedicated Agents panel with Build with AI flow for creating agents
 - **System prompt injection** — agent awareness block automatically injected into the main agent's system prompt
@@ -31,6 +32,7 @@ An agent definition system that lets you create, configure, and spawn specialize
 ```
 
 Each agent is a self-contained folder with:
+
 - **Required:** `AGENT.md` — YAML frontmatter + markdown body
 - **Optional:** `icon.{png,jpg,jpeg,webp,svg,gif}` — displayed in UI
 
@@ -40,12 +42,12 @@ Each agent is a self-contained folder with:
 
 ```markdown
 ---
-name: "Code Reviewer"
-description: "Performs comprehensive code reviews analyzing bugs, security vulnerabilities, performance issues, maintainability, and best practices."
-model: claude-haiku-4.5           # Optional: override session model
-tools: [Read, Grep, Find, Ls]     # Optional: restrict to specific tools
-maxTurns: 25                       # Optional: max turns (default: 10)
-permissionMode: plan               # Optional: 'plan' or 'auto'
+name: 'Code Reviewer'
+description: 'Performs comprehensive code reviews analyzing bugs, security vulnerabilities, performance issues, maintainability, and best practices.'
+model: claude-haiku-4.5 # Optional: override session model
+tools: [Read, Grep, Find, Ls] # Optional: restrict to specific tools
+maxTurns: 25 # Optional: max turns (default: 10)
+permissionMode: plan # Optional: 'plan' or 'auto'
 ---
 
 # Code Review Agent
@@ -67,6 +69,7 @@ You are a specialized code review agent. Your job is to analyze code for:
 ## Output Format
 
 Return findings as a structured report:
+
 - High-severity issues first
 - Include file path, line number, explanation
 - Suggest concrete fixes
@@ -77,10 +80,12 @@ Return findings as a structured report:
 ## Frontmatter Fields
 
 ### Required
+
 - **`name`** — Display name shown in UI
 - **`description`** — Brief summary used by the LLM to decide when to spawn this agent
 
 ### Optional
+
 - **`model`** — Model override (e.g., `claude-haiku-4.5`, `gpt-5.4-mini`, `gemini-3.5-flash`)
   - If omitted or set to `session-default`, inherits the session model
   - Use full model IDs only (short names like `haiku` will fail)
@@ -98,12 +103,14 @@ Return findings as a structured report:
 ## System Prompt (Body)
 
 The markdown content after the frontmatter is the **agent's system prompt** — instructions that define:
+
 - What the agent should do
 - How it should behave
 - What constraints or guidelines to follow
 - Expected output format
 
 **Tips:**
+
 - Be specific about the agent's role and responsibilities
 - Include step-by-step processes when applicable
 - Define output format clearly
@@ -159,6 +166,7 @@ Use the Agent tool to delegate focused tasks to specialized sub-agents when it i
 ### Spawning Behavior
 
 The main agent decides when to spawn a sub-agent based on:
+
 - Task description match
 - Agent's specialized capabilities
 - Available tools and model
@@ -169,18 +177,22 @@ The main agent decides when to spawn a sub-agent based on:
 ## Architecture
 
 **Storage:**
+
 - `src/main/agents/storage.ts` — load, cache, delete operations
 - `src/main/agents/parse.ts` — YAML frontmatter parsing + validation
 - `src/main/agents/types.ts` — TypeScript interfaces
 
 **System prompt:**
+
 - `src/main/agent/system-prompt.ts` — builds `<agents>` block from loaded agents
 
 **UI:**
+
 - `src/renderer/src/components/agents/AgentsPanel.tsx` — management UI
 - `src/renderer/src/components/agents/AgentInfoPage.tsx` — details view
 
 **Runtime integration:**
+
 - Custom `Agent` tool definition for GitHub Copilot and ChatGPT Plus connections
 - Nested sub-agent visibility in chat UI
 
@@ -189,36 +201,44 @@ The main agent decides when to spawn a sub-agent based on:
 ## Best Practices
 
 **1. Specific roles** — Make each agent focused on one type of task
+
 ```yaml
-✅ Good: "Analyzes code for security vulnerabilities"
-❌ Bad: "General purpose coding assistant"
+✅ Good: 'Analyzes code for security vulnerabilities'
+❌ Bad: 'General purpose coding assistant'
 ```
 
 **2. Clear constraints** — Define what the agent should and shouldn't do
+
 ```markdown
 ## Things to Avoid
+
 - Don't make assumptions about missing context
 - Don't run code or execute commands
 - Don't propose changes without explaining trade-offs
 ```
 
 **3. Tool restrictions** — Limit tools for safety and clarity
+
 ```yaml
-tools: [Read, Grep, Find]  # Read-only research agent
+tools: [Read, Grep, Find] # Read-only research agent
 ```
 
 **4. Output format** — Specify expected structure
+
 ```markdown
 ## Output Format
+
 Return findings as:
+
 1. Summary (2-3 sentences)
 2. Detailed findings (bullet list)
 3. Recommendations (numbered list)
 ```
 
 **5. Right-sized models** — Use cheaper/faster models when appropriate
+
 ```yaml
-model: claude-haiku-4.5  # Fast, cheap, good for code analysis
+model: claude-haiku-4.5 # Fast, cheap, good for code analysis
 ```
 
 ---

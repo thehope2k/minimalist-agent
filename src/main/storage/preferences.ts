@@ -39,8 +39,11 @@ const SCHEMA: FileSchema<UserPreferences> = {
     // replaced the structured {city, region, country} location with one
     // free-text field. Not worth preserving the old values — reset both.
     (prev) => {
-      const { timezone: _timezone, location: _location, ...rest } =
-        prev as UserPreferences & { timezone?: string };
+      const {
+        timezone: _timezone,
+        location: _location,
+        ...rest
+      } = prev as UserPreferences & { timezone?: string };
       return rest as UserPreferences;
     },
   ],
@@ -84,10 +87,7 @@ export const SUPPORTED_LANGUAGES: ReadonlyArray<{
 ];
 
 function languageNativeName(code: string): string {
-  return (
-    SUPPORTED_LANGUAGES.find((l) => l.code === code.toLowerCase())?.nativeName ??
-    code
-  );
+  return SUPPORTED_LANGUAGES.find((l) => l.code === code.toLowerCase())?.nativeName ?? code;
 }
 
 /**
@@ -113,11 +113,7 @@ export function formatPreferencesForPrompt(): string {
   const langCode = (prefs.language ?? 'en').toLowerCase();
   const langName = languageNativeName(langCode);
 
-  const hasAnything =
-    !!prefs.name ||
-    !!prefs.location ||
-    !!prefs.notes ||
-    langCode !== 'en';
+  const hasAnything = !!prefs.name || !!prefs.location || !!prefs.notes || langCode !== 'en';
 
   if (!hasAnything) return '';
 

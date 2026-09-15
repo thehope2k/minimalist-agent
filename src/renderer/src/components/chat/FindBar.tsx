@@ -122,8 +122,7 @@ export function FindBar({
   // "0 results" when query is non-empty but nothing matched; blank when query
   // is empty (no point showing "0 / 0" with an empty input).
   const showCounter = query.trim().length > 0;
-  const counterLabel =
-    matchCount === 0 ? 'No results' : `${activeIndex} / ${matchCount}`;
+  const counterLabel = matchCount === 0 ? 'No results' : `${activeIndex} / ${matchCount}`;
   const noResults = showCounter && matchCount === 0;
 
   return (
@@ -139,10 +138,7 @@ export function FindBar({
     >
       <div className="flex items-center gap-2 border-b border-border bg-panel px-3 py-2">
         {/* Search icon — decorative, not interactive. */}
-        <Search
-          className="size-3.5 shrink-0 text-fg-subtle"
-          aria-hidden
-        />
+        <Search className="size-3.5 shrink-0 text-fg-subtle" aria-hidden />
 
         {/* Query input — fills remaining space. placeholder nudges the user
             toward a search term without cluttering the bar when focused. */}

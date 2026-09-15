@@ -17,13 +17,13 @@ import {
 } from '../SettingsPrimitives';
 
 const RETENTION_OPTIONS = [
-  { value: '7',   label: '7 days',   description: 'One week' },
-  { value: '30',  label: '30 days',  description: 'One month' },
-  { value: '60',  label: '60 days',  description: 'Two months' },
-  { value: '90',  label: '90 days',  description: 'Three months' },
+  { value: '7', label: '7 days', description: 'One week' },
+  { value: '30', label: '30 days', description: 'One month' },
+  { value: '60', label: '60 days', description: 'Two months' },
+  { value: '90', label: '90 days', description: 'Three months' },
   { value: '180', label: '180 days', description: 'Six months' },
-  { value: '365', label: '1 year',   description: 'Twelve months' },
-  { value: '730', label: '2 years',  description: 'Twenty-four months' },
+  { value: '365', label: '1 year', description: 'Twelve months' },
+  { value: '730', label: '2 years', description: 'Twenty-four months' },
 ] as const;
 
 type RetentionValue = (typeof RETENTION_OPTIONS)[number]['value'];
@@ -43,9 +43,7 @@ export function AppPanel() {
   const toRetentionValue = (days: number | null | undefined): RetentionValue =>
     RETENTION_OPTIONS.find((o) => o.value === String(days))?.value ?? FALLBACK_RETENTION;
 
-  const [lastRetention, setLastRetention] = useState<RetentionValue>(
-    toRetentionValue(savedDays),
-  );
+  const [lastRetention, setLastRetention] = useState<RetentionValue>(toRetentionValue(savedDays));
 
   useEffect(() => {
     if (typeof savedDays === 'number') setLastRetention(toRetentionValue(savedDays));
@@ -167,19 +165,13 @@ export function AppPanel() {
         <SettingsCard>
           <SettingsRow
             label="Version"
-            control={
-              <span className="text-sm text-fg-subtle">{version ?? 'Loading…'}</span>
-            }
+            control={<span className="text-sm text-fg-subtle">{version ?? 'Loading…'}</span>}
           />
           <SettingsDivider />
           <SettingsRow
             label="Check for Updates"
             control={
-              <Button
-                variant="outline"
-                onClick={handleCheckUpdates}
-                loading={checking}
-              >
+              <Button variant="outline" onClick={handleCheckUpdates} loading={checking}>
                 {checking ? 'Checking…' : 'Check Now'}
               </Button>
             }

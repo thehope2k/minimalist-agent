@@ -30,7 +30,14 @@ export interface AgentToolContext {
   /** Base URL for custom endpoints (optional). */
   baseUrl?: string;
   /** Custom endpoint config (optional). */
-  customEndpoint?: { api: 'openai-completions' | 'anthropic-messages'; supportsImages?: boolean; contextWindow?: number; maxTokens?: number; reasoning?: boolean; thinkingFormat?: 'qwen' };
+  customEndpoint?: {
+    api: 'openai-completions' | 'anthropic-messages';
+    supportsImages?: boolean;
+    contextWindow?: number;
+    maxTokens?: number;
+    reasoning?: boolean;
+    thinkingFormat?: 'qwen';
+  };
   /** Permission mode inherited from parent session. */
   permissionMode: 'plan' | 'auto';
   /** Parent session's model (for resolving session-default). */

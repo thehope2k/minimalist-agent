@@ -11,9 +11,7 @@ interface FileTreeProps {
 
 export function FileTree({ nodes, loading }: FileTreeProps) {
   if (loading) {
-    return (
-      <div className="py-4 text-center text-xs text-fg-subtle">Loading…</div>
-    );
+    return <div className="py-4 text-center text-xs text-fg-subtle">Loading…</div>;
   }
 
   if (nodes.length === 0) {
@@ -129,9 +127,7 @@ function FileNode({
           {node.name}
         </span>
         {canPreview && (
-          <span className="text-[10px] text-accent/70">
-            {preview !== null ? 'hide' : 'view'}
-          </span>
+          <span className="text-[10px] text-accent/70">{preview !== null ? 'hide' : 'view'}</span>
         )}
         {!canPreview && !isImage && (
           <span className="text-[10px] text-fg-subtle">{formatSize(node.size)}</span>

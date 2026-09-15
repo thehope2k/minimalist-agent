@@ -1,22 +1,14 @@
-import {
-  Cog,
-  Keyboard,
-  Sparkles,
-  Folders,
-  SquareTerminal,
-  User,
-  Activity,
-} from 'lucide-react';
+import { Cog, Keyboard, Sparkles, Folders, SquareTerminal, User, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export const SETTINGS_CATEGORIES = [
-  { id: 'ai',          label: 'AI',          hint: 'Connections, defaults, compaction', icon: Sparkles },
-  { id: 'preferences', label: 'Preferences', hint: 'Profile, notes, Git commits',        icon: User },
-  { id: 'app',         label: 'App',         hint: 'App behavior, storage, updates',    icon: Cog },
-  { id: 'projects',    label: 'Projects',    hint: 'Session grouping and defaults',     icon: Folders },
-  { id: 'terminal',    label: 'Terminal',    hint: 'Shell, font, scrollback',           icon: SquareTerminal },
-  { id: 'telemetry',   label: 'Telemetry',   hint: 'Tracing, exporters, identity',      icon: Activity },
-  { id: 'shortcuts',   label: 'Shortcuts',   hint: 'Available keyboard shortcuts',      icon: Keyboard },
+  { id: 'ai', label: 'AI', hint: 'Connections, defaults, compaction', icon: Sparkles },
+  { id: 'preferences', label: 'Preferences', hint: 'Profile, notes, Git commits', icon: User },
+  { id: 'app', label: 'App', hint: 'App behavior, storage, updates', icon: Cog },
+  { id: 'projects', label: 'Projects', hint: 'Session grouping and defaults', icon: Folders },
+  { id: 'terminal', label: 'Terminal', hint: 'Shell, font, scrollback', icon: SquareTerminal },
+  { id: 'telemetry', label: 'Telemetry', hint: 'Tracing, exporters, identity', icon: Activity },
+  { id: 'shortcuts', label: 'Shortcuts', hint: 'Available keyboard shortcuts', icon: Keyboard },
 ] as const;
 
 export type SettingsCategory = (typeof SETTINGS_CATEGORIES)[number]['id'];
@@ -43,16 +35,11 @@ export function SettingsCategoriesPanel({ active, onChange }: Props) {
                 onClick={() => onChange(id)}
                 className={cn(
                   'flex items-start gap-3 rounded-md px-2.5 py-2 text-left transition-colors',
-                  isActive
-                    ? 'bg-elevated-2 ring-1 ring-border-strong'
-                    : 'hover:bg-elevated/70',
+                  isActive ? 'bg-elevated-2 ring-1 ring-border-strong' : 'hover:bg-elevated/70',
                 )}
               >
                 <Icon
-                  className={cn(
-                    'mt-0.5 h-4 w-4 shrink-0',
-                    isActive ? 'text-fg' : 'text-fg-muted',
-                  )}
+                  className={cn('mt-0.5 h-4 w-4 shrink-0', isActive ? 'text-fg' : 'text-fg-muted')}
                   strokeWidth={1.75}
                 />
                 <div className="min-w-0 flex-1">

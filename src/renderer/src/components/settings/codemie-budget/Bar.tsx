@@ -30,9 +30,14 @@ export function CodeMieBudgetBar({ connectionSlug }: { connectionSlug: string })
         {reset && <span className="text-fg-subtle">Resets {reset}</span>}
       </div>
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-elevated-2">
-        <div className={`h-full rounded-full transition-all duration-300 ${barColor(usedPercent)}`} style={{ width: `${filledPercent}%` }} />
+        <div
+          className={`h-full rounded-full transition-all duration-300 ${barColor(usedPercent)}`}
+          style={{ width: `${filledPercent}%` }}
+        />
       </div>
-      <span className={`text-xs ${usedPercent >= 90 ? 'text-red-400' : usedPercent >= 75 ? 'text-orange-400' : 'text-fg-subtle'}`}>
+      <span
+        className={`text-xs ${usedPercent >= 90 ? 'text-red-400' : usedPercent >= 75 ? 'text-orange-400' : 'text-fg-subtle'}`}
+      >
         {Math.round(usedPercent)}% of CodeMie budget used
       </span>
     </div>

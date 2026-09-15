@@ -172,7 +172,10 @@ export function attributeContextDelta(
 
   const pendingToolIndices: number[] = [];
   for (let i = sinceIndex; i < parts.length; i++) {
-    if (parts[i].kind === 'tool' && (parts[i] as Extract<MessagePart, { kind: 'tool' }>).contextDelta === undefined) {
+    if (
+      parts[i].kind === 'tool' &&
+      (parts[i] as Extract<MessagePart, { kind: 'tool' }>).contextDelta === undefined
+    ) {
       pendingToolIndices.push(i);
     }
   }
@@ -239,9 +242,7 @@ export function chatToStored(msg: ChatMessage): StoredMessage {
     id: msg.id,
     role: msg.role,
     content: partsToContent(msg.parts),
-    parts: msg.parts.length
-      ? msg.parts.map((p) => p as StoredMessagePart)
-      : undefined,
+    parts: msg.parts.length ? msg.parts.map((p) => p as StoredMessagePart) : undefined,
     model: msg.model,
     error: msg.error,
     errorInfo: msg.errorInfo,

@@ -94,10 +94,7 @@ export function revealInFinder(dirPath: string): Promise<void> {
   return window.api.extensions.revealInFinder(dirPath);
 }
 
-export function validate(
-  dirPath: string,
-  slug: string,
-): Promise<{ ok: boolean; report: string }> {
+export function validate(dirPath: string, slug: string): Promise<{ ok: boolean; report: string }> {
   return window.api.extensions.validate(dirPath, slug);
 }
 
@@ -131,4 +128,3 @@ export function hasCredentials(ext: LoadedExtension): boolean {
   if (!ext.config.env) return false;
   return Object.values(ext.config.env).some((v) => typeof v !== 'string');
 }
-

@@ -9,10 +9,8 @@ export function useAttachmentImage(att: StoredAttachment, open: boolean) {
   // Prefer the persisted thumbnail/resized base64. If neither survived (older
   // sessions), fall back to reading bytes off disk on mount.
   const [src, setSrc] = useState<string | null>(() => {
-    if (att.thumbnailBase64)
-      return `data:image/png;base64,${att.thumbnailBase64}`;
-    if (att.resizedBase64)
-      return `data:${att.mimeType};base64,${att.resizedBase64}`;
+    if (att.thumbnailBase64) return `data:image/png;base64,${att.thumbnailBase64}`;
+    if (att.resizedBase64) return `data:${att.mimeType};base64,${att.resizedBase64}`;
     return null;
   });
   const [fullSrc, setFullSrc] = useState<string | null>(null);

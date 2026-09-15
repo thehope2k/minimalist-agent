@@ -23,14 +23,8 @@ export function SearchModal({ cwd, onClose, onOpenFile }: SearchModalProps) {
   const { grepResults, grepLoading } = useGrepSearch(cwd, query);
 
   // Results + keyboard navigation
-  const {
-    filteredFiles,
-    items,
-    activeIdx,
-    mouseMovedRef,
-    setActiveIdx,
-    handleKeyDown,
-  } = useSearchResults(fileResults, grepResults, query);
+  const { filteredFiles, items, activeIdx, mouseMovedRef, setActiveIdx, handleKeyDown } =
+    useSearchResults(fileResults, grepResults, query);
 
   // Autofocus input
   useEffect(() => {
@@ -51,9 +45,7 @@ export function SearchModal({ cwd, onClose, onOpenFile }: SearchModalProps) {
 
   // Scroll active row into view
   useEffect(() => {
-    const el = listRef.current?.querySelector<HTMLElement>(
-      `[data-idx="${activeIdx}"]`,
-    );
+    const el = listRef.current?.querySelector<HTMLElement>(`[data-idx="${activeIdx}"]`);
     el?.scrollIntoView({ block: 'nearest' });
   }, [activeIdx]);
 
@@ -89,9 +81,7 @@ export function SearchModal({ cwd, onClose, onOpenFile }: SearchModalProps) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => handleKeyDown(e, openItem)}
-            placeholder={
-              cwd ? 'Search files and content…' : 'No working directory set'
-            }
+            placeholder={cwd ? 'Search files and content…' : 'No working directory set'}
             disabled={noCwd}
             spellCheck={false}
             autoComplete="off"
@@ -117,9 +107,7 @@ export function SearchModal({ cwd, onClose, onOpenFile }: SearchModalProps) {
           }}
         >
           {noCwd ? (
-            <EmptyHint>
-              Set a working directory for this session to use Search
-            </EmptyHint>
+            <EmptyHint>Set a working directory for this session to use Search</EmptyHint>
           ) : (
             <>
               {/* Files section */}
@@ -175,9 +163,7 @@ export function SearchModal({ cwd, onClose, onOpenFile }: SearchModalProps) {
               {noResults && !grepLoading && hasQuery && (
                 <EmptyHint>No results for &ldquo;{query}&rdquo;</EmptyHint>
               )}
-              {noResults && !hasQuery && (
-                <EmptyHint>Type to search files and content</EmptyHint>
-              )}
+              {noResults && !hasQuery && <EmptyHint>Type to search files and content</EmptyHint>}
             </>
           )}
         </div>

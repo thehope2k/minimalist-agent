@@ -42,7 +42,9 @@ export function GitFileList({
 
   useEffect(() => {
     setCollapsedRoots((previous) => {
-      const next = new Set([...previous].filter((root) => repos.some((repo) => repo.root === root)));
+      const next = new Set(
+        [...previous].filter((root) => repos.some((repo) => repo.root === root)),
+      );
       if (selected?.repoRoot) next.delete(selected.repoRoot);
       return next;
     });
@@ -59,9 +61,10 @@ export function GitFileList({
       const index = selected
         ? visibleFiles.findIndex((file) => file.absolutePath === selected.absolutePath)
         : -1;
-      const next = event.key === 'ArrowDown'
-        ? Math.min(visibleFiles.length - 1, index + 1)
-        : Math.max(0, index - 1);
+      const next =
+        event.key === 'ArrowDown'
+          ? Math.min(visibleFiles.length - 1, index + 1)
+          : Math.max(0, index - 1);
       if (visibleFiles[next]) onSelect(visibleFiles[next]);
     };
     element.addEventListener('keydown', handler);
@@ -77,7 +80,11 @@ export function GitFileList({
   }
 
   return (
-    <div ref={containerRef} tabIndex={0} className="scroll-thin flex h-full flex-col overflow-y-auto outline-none">
+    <div
+      ref={containerRef}
+      tabIndex={0}
+      className="scroll-thin flex h-full flex-col overflow-y-auto outline-none"
+    >
       {repos.map((repo, index) => (
         <RepoSection
           key={repo.root}

@@ -1,11 +1,6 @@
 import { CheckCircle2, FolderOpen, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { IconButton, Menu, type MenuItem } from '../ui';
-import {
-  deleteAgent,
-  openInEditor,
-  revealInFinder,
-  validate,
-} from '@/lib/agents';
+import { deleteAgent, openInEditor, revealInFinder, validate } from '@/lib/agents';
 import type { LoadedAgent } from '@/lib/electron';
 
 type Props = {
@@ -15,12 +10,7 @@ type Props = {
   onOpenChange?: (open: boolean) => void;
 };
 
-export function AgentMenu({
-  agent,
-  onAfterDelete,
-  variant = 'panel',
-  onOpenChange,
-}: Props) {
+export function AgentMenu({ agent, onAfterDelete, variant = 'panel', onOpenChange }: Props) {
   const handleOpen = () => void openInEditor(agent.path);
   const handleReveal = () => void revealInFinder(agent.path);
 
@@ -66,9 +56,7 @@ export function AgentMenu({
           label="More"
           size="sm"
           className={
-            variant === 'panel'
-              ? 'bg-elevated/80 hover:bg-elevated-2'
-              : 'hover:bg-elevated'
+            variant === 'panel' ? 'bg-elevated/80 hover:bg-elevated-2' : 'hover:bg-elevated'
           }
         />
       }

@@ -45,7 +45,10 @@ export function isAllowedShell(shell: string): boolean {
   if (process.platform === 'win32') {
     const b = shell.toLowerCase();
     return list.some(
-      (s) => b === s.toLowerCase() || b.endsWith(`\\${s.toLowerCase()}`) || b.endsWith(`/${s.toLowerCase()}`),
+      (s) =>
+        b === s.toLowerCase() ||
+        b.endsWith(`\\${s.toLowerCase()}`) ||
+        b.endsWith(`/${s.toLowerCase()}`),
     );
   }
   return list.includes(shell);
@@ -80,9 +83,7 @@ const SECRET_ENV_RE =
   /(SECRET|PASSWORD|PASSWD|TOKEN|CREDENTIAL|APIKEY|API[_-]?KEY|ACCESS[_-]?KEY|PRIVATE[_-]?KEY|_KEY$)/i;
 
 /** Copy of `env` with credential-shaped variables removed. */
-export function scrubTerminalEnv(
-  env: NodeJS.ProcessEnv = process.env,
-): Record<string, string> {
+export function scrubTerminalEnv(env: NodeJS.ProcessEnv = process.env): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [name, value] of Object.entries(env)) {
     if (value === undefined) continue;

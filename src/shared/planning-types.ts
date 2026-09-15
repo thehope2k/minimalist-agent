@@ -1,6 +1,6 @@
 /**
  * Planning workflow types for multi-phase task execution.
- * 
+ *
  * Enables agents to break complex tasks into sequential phases,
  * track progress, and adapt plans based on discoveries.
  */
@@ -202,16 +202,19 @@ export const PlanSchema = z.object({
  */
 export const CreatePlanInputSchema = z.object({
   task: z.string().min(1, 'Task cannot be empty'),
-  phases: z.array(
-    z.object({
-      name: z.string().min(1, 'Phase name cannot be empty'),
-      description: z.string().min(1, 'Phase description cannot be empty'),
-      actions: z.array(z.string()).min(1, 'Phase must have at least one action'),
-      estimated_risk: z.number().int().min(0).max(100),
-      is_safe: z.boolean(),
-      risk_reason: z.string().optional(),
-    })
-  ).min(1, 'Plan must have at least one phase').max(20, 'Too many phases (max 20)'),
+  phases: z
+    .array(
+      z.object({
+        name: z.string().min(1, 'Phase name cannot be empty'),
+        description: z.string().min(1, 'Phase description cannot be empty'),
+        actions: z.array(z.string()).min(1, 'Phase must have at least one action'),
+        estimated_risk: z.number().int().min(0).max(100),
+        is_safe: z.boolean(),
+        risk_reason: z.string().optional(),
+      }),
+    )
+    .min(1, 'Plan must have at least one phase')
+    .max(20, 'Too many phases (max 20)'),
   reasoning: z.string().min(1, 'Reasoning cannot be empty'),
 });
 
@@ -230,16 +233,19 @@ export const ReportPhaseProgressInputSchema = z.object({
  */
 export const RevisePlanInputSchema = z.object({
   reason: z.string().min(1, 'Reason cannot be empty'),
-  revised_phases: z.array(
-    z.object({
-      name: z.string().min(1, 'Phase name cannot be empty'),
-      description: z.string().min(1, 'Phase description cannot be empty'),
-      actions: z.array(z.string()).min(1, 'Phase must have at least one action'),
-      estimated_risk: z.number().int().min(0).max(100),
-      is_safe: z.boolean(),
-      risk_reason: z.string().optional(),
-    })
-  ).min(1, 'Revised plan must have at least one phase').max(20, 'Too many phases (max 20)'),
+  revised_phases: z
+    .array(
+      z.object({
+        name: z.string().min(1, 'Phase name cannot be empty'),
+        description: z.string().min(1, 'Phase description cannot be empty'),
+        actions: z.array(z.string()).min(1, 'Phase must have at least one action'),
+        estimated_risk: z.number().int().min(0).max(100),
+        is_safe: z.boolean(),
+        risk_reason: z.string().optional(),
+      }),
+    )
+    .min(1, 'Revised plan must have at least one phase')
+    .max(20, 'Too many phases (max 20)'),
   changes_summary: z.string().min(1, 'Changes summary cannot be empty'),
 });
 

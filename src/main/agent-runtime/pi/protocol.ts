@@ -30,13 +30,7 @@ export interface RuntimeAuth {
 /** Permission modes as the renderer expresses them. */
 export type PermissionMode = 'plan' | 'auto';
 
-export type ThinkingLevel =
-  | 'off'
-  | 'low'
-  | 'medium'
-  | 'high'
-  | 'xhigh'
-  | 'max';
+export type ThinkingLevel = 'off' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
 /**
  * Fully-resolved MCP server config crossing main→subprocess. Mirror of

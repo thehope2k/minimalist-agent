@@ -8,12 +8,14 @@
 ## Problem Solved
 
 **Before:** Multiple sub-agents running in parallel on the same project caused deadlocks:
+
 - Maven lock conflicts (`mvn dependency:tree` × 4 agents)
 - npm lock conflicts (`package-lock.json`)
 - Git operation conflicts
 - **Result:** 5-minute timeout, agents failed
 
 **After:** Each agent runs in an isolated git worktree:
+
 - Complete file system isolation
 - Zero lock conflicts
 - Full parallelism maintained
@@ -91,6 +93,7 @@ Session 2: /Users/you/workspace/project-b  (→ agents get worktrees ✅)
 ```
 
 **Not recommended:** Opening session at workspace level `/Users/you/workspace` means:
+
 - Agents share one directory (no isolation)
 - File lock conflicts return
 - Worktree isolation disabled
@@ -113,6 +116,7 @@ gradle.properties
 ```
 
 **If no `.worktreeinclude` exists**, sensible defaults are used:
+
 - `.env`, `.env.local`
 - `.npmrc`
 - `.mvn/settings.xml`
@@ -135,6 +139,7 @@ See [`.worktreeinclude.example`](./.worktreeinclude.example) for a complete temp
 ### During Execution
 
 Each agent logs its isolated workspace:
+
 ```
 [agent-tool:agent-abc123] Running in isolated worktree: /path/to/worktree
 ```
@@ -142,12 +147,14 @@ Each agent logs its isolated workspace:
 ### After Completion
 
 **Clean worktree (no changes):**
+
 ```
 [worktree] Removing clean worktree agent-abc123
 [worktree] Cleaned up agent-abc123
 ```
 
 **Modified worktree:**
+
 ```
 [worktree] Keeping agent-def456 (has uncommitted changes)
 ```
@@ -156,11 +163,11 @@ Each agent logs its isolated workspace:
 
 ## Fallback Behavior
 
-| Scenario | Behavior |
-|----------|----------|
-| **Git repository** | ✅ Creates worktree, full isolation |
-| **Non-git directory** | ⚠️ Falls back to shared CWD, logs warning |
-| **No git installed** | ⚠️ Logs warning at startup, all agents share CWD |
+| Scenario              | Behavior                                         |
+| --------------------- | ------------------------------------------------ |
+| **Git repository**    | ✅ Creates worktree, full isolation              |
+| **Non-git directory** | ⚠️ Falls back to shared CWD, logs warning        |
+| **No git installed**  | ⚠️ Logs warning at startup, all agents share CWD |
 
 ---
 
@@ -181,6 +188,7 @@ cd ~/Workspaces/png/SKII-SMP-CAM-BFF
 ```
 
 **Expected Result:**
+
 - ✅ All 4 agents spawn simultaneously
 - ✅ Each creates a worktree (check: `ls .minimalist-agent/worktrees/`)
 - ✅ All run `mvn dependency:tree` without deadlock
@@ -207,12 +215,12 @@ git worktree remove .minimalist-agent/worktrees/agent-*
 
 ## Performance
 
-| Metric | Value |
-|--------|-------|
-| **Parallelism** | 4× faster for 4 agents (2 min vs 8 min sequential) |
-| **Worktree creation** | ~1-2 seconds |
-| **Disk usage per worktree** | ~10-50 MB (project dependent) |
-| **Cleanup** | <1 second, automatic |
+| Metric                      | Value                                              |
+| --------------------------- | -------------------------------------------------- |
+| **Parallelism**             | 4× faster for 4 agents (2 min vs 8 min sequential) |
+| **Worktree creation**       | ~1-2 seconds                                       |
+| **Disk usage per worktree** | ~10-50 MB (project dependent)                      |
+| **Cleanup**                 | <1 second, automatic                               |
 
 ---
 
@@ -221,7 +229,7 @@ git worktree remove .minimalist-agent/worktrees/agent-*
 ✅ **Problem:** Parallel agents deadlocked on resource locks  
 ✅ **Solution:** Git worktree isolation per agent  
 ✅ **Result:** Full parallelism, zero conflicts, 4× faster  
-✅ **UX:** Automatic, zero configuration, production ready  
+✅ **UX:** Automatic, zero configuration, production ready
 
 The feature is complete and ready for production use.
 

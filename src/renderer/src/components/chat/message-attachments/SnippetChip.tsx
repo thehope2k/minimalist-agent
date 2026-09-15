@@ -30,9 +30,7 @@ export function SnippetChip({ att }: SnippetChipProps) {
           <FileCode className="h-3.5 w-3.5 text-accent" strokeWidth={1.75} />
         </div>
         <div className="flex min-w-0 flex-col">
-          <span className="line-clamp-1 break-all text-xs font-medium text-fg">
-            {att.name}
-          </span>
+          <span className="line-clamp-1 break-all text-xs font-medium text-fg">{att.name}</span>
           <span className="text-[10px] text-fg-subtle">
             {badge} · {lines} line{lines !== 1 ? 's' : ''}
           </span>

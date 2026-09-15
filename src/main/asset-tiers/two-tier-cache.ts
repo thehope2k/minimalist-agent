@@ -32,10 +32,7 @@ export function createTwoTierCache<T>(ttlMs: number): TwoTierCache<T> {
 }
 
 /** Merge user + project items by slug; project entries win on collision. */
-export function mergeTiers<T extends { slug: string }>(
-  userItems: T[],
-  projectItems: T[],
-): T[] {
+export function mergeTiers<T extends { slug: string }>(userItems: T[], projectItems: T[]): T[] {
   const bySlug = new Map<string, T>();
   for (const item of userItems) bySlug.set(item.slug, item);
   for (const item of projectItems) bySlug.set(item.slug, item);

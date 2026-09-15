@@ -7,8 +7,7 @@ let cached: string | null = null;
 
 export function homedir(): string {
   if (cached !== null) return cached;
-  cached =
-    (typeof window !== 'undefined' && window.env?.homedir) || '';
+  cached = (typeof window !== 'undefined' && window.env?.homedir) || '';
   return cached;
 }
 

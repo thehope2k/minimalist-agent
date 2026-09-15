@@ -1,7 +1,15 @@
 import { useState } from 'react';
 import {
-  Archive, ArchiveRestore, CheckCircle2, Circle,
-  FolderOpen, Inbox, MoreHorizontal, Pencil, Sparkles, Trash2,
+  Archive,
+  ArchiveRestore,
+  CheckCircle2,
+  Circle,
+  FolderOpen,
+  Inbox,
+  MoreHorizontal,
+  Pencil,
+  Sparkles,
+  Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -43,10 +51,13 @@ export function SessionRow({
   const [renameValue, setRenameValue] = useState('');
   const [regenerating, setRegenerating] = useState(false);
   const project = session.projectId
-    ? projects.find((p) => p.id === session.projectId) ?? null
+    ? (projects.find((p) => p.id === session.projectId) ?? null)
     : null;
 
-  const handleRename = () => { setRenameValue(session.title); setRenaming(true); };
+  const handleRename = () => {
+    setRenameValue(session.title);
+    setRenaming(true);
+  };
   const commitRename = async () => {
     setRenaming(false);
     const trimmed = renameValue.trim();
@@ -65,9 +76,13 @@ export function SessionRow({
   const handleReveal = () => void window.api.sessions.revealInFolder(session.id);
   const handleRegenerateTitle = async () => {
     setRegenerating(true);
-    try { await regenerateSessionTitle(session.id); }
-    catch (e) { window.alert(e instanceof Error ? e.message : 'Failed to regenerate title.'); }
-    finally { setRegenerating(false); }
+    try {
+      await regenerateSessionTitle(session.id);
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'Failed to regenerate title.');
+    } finally {
+      setRegenerating(false);
+    }
   };
   const handleMoveTo = async (projectId: string | null) => {
     await setSessionProject(session.id, projectId);
@@ -75,7 +90,11 @@ export function SessionRow({
 
   const items: Array<MenuItem | 'separator'> = [
     { label: 'Rename', icon: Pencil, onSelect: handleRename },
-    { label: regenerating ? 'Regenerating…' : 'Regenerate title', icon: Sparkles, onSelect: handleRegenerateTitle },
+    {
+      label: regenerating ? 'Regenerating…' : 'Regenerate title',
+      icon: Sparkles,
+      onSelect: handleRegenerateTitle,
+    },
     {
       label: session.archived ? 'Restore' : 'Archive',
       icon: session.archived ? ArchiveRestore : Archive,
@@ -96,26 +115,32 @@ export function SessionRow({
     { label: 'Delete', icon: Trash2, variant: 'destructive', onSelect: handleDelete },
   ];
 
-  const selectionIcon = selected
-    ? <CheckCircle2
-        className="h-4.5 w-4.5 shrink-0 text-accent"
-        style={{ transform: 'translate(-1.5px, -1.5px)' }}
-        strokeWidth={1.75}
-      />
-    : isStreaming
-      ? <RunningDot title="Running…" />
-      : (
-        <span
-          className="h-1.5 w-1.5 rounded-full"
-          style={{ backgroundColor: project?.color ?? 'var(--color-fg-subtle)', opacity: project ? 1 : 0.4 }}
-        />
-      );
+  const selectionIcon = selected ? (
+    <CheckCircle2
+      className="h-4.5 w-4.5 shrink-0 text-accent"
+      style={{ transform: 'translate(-1.5px, -1.5px)' }}
+      strokeWidth={1.75}
+    />
+  ) : isStreaming ? (
+    <RunningDot title="Running…" />
+  ) : (
+    <span
+      className="h-1.5 w-1.5 rounded-full"
+      style={{
+        backgroundColor: project?.color ?? 'var(--color-fg-subtle)',
+        opacity: project ? 1 : 0.4,
+      }}
+    />
+  );
 
   const leadingIcon = showProjectDot ? (
     <Tooltip content={project ? `Project: ${project.name}` : 'Unassigned'}>
       <span
         className="h-2.5 w-2.5 shrink-0 rounded-full"
-        style={{ backgroundColor: project?.color ?? 'var(--color-fg-subtle)', opacity: project ? 1 : 0.4 }}
+        style={{
+          backgroundColor: project?.color ?? 'var(--color-fg-subtle)',
+          opacity: project ? 1 : 0.4,
+        }}
       />
     </Tooltip>
   ) : session.archived ? (
@@ -127,14 +152,21 @@ export function SessionRow({
   const sessionDetails = (
     <div className="min-w-0 flex-1">
       <div className="flex items-center gap-2">
-        <span className={cn('flex-1 truncate text-[0.95rem]', regenerating ? 'italic text-fg-muted' : 'text-fg')}>
+        <span
+          className={cn(
+            'flex-1 truncate text-[0.95rem]',
+            regenerating ? 'italic text-fg-muted' : 'text-fg',
+          )}
+        >
           {regenerating ? 'Regenerating title…' : session.title}
         </span>
-        <span className={cn(
-          'shrink-0 text-xs group-hover/session:invisible',
-          isStreaming ? 'font-medium text-accent' : 'text-fg-subtle',
-          menuOpen && 'invisible',
-        )}>
+        <span
+          className={cn(
+            'shrink-0 text-xs group-hover/session:invisible',
+            isStreaming ? 'font-medium text-accent' : 'text-fg-subtle',
+            menuOpen && 'invisible',
+          )}
+        >
           {isStreaming ? 'Running…' : relativeTime(session.lastMessageAt)}
         </span>
       </div>
@@ -151,22 +183,34 @@ export function SessionRow({
         active && 'border-b-transparent',
       )}
       data-active={active ? '' : undefined}
-      onContextMenu={(e) => { e.preventDefault(); setMenuOpen(true); }}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        setMenuOpen(true);
+      }}
     >
-      {active && (
-        <span className="absolute inset-y-1 left-0 z-10 w-0.5 rounded-r-sm bg-accent" />
-      )}
+      {active && <span className="absolute inset-y-1 left-0 z-10 w-0.5 rounded-r-sm bg-accent" />}
 
       {renaming ? (
-        <div className={cn('flex w-full items-center gap-3 px-3 py-2.5', active ? 'bg-elevated' : 'bg-panel')}>
+        <div
+          className={cn(
+            'flex w-full items-center gap-3 px-3 py-2.5',
+            active ? 'bg-elevated' : 'bg-panel',
+          )}
+        >
           {isStreaming ? <RunningDot title="Running…" /> : leadingIcon}
           <input
             autoFocus
             value={renameValue}
             onChange={(e) => setRenameValue(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') { e.preventDefault(); void commitRename(); }
-              if (e.key === 'Escape') { e.preventDefault(); cancelRename(); }
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                void commitRename();
+              }
+              if (e.key === 'Escape') {
+                e.preventDefault();
+                cancelRename();
+              }
             }}
             onBlur={() => void commitRename()}
             onClick={(e) => e.stopPropagation()}
@@ -190,7 +234,14 @@ export function SessionRow({
               'grid h-4 w-4 shrink-0 place-items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70',
               selected || isStreaming ? 'border border-transparent' : 'border hover:brightness-125',
             )}
-            style={selected || isStreaming ? undefined : { borderColor: project?.color ?? 'var(--color-fg-subtle)', opacity: project ? 1 : 0.55 }}
+            style={
+              selected || isStreaming
+                ? undefined
+                : {
+                    borderColor: project?.color ?? 'var(--color-fg-subtle)',
+                    opacity: project ? 1 : 0.55,
+                  }
+            }
           >
             {selectionIcon}
           </button>

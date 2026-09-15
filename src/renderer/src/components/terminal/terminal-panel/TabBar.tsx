@@ -5,16 +5,24 @@ import { IconButton } from '@/components/ui';
 import type { TerminalTabState } from './types';
 
 interface TabBarProps {
-  tabs:         TerminalTabState[];
-  activeTabId:  string | null;
-  onSelect:     (tabId: string) => void;
-  onClose:      (tabId: string) => void;
-  onNew:        () => void;
+  tabs: TerminalTabState[];
+  activeTabId: string | null;
+  onSelect: (tabId: string) => void;
+  onClose: (tabId: string) => void;
+  onNew: () => void;
   onClosePanel: () => void;
-  onRename:     (tabId: string, customTitle: string | undefined) => void;
+  onRename: (tabId: string, customTitle: string | undefined) => void;
 }
 
-export function TabBar({ tabs, activeTabId, onSelect, onClose, onNew, onClosePanel, onRename }: TabBarProps) {
+export function TabBar({
+  tabs,
+  activeTabId,
+  onSelect,
+  onClose,
+  onNew,
+  onClosePanel,
+  onRename,
+}: TabBarProps) {
   return (
     <div className="flex h-9 shrink-0 items-center border-b border-border bg-panel px-2 gap-1">
       {/* Tab chips + new tab button inline */}
@@ -56,15 +64,15 @@ function TabChip({
   onClose,
   onRename,
 }: {
-  tab:      TerminalTabState;
+  tab: TerminalTabState;
   isActive: boolean;
   onSelect: () => void;
-  onClose:  () => void;
+  onClose: () => void;
   onRename: (customTitle: string | undefined) => void;
 }) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft]     = useState('');
-  const inputRef              = useRef<HTMLInputElement>(null);
+  const [draft, setDraft] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const displayTitle = tab.customTitle ?? tab.title;
   const exitedWithError = !tab.alive && typeof tab.exitCode === 'number' && tab.exitCode !== 0;
@@ -110,8 +118,14 @@ function TabChip({
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter')  { e.preventDefault(); commitEdit(); }
-            if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); }
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              commitEdit();
+            }
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              cancelEdit();
+            }
             // Prevent global shortcuts (tab-switch arrows, Cmd+Shift+W) from
             // firing while the user is typing a new name.
             e.stopPropagation();
@@ -135,12 +149,17 @@ function TabChip({
       {/* Hide the close button while editing so it can't be accidentally clicked */}
       {!editing && (
         <button
-          onClick={(e) => { e.stopPropagation(); onClose(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
           onDoubleClick={(e) => e.stopPropagation()}
           aria-label={`Close ${displayTitle}`}
           className={cn(
             'flex h-4 w-4 shrink-0 items-center justify-center rounded transition-opacity',
-            isActive ? 'opacity-60 hover:opacity-100' : 'opacity-0 group-hover:opacity-60 hover:!opacity-100',
+            isActive
+              ? 'opacity-60 hover:opacity-100'
+              : 'opacity-0 group-hover:opacity-60 hover:!opacity-100',
           )}
         >
           <X className="h-3 w-3" />

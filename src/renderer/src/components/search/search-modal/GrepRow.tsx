@@ -30,10 +30,7 @@ export function GrepRow({
       data-idx={dataIdx}
       onMouseEnter={onMouseEnter}
       onMouseDown={onMouseDown}
-      className={cn(
-        'cursor-pointer px-3 py-1.5',
-        active ? 'bg-elevated' : 'hover:bg-elevated/60',
-      )}
+      className={cn('cursor-pointer px-3 py-1.5', active ? 'bg-elevated' : 'hover:bg-elevated/60')}
     >
       {/* File + line */}
       <div className="flex items-center gap-2">
@@ -43,9 +40,7 @@ export function GrepRow({
           L{entry.lineNumber}
         </span>
         {dir && (
-          <span className="ml-auto truncate font-mono text-[11px] text-fg-subtle">
-            {dir}
-          </span>
+          <span className="ml-auto truncate font-mono text-[11px] text-fg-subtle">{dir}</span>
         )}
       </div>
       {/* Snippet with match highlight */}

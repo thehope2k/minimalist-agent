@@ -38,10 +38,7 @@ export function TopBar({
 
       <div className="flex-1" />
 
-      <ActionButtons
-        terminalOpen={terminalOpen}
-        onToggleTerminal={onToggleTerminal}
-      />
+      <ActionButtons terminalOpen={terminalOpen} onToggleTerminal={onToggleTerminal} />
     </div>
   );
 }

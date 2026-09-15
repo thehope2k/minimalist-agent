@@ -24,11 +24,12 @@ export function CopilotQuotaBar({ connectionSlug }: { connectionSlug: string }) 
 
   const { quota } = state;
   const planLabel = quota.planType ? (PLAN_LABELS[quota.planType] ?? quota.planType) : null;
-  const filled = usedPct(quota.percentRemaining);     // capped 0–100 for bar width
+  const filled = usedPct(quota.percentRemaining); // capped 0–100 for bar width
   // True percentage for the label — can exceed 100% when over quota.
-  const displayPct = quota.entitlement && quota.used != null
-    ? Math.round((quota.used / quota.entitlement) * 100)
-    : Math.round(100 - quota.percentRemaining);
+  const displayPct =
+    quota.entitlement && quota.used != null
+      ? Math.round((quota.used / quota.entitlement) * 100)
+      : Math.round(100 - quota.percentRemaining);
   const hasOverage = quota.overageCount > 0;
 
   // Detect billing format: AI Credits (dollar amounts) vs. legacy requests
@@ -42,16 +43,17 @@ export function CopilotQuotaBar({ connectionSlug }: { connectionSlug: string }) 
   if (quota.unlimited) {
     // Better messaging for Enterprise pooled credits
     const isEnterprise = quota.planType === 'enterprise';
-    const message = isEnterprise 
-      ? 'Unlimited AI credits (org-pooled)'
-      : 'Unlimited AI credits';
-    
+    const message = isEnterprise ? 'Unlimited AI credits (org-pooled)' : 'Unlimited AI credits';
+
     return (
       <p className="mt-1.5 text-xs text-fg-subtle">
         {planLabel && <span className="font-medium text-fg-muted">{planLabel} · </span>}
         {message}
         {quota.resetDate && (
-          <> · resets <span className="text-fg-muted">{formatResetDate(quota.resetDate)}</span></>
+          <>
+            {' '}
+            · resets <span className="text-fg-muted">{formatResetDate(quota.resetDate)}</span>
+          </>
         )}
       </p>
     );
@@ -66,7 +68,10 @@ export function CopilotQuotaBar({ connectionSlug }: { connectionSlug: string }) 
             <span className="font-medium text-fg">{formatValue(quota.used)}</span>
           )}
           {quota.entitlement != null && quota.used != null && (
-            <> / {formatValue(quota.entitlement)} {unit}</>
+            <>
+              {' '}
+              / {formatValue(quota.entitlement)} {unit}
+            </>
           )}
           {quota.entitlement == null && quota.used != null && <> {unit} used</>}
           {planLabel && <span className="ml-1.5 text-fg-subtle">({planLabel})</span>}
@@ -86,12 +91,18 @@ export function CopilotQuotaBar({ connectionSlug }: { connectionSlug: string }) 
 
       {/* Footer */}
       <div className="flex items-center justify-between">
-        <span className={`text-xs ${displayPct >= 90 ? 'text-red-400' : displayPct >= 75 ? 'text-orange-400' : 'text-fg-subtle'}`}>
+        <span
+          className={`text-xs ${displayPct >= 90 ? 'text-red-400' : displayPct >= 75 ? 'text-orange-400' : 'text-fg-subtle'}`}
+        >
           {displayPct}% used
         </span>
         {hasOverage && (
           <span className="text-xs text-red-400">
-            +{isAICredits ? `$${quota.overageCount.toFixed(2)}` : quota.overageCount.toLocaleString()} over limit
+            +
+            {isAICredits
+              ? `$${quota.overageCount.toFixed(2)}`
+              : quota.overageCount.toLocaleString()}{' '}
+            over limit
             {quota.overagePermitted ? ' (grace enabled)' : ''}
           </span>
         )}

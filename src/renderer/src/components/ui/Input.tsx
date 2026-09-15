@@ -14,7 +14,12 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     <input
       ref={ref}
       type={type}
-      className={cn(FIELD_CHROME, type === 'number' && 'number-input', mono && 'font-mono', className)}
+      className={cn(
+        FIELD_CHROME,
+        type === 'number' && 'number-input',
+        mono && 'font-mono',
+        className,
+      )}
       {...rest}
     />
   ),

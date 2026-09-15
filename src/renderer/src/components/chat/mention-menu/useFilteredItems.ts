@@ -17,13 +17,7 @@ interface UseFilteredItemsParams {
  * Filters and scores skills, extensions, and files based on query.
  * Handles debounced file search via IPC.
  */
-export function useFilteredItems({
-  open,
-  query,
-  skills,
-  extensions,
-  cwd,
-}: UseFilteredItemsParams) {
+export function useFilteredItems({ open, query, skills, extensions, cwd }: UseFilteredItemsParams) {
   const [files, setFiles] = useState<FileSearchEntry[]>([]);
 
   /* ---------- skill scoring ---------- */
@@ -44,7 +38,11 @@ export function useFilteredItems({
   const filteredExtensions = useMemo(() => {
     const q = query.trim().toLowerCase();
     return extensions
-      .map((e) => ({ extension: e, score: scoreExtension(e, q), tier: e.scope === 'project' ? 0 : 1 }))
+      .map((e) => ({
+        extension: e,
+        score: scoreExtension(e, q),
+        tier: e.scope === 'project' ? 0 : 1,
+      }))
       .filter((x) => x.score > 0)
       .sort((a, b) => b.score - a.score || a.tier - b.tier)
       .map((r) => r.extension);
@@ -82,9 +80,7 @@ export function useFilteredItems({
   const items: MentionItem[] = useMemo(() => {
     return [
       ...filteredSkills.map((skill) => ({ kind: 'skill', skill }) as const),
-      ...filteredExtensions.map(
-        (extension) => ({ kind: 'extension', extension }) as const,
-      ),
+      ...filteredExtensions.map((extension) => ({ kind: 'extension', extension }) as const),
       ...filteredFiles.map((entry) => ({ kind: 'file', entry }) as const),
     ];
   }, [filteredSkills, filteredExtensions, filteredFiles]);

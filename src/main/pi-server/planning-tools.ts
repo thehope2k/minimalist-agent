@@ -46,7 +46,8 @@ export function createPlanningTools(sessionId: string): ToolDefinition<any, any>
     {
       name: 'CreatePlan',
       label: 'Create execution plan',
-      description: 'Create a multi-phase execution plan for complex tasks. Use when task requires multiple steps or exploration.',
+      description:
+        'Create a multi-phase execution plan for complex tasks. Use when task requires multiple steps or exploration.',
       parameters: {
         type: 'object' as const,
         properties: {
@@ -59,7 +60,10 @@ export function createPlanningTools(sessionId: string): ToolDefinition<any, any>
                 description: schema.string('Phase description'),
                 actions: schema.stringArray('Tools and actions to be executed'),
                 estimated_risk: schema.number('Estimated risk score (0-100)', 0, 100),
-                is_safe: { type: 'boolean' as const, description: 'Whether this phase is safe (read-only)' },
+                is_safe: {
+                  type: 'boolean' as const,
+                  description: 'Whether this phase is safe (read-only)',
+                },
               },
               required: ['name', 'description', 'actions', 'estimated_risk', 'is_safe'],
             },
@@ -112,14 +116,22 @@ export function createPlanningTools(sessionId: string): ToolDefinition<any, any>
     {
       name: 'ReportPhaseProgress',
       label: 'Report phase progress',
-      description: 'Report progress on the current phase. Call after completing actions or discovering key findings.',
+      description:
+        'Report progress on the current phase. Call after completing actions or discovering key findings.',
       parameters: {
         type: 'object' as const,
         properties: {
           phase_index: schema.number('Phase index (0-based)', 0, 100),
-          status: { type: 'string' as const, enum: ['running', 'complete', 'blocked'], description: 'Phase status' },
+          status: {
+            type: 'string' as const,
+            enum: ['running', 'complete', 'blocked'],
+            description: 'Phase status',
+          },
           findings: schema.string('What was discovered or accomplished'),
-          suggests_revision: { type: 'boolean' as const, description: 'Whether plan should be revised based on findings' },
+          suggests_revision: {
+            type: 'boolean' as const,
+            description: 'Whether plan should be revised based on findings',
+          },
         },
         required: ['phase_index', 'status', 'findings', 'suggests_revision'],
       },
@@ -163,9 +175,9 @@ export function createPlanningTools(sessionId: string): ToolDefinition<any, any>
 
           // Update phase status
           const statusMap = {
-            'running': 'running' as const,
-            'complete': 'complete' as const,
-            'blocked': 'blocked' as const,
+            running: 'running' as const,
+            complete: 'complete' as const,
+            blocked: 'blocked' as const,
           };
 
           // Before setting status to 'running', check if approval is required
@@ -174,7 +186,7 @@ export function createPlanningTools(sessionId: string): ToolDefinition<any, any>
               sessionId,
               phase.id,
               state.autonomyLevel,
-              state.permissionMode
+              state.permissionMode,
             );
 
             if (needsApproval) {
@@ -211,11 +223,15 @@ export function createPlanningTools(sessionId: string): ToolDefinition<any, any>
           }
 
           // Check if revision needed
-          const revisionNeeded = input.suggests_revision &&
+          const revisionNeeded =
+            input.suggests_revision &&
             state.planManager!.shouldRevise(sessionId, phase.id, input.findings);
 
           // Validate phase progression
-          const progression = state.planManager!.validatePhaseProgression(sessionId, input.phase_index);
+          const progression = state.planManager!.validatePhaseProgression(
+            sessionId,
+            input.phase_index,
+          );
 
           let responseText = `Phase ${input.phase_index} (${phase.name}) status: ${input.status}`;
 
@@ -227,7 +243,8 @@ export function createPlanningTools(sessionId: string): ToolDefinition<any, any>
           }
 
           if (revisionNeeded) {
-            responseText += '\n\nRevision recommended based on findings. Use RevisePlan to update remaining phases.';
+            responseText +=
+              '\n\nRevision recommended based on findings. Use RevisePlan to update remaining phases.';
           }
 
           // Suggest next phase if current complete
@@ -257,7 +274,12 @@ export function createPlanningTools(sessionId: string): ToolDefinition<any, any>
         } catch (error: any) {
           // Record the phase error through PlanManager
           // Extract phase_index from params since input might not be defined
-          if (state.planManager && params && typeof params === 'object' && 'phase_index' in params) {
+          if (
+            state.planManager &&
+            params &&
+            typeof params === 'object' &&
+            'phase_index' in params
+          ) {
             try {
               const phaseIndex = (params as any).phase_index;
               const plan = state.planManager.getActivePlan(sessionId);
@@ -267,7 +289,7 @@ export function createPlanningTools(sessionId: string): ToolDefinition<any, any>
                   state.planManager.recordPhaseError(
                     sessionId,
                     phase.id,
-                    `Failed to report progress: ${error.message}`
+                    `Failed to report progress: ${error.message}`,
                   );
                 }
               }
@@ -292,7 +314,8 @@ export function createPlanningTools(sessionId: string): ToolDefinition<any, any>
     {
       name: 'RevisePlan',
       label: 'Revise execution plan',
-      description: 'Revise remaining phases based on new discoveries. Explain what changed and why.',
+      description:
+        'Revise remaining phases based on new discoveries. Explain what changed and why.',
       parameters: {
         type: 'object' as const,
         properties: {
@@ -305,7 +328,10 @@ export function createPlanningTools(sessionId: string): ToolDefinition<any, any>
                 description: schema.string('Phase description'),
                 actions: schema.stringArray('Tools and actions to be executed'),
                 estimated_risk: schema.number('Estimated risk score (0-100)', 0, 100),
-                is_safe: { type: 'boolean' as const, description: 'Whether this phase is safe (read-only)' },
+                is_safe: {
+                  type: 'boolean' as const,
+                  description: 'Whether this phase is safe (read-only)',
+                },
               },
               required: ['name', 'description', 'actions', 'estimated_risk', 'is_safe'],
             },

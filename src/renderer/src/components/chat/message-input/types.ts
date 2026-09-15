@@ -42,7 +42,10 @@ export type MessageInputProps = {
    * resolve `{ ok: false, reason }` on failure rather than throw — the
    * input clears optimistically and re-fills only on a non-ok result.
    */
-  onSteer?: (message: string, attachments: DraftAttachment[]) => Promise<{ ok: boolean; reason?: string }>;
+  onSteer?: (
+    message: string,
+    attachments: DraftAttachment[],
+  ) => Promise<{ ok: boolean; reason?: string }>;
   /** Manually trigger compaction outside of any turn. */
   onManualCompact?: (
     connectionSlug: string,

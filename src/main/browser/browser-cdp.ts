@@ -26,16 +26,38 @@ const CDP_MODIFIER_META = 4;
 const CDP_MODIFIER_SHIFT = 8;
 
 const INTERACTIVE_ROLES = new Set([
-  'button', 'link', 'textbox', 'searchbox', 'combobox',
-  'checkbox', 'radio', 'switch', 'slider', 'spinbutton',
-  'tab', 'menuitem', 'menuitemcheckbox', 'menuitemradio',
-  'option', 'treeitem',
+  'button',
+  'link',
+  'textbox',
+  'searchbox',
+  'combobox',
+  'checkbox',
+  'radio',
+  'switch',
+  'slider',
+  'spinbutton',
+  'tab',
+  'menuitem',
+  'menuitemcheckbox',
+  'menuitemradio',
+  'option',
+  'treeitem',
 ]);
 
 const CONTENT_ROLES = new Set([
-  'heading', 'img', 'table', 'list', 'listitem',
-  'paragraph', 'article', 'main', 'navigation', 'form',
-  'alert', 'dialog', 'status',
+  'heading',
+  'img',
+  'table',
+  'list',
+  'listitem',
+  'paragraph',
+  'article',
+  'main',
+  'navigation',
+  'form',
+  'alert',
+  'dialog',
+  'status',
 ]);
 
 export interface AccessibilityNode {
@@ -99,7 +121,9 @@ export class BrowserCDP {
     });
     this.webContents.debugger.on('message', (_event, method, params) => {
       if (method !== 'Runtime.consoleAPICalled') return;
-      this.recordConsoleMessage(params as { type: string; args: Array<{ value?: unknown; description?: string }> });
+      this.recordConsoleMessage(
+        params as { type: string; args: Array<{ value?: unknown; description?: string }> },
+      );
     });
     // Backend node IDs die with the document, so this stable-ref table (kept
     // only so @eN doesn't renumber within one page) would otherwise grow
@@ -121,9 +145,18 @@ export class BrowserCDP {
     await this.send('Runtime.enable');
   }
 
-  private recordConsoleMessage(params: { type: string; args: Array<{ value?: unknown; description?: string }> }): void {
+  private recordConsoleMessage(params: {
+    type: string;
+    args: Array<{ value?: unknown; description?: string }>;
+  }): void {
     const level: ConsoleLogEntry['level'] =
-      params.type === 'warning' ? 'warn' : params.type === 'error' ? 'error' : params.type === 'info' ? 'info' : 'log';
+      params.type === 'warning'
+        ? 'warn'
+        : params.type === 'error'
+          ? 'error'
+          : params.type === 'info'
+            ? 'info'
+            : 'log';
     const message = params.args.map((a) => normalize(a.value ?? a.description)).join(' ');
     this.consoleLog.push({ level, message, timestamp: Date.now() });
     if (this.consoleLog.length > MAX_CONSOLE_ENTRIES) this.consoleLog.shift();
@@ -213,7 +246,12 @@ export class BrowserCDP {
       nodes.push({ ref, role, name, value, ...(disabled ? { disabled: true } : {}) });
     }
 
-    return { url: this.webContents.getURL(), title: this.webContents.getTitle(), nodes, truncatedCount };
+    return {
+      url: this.webContents.getURL(),
+      title: this.webContents.getTitle(),
+      nodes,
+      truncatedCount,
+    };
   }
 
   private resolveBackendNodeId(ref: string): number {
@@ -254,8 +292,20 @@ export class BrowserCDP {
       functionDeclaration: 'function() { this.scrollIntoViewIfNeeded(); }',
     });
     const geometry = await this.getElementGeometry(ref);
-    this.webContents.sendInputEvent({ type: 'mouseDown', x: Math.round(geometry.clickX), y: Math.round(geometry.clickY), button: 'left', clickCount: 1 });
-    this.webContents.sendInputEvent({ type: 'mouseUp', x: Math.round(geometry.clickX), y: Math.round(geometry.clickY), button: 'left', clickCount: 1 });
+    this.webContents.sendInputEvent({
+      type: 'mouseDown',
+      x: Math.round(geometry.clickX),
+      y: Math.round(geometry.clickY),
+      button: 'left',
+      clickCount: 1,
+    });
+    this.webContents.sendInputEvent({
+      type: 'mouseUp',
+      x: Math.round(geometry.clickX),
+      y: Math.round(geometry.clickY),
+      button: 'left',
+      clickCount: 1,
+    });
   }
 
   async fillElement(ref: string, value: string): Promise<void> {
@@ -282,18 +332,34 @@ export class BrowserCDP {
       // unmodifiedText mirrors `text` since typeText never sends modifier
       // chords. Full key/code synthesis (Puppeteer-style) is deferred until a
       // live test shows a framework that needs raw keydown, not just native input.
-      await this.send('Input.dispatchKeyEvent', { type: 'keyDown', text: char, unmodifiedText: char });
-      await this.send('Input.dispatchKeyEvent', { type: 'keyUp', text: char, unmodifiedText: char });
+      await this.send('Input.dispatchKeyEvent', {
+        type: 'keyDown',
+        text: char,
+        unmodifiedText: char,
+      });
+      await this.send('Input.dispatchKeyEvent', {
+        type: 'keyUp',
+        text: char,
+        unmodifiedText: char,
+      });
     }
   }
 
-  async sendKey(key: string, modifiers?: Array<'shift' | 'control' | 'alt' | 'meta'>): Promise<void> {
+  async sendKey(
+    key: string,
+    modifiers?: Array<'shift' | 'control' | 'alt' | 'meta'>,
+  ): Promise<void> {
     const modifierBits =
       (modifiers?.includes('alt') ? CDP_MODIFIER_ALT : 0) |
       (modifiers?.includes('control') ? CDP_MODIFIER_CONTROL : 0) |
       (modifiers?.includes('meta') ? CDP_MODIFIER_META : 0) |
       (modifiers?.includes('shift') ? CDP_MODIFIER_SHIFT : 0);
-    await this.send('Input.dispatchKeyEvent', { type: 'keyDown', key, windowsVirtualKeyCode: key.length === 1 ? key.charCodeAt(0) : undefined, modifiers: modifierBits });
+    await this.send('Input.dispatchKeyEvent', {
+      type: 'keyDown',
+      key,
+      windowsVirtualKeyCode: key.length === 1 ? key.charCodeAt(0) : undefined,
+      modifiers: modifierBits,
+    });
     await this.send('Input.dispatchKeyEvent', { type: 'keyUp', key, modifiers: modifierBits });
   }
 
@@ -312,9 +378,12 @@ export class BrowserCDP {
       }`,
       arguments: [{ value }],
     });
-    const outcome = result?.result?.value as { ok?: boolean; reason?: string; actual?: string } | undefined;
+    const outcome = result?.result?.value as
+      { ok?: boolean; reason?: string; actual?: string } | undefined;
     if (outcome && outcome.ok === false) {
-      throw new Error(outcome.reason ?? `Select did not apply value "${value}" (actual: "${outcome.actual}")`);
+      throw new Error(
+        outcome.reason ?? `Select did not apply value "${value}" (actual: "${outcome.actual}")`,
+      );
     }
   }
 
@@ -323,7 +392,11 @@ export class BrowserCDP {
   }
 
   async evaluate(expression: string): Promise<unknown> {
-    const result = await this.send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true });
+    const result = await this.send('Runtime.evaluate', {
+      expression,
+      returnByValue: true,
+      awaitPromise: true,
+    });
     if (result?.exceptionDetails) {
       throw new Error(result.exceptionDetails.exception?.description ?? 'evaluate() threw');
     }

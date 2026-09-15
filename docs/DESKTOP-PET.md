@@ -6,7 +6,7 @@ A decorative panda overlay that reflects real app activity instead of just sitti
 ## Where things live
 
 | Concern                         | File                                        |
-|---------------------------------|---------------------------------------------|
+| ------------------------------- | ------------------------------------------- |
 | Enable/mount gate (lazy import) | `components/pet/DesktopPetGate.tsx`         |
 | Position, drag, motion loops    | `components/pet/DesktopPet.tsx`             |
 | Drag-release momentum physics   | `lib/pet-motion.ts`                         |
@@ -47,7 +47,7 @@ animation on top of it).
 
 **Reactions are transient, streaming is held.** Every signal except
 `isStreaming` fires a reaction that plays out and returns to whatever base state it interrupted. `isStreaming` is the
-one *held* state — the pet stays alert for the whole duration of a turn instead of a quick blip, since that duration is
+one _held_ state — the pet stays alert for the whole duration of a turn instead of a quick blip, since that duration is
 the thing actually worth reflecting.
 
 **Idle behavior is time-based, not signal-based.** With no activity, the pet wanders after ~90s and naps after ~5min.

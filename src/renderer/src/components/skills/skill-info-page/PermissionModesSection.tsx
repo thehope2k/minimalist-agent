@@ -31,8 +31,8 @@ export function PermissionModesSection({ alwaysAllow }: PermissionModesSectionPr
           </div>
         ) : (
           <div className="px-4 py-3 text-xs text-fg-subtle">
-            No tools declared. Add <Mono>alwaysAllow: ["Bash", "Write"]</Mono> to
-            the frontmatter to document expected tool usage.
+            No tools declared. Add <Mono>alwaysAllow: ["Bash", "Write"]</Mono> to the frontmatter to
+            document expected tool usage.
           </div>
         )}
       </div>

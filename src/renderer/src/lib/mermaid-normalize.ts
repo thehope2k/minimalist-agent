@@ -106,9 +106,7 @@ function repairSegment(segment: string): string {
 function repairLine(line: string): string {
   const parts = line.split(CONNECTOR);
   // split() with a capturing group interleaves [segment, connector, segment, …].
-  return parts
-    .map((part, idx) => (idx % 2 === 0 ? repairSegment(part) : part))
-    .join('');
+  return parts.map((part, idx) => (idx % 2 === 0 ? repairSegment(part) : part)).join('');
 }
 
 const FLOW_HEADER = /^\s*(?:flowchart|graph)\b/;
@@ -147,10 +145,7 @@ interface MermaidParser {
  * Never throws — a repair that still fails to parse is returned as-is so the
  * subsequent render throws and the caller shows its source fallback.
  */
-export async function resolveMermaidSource(
-  mermaid: MermaidParser,
-  code: string,
-): Promise<string> {
+export async function resolveMermaidSource(mermaid: MermaidParser, code: string): Promise<string> {
   try {
     await mermaid.parse(code);
     return code;

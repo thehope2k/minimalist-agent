@@ -37,10 +37,7 @@ function read(): SecretsFile {
 
   const buf = readFileSync(path);
   let json: string;
-  if (
-    safeStorage.isEncryptionAvailable() &&
-    !buf.toString('utf-8').startsWith('{')
-  ) {
+  if (safeStorage.isEncryptionAvailable() && !buf.toString('utf-8').startsWith('{')) {
     json = safeStorage.decryptString(buf);
   } else {
     json = buf.toString('utf-8');

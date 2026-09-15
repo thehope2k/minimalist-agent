@@ -12,12 +12,7 @@ interface SnippetPreviewModalProps {
 /**
  * Full-screen snippet preview modal with syntax badge.
  */
-export function SnippetPreviewModal({
-  name,
-  language,
-  text,
-  onClose,
-}: SnippetPreviewModalProps) {
+export function SnippetPreviewModal({ name, language, text, onClose }: SnippetPreviewModalProps) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -44,9 +39,7 @@ export function SnippetPreviewModal({
         <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
           <span className="text-sm font-medium text-fg">{name}</span>
           <div className="flex items-center gap-2">
-            {text !== null && (
-              <CopyButton text={text} className="opacity-100" />
-            )}
+            {text !== null && <CopyButton text={text} className="opacity-100" />}
             <span className="rounded bg-accent/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
               {languageLabel(language)}
             </span>

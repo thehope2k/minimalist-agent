@@ -54,7 +54,9 @@ export function FileRefMenu({ absolutePath, relativePath, className }: FileRefMe
 
   return (
     <Menu
-      trigger={<IconButton icon={MoreHorizontal} label="File options" size="sm" className={className} />}
+      trigger={
+        <IconButton icon={MoreHorizontal} label="File options" size="sm" className={className} />
+      }
       items={items}
       menuWidth={176}
     />

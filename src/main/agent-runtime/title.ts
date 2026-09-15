@@ -123,9 +123,7 @@ function pickSample(messages: TitleSample[]): string {
   const first = messages.find((m) => m.role === 'user');
   if (!first) return '';
   let out = `User: ${trimTo(first.content, 800)}`;
-  const reply = messages.find(
-    (m) => m.role === 'assistant' && m.content.trim().length > 0,
-  );
+  const reply = messages.find((m) => m.role === 'assistant' && m.content.trim().length > 0);
   if (reply) out += `\n\nAssistant: ${trimTo(reply.content, 400)}`;
   return out;
 }

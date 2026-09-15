@@ -5,7 +5,10 @@ import { executeBrowserToolCommand } from '../../../browser/browser-tool-runtime
 import { send, type SubprocessHandle } from '../subprocess-handle';
 import type { MsgBrowserToolRequest } from '../protocol';
 
-export async function handleBrowserToolRequest(msg: MsgBrowserToolRequest, handle: SubprocessHandle): Promise<void> {
+export async function handleBrowserToolRequest(
+  msg: MsgBrowserToolRequest,
+  handle: SubprocessHandle,
+): Promise<void> {
   try {
     const result = await executeBrowserToolCommand(msg.sessionId, msg.command);
     send(handle, {

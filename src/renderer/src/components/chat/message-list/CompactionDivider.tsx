@@ -16,11 +16,11 @@ export function CompactionDivider({ message }: { message: ChatMessage }) {
 
   const preTokens = meta?.preTokens;
   const saved =
-    preTokens != null && preTokens > 0
-      ? Math.max(0, preTokens - (meta?.postTokens ?? 0))
-      : 0;
+    preTokens != null && preTokens > 0 ? Math.max(0, preTokens - (meta?.postTokens ?? 0)) : 0;
   const trigger = meta?.trigger ?? 'auto';
-  const hasDetails = Boolean(meta?.summary || meta?.readFiles?.length || meta?.modifiedFiles?.length);
+  const hasDetails = Boolean(
+    meta?.summary || meta?.readFiles?.length || meta?.modifiedFiles?.length,
+  );
   const modifiedFiles = meta?.modifiedFiles ?? [];
   const readFiles = meta?.readFiles ?? [];
 
@@ -63,7 +63,9 @@ export function CompactionDivider({ message }: { message: ChatMessage }) {
             <span className="rounded bg-amber-500/20 px-1 text-[9px] normal-case">manual</span>
           )}
           {trigger === 'overflow' && (
-            <span className="rounded bg-amber-500/20 px-1 text-[9px] normal-case">overflow recovery</span>
+            <span className="rounded bg-amber-500/20 px-1 text-[9px] normal-case">
+              overflow recovery
+            </span>
           )}
         </button>
         <div className="h-px flex-1 border-t border-dashed border-amber-500/30" />
@@ -122,7 +124,9 @@ function FailedCompactionDivider({
         <TriangleAlert className="h-3 w-3" strokeWidth={2} />
         <span>Compaction failed</span>
         {trigger === 'overflow' && (
-          <span className="rounded bg-red-500/20 px-1 text-[9px] normal-case">overflow recovery</span>
+          <span className="rounded bg-red-500/20 px-1 text-[9px] normal-case">
+            overflow recovery
+          </span>
         )}
       </div>
       <div className="h-px flex-1 border-t border-dashed border-red-500/30" />

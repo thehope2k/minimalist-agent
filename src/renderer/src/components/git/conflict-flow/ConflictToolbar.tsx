@@ -52,9 +52,7 @@ export function ConflictToolbar({
             </>
           )}
         </button>
-        {resolveError && (
-          <span className="text-xs text-red-300">{resolveError}</span>
-        )}
+        {resolveError && <span className="text-xs text-red-300">{resolveError}</span>}
       </div>
 
       {conflictCount > 0 && (

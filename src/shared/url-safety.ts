@@ -15,8 +15,7 @@
  */
 
 export type UrlClassification =
-  | { kind: 'dangerous'; scheme?: string; reason: string }
-  | { kind: 'safe-external' };
+  { kind: 'dangerous'; scheme?: string; reason: string } | { kind: 'safe-external' };
 
 /**
  * Blocked URL schemes (including trailing `:`) mapped to a human-readable

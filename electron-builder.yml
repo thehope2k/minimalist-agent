@@ -9,33 +9,33 @@ directories:
 files:
   - out/**/*
   - package.json
-  - "!**/*.map"
+  - '!**/*.map'
   # Bundled ripgrep binary — must be included so asarUnpack can extract it.
-  - "node_modules/@vscode/ripgrep-*/bin/**"
+  - 'node_modules/@vscode/ripgrep-*/bin/**'
   # node-pty native addon.
-  - "node_modules/node-pty/**"
+  - 'node_modules/node-pty/**'
   # sherpa-onnx-node native addon (voice dictation) + its per-platform binary packages.
-  - "node_modules/sherpa-onnx-node/**"
-  - "node_modules/sherpa-onnx-darwin-arm64/**"
-  - "node_modules/sherpa-onnx-darwin-x64/**"
-  - "node_modules/sherpa-onnx-win-x64/**"
-  - "node_modules/sherpa-onnx-linux-x64/**"
-  - "node_modules/sherpa-onnx-linux-arm64/**"
+  - 'node_modules/sherpa-onnx-node/**'
+  - 'node_modules/sherpa-onnx-darwin-arm64/**'
+  - 'node_modules/sherpa-onnx-darwin-x64/**'
+  - 'node_modules/sherpa-onnx-win-x64/**'
+  - 'node_modules/sherpa-onnx-linux-x64/**'
+  - 'node_modules/sherpa-onnx-linux-arm64/**'
 
 asarUnpack:
   # rg must be a real executable on disk, not inside the asar virtual archive.
-  - "node_modules/@vscode/ripgrep-*/bin/**"
+  - 'node_modules/@vscode/ripgrep-*/bin/**'
   # node-pty native addon must also be on disk (not inside asar).
-  - "node_modules/node-pty/build/Release/**"
-  - "node_modules/node-pty/lib/**"
-  - "node_modules/node-pty/package.json"
+  - 'node_modules/node-pty/build/Release/**'
+  - 'node_modules/node-pty/lib/**'
+  - 'node_modules/node-pty/package.json'
   # sherpa-onnx native addon + dylibs/dll/so must also be on disk (not inside asar).
-  - "node_modules/sherpa-onnx-node/**"
-  - "node_modules/sherpa-onnx-darwin-arm64/**"
-  - "node_modules/sherpa-onnx-darwin-x64/**"
-  - "node_modules/sherpa-onnx-win-x64/**"
-  - "node_modules/sherpa-onnx-linux-x64/**"
-  - "node_modules/sherpa-onnx-linux-arm64/**"
+  - 'node_modules/sherpa-onnx-node/**'
+  - 'node_modules/sherpa-onnx-darwin-arm64/**'
+  - 'node_modules/sherpa-onnx-darwin-x64/**'
+  - 'node_modules/sherpa-onnx-win-x64/**'
+  - 'node_modules/sherpa-onnx-linux-x64/**'
+  - 'node_modules/sherpa-onnx-linux-arm64/**'
 
 # Auto-update reads update manifests (latest-mac.yml / latest.yml / latest-linux.yml)
 # from the GitHub Releases of this repo.
@@ -65,8 +65,8 @@ mac:
   # is allowed, signed or not — without it, macOS terminates the process on
   # first getUserMedia({ audio: true }) instead of just denying it.
   extendInfo:
-    NSMicrophoneUsageDescription: "Minimalist Agent uses your microphone only for on-device voice dictation into the chat input — audio never leaves your machine."
-  artifactName: "Minimalist-Agent-${arch}.${ext}"
+    NSMicrophoneUsageDescription: 'Minimalist Agent uses your microphone only for on-device voice dictation into the chat input — audio never leaves your machine.'
+  artifactName: 'Minimalist-Agent-${arch}.${ext}'
   # Code signing & notarization disabled — see README. Set CSC_LINK + APPLE_ID
   # + APPLE_APP_SPECIFIC_PASSWORD + APPLE_TEAM_ID to enable; auto-update on
   # macOS will not work end-to-end until then.
@@ -75,14 +75,14 @@ mac:
 afterSign: scripts/afterSign.mjs
 
 dmg:
-  artifactName: "Minimalist-Agent-${arch}.dmg"
+  artifactName: 'Minimalist-Agent-${arch}.dmg'
 
 win:
   target:
     - target: nsis
       arch:
         - x64
-  artifactName: "Minimalist-Agent-${arch}.${ext}"
+  artifactName: 'Minimalist-Agent-${arch}.${ext}'
 
 nsis:
   oneClick: true
@@ -95,4 +95,4 @@ linux:
     - target: AppImage
       arch:
         - x64
-  artifactName: "Minimalist-Agent-${arch}.${ext}"
+  artifactName: 'Minimalist-Agent-${arch}.${ext}'

@@ -1,6 +1,11 @@
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { SessionManager, type SessionEntry, collectEntriesForBranchSummary, generateBranchSummary } from '@earendil-works/pi-coding-agent';
+import {
+  SessionManager,
+  type SessionEntry,
+  collectEntriesForBranchSummary,
+  generateBranchSummary,
+} from '@earendil-works/pi-coding-agent';
 import type { Model, Api } from '@earendil-works/pi-ai';
 import { createLogger } from '../logger';
 
@@ -44,7 +49,9 @@ export function forkSessionTranscript(input: ForkSessionTranscriptInput): Promis
 
   const transcriptFile = findTranscriptFile(input.parentSessionDir, input.parentRuntimeSessionId);
   if (!transcriptFile) {
-    log.warn(`no transcript matching runtimeSessionId ${input.parentRuntimeSessionId} in ${input.parentSessionDir}`);
+    log.warn(
+      `no transcript matching runtimeSessionId ${input.parentRuntimeSessionId} in ${input.parentSessionDir}`,
+    );
     return Promise.resolve();
   }
 
@@ -95,10 +102,15 @@ async function forkTranscriptWithSummaryOrCutoff(
           signal: new AbortController().signal,
         });
         if (result.error || result.aborted) {
-          log.warn(`branch summarization failed (${result.error ?? 'aborted'}) — falling back to a clean cutoff`);
+          log.warn(
+            `branch summarization failed (${result.error ?? 'aborted'}) — falling back to a clean cutoff`,
+          );
         } else if (result.summary) {
           summaryText = result.summary;
-          summaryDetails = { readFiles: result.readFiles ?? [], modifiedFiles: result.modifiedFiles ?? [] };
+          summaryDetails = {
+            readFiles: result.readFiles ?? [],
+            modifiedFiles: result.modifiedFiles ?? [],
+          };
           summaryUsage = result.usage;
         }
       }

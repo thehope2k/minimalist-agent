@@ -11,7 +11,15 @@ import type { CompactionNotice } from './types';
 
 const log = createLogger('useChat:events');
 
-interface ChatEventListenerDeps extends Pick<SessionStore, 'messagesBySession' | 'streamingBySession' | 'turnIdToSession' | 'runtimeSessionIdBySession' | 'titleBySession' | 'seenCompactionEvents'> {
+interface ChatEventListenerDeps extends Pick<
+  SessionStore,
+  | 'messagesBySession'
+  | 'streamingBySession'
+  | 'turnIdToSession'
+  | 'runtimeSessionIdBySession'
+  | 'titleBySession'
+  | 'seenCompactionEvents'
+> {
   activeSessionIdRef: React.MutableRefObject<string | null>;
   setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
   setIsStreaming: React.Dispatch<React.SetStateAction<boolean>>;
@@ -42,7 +50,7 @@ export function useChatEventListener(deps: ChatEventListenerDeps): void {
     maybeAutoGenerateTitle,
   } = deps;
 
-// Subscribe once to chat events; route to the right session by turnId.
+  // Subscribe once to chat events; route to the right session by turnId.
   useEffect(() => {
     if (!window.api?.chat) return;
 
@@ -77,10 +85,12 @@ export function useChatEventListener(deps: ChatEventListenerDeps): void {
         }
 
         if (!sid) {
-          log.warn(
-            'Compaction event for unknown turn — marker and toast both dropped:',
-            { turnId: evt.id, status: evt.status, trigger: evt.trigger, preTokens: evt.preTokens },
-          );
+          log.warn('Compaction event for unknown turn — marker and toast both dropped:', {
+            turnId: evt.id,
+            status: evt.status,
+            trigger: evt.trigger,
+            preTokens: evt.preTokens,
+          });
           return;
         }
 
@@ -110,7 +120,7 @@ export function useChatEventListener(deps: ChatEventListenerDeps): void {
         };
 
         const prevMsgs = messagesBySession.current.get(sid) ?? [];
-        
+
         // Mid-turn insertion: find the assistant message with this turn ID
         // and insert the marker right after it. If not found (compaction
         // between turns), append at the end.
@@ -135,22 +145,19 @@ export function useChatEventListener(deps: ChatEventListenerDeps): void {
               ]
             : [...prevMsgs, marker];
 
-        log.debug(
-          'Compaction marker created:',
-          {
-            eventKey,
-            trigger: evt.trigger,
-            preTokens: evt.preTokens,
-            postTokens: evt.postTokens,
-            turnId: evt.id,
-            insertionMode,
-            turnMsgIndex,
-          },
-        );
+        log.debug('Compaction marker created:', {
+          eventKey,
+          trigger: evt.trigger,
+          preTokens: evt.preTokens,
+          postTokens: evt.postTokens,
+          turnId: evt.id,
+          insertionMode,
+          turnMsgIndex,
+        });
 
         messagesBySession.current.set(sid, next);
         if (sid === activeSessionIdRef.current) setMessages(next);
-        
+
         // Persist the entire message array to maintain correct order on disk.
         // Using appendMessage() would write the marker to the end, losing the
         // mid-turn position on reload.
@@ -215,10 +222,7 @@ export function useChatEventListener(deps: ChatEventListenerDeps): void {
             void window.api.app.setAgentActive(false);
           }
           // Notification only for the session that just finished.
-          if (
-            getAppSettings().notificationsEnabled &&
-            !document.hasFocus()
-          ) {
+          if (getAppSettings().notificationsEnabled && !document.hasFocus()) {
             const isError = evt.type === 'error';
             const title = isError ? 'Agent turn failed' : 'Agent turn complete';
             const sessionName = titleBySession.current.get(sid)?.trim();
@@ -233,5 +237,4 @@ export function useChatEventListener(deps: ChatEventListenerDeps): void {
       }
     });
   }, [maybeAutoGenerateTitle]);
-
 }

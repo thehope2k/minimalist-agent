@@ -7,7 +7,7 @@ Keep it in sync when you touch any block (see [Maintenance](#7-maintenance)).
 > TL;DR — adding to the system prompt is **cheap in tokens** (the stable prefix
 > is cache-eligible wherever the provider supports prompt caching) but
 > **expensive in attention** (every instruction competes with every other).
-> Prefer *replacing* a line over *appending* one. Run the
+> Prefer _replacing_ a line over _appending_ one. Run the
 > [add/change checklist](#6-checklist-before-you-touch-the-prompt) first.
 
 ---
@@ -17,7 +17,7 @@ Keep it in sync when you touch any block (see [Maintenance](#7-maintenance)).
 The prompt the model sees is **two concatenated pieces**, deliberately split so the expensive part stays cacheable:
 
 | Piece                    | Built by                                          | Lifetime                   | Cache-eligible?         | Why split                                                                 |
-|--------------------------|---------------------------------------------------|----------------------------|-------------------------|---------------------------------------------------------------------------|
+| ------------------------ | ------------------------------------------------- | -------------------------- | ----------------------- | ------------------------------------------------------------------------- |
 | **Static system prompt** | `getSystemPrompt()` → `buildSystemPromptAppend()` | Stable across a session    | **Provider-dependent**¹ | Keeps the cache-eligible prefix stable; per-turn churn would defeat it    |
 | **Per-turn prefix**      | `buildPromptPrefix()`                             | Rebuilt every user message | No                      | Holds values that change each turn (clock, cwd, scratch path, extensions) |
 
@@ -65,11 +65,11 @@ when the block is present.
 ### Static system prompt — `getSystemPrompt()`
 
 | Block                                                                                                                                                                                                                                                                                                                | Source (function / file)                                         | Gating                         |                                           ~tokens |
-|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------|--------------------------------|--------------------------------------------------:|
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------ | ------------------------------------------------: |
 | Environment marker                                                                                                                                                                                                                                                                                                   | `getEnvironmentMarker()`                                         | always                         |                                               ~30 |
 | Assistant body (identity, capabilities, read-first, **skills with global+project scope + reference-doc pointer**, **extensions with correct paths + reference-doc pointer**, images (http(s)-only caveat), mermaid, math (latex/math alias), tables, rich blocks, interaction guidelines, git co-author, web search) | `getAssistantPrompt()`                                           | always                         |                                            ~1,900 |
 | User preferences                                                                                                                                                                                                                                                                                                     | `formatPreferencesForPrompt()` (`storage/preferences.ts`)        | when prefs set                 |                                          ~150–400 |
-| **Project context** — root file content injected eagerly; sub-package files listed as read-on-demand pointers (monorepo). Walk depth capped at 4.                                                                                                                                                 | `getProjectContextFilesPrompt()`                                 | when AGENTS.md/CLAUDE.md found | ~200–2000 (root content) + ~30–150 (sub pointers) |
+| **Project context** — root file content injected eagerly; sub-package files listed as read-on-demand pointers (monorepo). Walk depth capped at 4.                                                                                                                                                                    | `getProjectContextFilesPrompt()`                                 | when AGENTS.md/CLAUDE.md found | ~200–2000 (root content) + ~30–150 (sub pointers) |
 | **Artifact policy** (where to write files; explicitly excludes `/tmp`/ad-hoc paths, not just the working dir — see checklist entry below)                                                                                                                                                                            | `getArtifactPolicy()`                                            | always                         |                                              ~200 |
 | Collaboration guidance                                                                                                                                                                                                                                                                                               | `getCollaborationGuidance(autonomy)` (`collaboration-prompt.ts`) | always                         |                                            ~1,350 |
 | Planning guidance                                                                                                                                                                                                                                                                                                    | `getPlanningGuidance()` (`planning-prompt.ts`)                   | always                         |                                            ~2,450 |
@@ -83,7 +83,7 @@ AGENTS.md adds ~200 tokens; a detailed one can add ~2K.
 ### Per-turn prefix — `buildPromptPrefix()`
 
 | Block                                                                                                                                                                                                                                   | Source                                                    | Gating                                   |                                    ~tokens |
-|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------|------------------------------------------|-------------------------------------------:|
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | ---------------------------------------- | -----------------------------------------: |
 | Date/time                                                                                                                                                                                                                               | `getDateTimeContext()`                                    | always                                   |                                        ~50 |
 | Working directory                                                                                                                                                                                                                       | `getWorkingDirectoryContext()`                            | when cwd set                             |                                        ~60 |
 | **Scratch directory** (path + `ma-asset://` base for inline images + inline reminder not to fall back to `/tmp`)                                                                                                                        | `getScratchDirContext()`                                  | when session path known                  |                                        ~55 |
@@ -94,7 +94,7 @@ The extensions block grows with state (one line per enabled extension), each car
 `guidePath` rather than a `<slug>`
 template — same pattern as `buildPinnedContextBlock()` and the `@mention`
 directive (`skills/directive.ts`), so the model gets a copy-pasteable path instead of one it has to reconstruct itself.
-The capability *content* is still pulled in on demand: the model reads the guide when it decides to use an extension,
+The capability _content_ is still pulled in on demand: the model reads the guide when it decides to use an extension,
 and an `@slug` mention auto-injects that same guide path via the mention directive. This mirrors the Skills lazy model
 and keeps per-turn attention focused on the task, not on every installed tool's full guide content.
 
@@ -128,7 +128,7 @@ pdf-preview panes, spreadsheet rendering, session-management tools, document CLI
 capabilities live entirely in its own tool description/`promptSnippet`, not here, per the "cheapest home" rule in
 [AGENTS.md](../AGENTS.md#system-prompt).
 
-**But mind the nuance** — some adjacent things *do* render in model output and shouldn't be confused with the omitted
+**But mind the nuance** — some adjacent things _do_ render in model output and shouldn't be confused with the omitted
 "preview" tools:
 
 - **Inline images** (`![](…)` / `<img>`) render with a click-to-expand, zoom/pan lightbox for `http://`/`https://`
@@ -141,17 +141,17 @@ capabilities live entirely in its own tool description/`promptSnippet`, not here
   `data:`, just a broken-image icon. This is documented in the prompt itself (see the Images bullet in
   `getAssistantPrompt()`) precisely because it's a silent failure mode a model would otherwise rediscover the hard way.
 - **Inline HTML** renders, but **sanitized** — `script`/`iframe`/`object`/`form`/
-  `on*` are stripped (`rehype-sanitize`; renderer XSS = IPC RCE). So formatting HTML works; a live HTML *preview pane*
+  `on*` are stripped (`rehype-sanitize`; renderer XSS = IPC RCE). So formatting HTML works; a live HTML _preview pane_
   does not.
 - **PDFs** are input-only attachments — not rendered in output.
 
 **Rule:** do not reintroduce guidance for a capability the app doesn't ship. A prompt that describes tools the model
 doesn't have produces confident, wrong behavior.
 
-**Resolved: ` ```datatable ` stays out of the static prompt.** It *is* renderer-supported ([
+**Resolved: ` ```datatable ` stays out of the static prompt.** It _is_ renderer-supported ([
 `DataTableBlock.tsx`](../src/renderer/src/components/chat/parts/markdown/DataTableBlock.tsx)) — a titled, scrollable
 table widget with expand/copy — but the dispatch comment in `Markdown.tsx` notes it exists for **skills to emit**, not
-for general model use. Decision: the *skill* that wants a model to emit `datatable` blocks documents the JSON schema
+for general model use. Decision: the _skill_ that wants a model to emit `datatable` blocks documents the JSON schema
 (`{ title?, columns: [{key,label,type?}], rows: [...] }`) in its own `SKILL.md`, read on-demand via `@mention`
 — this is the "cheapest home" tier working as intended (skill > static prompt). Adding it to the always-on static prompt
 would tax every session for a feature most users never trigger. No longer tracked as an open question.
@@ -163,11 +163,11 @@ would tax every session for a feature most users never trigger. No longer tracke
 Three costs, in priority order:
 
 1. **Attention dilution (the binding constraint).** Every instruction competes for adherence. Past a point, more rules →
-   *worse* instruction-following ("lost in the middle", instruction overload). This — not tokens — is why the prompt
+   _worse_ instruction-following ("lost in the middle", instruction overload). This — not tokens — is why the prompt
    must stay lean.
 2. **Maintenance.** Each block is one more thing to keep true as the app changes. Stale prompt text is worse than no
    text (it actively misleads the model).
-3. **Tokens / $.** Mitigated *where the upstream model behind Pi caches prompts* (OpenAI/Codex automatically) — you
+3. **Tokens / $.** Mitigated _where the upstream model behind Pi caches prompts_ (OpenAI/Codex automatically) — you
    then pay for the stable prefix roughly once per cache window. With providers that do not offer prompt caching (GitHub Copilot, local
    servers) you pay per turn — but the whole prompt is still <2% of a 200K context, so context-window pressure is
    negligible either way.
@@ -195,7 +195,7 @@ Soft ceilings — crossing them should force a conscious trade, not an automatic
 
 Answer these in the PR/commit description for any prompt change:
 
-1. **Does it change behavior that happens *often*?** Rare cases rarely justify a permanent instruction. One-offs belong
+1. **Does it change behavior that happens _often_?** Rare cases rarely justify a permanent instruction. One-offs belong
    in the user's message, a skill, or AGENTS.md — not here.
 2. **Can it live somewhere cheaper?** Preference order:
    `tool description` → `AGENTS.md` / `CLAUDE.md` → a **skill** (`@slug`, on-demand) → per-turn prefix → **static
@@ -222,7 +222,7 @@ friction inside a quote-heavy shell one-liner and made `/tmp` the locally-ration
 2. **Cheaper home?** No — inherent tool-use behavior, not project- or skill-specific; belongs at the prompt tier read
    every turn.
 3. **Replace, don't append.** Edited the existing artifact-policy bullet and scratch-directory line — no new block.
-4. **Static or per-turn?** Both, deliberately: the *policy* (why) stays static; a short *reminder* co-located with the
+4. **Static or per-turn?** Both, deliberately: the _policy_ (why) stays static; a short _reminder_ co-located with the
    concrete path lives in the per-turn block, since that's structurally closest to the model's attention mid-task (a
    static policy read once at turn start decays in salience — "lost in the middle").
 5. **Gated?** Scratch-line reminder only renders when `scratchDir` is set (unchanged gating).

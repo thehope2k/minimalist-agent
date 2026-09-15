@@ -88,9 +88,7 @@ export function cancelLogin(): void {
  * Refresh a Copilot API token using the GitHub OAuth token (`refreshToken`).
  * The Copilot token expires ~hourly; the GitHub token is long-lived.
  */
-export async function refreshCopilotTokens(
-  githubRefreshToken: string,
-): Promise<CopilotTokens> {
+export async function refreshCopilotTokens(githubRefreshToken: string): Promise<CopilotTokens> {
   const oauth = githubCopilotProvider().auth.oauth!;
   const creds = await oauth.refresh(
     { type: 'oauth', access: '', refresh: githubRefreshToken, expires: 0 },

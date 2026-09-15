@@ -53,13 +53,17 @@ export function killOldestHandle(): void {
 export function killHandle(handle: SpawnedAgentHandle): void {
   try {
     send(handle, { type: 'shutdown' });
-  } catch { /* */ }
+  } catch {
+    /* */
+  }
 
   setTimeout(() => {
     if (!handle.child.killed) {
       try {
         handle.child.kill('SIGKILL');
-      } catch { /* */ }
+      } catch {
+        /* */
+      }
     }
   }, 500);
 
@@ -68,7 +72,7 @@ export function killHandle(handle: SpawnedAgentHandle): void {
 
   // Clean up worktree (async, non-blocking)
   if (handle.worktree?.created) {
-    void removeAgentWorktree(handle.execId).catch(err => {
+    void removeAgentWorktree(handle.execId).catch((err) => {
       log.warn(`Failed to cleanup worktree for ${handle.execId}:`, err);
     });
   }
@@ -81,7 +85,9 @@ setInterval(() => {
 
   for (const handle of activeHandles.values()) {
     if (now - (handle.taskStartedAt ?? handle.startedAt) > maxRuntime && !handle.finished) {
-      log.warn(`Killing stale agent ${handle.execId} (exceeded ${MAX_AGENT_RUNTIME_MINUTES}min runtime)`);
+      log.warn(
+        `Killing stale agent ${handle.execId} (exceeded ${MAX_AGENT_RUNTIME_MINUTES}min runtime)`,
+      );
       handle.error = `Exceeded maximum runtime of ${MAX_AGENT_RUNTIME_MINUTES} minutes`;
       killHandle(handle);
     }
@@ -96,7 +102,7 @@ export function shutdownAllAgentSubprocesses(): void {
   activeHandles.clear();
 
   // Clean up all worktrees
-  void cleanupAllWorktrees().catch(err => {
+  void cleanupAllWorktrees().catch((err) => {
     log.warn('Failed to cleanup worktrees on shutdown:', err);
   });
 }

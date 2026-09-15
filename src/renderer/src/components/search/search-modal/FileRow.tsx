@@ -37,9 +37,7 @@ export function FileRow({
       <FileIcon className="h-3.5 w-3.5 shrink-0 text-fg-subtle" strokeWidth={1.75} />
       <HighlightedText text={entry.name} query={query} className="text-sm text-fg" />
       {parent && (
-        <span className="ml-auto truncate font-mono text-[11px] text-fg-subtle">
-          {parent}
-        </span>
+        <span className="ml-auto truncate font-mono text-[11px] text-fg-subtle">{parent}</span>
       )}
     </div>
   );

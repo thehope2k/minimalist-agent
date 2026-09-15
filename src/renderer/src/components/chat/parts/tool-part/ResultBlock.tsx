@@ -17,8 +17,7 @@ export function ResultBlock({ toolName, text, isError }: Props) {
   const display = normalizeResult(text);
   const truncated = display.length > RESULT_PREVIEW_LIMIT;
   const view = truncated ? display.slice(0, RESULT_PREVIEW_LIMIT) : display;
-  const renderAsMarkdown =
-    !isError && MARKDOWN_RESULT_TOOLS.has(toolName.toLowerCase());
+  const renderAsMarkdown = !isError && MARKDOWN_RESULT_TOOLS.has(toolName.toLowerCase());
 
   return (
     <>

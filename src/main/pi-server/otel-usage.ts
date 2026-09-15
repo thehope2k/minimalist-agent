@@ -38,12 +38,18 @@ export function readUsage(usage: unknown): NormalizedUsage {
 export function finishReason(stop?: string): string | undefined {
   if (!stop) return undefined;
   switch (stop) {
-    case 'stop': return 'stop';
-    case 'length': return 'length';
-    case 'toolUse': return 'tool_calls';
-    case 'error': return 'error';
-    case 'aborted': return 'aborted';
-    default: return stop;
+    case 'stop':
+      return 'stop';
+    case 'length':
+      return 'length';
+    case 'toolUse':
+      return 'tool_calls';
+    case 'error':
+      return 'error';
+    case 'aborted':
+      return 'aborted';
+    default:
+      return stop;
   }
 }
 
@@ -51,7 +57,11 @@ export function finishReason(stop?: string): string | undefined {
 export function serverAddress(): string | undefined {
   const base = (state.model as { baseUrl?: string } | undefined)?.baseUrl;
   if (!base) return undefined;
-  try { return new URL(base).hostname; } catch { return undefined; }
+  try {
+    return new URL(base).hostname;
+  } catch {
+    return undefined;
+  }
 }
 
 export interface AssistantMsg {
@@ -81,9 +91,7 @@ export function applyChatResultAttrs(span: Span, m?: AssistantMsg): void {
   // uncached delta (often ~2 with prompt caching) would wildly undercount. The
   // cache split stays available in the dedicated cache_* attributes.
   const totalInput =
-    usage.input === undefined &&
-    usage.cacheRead === undefined &&
-    usage.cacheWrite === undefined
+    usage.input === undefined && usage.cacheRead === undefined && usage.cacheWrite === undefined
       ? undefined
       : (usage.input ?? 0) + (usage.cacheRead ?? 0) + (usage.cacheWrite ?? 0);
   setAttrs(span, {

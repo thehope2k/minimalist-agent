@@ -64,9 +64,7 @@ export async function updateProject(
   return proj;
 }
 
-export async function deleteProject(
-  id: string,
-): Promise<{ ok: boolean; sessionsCleared: number }> {
+export async function deleteProject(id: string): Promise<{ ok: boolean; sessionsCleared: number }> {
   const result = await window.api.projects.delete(id);
   await reload();
   // Sessions whose projectId matched were reset to Inbox in main; refresh
@@ -90,9 +88,7 @@ export function findProject(id: string | null | undefined): Project | null {
  * defaults) the moment a folder is picked, before any session exists.
  * Returns the most specific project, or `null` if nothing matches.
  */
-export function findProjectForPath(
-  cwd: string | undefined,
-): Project | null {
+export function findProjectForPath(cwd: string | undefined): Project | null {
   if (!cwd || !cache) return null;
   const norm = normalizePath(cwd);
   let best: Project | null = null;

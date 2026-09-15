@@ -26,10 +26,7 @@ function buildMetadataRows(extension: LoadedExtension): KeyValueRow[] {
       value: (
         <div className="flex flex-wrap gap-1">
           {extension.config.tags.map((tag) => (
-            <span
-              key={tag}
-              className="rounded bg-elevated px-2 py-0.5 text-xs text-fg"
-            >
+            <span key={tag} className="rounded bg-elevated px-2 py-0.5 text-xs text-fg">
               {tag}
             </span>
           ))}
@@ -79,11 +76,7 @@ function buildMetadataRows(extension: LoadedExtension): KeyValueRow[] {
   if (extension.config.env && Object.keys(extension.config.env).length > 0) {
     rows.push({
       label: 'Env keys',
-      value: (
-        <code className="text-xs">
-          {Object.keys(extension.config.env).join(', ')}
-        </code>
-      ),
+      value: <code className="text-xs">{Object.keys(extension.config.env).join(', ')}</code>,
     });
   }
 

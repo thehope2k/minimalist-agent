@@ -47,13 +47,14 @@ export function StreamStatus({ parts, startedAt }: { parts: MessagePart[]; start
 function verbFor(
   name: string,
   input: unknown,
-  subagent?: { phase?: 'spawning' | 'running' | 'finalizing' | 'done' | 'error'; agentName?: string; agentSlug?: string },
+  subagent?: {
+    phase?: 'spawning' | 'running' | 'finalizing' | 'done' | 'error';
+    agentName?: string;
+    agentSlug?: string;
+  },
 ): string {
-  const o = (input && typeof input === 'object' ? input : null) as
-    | Record<string, unknown>
-    | null;
-  const file =
-    o && typeof o.file_path === 'string' ? basename(o.file_path) : null;
+  const o = (input && typeof input === 'object' ? input : null) as Record<string, unknown> | null;
+  const file = o && typeof o.file_path === 'string' ? basename(o.file_path) : null;
 
   switch (name) {
     case 'Read':
@@ -77,8 +78,13 @@ function verbFor(
       return 'Searching the web';
     case 'Task':
     case 'Agent': {
-      const sub = subagent?.agentSlug
-        ?? (o && typeof o.subagent_type === 'string' ? o.subagent_type : (o && typeof o.agent === 'string' ? o.agent : ''));
+      const sub =
+        subagent?.agentSlug ??
+        (o && typeof o.subagent_type === 'string'
+          ? o.subagent_type
+          : o && typeof o.agent === 'string'
+            ? o.agent
+            : '');
       const display = subagent?.agentName ?? sub;
       const phase = subagent?.phase ?? 'spawning';
       if (phase === 'running') return display ? `Running ${display}` : 'Running subagent';

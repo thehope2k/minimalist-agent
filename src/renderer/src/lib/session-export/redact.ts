@@ -6,12 +6,7 @@
 //   collapsePaths  -> /Users/<name>/...  ->  ~/...   (drops username + layout)
 //   scrubSecrets   -> known token shapes ->  «redacted:kind»
 
-import type {
-  ExportModel,
-  ExportPart,
-  ExportRow,
-  ExportSubagent,
-} from './types';
+import type { ExportModel, ExportPart, ExportRow, ExportSubagent } from './types';
 
 const REDACT = '«redacted»';
 

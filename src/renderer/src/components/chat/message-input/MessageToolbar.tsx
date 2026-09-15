@@ -49,11 +49,11 @@ export function MessageToolbar({
   onMinimize,
 }: Props) {
   const supportsReasoning =
-    !!connection && !!model &&
+    !!connection &&
+    !!model &&
     (connection.models.find((m) => m.id === model)?.supportsReasoning ?? false);
 
-  const canManualCompact =
-    !!onManualCompact && !!connection && messages.length > 0;
+  const canManualCompact = !!onManualCompact && !!connection && messages.length > 0;
 
   const activeModelDef = connection?.models.find((m) => m.id === model);
   const contextWindow = activeModelDef?.contextWindow ?? DEFAULT_CONTEXT_WINDOW;

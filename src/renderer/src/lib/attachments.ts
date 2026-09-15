@@ -165,10 +165,22 @@ export function createSnippetDraft(
 
 function langToExt(lang: string): string {
   const map: Record<string, string> = {
-    typescript: '.ts', javascript: '.js', tsx: '.tsx', jsx: '.jsx',
-    python: '.py', json: '.json', html: '.html', css: '.css',
-    yaml: '.yml', sql: '.sql', bash: '.sh', go: '.go',
-    rust: '.rs', java: '.java', xml: '.xml', markdown: '.md',
+    typescript: '.ts',
+    javascript: '.js',
+    tsx: '.tsx',
+    jsx: '.jsx',
+    python: '.py',
+    json: '.json',
+    html: '.html',
+    css: '.css',
+    yaml: '.yml',
+    sql: '.sql',
+    bash: '.sh',
+    go: '.go',
+    rust: '.rs',
+    java: '.java',
+    xml: '.xml',
+    markdown: '.md',
   };
   return map[lang] ?? '.txt';
 }

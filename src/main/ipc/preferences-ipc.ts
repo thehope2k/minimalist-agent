@@ -14,15 +14,9 @@ import {
 export function registerPreferencesIpc(): void {
   // ---- Preferences ------------------------------------------------------
   ipcMain.handle('preferences:get', () => loadPreferences());
-  ipcMain.handle('preferences:save', (_e, prefs: UserPreferences) =>
-    savePreferences(prefs),
-  );
-  ipcMain.handle('settings:pushRecentFolder', (_e, folder: string) =>
-    pushRecentFolder(folder),
-  );
-  ipcMain.handle('settings:removeRecentFolder', (_e, folder: string) =>
-    removeRecentFolder(folder),
-  );
+  ipcMain.handle('preferences:save', (_e, prefs: UserPreferences) => savePreferences(prefs));
+  ipcMain.handle('settings:pushRecentFolder', (_e, folder: string) => pushRecentFolder(folder));
+  ipcMain.handle('settings:removeRecentFolder', (_e, folder: string) => removeRecentFolder(folder));
 
   // ---- Telemetry (OpenTelemetry tracing) --------------------------------
   ipcMain.handle('telemetry:get', () => getTelemetrySettings());

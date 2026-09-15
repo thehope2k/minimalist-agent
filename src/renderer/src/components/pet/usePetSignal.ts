@@ -45,13 +45,23 @@ export function usePetSignal(isStreaming: boolean): PetSignalState {
   const [reactionNonce, setReactionNonce] = useState(0);
   const lastActivityRef = useRef(Date.now());
   const wasStreamingRef = useRef(isStreaming);
-  const wanderThresholdMsRef = useRef(rollJitteredThreshold(IDLE_WANDER_BASE_MS, IDLE_WANDER_JITTER_RATIO));
-  const napThresholdMsRef = useRef(rollJitteredThreshold(LONG_IDLE_NAP_BASE_MS, LONG_IDLE_NAP_JITTER_RATIO));
+  const wanderThresholdMsRef = useRef(
+    rollJitteredThreshold(IDLE_WANDER_BASE_MS, IDLE_WANDER_JITTER_RATIO),
+  );
+  const napThresholdMsRef = useRef(
+    rollJitteredThreshold(LONG_IDLE_NAP_BASE_MS, LONG_IDLE_NAP_JITTER_RATIO),
+  );
 
   const resetActivityClock = useCallback(() => {
     lastActivityRef.current = Date.now();
-    wanderThresholdMsRef.current = rollJitteredThreshold(IDLE_WANDER_BASE_MS, IDLE_WANDER_JITTER_RATIO);
-    napThresholdMsRef.current = rollJitteredThreshold(LONG_IDLE_NAP_BASE_MS, LONG_IDLE_NAP_JITTER_RATIO);
+    wanderThresholdMsRef.current = rollJitteredThreshold(
+      IDLE_WANDER_BASE_MS,
+      IDLE_WANDER_JITTER_RATIO,
+    );
+    napThresholdMsRef.current = rollJitteredThreshold(
+      LONG_IDLE_NAP_BASE_MS,
+      LONG_IDLE_NAP_JITTER_RATIO,
+    );
   }, []);
 
   const fireReaction = useCallback(
@@ -123,7 +133,8 @@ export function usePetSignal(isStreaming: boolean): PetSignalState {
       }
 
       setBaseState('idle');
-      const canFidget = (baseState === 'idle' || baseState === 'sit') && reactionRef.current === null;
+      const canFidget =
+        (baseState === 'idle' || baseState === 'sit') && reactionRef.current === null;
       if (canFidget && Math.random() < FIDGET_TRIGGER_PROBABILITY) {
         fireReaction('fidget', { countsAsActivity: false });
       }

@@ -12,8 +12,19 @@
 import type { FileStatResult } from './electron';
 
 const NON_PREVIEWABLE_EXTS = new Set([
-  'pdf', 'zip', 'gz', 'tar', 'dmg', 'exe', 'bin',
-  'mp3', 'mp4', 'mov', 'wav', 'sqlite', 'db',
+  'pdf',
+  'zip',
+  'gz',
+  'tar',
+  'dmg',
+  'exe',
+  'bin',
+  'mp3',
+  'mp4',
+  'mov',
+  'wav',
+  'sqlite',
+  'db',
 ]);
 
 export interface ReferenceActions {
@@ -22,8 +33,7 @@ export interface ReferenceActions {
 }
 
 export type ReferenceOutcome =
-  | { ok: true; action: 'opened' | 'revealed'; absolutePath: string }
-  | { ok: false; reason: string };
+  { ok: true; action: 'opened' | 'revealed'; absolutePath: string } | { ok: false; reason: string };
 
 const WIN32_ABSOLUTE_PATH_RE = /^[a-zA-Z]:[\\/]|^\\\\/;
 

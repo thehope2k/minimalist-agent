@@ -17,9 +17,35 @@ export const GUIDE_OFFSET_PX = 12;
 
 /** File extensions that can be previewed as code. */
 export const CODE_EXTS = new Set([
-  'ts', 'tsx', 'js', 'jsx', 'py', 'go', 'rs', 'java', 'c', 'cpp', 'h',
-  'json', 'yaml', 'yml', 'toml', 'sh', 'bash', 'zsh', 'sql', 'html',
-  'css', 'scss', 'md', 'txt', 'log', 'conf', 'ini', 'cfg', 'env',
+  'ts',
+  'tsx',
+  'js',
+  'jsx',
+  'py',
+  'go',
+  'rs',
+  'java',
+  'c',
+  'cpp',
+  'h',
+  'json',
+  'yaml',
+  'yml',
+  'toml',
+  'sh',
+  'bash',
+  'zsh',
+  'sql',
+  'html',
+  'css',
+  'scss',
+  'md',
+  'txt',
+  'log',
+  'conf',
+  'ini',
+  'cfg',
+  'env',
 ]);
 
 export const PDF_EXTS = new Set(['pdf']);

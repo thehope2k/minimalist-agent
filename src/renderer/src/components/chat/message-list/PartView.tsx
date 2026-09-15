@@ -5,8 +5,10 @@ import type { MessagePart } from '@/lib/chat';
 
 export function PartView({ part }: { part: MessagePart }) {
   switch (part.kind) {
-    case 'text':     return <TextPart text={part.text} />;
-    case 'thinking': return <ThinkingPart text={part.text} outputTokens={part.outputTokens} />;
+    case 'text':
+      return <TextPart text={part.text} />;
+    case 'thinking':
+      return <ThinkingPart text={part.text} outputTokens={part.outputTokens} />;
     case 'tool':
       return (
         <ToolPart
@@ -20,6 +22,7 @@ export function PartView({ part }: { part: MessagePart }) {
           contextDeltaGroupSize={part.contextDeltaGroupSize}
         />
       );
-    default: return null;
+    default:
+      return null;
   }
 }

@@ -13,7 +13,7 @@ import type { Writable } from 'node:stream';
 import type { Logger } from './log';
 
 function streamErrorCode(err: unknown): string | undefined {
-  return (err as Error & { code?: string } | null)?.code;
+  return (err as (Error & { code?: string }) | null)?.code;
 }
 
 function isShutdownRace(err: unknown): boolean {
@@ -21,11 +21,7 @@ function isShutdownRace(err: unknown): boolean {
   return code === 'EPIPE' || code === 'ERR_STREAM_DESTROYED';
 }
 
-export function writeJsonLine(
-  stdin: Writable | null | undefined,
-  msg: unknown,
-  log: Logger,
-): void {
+export function writeJsonLine(stdin: Writable | null | undefined, msg: unknown, log: Logger): void {
   if (!stdin) return;
   if (stdin.destroyed || stdin.writableEnded || !stdin.writable) return;
 

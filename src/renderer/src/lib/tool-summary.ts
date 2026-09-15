@@ -41,21 +41,33 @@ function stripCdPrefix(cmd: string): string {
 /** Normalise tool-name casing and aliases before matching them below. */
 export function canonicalToolName(name: string): string {
   switch (name.toLowerCase()) {
-    case 'read': return 'Read';
-    case 'write': return 'Write';
-    case 'edit': return 'Edit';
-    case 'notebookedit': return 'NotebookEdit';
-    case 'todowrite': return 'TodoWrite';
-    case 'bash': return 'Bash';
-    case 'grep': return 'Grep';
-    case 'glob': return 'Glob';
+    case 'read':
+      return 'Read';
+    case 'write':
+      return 'Write';
+    case 'edit':
+      return 'Edit';
+    case 'notebookedit':
+      return 'NotebookEdit';
+    case 'todowrite':
+      return 'TodoWrite';
+    case 'bash':
+      return 'Bash';
+    case 'grep':
+      return 'Grep';
+    case 'glob':
+      return 'Glob';
     case 'webfetch':
-    case 'web_fetch': return 'WebFetch';
+    case 'web_fetch':
+      return 'WebFetch';
     case 'websearch':
-    case 'web_search': return 'WebSearch';
+    case 'web_search':
+      return 'WebSearch';
     case 'task':
-    case 'agent': return 'Agent';
-    default: return name;
+    case 'agent':
+      return 'Agent';
+    default:
+      return name;
   }
 }
 
@@ -69,9 +81,7 @@ export function summarizeToolCall(name: string, input: unknown, cwd?: string): s
       const offset = typeof o.offset === 'number' ? o.offset : null;
       const limit = typeof o.limit === 'number' ? o.limit : null;
       if (!p) return '';
-      const range = offset != null
-        ? `:${offset}${limit != null ? `-${offset + limit}` : ''}`
-        : '';
+      const range = offset != null ? `:${offset}${limit != null ? `-${offset + limit}` : ''}` : '';
       return clip(p + range);
     }
 
@@ -92,7 +102,8 @@ export function summarizeToolCall(name: string, input: unknown, cwd?: string): s
     }
 
     case 'Bash': {
-      const cmd = typeof o.command === 'string' ? stripCdPrefix(o.command.replace(/\s+/g, ' ')) : '';
+      const cmd =
+        typeof o.command === 'string' ? stripCdPrefix(o.command.replace(/\s+/g, ' ')) : '';
       return clip(cmd);
     }
 
@@ -141,12 +152,18 @@ export function summarizeToolCall(name: string, input: unknown, cwd?: string): s
 
     case 'Task':
     case 'Agent': {
-      const desc = typeof o.description === 'string'
-        ? o.description
-        : (typeof o.task === 'string' ? o.task : '');
-      const sub = typeof o.subagent_type === 'string'
-        ? o.subagent_type
-        : (typeof o.agent === 'string' ? o.agent : '');
+      const desc =
+        typeof o.description === 'string'
+          ? o.description
+          : typeof o.task === 'string'
+            ? o.task
+            : '';
+      const sub =
+        typeof o.subagent_type === 'string'
+          ? o.subagent_type
+          : typeof o.agent === 'string'
+            ? o.agent
+            : '';
       return clip(sub ? `${sub}: ${desc}` : desc);
     }
 

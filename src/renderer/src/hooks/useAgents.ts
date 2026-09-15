@@ -1,9 +1,5 @@
 import { useEffect, useState } from 'react';
-import {
-  bootstrap,
-  snapshot as readSnapshot,
-  subscribe,
-} from '@/lib/agents';
+import { bootstrap, snapshot as readSnapshot, subscribe } from '@/lib/agents';
 import type { LoadedAgent } from '@/lib/electron';
 
 export function useAgents(): LoadedAgent[] | null {

@@ -30,16 +30,16 @@ export function FileOpenerProvider({ onOpenFile, children }: FileOpenerProviderP
           revealInFinder: (absolutePath) => void window.api.sessions.revealFile(absolutePath),
         }),
       revealInFinder: (rawPathOrFileUrl, cwd) =>
-        revealInFinder(rawPathOrFileUrl, cwd, (absolutePath) =>
-          void window.api.sessions.revealFile(absolutePath),
+        revealInFinder(
+          rawPathOrFileUrl,
+          cwd,
+          (absolutePath) => void window.api.sessions.revealFile(absolutePath),
         ),
     }),
     [onOpenFile],
   );
 
-  return (
-    <FileOpenerContext.Provider value={value}>{children}</FileOpenerContext.Provider>
-  );
+  return <FileOpenerContext.Provider value={value}>{children}</FileOpenerContext.Provider>;
 }
 
 /** Returns undefined outside a FileOpenerProvider (e.g. Settings/Skills panels). */

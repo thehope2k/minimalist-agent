@@ -67,10 +67,7 @@ export async function resizeImageForAPI(
     outH = Math.round(outH * scale);
   }
   if (outW > IMAGE_LIMITS.MAX_DIMENSION || outH > IMAGE_LIMITS.MAX_DIMENSION) {
-    const scale = Math.min(
-      IMAGE_LIMITS.MAX_DIMENSION / outW,
-      IMAGE_LIMITS.MAX_DIMENSION / outH,
-    );
+    const scale = Math.min(IMAGE_LIMITS.MAX_DIMENSION / outW, IMAGE_LIMITS.MAX_DIMENSION / outH);
     outW = Math.floor(outW * scale);
     outH = Math.floor(outH * scale);
   }
@@ -104,10 +101,7 @@ export async function resizeImageForAPI(
 /** Generate a 200×200 PNG thumbnail (object-fit cover). Returns base64. */
 export async function generateImageThumbnail(buffer: Buffer): Promise<string | null> {
   try {
-    const out = await sharp(buffer)
-      .resize(200, 200, { fit: 'cover' })
-      .png()
-      .toBuffer();
+    const out = await sharp(buffer).resize(200, 200, { fit: 'cover' }).png().toBuffer();
     return out.toString('base64');
   } catch {
     return null;

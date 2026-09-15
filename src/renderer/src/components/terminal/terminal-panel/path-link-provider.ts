@@ -28,7 +28,7 @@ export function resolveTerminalPath(cwd: string, rawPath: string): string {
 
 export interface PathLinkProviderOptions {
   /** Read live via a getter so a stale closure never outlives a cwd change. */
-  getCwd:     () => string;
+  getCwd: () => string;
   onOpenPath: (absolutePath: string, lineNumber: number) => void;
 }
 
@@ -61,7 +61,7 @@ export function createPathLinkProvider(
           text: full,
           range: {
             start: { x: match.index + 1, y: bufferLineNumber },
-            end:   { x: match.index + full.length, y: bufferLineNumber },
+            end: { x: match.index + full.length, y: bufferLineNumber },
           },
           activate: () => onOpenPath(resolveTerminalPath(getCwd(), rawPath), lineNumber),
         });

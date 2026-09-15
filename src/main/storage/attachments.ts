@@ -12,12 +12,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { extname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { Paths } from './paths';
-import {
-  IMAGE_LIMITS,
-  generateImageThumbnail,
-  inspectImage,
-  resizeImageForAPI,
-} from './images';
+import { IMAGE_LIMITS, generateImageThumbnail, inspectImage, resizeImageForAPI } from './images';
 import type { StoredAttachment, AttachmentType } from './sessions';
 
 export interface DraftAttachment {
@@ -50,12 +45,43 @@ const IMAGE_MIME: Record<string, string> = {
 };
 
 const TEXT_EXTENSIONS = new Set([
-  '.txt', '.md', '.json', '.js', '.ts', '.tsx', '.jsx',
-  '.py', '.rb', '.go', '.rs', '.java', '.c', '.cpp', '.h',
-  '.css', '.scss', '.html', '.xml', '.yaml', '.yml', '.toml',
-  '.sh', '.bash', '.zsh', '.fish', '.sql', '.graphql',
-  '.env', '.gitignore', '.dockerfile', '.makefile',
-  '.csv', '.log', '.conf', '.ini', '.cfg',
+  '.txt',
+  '.md',
+  '.json',
+  '.js',
+  '.ts',
+  '.tsx',
+  '.jsx',
+  '.py',
+  '.rb',
+  '.go',
+  '.rs',
+  '.java',
+  '.c',
+  '.cpp',
+  '.h',
+  '.css',
+  '.scss',
+  '.html',
+  '.xml',
+  '.yaml',
+  '.yml',
+  '.toml',
+  '.sh',
+  '.bash',
+  '.zsh',
+  '.fish',
+  '.sql',
+  '.graphql',
+  '.env',
+  '.gitignore',
+  '.dockerfile',
+  '.makefile',
+  '.csv',
+  '.log',
+  '.conf',
+  '.ini',
+  '.cfg',
 ]);
 
 // Legacy/OOXML office formats — opaque binary containers, classified
@@ -174,9 +200,7 @@ export async function storeDraft(
       const isPhoto = draft.mimeType === 'image/jpeg';
       const resized = await resizeImageForAPI(original, { isPhoto });
       if (!resized) {
-        throw new Error(
-          'Image is too large even after compression. Try a smaller file.',
-        );
+        throw new Error('Image is too large even after compression. Try a smaller file.');
       }
       writeFileSync(storedPath, resized.buffer);
       const thumb = await generateImageThumbnail(resized.buffer);
@@ -206,7 +230,8 @@ export async function storeDraft(
   }
 
   if (draft.type === 'pdf' || draft.type === 'office') {
-    if (!draft.base64) throw new Error(`${draft.type === 'pdf' ? 'PDF' : 'Office'} attachment missing base64`);
+    if (!draft.base64)
+      throw new Error(`${draft.type === 'pdf' ? 'PDF' : 'Office'} attachment missing base64`);
     const buf = Buffer.from(draft.base64, 'base64');
     writeFileSync(storedPath, buf);
     return {

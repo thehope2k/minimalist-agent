@@ -1,9 +1,9 @@
-import {useCallback, useEffect, useRef, useState} from 'react';
-import {loadFullSession, snapshot, subscribe} from '@/lib/sessions';
-import {findProject, findProjectForPath} from '@/lib/projects';
-import {getNewSessionStateDraft, patchNewSessionStateDraft} from '@/lib/new-session-draft';
-import type {PermissionMode, ThinkingLevel} from '@/lib/electron';
-import type {useAiData} from '@/hooks/useAiData';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { loadFullSession, snapshot, subscribe } from '@/lib/sessions';
+import { findProject, findProjectForPath } from '@/lib/projects';
+import { getNewSessionStateDraft, patchNewSessionStateDraft } from '@/lib/new-session-draft';
+import type { PermissionMode, ThinkingLevel } from '@/lib/electron';
+import type { useAiData } from '@/hooks/useAiData';
 import { createLogger } from '@/lib/logger';
 
 const log = createLogger('useSessionSync');
@@ -80,9 +80,7 @@ export function useSessionSync(
           aiData?.settings.defaultAutonomyLevel ??
           50,
       );
-      setThinkingLevel(
-        d.thinkingLevel ?? aiData?.settings.defaultThinking ?? 'medium',
-      );
+      setThinkingLevel(d.thinkingLevel ?? aiData?.settings.defaultThinking ?? 'medium');
       setProjectDefaultConnectionSlug(projForFresh?.defaultConnectionSlug ?? '');
       setProjectDefaultModel(projForFresh?.defaultModel ?? '');
       setSessionConnectionSlug('');
@@ -103,7 +101,7 @@ export function useSessionSync(
       setCwd(data.meta.workingDirectory);
       onCwdChange?.(data.meta.workingDirectory);
       setTitle(data.meta.title);
-      
+
       const project = findProject(data.meta.projectId);
       setPermissionMode(
         data.meta.permissionMode ??
@@ -117,9 +115,7 @@ export function useSessionSync(
           aiData?.settings.defaultAutonomyLevel ??
           50,
       );
-      setThinkingLevel(
-        data.meta.thinkingLevel ?? aiData?.settings.defaultThinking ?? 'medium',
-      );
+      setThinkingLevel(data.meta.thinkingLevel ?? aiData?.settings.defaultThinking ?? 'medium');
       setProjectDefaultConnectionSlug(project?.defaultConnectionSlug ?? '');
       setProjectDefaultModel(project?.defaultModel ?? '');
       setSessionConnectionSlug(data.meta.connectionSlug ?? '');
@@ -146,14 +142,8 @@ export function useSessionSync(
       if (sessionId) return; // Only fresh sessions re-derive config from cwd.
 
       const proj = findProjectForPath(next);
-      const mode =
-        proj?.defaultPermissionMode ??
-        aiData?.settings.defaultPermissionMode ??
-        'auto';
-      const auto =
-        proj?.defaultAutonomyLevel ??
-        aiData?.settings.defaultAutonomyLevel ??
-        50;
+      const mode = proj?.defaultPermissionMode ?? aiData?.settings.defaultPermissionMode ?? 'auto';
+      const auto = proj?.defaultAutonomyLevel ?? aiData?.settings.defaultAutonomyLevel ?? 50;
 
       setPermissionMode(mode);
       permissionModeRef.current = mode;
@@ -216,16 +206,12 @@ export function useSessionSync(
 
     if (!draft.permissionMode) {
       setPermissionMode(
-        projForFresh?.defaultPermissionMode ??
-          aiData.settings.defaultPermissionMode ??
-          'auto',
+        projForFresh?.defaultPermissionMode ?? aiData.settings.defaultPermissionMode ?? 'auto',
       );
     }
     if (draft.autonomyLevel === undefined) {
       setAutonomyLevel(
-        projForFresh?.defaultAutonomyLevel ??
-          aiData.settings.defaultAutonomyLevel ??
-          50,
+        projForFresh?.defaultAutonomyLevel ?? aiData.settings.defaultAutonomyLevel ?? 50,
       );
     }
     if (draft.thinkingLevel === undefined) {

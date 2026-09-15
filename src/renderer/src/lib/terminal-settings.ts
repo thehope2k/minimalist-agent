@@ -2,8 +2,8 @@
 
 export interface TerminalSettings {
   /** Empty string = auto-detect from main process (`process.env.SHELL`). */
-  shell:      string;
-  fontSize:   number;
+  shell: string;
+  fontSize: number;
   fontFamily: string;
   /** Maximum number of lines kept in the xterm.js scrollback buffer. */
   scrollback: number;
@@ -12,8 +12,8 @@ export interface TerminalSettings {
 const KEY = 'terminal:settings-v1';
 
 const DEFAULTS: TerminalSettings = {
-  shell:      '',
-  fontSize:   14,
+  shell: '',
+  fontSize: 14,
   fontFamily: '"JetBrains Mono", monospace',
   scrollback: 1_000,
 };

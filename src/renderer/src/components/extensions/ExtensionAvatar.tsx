@@ -29,11 +29,7 @@ export function ExtensionAvatar({
       <img
         src={`file://${extension.iconPath}`}
         alt=""
-        className={cn(
-          'shrink-0 rounded-md object-cover',
-          dim,
-          className,
-        )}
+        className={cn('shrink-0 rounded-md object-cover', dim, className)}
       />
     );
   }

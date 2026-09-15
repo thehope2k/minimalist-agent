@@ -1,6 +1,6 @@
 /**
  * Detects when a plan should be revised based on discoveries.
- * 
+ *
  * Analyzes phase findings to identify discrepancies that warrant plan revision.
  */
 
@@ -73,7 +73,7 @@ export class RevisionDetector {
   shouldRevise(
     currentPhase: Phase,
     findings: string,
-    remainingPhases: Phase[]
+    remainingPhases: Phase[],
   ): { should: boolean; reason?: string } {
     // No revision needed if no remaining phases
     if (remainingPhases.length === 0) {
@@ -170,7 +170,7 @@ export class RevisionDetector {
    */
   private determineSeverity(
     findings: string,
-    type: 'approach_change' | 'unexpected_finding'
+    type: 'approach_change' | 'unexpected_finding',
   ): 'low' | 'medium' | 'high' {
     const text = findings.toLowerCase();
 
@@ -193,13 +193,7 @@ export class RevisionDetector {
     }
 
     // Medium severity indicators
-    const mediumSeverityKeywords = [
-      'should',
-      'recommend',
-      'better',
-      'more efficient',
-      'simpler',
-    ];
+    const mediumSeverityKeywords = ['should', 'recommend', 'better', 'more efficient', 'simpler'];
 
     for (const keyword of mediumSeverityKeywords) {
       if (text.includes(keyword)) {
@@ -216,7 +210,10 @@ export class RevisionDetector {
    */
   private extractRelevantSentence(text: string, keyword: string): string {
     // Split into sentences
-    const sentences = text.split(/[.!?]+/).map((s) => s.trim()).filter(Boolean);
+    const sentences = text
+      .split(/[.!?]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
 
     // Find sentence with keyword
     const keywordLower = keyword.toLowerCase();

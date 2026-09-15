@@ -31,13 +31,7 @@ export function ActionButtons({ sessionId, plan }: ActionButtonsProps) {
       )}
 
       {plan.status === 'active' && (
-        <Button
-          variant="ghost"
-          size="sm"
-          icon={X}
-          onClick={handleCancel}
-          aria-label="Cancel plan"
-        >
+        <Button variant="ghost" size="sm" icon={X} onClick={handleCancel} aria-label="Cancel plan">
           Cancel
         </Button>
       )}

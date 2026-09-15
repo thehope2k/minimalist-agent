@@ -142,7 +142,11 @@ export function ChatContent({
             onClose={handleFindClose}
             inputRef={findInputRef}
           />
-          <ChatScroll ref={chatScrollRef} sessionId={activeSessionId ?? sessionId} contentSignal={contentSignal}>
+          <ChatScroll
+            ref={chatScrollRef}
+            sessionId={activeSessionId ?? sessionId}
+            contentSignal={contentSignal}
+          >
             {messages.length === 0 ? (
               <EmptyState />
             ) : (

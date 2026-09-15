@@ -9,12 +9,7 @@ import { useAiData } from '@/hooks/useAiData';
 import type { PermissionMode, ThinkingLevel } from '@/lib/electron';
 import { Button, Select } from '@/components/ui';
 import { AddConnectionDialog } from '../AddConnectionDialog';
-import {
-  SettingsCard,
-  SettingsDivider,
-  SettingsRow,
-  SettingsSection,
-} from '../SettingsPrimitives';
+import { SettingsCard, SettingsDivider, SettingsRow, SettingsSection } from '../SettingsPrimitives';
 import { ConnectionsSection } from '../ai-panel/ConnectionsSection';
 import { ContextFileNamesRow } from '../ai-panel/ContextFileNamesRow';
 import { CompactionSection } from '../ai-panel/CompactionSection';
@@ -137,7 +132,10 @@ export function AIPanel() {
         </SettingsCard>
       </SettingsSection>
 
-      <SettingsSection title="Agent" subtitle="Tool-loop bound and prompt customization for new sessions.">
+      <SettingsSection
+        title="Agent"
+        subtitle="Tool-loop bound and prompt customization for new sessions."
+      >
         <SettingsCard>
           <SettingsRow
             label="Default permission mode"
@@ -175,13 +173,10 @@ export function AIPanel() {
 
       <AddConnectionDialog
         open={reauthSlug != null}
-        editingMeta={
-          reauthSlug ? connections.find((c) => c.slug === reauthSlug) : undefined
-        }
+        editingMeta={reauthSlug ? connections.find((c) => c.slug === reauthSlug) : undefined}
         onClose={() => setReauthSlug(null)}
         onSaved={() => setReauthSlug(null)}
       />
     </div>
   );
 }
-

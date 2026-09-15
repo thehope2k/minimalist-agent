@@ -38,10 +38,12 @@ export function BrowserStatusPill({ sessionId }: Props) {
     <div
       className={cn(
         'relative flex items-center gap-1 rounded-md border border-border bg-elevated pl-2 pr-0.5 text-xs text-fg-muted',
-        state.agentControl ? 'browsing-ring' : 'browsing-idle'
+        state.agentControl ? 'browsing-ring' : 'browsing-idle',
       )}
     >
-      <Globe className={cn('h-3.5 w-3.5 shrink-0 text-accent', state.agentControl && 'animate-pulse')} />
+      <Globe
+        className={cn('h-3.5 w-3.5 shrink-0 text-accent', state.agentControl && 'animate-pulse')}
+      />
       <span className="max-w-32 truncate" title={state.url}>
         {state.title || state.url || 'Browser'}
       </span>

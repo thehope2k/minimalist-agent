@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* =============================================================================
    Color system — two base colors (--background, --foreground) plus an --accent.
@@ -8,27 +8,27 @@
 :root {
   /* "Onyx" theme — deeper blacks, sharper panel separation, stronger text.
      Goal: premium / Linear-Raycast feel without changing brand or tokens. */
-  --background: oklch(0.07 0.004 270);   /* outer app frame                 */
-  --panel:      oklch(0.13 0.004 270);   /* card surface                    */
-  --foreground: oklch(0.97 0.003 270);   /* text                            */
-  --accent:     oklch(0.63 0.24 290);    /* brand purple, slightly deeper   */
-  --accent-fg:  oklch(0.98 0 0);
+  --background: oklch(0.07 0.004 270); /* outer app frame                 */
+  --panel: oklch(0.13 0.004 270); /* card surface                    */
+  --foreground: oklch(0.97 0.003 270); /* text                            */
+  --accent: oklch(0.63 0.24 290); /* brand purple, slightly deeper   */
+  --accent-fg: oklch(0.98 0 0);
 
   /* Surfaces above the panel — explicit OKLCH stops, not foreground mixes,
      so they keep their dark character instead of getting milky.
      Bumped so active/selected rows read clearly against the deep panel. */
-  --elevated:   oklch(0.22 0.004 270);   /* hover / secondary surfaces */
-  --elevated-2: oklch(0.28 0.004 270);   /* selected / pressed         */
+  --elevated: oklch(0.22 0.004 270); /* hover / secondary surfaces */
+  --elevated-2: oklch(0.28 0.004 270); /* selected / pressed         */
 
   /* Text tones — pure neutral grays, not panel-tinted */
-  --fg-muted:   oklch(0.74 0.004 270);
-  --fg-subtle:  oklch(0.66 0.004 270);
+  --fg-muted: oklch(0.74 0.004 270);
+  --fg-subtle: oklch(0.66 0.004 270);
 
   /* Borders — translucent foreground. `--border` is for in-content separators
      (inputs, bubbles, list dividers); `--border-strong` is for panel outlines
      and emphasised states where the line needs to read against the deep app
      frame. */
-  --border:        oklch(from var(--foreground) l c h / 0.16);
+  --border: oklch(from var(--foreground) l c h / 0.16);
   --border-strong: oklch(from var(--foreground) l c h / 0.36);
 }
 
@@ -56,23 +56,25 @@
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
 
-  --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
 }
 
 body {
   font-family: var(--font-sans), serif;
-  font-feature-settings: "cv11", "ss01";
+  font-feature-settings: 'cv11', 'ss01';
   overflow: hidden;
 }
 
 @layer base {
   button:not(:disabled),
-  [role="button"] {
+  [role='button'] {
     cursor: pointer;
   }
   button:disabled {
@@ -80,15 +82,24 @@ body {
   }
 }
 
-.scroll-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+.scroll-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
 .scroll-thin::-webkit-scrollbar-thumb {
   background: var(--border-strong);
   border-radius: 4px;
 }
-.scroll-thin::-webkit-scrollbar-track { background: transparent; }
+.scroll-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
 
-.titlebar-drag { -webkit-app-region: drag; }
-.titlebar-no-drag { -webkit-app-region: no-drag; }
+.titlebar-drag {
+  -webkit-app-region: drag;
+}
+.titlebar-no-drag {
+  -webkit-app-region: no-drag;
+}
 
 /* Numeric fields use the shared text-field chrome; arrow keys still increment. */
 .number-input {
@@ -109,39 +120,73 @@ body {
  * The first/last child margin reset prevents the bubble from gaining
  * unwanted top/bottom whitespace from leading/trailing block elements.
  */
-.markdown { line-height: 1.55; }
-.markdown > *:first-child { margin-top: 0; }
-.markdown > *:last-child { margin-bottom: 0; }
+.markdown {
+  line-height: 1.55;
+}
+.markdown > *:first-child {
+  margin-top: 0;
+}
+.markdown > *:last-child {
+  margin-bottom: 0;
+}
 
-.markdown p { margin: 0.5em 0; }
-.markdown h1, .markdown h2, .markdown h3, .markdown h4 {
+.markdown p {
+  margin: 0.5em 0;
+}
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4 {
   font-weight: 600;
   line-height: 1.25;
   margin: 1em 0 0.4em;
   color: var(--color-fg);
 }
-.markdown h1 { font-size: 1.25em; }
-.markdown h2 { font-size: 1.15em; }
-.markdown h3 { font-size: 1.05em; }
-.markdown h4 { font-size: 1em; color: var(--color-fg-muted); }
+.markdown h1 {
+  font-size: 1.25em;
+}
+.markdown h2 {
+  font-size: 1.15em;
+}
+.markdown h3 {
+  font-size: 1.05em;
+}
+.markdown h4 {
+  font-size: 1em;
+  color: var(--color-fg-muted);
+}
 
-.markdown ul, .markdown ol {
+.markdown ul,
+.markdown ol {
   margin: 0.5em 0;
   padding-left: 1.4em;
 }
-.markdown ul { list-style: disc; }
-.markdown ol { list-style: decimal; }
-.markdown li { margin: 0.15em 0; }
-.markdown li > p { margin: 0.15em 0; }
+.markdown ul {
+  list-style: disc;
+}
+.markdown ol {
+  list-style: decimal;
+}
+.markdown li {
+  margin: 0.15em 0;
+}
+.markdown li > p {
+  margin: 0.15em 0;
+}
 
 /* GFM task lists */
-.markdown li > input[type="checkbox"] {
+.markdown li > input[type='checkbox'] {
   margin-right: 0.4em;
   accent-color: var(--color-accent);
 }
 
-.markdown strong { font-weight: 600; color: var(--color-fg); }
-.markdown em { font-style: italic; }
+.markdown strong {
+  font-weight: 600;
+  color: var(--color-fg);
+}
+.markdown em {
+  font-style: italic;
+}
 
 .markdown kbd {
   font-family: var(--font-mono), serif;
@@ -154,7 +199,8 @@ body {
 }
 
 /* Shiki host: keep our own padding/scrolling, drop default <pre> margins */
-.shiki-host pre, .shiki-host code {
+.shiki-host pre,
+.shiki-host code {
   background: transparent !important;
   margin: 0;
   font-family: var(--font-mono), serif;
@@ -167,14 +213,24 @@ body {
  * blend with the app's dark OKLCH token palette instead of rendering
  * with KaTeX's default light-mode colours.
  */
-.katex { color: var(--color-fg); font-size: 1em; }
-.katex-display { margin: 0.6em 0; overflow-x: auto; }
+.katex {
+  color: var(--color-fg);
+  font-size: 1em;
+}
+.katex-display {
+  margin: 0.6em 0;
+  overflow-x: auto;
+}
 
 /* Inline math sits on the text baseline without extra spacing */
-.markdown .katex-html { vertical-align: baseline; }
+.markdown .katex-html {
+  vertical-align: baseline;
+}
 
 /* Display-mode container added by MathBlock (explicit ```latex blocks) */
-.katex-display-block .katex { color: var(--color-fg); }
+.katex-display-block .katex {
+  color: var(--color-fg);
+}
 
 /* ── Git hunk glyph margin checkboxes (Cmd+G diff modal) ───────────────
  * Rendered inside Monaco's glyph margin — one per diff hunk.
@@ -233,13 +289,13 @@ body {
  * applicable at component-scope.
  */
 mark[data-markjs] {
-  background-color: rgba(251, 191, 36, 0.30); /* amber-400 @ 30% */
+  background-color: rgba(251, 191, 36, 0.3); /* amber-400 @ 30% */
   color: inherit;
   border-radius: 2px;
   padding: 0 1px;
 }
 mark[data-markjs].find-active {
-  background-color: rgba(124, 58, 237, 0.50); /* violet-600 @ 50% */
+  background-color: rgba(124, 58, 237, 0.5); /* violet-600 @ 50% */
   outline: 1px solid rgba(124, 58, 237, 0.75);
   border-radius: 2px;
 }

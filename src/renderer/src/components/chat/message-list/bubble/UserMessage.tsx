@@ -39,7 +39,11 @@ export function UserMessage({ parts, attachments, intentTag, onBranch }: UserMes
   );
 }
 
-function UserMessageActions({ text, attachments, onBranch }: {
+function UserMessageActions({
+  text,
+  attachments,
+  onBranch,
+}: {
   text: string;
   attachments: StoredAttachment[];
   onBranch?: (withContext?: boolean) => void;
@@ -84,9 +88,15 @@ function UserMessageActions({ text, attachments, onBranch }: {
         title={copyState === 'error' ? 'Copy failed' : 'Copy message'}
       >
         {copyState === 'copied' ? (
-          <><Check className="h-3 w-3" strokeWidth={2} /><span>Copied</span></>
+          <>
+            <Check className="h-3 w-3" strokeWidth={2} />
+            <span>Copied</span>
+          </>
         ) : (
-          <><Copy className="h-3 w-3" strokeWidth={1.75} /><span>{copyState === 'error' ? 'Failed' : 'Copy'}</span></>
+          <>
+            <Copy className="h-3 w-3" strokeWidth={1.75} />
+            <span>{copyState === 'error' ? 'Failed' : 'Copy'}</span>
+          </>
         )}
       </button>
       {onBranch && (
@@ -110,12 +120,16 @@ function UserMessageActions({ text, attachments, onBranch }: {
           menuWidth={200}
           items={[
             { label: 'Branch (clean)', icon: GitBranch, onSelect: () => void handleBranch(false) },
-            { label: 'Branch (summarized)', icon: Sparkles, onSelect: () => void handleBranch(true) },
+            {
+              label: 'Branch (summarized)',
+              icon: Sparkles,
+              onSelect: () => void handleBranch(true),
+            },
           ]}
           footer={
             <div className="px-2 pb-1.5 pt-1 text-[10px] leading-snug text-fg-subtle">
-              Clean drops the messages after this point. Summarized keeps a compressed
-              memory of them instead (uses an extra AI call, takes a few seconds).
+              Clean drops the messages after this point. Summarized keeps a compressed memory of
+              them instead (uses an extra AI call, takes a few seconds).
             </div>
           }
         />
@@ -127,7 +141,9 @@ function UserMessageActions({ text, attachments, onBranch }: {
 async function copyMessage(text: string, attachments: StoredAttachment[]): Promise<void> {
   const images = attachments.filter((attachment) => attachment.type === 'image');
   const others = attachments.filter((attachment) => attachment.type !== 'image');
-  const trailers = others.length ? `\n\n${others.map((attachment) => `[file: ${attachment.name}]`).join('\n')}` : '';
+  const trailers = others.length
+    ? `\n\n${others.map((attachment) => `[file: ${attachment.name}]`).join('\n')}`
+    : '';
   const fullText = (text + trailers).trim();
 
   if (images.length === 0) {

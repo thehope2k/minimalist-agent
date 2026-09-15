@@ -12,10 +12,7 @@ export function getAttachmentDraft(sessionId: string | null): DraftAttachment[] 
   return drafts.get(sessionId) ?? [];
 }
 
-export function setAttachmentDraft(
-  sessionId: string | null,
-  attachments: DraftAttachment[],
-): void {
+export function setAttachmentDraft(sessionId: string | null, attachments: DraftAttachment[]): void {
   if (attachments.length > 0) {
     drafts.set(sessionId, attachments);
   } else {

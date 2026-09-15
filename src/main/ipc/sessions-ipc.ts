@@ -28,40 +28,28 @@ export function registerSessionsIpc(): void {
   ipcMain.handle('sessions:load', (_e, id: string) => loadSession(id));
   ipcMain.handle(
     'sessions:create',
-    (_e, opts?: { workingDirectory?: string; projectId?: string | null }) =>
-      createSession(opts),
+    (_e, opts?: { workingDirectory?: string; projectId?: string | null }) => createSession(opts),
   );
-  ipcMain.handle(
-    'sessions:setProject',
-    (_e, id: string, projectId: string | null) =>
-      setSessionProject(id, projectId),
+  ipcMain.handle('sessions:setProject', (_e, id: string, projectId: string | null) =>
+    setSessionProject(id, projectId),
   );
-  ipcMain.handle(
-    'sessions:appendMessage',
-    (_e, id: string, msg: StoredMessage) => appendMessage(id, msg),
+  ipcMain.handle('sessions:appendMessage', (_e, id: string, msg: StoredMessage) =>
+    appendMessage(id, msg),
   );
-  ipcMain.handle(
-    'sessions:replaceLastMessage',
-    (_e, id: string, msg: StoredMessage) => replaceLastMessage(id, msg),
+  ipcMain.handle('sessions:replaceLastMessage', (_e, id: string, msg: StoredMessage) =>
+    replaceLastMessage(id, msg),
   );
-  ipcMain.handle(
-    'sessions:rewriteMessages',
-    (_e, id: string, messages: StoredMessage[]) => rewriteMessages(id, messages),
+  ipcMain.handle('sessions:rewriteMessages', (_e, id: string, messages: StoredMessage[]) =>
+    rewriteMessages(id, messages),
   );
   ipcMain.handle(
     'sessions:updateMeta',
-    (
-      _event,
-      id: string,
-      patch: Partial<Omit<SessionMeta, 'id' | 'createdAt'>>,
-    ) => {
+    (_event, id: string, patch: Partial<Omit<SessionMeta, 'id' | 'createdAt'>>) => {
       return updateSessionMeta(id, patch);
     },
   );
-  ipcMain.handle(
-    'sessions:truncateFrom',
-    (_e, id: string, firstDroppedId: string) =>
-      truncateMessagesFrom(id, firstDroppedId),
+  ipcMain.handle('sessions:truncateFrom', (_e, id: string, firstDroppedId: string) =>
+    truncateMessagesFrom(id, firstDroppedId),
   );
   ipcMain.handle('sessions:delete', (_e, id: string) => {
     browserPaneManager.destroyForSession(id);
@@ -70,8 +58,10 @@ export function registerSessionsIpc(): void {
   ipcMain.handle('sessions:revealInFolder', (_e, id: string) => {
     shell.showItemInFolder(sessionPath(id));
   });
-  ipcMain.handle('sessions:branch', (_e, parentId: string, upToMessageId: string, options?: { withContext?: boolean }) =>
-    branchSession(parentId, upToMessageId, options),
+  ipcMain.handle(
+    'sessions:branch',
+    (_e, parentId: string, upToMessageId: string, options?: { withContext?: boolean }) =>
+      branchSession(parentId, upToMessageId, options),
   );
   ipcMain.handle('sessions:listFiles', (_e, id: string) => listSessionFiles(id));
   ipcMain.handle('sessions:revealFile', (_e, absPath: string) => {
@@ -85,19 +75,14 @@ export function registerSessionsIpc(): void {
 
   ipcMain.handle(
     'sessions:saveExport',
-    async (
-      event,
-      args: { html: string; suggestedName: string },
-    ): Promise<string | null> => {
+    async (event, args: { html: string; suggestedName: string }): Promise<string | null> => {
       const win = BrowserWindow.fromWebContents(event.sender);
       const safe = (args.suggestedName || 'session').replace(/[^a-z0-9._-]+/gi, '-');
       const opts = {
         defaultPath: `${safe}.html`,
         filters: [{ name: 'HTML', extensions: ['html'] }],
       };
-      const res = win
-        ? await dialog.showSaveDialog(win, opts)
-        : await dialog.showSaveDialog(opts);
+      const res = win ? await dialog.showSaveDialog(win, opts) : await dialog.showSaveDialog(opts);
       if (res.canceled || !res.filePath) return null;
       await writeFile(res.filePath, args.html, 'utf-8');
       return res.filePath;
@@ -114,7 +99,11 @@ export function registerSessionsIpc(): void {
       args: { html: string; filename: string; ttlDays?: number; backend?: 'brewpage' | 'meethtml' },
     ): Promise<PublishResult> => {
       if (args.backend === 'meethtml') {
-        return publishExportFallback({ html: args.html, filename: args.filename, ttlDays: args.ttlDays });
+        return publishExportFallback({
+          html: args.html,
+          filename: args.filename,
+          ttlDays: args.ttlDays,
+        });
       }
       return publishExport({ html: args.html, filename: args.filename, ttlDays: args.ttlDays });
     },
@@ -122,12 +111,7 @@ export function registerSessionsIpc(): void {
 
   ipcMain.handle(
     'sessions:revokeExport',
-    async (
-      _e,
-      args: { namespace: string; id: string; ownerToken: string },
-    ): Promise<void> =>
-      args.namespace === 'meethtml'
-        ? revokeExportFallback(args)
-        : revokeExport(args),
+    async (_e, args: { namespace: string; id: string; ownerToken: string }): Promise<void> =>
+      args.namespace === 'meethtml' ? revokeExportFallback(args) : revokeExport(args),
   );
 }

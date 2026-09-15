@@ -126,30 +126,51 @@ async function nameRev(repoRoot: string, sha: string): Promise<string> {
 async function countConflicts(repoRoot: string): Promise<number> {
   const CONFLICT_XY = new Set(['UU', 'AA', 'DD', 'AU', 'UA', 'DU', 'UD']);
   try {
-    const { stdout } = await execFileAsync(
-      'git',
-      ['-C', repoRoot, 'status', '--porcelain', '-u'],
-      { timeout: 10_000 },
-    );
-    return stdout
-      .split('\n')
-      .filter((l) => CONFLICT_XY.has(l.slice(0, 2)))
-      .length;
+    const { stdout } = await execFileAsync('git', ['-C', repoRoot, 'status', '--porcelain', '-u'], {
+      timeout: 10_000,
+    });
+    return stdout.split('\n').filter((l) => CONFLICT_XY.has(l.slice(0, 2))).length;
   } catch {
     return 0;
   }
 }
 
 const EXT_LANGUAGE: Record<string, string> = {
-  '.ts': 'typescript', '.tsx': 'typescript',
-  '.js': 'javascript', '.jsx': 'javascript', '.mjs': 'javascript', '.cjs': 'javascript',
-  '.py': 'python', '.rb': 'ruby', '.go': 'go', '.rs': 'rust',
-  '.java': 'java', '.kt': 'kotlin', '.swift': 'swift',
-  '.c': 'c', '.h': 'c', '.cpp': 'cpp', '.cc': 'cpp', '.cs': 'csharp',
-  '.php': 'php', '.html': 'html', '.css': 'css', '.scss': 'scss', '.less': 'less',
-  '.json': 'json', '.yaml': 'yaml', '.yml': 'yaml', '.toml': 'ini',
-  '.md': 'markdown', '.mdx': 'markdown', '.sh': 'shell', '.bash': 'shell',
-  '.xml': 'xml', '.sql': 'sql', '.graphql': 'graphql', '.proto': 'proto',
+  '.ts': 'typescript',
+  '.tsx': 'typescript',
+  '.js': 'javascript',
+  '.jsx': 'javascript',
+  '.mjs': 'javascript',
+  '.cjs': 'javascript',
+  '.py': 'python',
+  '.rb': 'ruby',
+  '.go': 'go',
+  '.rs': 'rust',
+  '.java': 'java',
+  '.kt': 'kotlin',
+  '.swift': 'swift',
+  '.c': 'c',
+  '.h': 'c',
+  '.cpp': 'cpp',
+  '.cc': 'cpp',
+  '.cs': 'csharp',
+  '.php': 'php',
+  '.html': 'html',
+  '.css': 'css',
+  '.scss': 'scss',
+  '.less': 'less',
+  '.json': 'json',
+  '.yaml': 'yaml',
+  '.yml': 'yaml',
+  '.toml': 'ini',
+  '.md': 'markdown',
+  '.mdx': 'markdown',
+  '.sh': 'shell',
+  '.bash': 'shell',
+  '.xml': 'xml',
+  '.sql': 'sql',
+  '.graphql': 'graphql',
+  '.proto': 'proto',
 };
 
 function detectLanguage(relativePath: string): string {
@@ -191,7 +212,13 @@ export async function getMergeState(repoRoot: string): Promise<MergeState> {
 
   if (mergeHead) {
     const incomingLabel = await nameRev(repoRoot, mergeHead);
-    return { type: 'merge', headLabel: headBranch, incomingLabel, mergeMessage: mergeMsg, conflictCount };
+    return {
+      type: 'merge',
+      headLabel: headBranch,
+      incomingLabel,
+      mergeMessage: mergeMsg,
+      conflictCount,
+    };
   }
 
   if (hasRebaseMerge || hasRebaseApply) {
@@ -203,38 +230,61 @@ export async function getMergeState(repoRoot: string): Promise<MergeState> {
     // Read rebase progress — .git/rebase-merge/{msgnum, end, message}
     // msgnum is the 1-indexed current commit; end is the total.
     const [msgnumRaw, endRaw, rebaseMsg] = await Promise.all([
-      readGitFile(repoRoot, 'rebase-merge/msgnum') ??
-        readGitFile(repoRoot, 'rebase-apply/next'),
-      readGitFile(repoRoot, 'rebase-merge/end') ??
-        readGitFile(repoRoot, 'rebase-apply/last'),
+      readGitFile(repoRoot, 'rebase-merge/msgnum') ?? readGitFile(repoRoot, 'rebase-apply/next'),
+      readGitFile(repoRoot, 'rebase-merge/end') ?? readGitFile(repoRoot, 'rebase-apply/last'),
       readGitFile(repoRoot, 'rebase-merge/message'),
     ]);
 
     let rebaseProgress: RebaseProgress | undefined;
     const current = msgnumRaw ? parseInt(msgnumRaw, 10) : NaN;
-    const total   = endRaw    ? parseInt(endRaw,    10) : NaN;
+    const total = endRaw ? parseInt(endRaw, 10) : NaN;
     if (!isNaN(current) && !isNaN(total) && total > 0) {
       // Only take the subject line (first non-empty line).
       const commitMessage = rebaseMsg
-        ? rebaseMsg.split('\n').find((l) => l.trim().length > 0) ?? null
+        ? (rebaseMsg.split('\n').find((l) => l.trim().length > 0) ?? null)
         : null;
       rebaseProgress = { current, total, commitMessage };
     }
 
-    return { type: 'rebase', headLabel: headBranch, incomingLabel, mergeMessage: mergeMsg, conflictCount, rebaseProgress };
+    return {
+      type: 'rebase',
+      headLabel: headBranch,
+      incomingLabel,
+      mergeMessage: mergeMsg,
+      conflictCount,
+      rebaseProgress,
+    };
   }
 
   if (cherryPickHead) {
     const incomingLabel = await nameRev(repoRoot, cherryPickHead);
-    return { type: 'cherry-pick', headLabel: headBranch, incomingLabel, mergeMessage: mergeMsg, conflictCount };
+    return {
+      type: 'cherry-pick',
+      headLabel: headBranch,
+      incomingLabel,
+      mergeMessage: mergeMsg,
+      conflictCount,
+    };
   }
 
   if (revertHead) {
     const incomingLabel = await nameRev(repoRoot, revertHead);
-    return { type: 'revert', headLabel: headBranch, incomingLabel, mergeMessage: mergeMsg, conflictCount };
+    return {
+      type: 'revert',
+      headLabel: headBranch,
+      incomingLabel,
+      mergeMessage: mergeMsg,
+      conflictCount,
+    };
   }
 
-  return { type: 'none', headLabel: headBranch, incomingLabel: null, mergeMessage: null, conflictCount: 0 };
+  return {
+    type: 'none',
+    headLabel: headBranch,
+    incomingLabel: null,
+    mergeMessage: null,
+    conflictCount: 0,
+  };
 }
 
 /**
@@ -289,10 +339,13 @@ export async function abortOperation(
   type: MergeOperationType,
 ): Promise<OperationResult> {
   const args =
-    type === 'rebase'        ? ['rebase', '--abort'] :
-    type === 'cherry-pick'   ? ['cherry-pick', '--abort'] :
-    type === 'revert'        ? ['revert', '--abort'] :
-    /* merge / fallback */     ['merge', '--abort'];
+    type === 'rebase'
+      ? ['rebase', '--abort']
+      : type === 'cherry-pick'
+        ? ['cherry-pick', '--abort']
+        : type === 'revert'
+          ? ['revert', '--abort']
+          : /* merge / fallback */ ['merge', '--abort'];
   try {
     await execFileAsync('git', ['-C', repoRoot, ...args], { timeout: 15_000 });
     return { ok: true };
@@ -315,24 +368,20 @@ export async function continueMerge(
 ): Promise<OperationResult> {
   try {
     if (type === 'rebase') {
-      await execFileAsync(
-        'git',
-        ['-C', repoRoot, 'rebase', '--continue'],
-        { timeout: 30_000, env: { ...process.env, GIT_EDITOR: 'true' } },
-      );
+      await execFileAsync('git', ['-C', repoRoot, 'rebase', '--continue'], {
+        timeout: 30_000,
+        env: { ...process.env, GIT_EDITOR: 'true' },
+      });
     } else if (type === 'cherry-pick') {
-      await execFileAsync(
-        'git',
-        ['-C', repoRoot, 'cherry-pick', '--continue'],
-        { timeout: 30_000, env: { ...process.env, GIT_EDITOR: 'true' } },
-      );
+      await execFileAsync('git', ['-C', repoRoot, 'cherry-pick', '--continue'], {
+        timeout: 30_000,
+        env: { ...process.env, GIT_EDITOR: 'true' },
+      });
     } else {
       // merge / revert — explicit commit
-      await execFileAsync(
-        'git',
-        ['-C', repoRoot, 'commit', '--no-edit', '-m', message],
-        { timeout: 30_000 },
-      );
+      await execFileAsync('git', ['-C', repoRoot, 'commit', '--no-edit', '-m', message], {
+        timeout: 30_000,
+      });
     }
     return { ok: true };
   } catch (e) {

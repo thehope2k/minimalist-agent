@@ -87,8 +87,7 @@ export function TreeView({
           node={item.node}
           depth={item.depth}
           isExpanded={
-            expandedPaths.has(item.node.absolutePath) ||
-            isAutoExpanded(item.node.absolutePath)
+            expandedPaths.has(item.node.absolutePath) || isAutoExpanded(item.node.absolutePath)
           }
           isSelected={item.node.absolutePath === selectedPath}
           onToggle={toggleExpand}

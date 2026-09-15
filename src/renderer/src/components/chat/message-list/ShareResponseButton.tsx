@@ -74,7 +74,10 @@ export function ShareResponseButton({
     } catch (err) {
       setExportError(err instanceof Error ? err.message : 'Failed');
       setExportState('error');
-      setTimeout(() => { setExportState('idle'); setExportError(null); }, 3500);
+      setTimeout(() => {
+        setExportState('idle');
+        setExportError(null);
+      }, 3500);
     }
   }
 
@@ -93,7 +96,9 @@ export function ShareResponseButton({
           title="Copy as markdown — renders in Teams, Slack, Notion"
         />
 
-        <span className="opacity-0 group-hover:opacity-100 text-fg-subtle/30 select-none text-[10px]">·</span>
+        <span className="opacity-0 group-hover:opacity-100 text-fg-subtle/30 select-none text-[10px]">
+          ·
+        </span>
 
         {/* Export cluster — Save to file, Share via BrewPage, Share via meethtml */}
         <HoverButton
@@ -108,7 +113,9 @@ export function ShareResponseButton({
         />
         <HoverButton
           icon={Link2}
-          label={exportAction === 'share-brewpage' && exportState === 'done' ? 'Shared' : 'BrewPage'}
+          label={
+            exportAction === 'share-brewpage' && exportState === 'done' ? 'Shared' : 'BrewPage'
+          }
           done={exportAction === 'share-brewpage' && exportState === 'done'}
           error={exportAction === 'share-brewpage' && exportState === 'error'}
           working={exportAction === 'share-brewpage' && exportWorking}
@@ -118,7 +125,9 @@ export function ShareResponseButton({
         />
         <HoverButton
           icon={Link2}
-          label={exportAction === 'share-meethtml' && exportState === 'done' ? 'Shared' : 'meethtml'}
+          label={
+            exportAction === 'share-meethtml' && exportState === 'done' ? 'Shared' : 'meethtml'
+          }
           done={exportAction === 'share-meethtml' && exportState === 'done'}
           error={exportAction === 'share-meethtml' && exportState === 'error'}
           working={exportAction === 'share-meethtml' && exportWorking}

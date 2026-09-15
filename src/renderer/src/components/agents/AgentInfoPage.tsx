@@ -16,17 +16,14 @@ export function AgentInfoPage({
 }: AgentInfoPageProps) {
   if (!agent) return <EmptyView />;
 
-  const { copied, editMode, copySlug, handleEdit, closeEditDialog } =
-    useAgentActions(agent, onStartChatWithSubmission);
+  const { copied, editMode, copySlug, handleEdit, closeEditDialog } = useAgentActions(
+    agent,
+    onStartChatWithSubmission,
+  );
 
   return (
     <div className="flex h-full flex-col">
-      <AgentHeader
-        agent={agent}
-        copied={copied}
-        onCopySlug={copySlug}
-        onAfterDelete={onClose}
-      />
+      <AgentHeader agent={agent} copied={copied} onCopySlug={copySlug} onAfterDelete={onClose} />
 
       <div className="scroll-thin min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-[1100px] space-y-6 px-6 py-6">

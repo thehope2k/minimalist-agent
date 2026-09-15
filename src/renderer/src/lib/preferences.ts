@@ -46,9 +46,7 @@ async function reload(): Promise<void> {
   notify();
 }
 
-export async function updatePreferences(
-  patch: Partial<UserPreferences>,
-): Promise<void> {
+export async function updatePreferences(patch: Partial<UserPreferences>): Promise<void> {
   const current = cache ?? (await load());
   const next: UserPreferences = { ...current, ...patch };
   await window.api.preferences.save(next);

@@ -46,9 +46,7 @@ export function Select<T extends string>({
   menuWidth = 260,
 }: Props<T>) {
   const [open, setOpen] = useState(false);
-  const selected = options.find(
-    (o): o is Option<T> => !isHeader(o) && o.value === value,
-  );
+  const selected = options.find((o): o is Option<T> => !isHeader(o) && o.value === value);
 
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
@@ -67,10 +65,7 @@ export function Select<T extends string>({
           )}
         >
           <span className="truncate">{selected?.label ?? placeholder}</span>
-          <ChevronDown
-            className="h-3.5 w-3.5 shrink-0 text-fg-subtle"
-            strokeWidth={1.75}
-          />
+          <ChevronDown className="h-3.5 w-3.5 shrink-0 text-fg-subtle" strokeWidth={1.75} />
         </button>
       </Popover.Trigger>
       <Popover.Portal>
@@ -84,9 +79,7 @@ export function Select<T extends string>({
         >
           <div className="scroll-thin max-h-72 space-y-0.5 overflow-auto">
             {options.length === 0 ? (
-              <div className="px-2.5 py-3 text-center text-sm text-fg-subtle">
-                No options
-              </div>
+              <div className="px-2.5 py-3 text-center text-sm text-fg-subtle">No options</div>
             ) : (
               options.map((opt, idx) => {
                 if (isHeader(opt)) {
@@ -127,10 +120,7 @@ export function Select<T extends string>({
                       )}
                     </div>
                     {isSelected && (
-                      <Check
-                        className="mt-0.5 h-3.5 w-3.5 shrink-0 text-fg"
-                        strokeWidth={2}
-                      />
+                      <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-fg" strokeWidth={2} />
                     )}
                   </button>
                 );

@@ -47,10 +47,10 @@ app.commandLine.appendSwitch('disk-cache-size', String(100 * 1024 * 1024));
 if (process.platform === 'darwin') {
   const home = process.env.HOME ?? '';
   const extras = [
-    `${home}/.local/bin`,       // uv / pipx tool installs (specify lives here)
-    '/opt/homebrew/bin',         // Apple Silicon Homebrew
+    `${home}/.local/bin`, // uv / pipx tool installs (specify lives here)
+    '/opt/homebrew/bin', // Apple Silicon Homebrew
     '/opt/homebrew/sbin',
-    '/usr/local/bin',            // Intel Homebrew / manually installed tools
+    '/usr/local/bin', // Intel Homebrew / manually installed tools
     '/usr/local/sbin',
     `${home}/.nvm/versions/node/current/bin`, // nvm default symlink (rare)
   ];
@@ -60,7 +60,6 @@ if (process.platform === 'darwin') {
     process.env.PATH = [...toAdd, process.env.PATH].filter(Boolean).join(':');
   }
 }
-
 
 /**
  * True for URLs that load the app shell itself — the Vite dev server in dev,
@@ -125,7 +124,8 @@ function buildCsp(): string {
   const devUrl = process.env.ELECTRON_RENDERER_URL;
   const isDev = !!devUrl;
 
-  const localHosts = 'http://localhost:* http://127.0.0.1:* https://localhost:* https://127.0.0.1:*';
+  const localHosts =
+    'http://localhost:* http://127.0.0.1:* https://localhost:* https://127.0.0.1:*';
 
   if (isDev) {
     const devOrigin = (() => {
@@ -282,7 +282,9 @@ app.whenReady().then(async () => {
       const empty = pruneEmptySessions();
       const subagentDirs = pruneSubagentDirs(retentionDays);
       if (archived + empty + subagentDirs > 0) {
-        log.info(`Session prune: removed ${archived} archived, ${empty} empty, ${subagentDirs} sub-agent dirs`);
+        log.info(
+          `Session prune: removed ${archived} archived, ${empty} empty, ${subagentDirs} sub-agent dirs`,
+        );
       }
     })
     .catch((err) => log.error('Session prune failed:', err));
@@ -292,15 +294,15 @@ app.whenReady().then(async () => {
   if (worktreeSupported) {
     log.info('Git worktree support available - parallel agents will use isolated workspaces');
   } else {
-    log.warn('Git not found - parallel agents will share workspace (install git for better isolation)');
+    log.warn(
+      'Git not found - parallel agents will share workspace (install git for better isolation)',
+    );
   }
-  
+
   registerIpc();
   // Background stale-while-revalidate of model catalogs. Non-blocking so it
   // never delays window creation; updates broadcast to the renderer when done.
-  void import('./storage/model-refresh').then((m) =>
-    m.revalidateStaleConnections(),
-  );
+  void import('./storage/model-refresh').then((m) => m.revalidateStaleConnections());
   installCsp();
   installMediaPermissions();
   const icon = await getAppIcon();
@@ -311,7 +313,9 @@ app.whenReady().then(async () => {
   app.on('activate', () => {
     // Browser panes are BrowserWindows too, so "no windows open" can't just
     // mean count === 0 — that would count a lingering pane as the main window.
-    const hasMainWindow = BrowserWindow.getAllWindows().some((w) => !browserPaneManager.isPaneWindow(w));
+    const hasMainWindow = BrowserWindow.getAllWindows().some(
+      (w) => !browserPaneManager.isPaneWindow(w),
+    );
     if (!hasMainWindow) createWindow(icon);
   });
   checkOnLaunch();

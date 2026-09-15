@@ -7,12 +7,7 @@ const TARGET_SAMPLE_RATE = 16000;
 const MONITOR_GAIN = 0;
 const CHUNK_FLUSH_INTERVAL_SECONDS = 0.2;
 
-export type VoiceModelStatus =
-  | 'unknown'
-  | 'not-downloaded'
-  | 'downloading'
-  | 'ready'
-  | 'error';
+export type VoiceModelStatus = 'unknown' | 'not-downloaded' | 'downloading' | 'ready' | 'error';
 
 export type VoiceDownloadProgress = {
   downloadedBytes: number;

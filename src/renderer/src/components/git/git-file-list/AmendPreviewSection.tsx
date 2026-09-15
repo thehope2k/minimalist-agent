@@ -50,14 +50,26 @@ export function AmendPreviewSection({
                 : 'border-l-2 border-transparent pl-[26px] hover:bg-elevated',
             )}
           >
-            <span className={cn('shrink-0 rounded px-1.5 py-0.5 font-mono text-[11px] font-bold leading-none', styles.badgeClasses)}>
+            <span
+              className={cn(
+                'shrink-0 rounded px-1.5 py-0.5 font-mono text-[11px] font-bold leading-none',
+                styles.badgeClasses,
+              )}
+            >
               {styles.label}
             </span>
             <span className="min-w-0 flex-1">
-              <span className={cn('block truncate font-mono text-[13px] font-medium', styles.nameClasses)}>
+              <span
+                className={cn(
+                  'block truncate font-mono text-[13px] font-medium',
+                  styles.nameClasses,
+                )}
+              >
                 {file.oldPath ? `${file.oldPath.split('/').pop()} → ${name}` : name}
               </span>
-              {dir && <span className="block truncate font-mono text-[11px] text-fg-subtle">{dir}</span>}
+              {dir && (
+                <span className="block truncate font-mono text-[11px] text-fg-subtle">{dir}</span>
+              )}
             </span>
           </button>
         );

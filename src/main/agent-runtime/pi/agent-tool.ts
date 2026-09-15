@@ -43,11 +43,19 @@ const log = createLogger('agent-tool');
 let orphanedCleanupDone = false;
 
 const agentToolSchema = Type.Object({
-  agent: Type.String({ description: 'Agent slug — must exactly match a slug listed in the <agents> block of your system prompt. Do NOT invent or guess slugs; only use ones explicitly listed there.' }),
-  task: Type.String({ description: 'Clear description of what the agent should do. Be specific about requirements and constraints.' }),
+  agent: Type.String({
+    description:
+      'Agent slug — must exactly match a slug listed in the <agents> block of your system prompt. Do NOT invent or guess slugs; only use ones explicitly listed there.',
+  }),
+  task: Type.String({
+    description:
+      'Clear description of what the agent should do. Be specific about requirements and constraints.',
+  }),
 });
 
-export function createAgentTool(ctx: AgentToolContext): ToolDefinition<typeof agentToolSchema, unknown> {
+export function createAgentTool(
+  ctx: AgentToolContext,
+): ToolDefinition<typeof agentToolSchema, unknown> {
   return defineTool({
     name: 'Agent',
     label: 'Spawn sub-agent',
@@ -72,7 +80,7 @@ export function createAgentTool(ctx: AgentToolContext): ToolDefinition<typeof ag
         if (!orphanedCleanupDone) {
           orphanedCleanupDone = true;
           log.debug('Checking for orphaned worktrees...');
-          void cleanupOrphanedWorktrees(ctx.cwd, 7).catch(err => {
+          void cleanupOrphanedWorktrees(ctx.cwd, 7).catch((err) => {
             log.warn('Orphaned worktree cleanup failed:', err);
           });
         }
@@ -86,9 +94,10 @@ export function createAgentTool(ctx: AgentToolContext): ToolDefinition<typeof ag
         const agent = ctx.availableAgents.find((a: LoadedAgent) => a.slug === agentSlug);
         if (!agent) {
           const validSlugs = ctx.availableAgents.map((a: LoadedAgent) => a.slug);
-          const slugList = validSlugs.length > 0
-            ? `Valid slugs: ${validSlugs.join(', ')}`
-            : 'No agents are currently installed.';
+          const slugList =
+            validSlugs.length > 0
+              ? `Valid slugs: ${validSlugs.join(', ')}`
+              : 'No agents are currently installed.';
           return {
             isError: true,
             content: [
@@ -120,13 +129,23 @@ export function createAgentTool(ctx: AgentToolContext): ToolDefinition<typeof ag
 
         // Spawn and initialize subprocess
         handle = await spawnAgentSubprocess(agent, task, ctx, signal, (event, execId) => {
-          if (event.type === 'tool_progress' || event.type === 'compaction' || event.type === 'compaction_progress') return;
+          if (
+            event.type === 'tool_progress' ||
+            event.type === 'compaction' ||
+            event.type === 'compaction_progress'
+          )
+            return;
           emitSubagentUpdate(onUpdate, {
             kind: 'subagent',
             execId,
             agentSlug: agent.slug,
             agentName: agent.metadata.name,
-            phase: event.type === 'turn_done' ? 'finalizing' : event.type === 'error' ? 'error' : 'running',
+            phase:
+              event.type === 'turn_done'
+                ? 'finalizing'
+                : event.type === 'error'
+                  ? 'error'
+                  : 'running',
             event,
             at: Date.now(),
           });
@@ -166,7 +185,7 @@ export function createAgentTool(ctx: AgentToolContext): ToolDefinition<typeof ag
         } else if (handle.worktree?.created) {
           // Agent finished normally, clean up worktree
           const execId = handle.execId; // Capture for closure
-          await removeAgentWorktree(execId).catch(err => {
+          await removeAgentWorktree(execId).catch((err) => {
             log.warn(`Failed to cleanup worktree for ${execId}:`, err);
           });
         }

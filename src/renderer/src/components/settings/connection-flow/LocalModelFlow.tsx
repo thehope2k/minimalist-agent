@@ -8,7 +8,10 @@ import type { FlowProps } from './types';
 
 const DEFAULT_BASE_URL = 'http://localhost:11434';
 
-interface OllamaModel { name: string; size: number }
+interface OllamaModel {
+  name: string;
+  size: number;
+}
 type Status = 'checking' | 'running' | 'offline';
 
 async function probeOllama(url: string): Promise<{ status: Status; models: OllamaModel[] }> {
@@ -17,7 +20,7 @@ async function probeOllama(url: string): Promise<{ status: Status; models: Ollam
       signal: AbortSignal.timeout(3000),
     });
     if (!res.ok) return { status: 'offline', models: [] };
-    const data = await res.json() as { models?: OllamaModel[] };
+    const data = (await res.json()) as { models?: OllamaModel[] };
     return { status: 'running', models: data.models ?? [] };
   } catch {
     return { status: 'offline', models: [] };
@@ -52,7 +55,9 @@ export function LocalModelFlow({ onBack, onClose, onSaved, editingMeta }: FlowPr
   useEffect(() => {
     if (debounce.current) clearTimeout(debounce.current);
     debounce.current = setTimeout(() => void probe(url), 400);
-    return () => { if (debounce.current) clearTimeout(debounce.current); };
+    return () => {
+      if (debounce.current) clearTimeout(debounce.current);
+    };
   }, [url]);
 
   const submit = async () => {
@@ -71,7 +76,13 @@ export function LocalModelFlow({ onBack, onClose, onSaved, editingMeta }: FlowPr
       }));
       const effectiveUrl = url.trim() || DEFAULT_BASE_URL;
       const meta: ConnectionMeta = editing
-        ? { ...editingMeta!, name: name.trim(), baseUrl: effectiveUrl, defaultModel: model, models: modelDefs }
+        ? {
+            ...editingMeta!,
+            name: name.trim(),
+            baseUrl: effectiveUrl,
+            defaultModel: model,
+            models: modelDefs,
+          }
         : {
             slug: generateSlug(name),
             name: name.trim(),
@@ -113,18 +124,29 @@ export function LocalModelFlow({ onBack, onClose, onSaved, editingMeta }: FlowPr
       {/* Live status */}
       <div className="flex items-center justify-between rounded-lg border border-border bg-elevated/30 px-3 py-2">
         <div className="flex items-center gap-2">
-          <span className={`h-2 w-2 rounded-full ${
-            status === 'running'  ? 'bg-green-500' :
-            status === 'offline'  ? 'bg-red-500' :
-            'bg-yellow-500 animate-pulse'
-          }`} />
+          <span
+            className={`h-2 w-2 rounded-full ${
+              status === 'running'
+                ? 'bg-green-500'
+                : status === 'offline'
+                  ? 'bg-red-500'
+                  : 'bg-yellow-500 animate-pulse'
+            }`}
+          />
           <span className="text-xs text-fg-muted">
-            {status === 'running'  ? `Running · ${models.length} model${models.length !== 1 ? 's' : ''} installed` :
-             status === 'offline'  ? 'Not reachable' :
-             'Checking…'}
+            {status === 'running'
+              ? `Running · ${models.length} model${models.length !== 1 ? 's' : ''} installed`
+              : status === 'offline'
+                ? 'Not reachable'
+                : 'Checking…'}
           </span>
         </div>
-        <Button variant="ghost" icon={RefreshCw} onClick={() => void probe(url)} disabled={status === 'checking'}>
+        <Button
+          variant="ghost"
+          icon={RefreshCw}
+          onClick={() => void probe(url)}
+          disabled={status === 'checking'}
+        >
           Retry
         </Button>
       </div>
@@ -160,7 +182,9 @@ export function LocalModelFlow({ onBack, onClose, onSaved, editingMeta }: FlowPr
       {error && <ErrorBox>{error}</ErrorBox>}
 
       <Actions>
-        <Button variant="ghost" onClick={onClose} disabled={saving}>Cancel</Button>
+        <Button variant="ghost" onClick={onClose} disabled={saving}>
+          Cancel
+        </Button>
         <Button
           variant="primary"
           onClick={submit}

@@ -6,7 +6,10 @@
 // re-enable plan and AGENTS.md for background.
 import type { WorktreeResult } from './types';
 
-export const createAgentWorktree = async (cwd: string, _execId: string): Promise<WorktreeResult> => ({
+export const createAgentWorktree = async (
+  cwd: string,
+  _execId: string,
+): Promise<WorktreeResult> => ({
   path: cwd,
   branch: '',
   created: false,

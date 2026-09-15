@@ -1,4 +1,3 @@
-
 export interface ModelDef {
   id: string;
   name: string;

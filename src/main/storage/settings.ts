@@ -70,7 +70,7 @@ const SCHEMA: FileSchema<AiSettings> = {
     // v1 → v2: migrate 'ask' permission mode → 'auto'
     (prev) => {
       const settings = prev as AiSettings;
-      if (settings.defaultPermissionMode === 'ask' as any) {
+      if (settings.defaultPermissionMode === ('ask' as any)) {
         return { ...settings, defaultPermissionMode: 'auto' as PermissionMode };
       }
       return settings;
@@ -91,7 +91,11 @@ const SCHEMA: FileSchema<AiSettings> = {
       const legacy = settings.compactionSettings;
       if (!legacy) return settings as AiSettings;
 
-      const { reserveTokens: _reserveTokens, keepRecentTokens: _keepRecentTokens, ...migrated } = legacy;
+      const {
+        reserveTokens: _reserveTokens,
+        keepRecentTokens: _keepRecentTokens,
+        ...migrated
+      } = legacy;
       return { ...settings, compactionSettings: migrated } as AiSettings;
     },
     // v4 → v5: drops the obsolete "Max turns per message" setting. The Pi

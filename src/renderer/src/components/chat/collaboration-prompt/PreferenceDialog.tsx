@@ -67,9 +67,7 @@ export function PreferenceDialog({ reqId, payload, onRespond }: DialogProps<Pref
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm font-medium text-fg-subtle">
-          Or describe your preference:
-        </label>
+        <label className="text-sm font-medium text-fg-subtle">Or describe your preference:</label>
         <Textarea
           value={customResponse}
           onChange={(e) => setCustomResponse(e.target.value)}

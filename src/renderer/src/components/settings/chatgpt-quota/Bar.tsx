@@ -10,7 +10,9 @@ function WindowRow({ window }: { window: ChatGptRateLimitWindow }) {
     <div className="space-y-1">
       <div className="flex items-baseline justify-between">
         <span className="text-xs text-fg-muted">{label} window</span>
-        <span className={`text-xs ${window.usedPercent >= 90 ? 'text-red-400' : window.usedPercent >= 75 ? 'text-orange-400' : 'text-fg-subtle'}`}>
+        <span
+          className={`text-xs ${window.usedPercent >= 90 ? 'text-red-400' : window.usedPercent >= 75 ? 'text-orange-400' : 'text-fg-subtle'}`}
+        >
           {Math.round(window.usedPercent)}% used
           {resetsAt && <span className="ml-1.5 text-fg-subtle">· resets {resetsAt}</span>}
         </span>

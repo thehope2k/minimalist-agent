@@ -5,8 +5,7 @@ import { CodeViewer } from './CodeViewer';
 
 const JSON_THEME = {
   ...vscodeTheme,
-  '--w-rjv-font-family':
-    '"JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace',
+  '--w-rjv-font-family': '"JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace',
   '--w-rjv-font-size': '13px',
   '--w-rjv-background-color': 'transparent',
   '--w-rjv-line-height': '1.7',

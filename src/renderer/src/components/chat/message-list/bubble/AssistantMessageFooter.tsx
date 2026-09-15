@@ -5,7 +5,11 @@ import { Button } from '../../../ui';
 import { ShareResponseButton } from '../ShareResponseButton';
 import { compactNumber } from '../utils';
 
-export function AssistantMessageFooter({ message, onContinue, sessionId }: {
+export function AssistantMessageFooter({
+  message,
+  onContinue,
+  sessionId,
+}: {
   message: ChatMessage;
   onContinue?: () => void;
   sessionId?: string;
@@ -13,8 +17,13 @@ export function AssistantMessageFooter({ message, onContinue, sessionId }: {
   if (message.isStreaming) return null;
 
   const showStopBadge = !!message.stopReason && message.stopReason !== 'end_turn';
-  const canContinue = message.stopReason === 'max_turns' || message.errorInfo?.code === 'max_turns_exceeded';
-  const hasMetadata = message.model || message.usage?.outputTokens !== undefined || message.stopReason || message.durationMs !== undefined;
+  const canContinue =
+    message.stopReason === 'max_turns' || message.errorInfo?.code === 'max_turns_exceeded';
+  const hasMetadata =
+    message.model ||
+    message.usage?.outputTokens !== undefined ||
+    message.stopReason ||
+    message.durationMs !== undefined;
 
   return (
     <div className="mt-1 flex w-full items-center justify-between">
@@ -36,23 +45,34 @@ export function AssistantMessageFooter({ message, onContinue, sessionId }: {
           </Button>
         )}
         {hasMetadata && (
-          <span className={cn(
-            'inline-flex items-center gap-1.5 rounded-md border border-border/40 bg-panel/40',
-            'px-1.5 py-0.5 font-mono text-[10px] text-fg-subtle',
-            'opacity-0 transition-opacity duration-150 group-hover:opacity-100',
-          )}>
+          <span
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-md border border-border/40 bg-panel/40',
+              'px-1.5 py-0.5 font-mono text-[10px] text-fg-subtle',
+              'opacity-0 transition-opacity duration-150 group-hover:opacity-100',
+            )}
+          >
             {message.model && <span className="text-fg-muted">{message.model}</span>}
-            {message.model && message.usage?.outputTokens !== undefined && <span className="opacity-50">·</span>}
+            {message.model && message.usage?.outputTokens !== undefined && (
+              <span className="opacity-50">·</span>
+            )}
             {message.usage?.outputTokens !== undefined && (
               <span title="input ↑ / output ↓ tokens">
-                {compactNumber(message.usage.inputTokens ?? 0)}↑ {compactNumber(message.usage.outputTokens)}↓
+                {compactNumber(message.usage.inputTokens ?? 0)}↑{' '}
+                {compactNumber(message.usage.outputTokens)}↓
               </span>
             )}
             {message.stopReason && !showStopBadge && (
-              <><span className="opacity-50">·</span><span title="SDK stop_reason">{message.stopReason}</span></>
+              <>
+                <span className="opacity-50">·</span>
+                <span title="SDK stop_reason">{message.stopReason}</span>
+              </>
             )}
             {message.durationMs !== undefined && (
-              <><span className="opacity-50">·</span><span title="Turn duration">{formatDuration(message.durationMs)}</span></>
+              <>
+                <span className="opacity-50">·</span>
+                <span title="Turn duration">{formatDuration(message.durationMs)}</span>
+              </>
             )}
           </span>
         )}

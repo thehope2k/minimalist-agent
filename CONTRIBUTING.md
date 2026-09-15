@@ -16,7 +16,7 @@ bun run dev        # launch Electron in dev mode with HMR
 ## Scripts
 
 | Command             | What it does                                               |
-|---------------------|------------------------------------------------------------|
+| ------------------- | ---------------------------------------------------------- |
 | `bun run dev`       | Launch Electron with Vite HMR — main + renderer hot-reload |
 | `bun run build`     | Production build into `out/`                               |
 | `bun run typecheck` | TypeScript check across main + renderer (no emit)          |
@@ -44,14 +44,14 @@ The full coding guide lives in [AGENTS.md](AGENTS.md). Key points:
 - **UI primitives** — use `components/ui/` before writing inline styles.
 - **IPC** — renderer talks to main only via `window.api`; new methods go in `src/main/ipc/*-ipc.ts` +
   `src/preload/index.ts`.
-- **Comments** — don't restate the code; write a one-liner only when the *why* is non-obvious.
+- **Comments** — don't restate the code; write a one-liner only when the _why_ is non-obvious.
 - **Component size** — split files that exceed ~250 lines into a parent + subdirectory.
 
 ## Pull requests
 
 1. Fork → branch off `main`.
 2. Make your changes; run `bun run typecheck` before pushing.
-3. Open a PR with a clear description of *what* and *why*.
+3. Open a PR with a clear description of _what_ and _why_.
 4. Small, focused PRs are preferred over large all-in-one changes.
 
 ## Reporting bugs

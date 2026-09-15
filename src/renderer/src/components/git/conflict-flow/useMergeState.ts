@@ -31,7 +31,9 @@ export function useMergeState({ repoRoots, enabled }: UseMergeStateArgs): UseMer
 
   useEffect(() => {
     mountedRef.current = true;
-    return () => { mountedRef.current = false; };
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   const fetch = useCallback(async () => {

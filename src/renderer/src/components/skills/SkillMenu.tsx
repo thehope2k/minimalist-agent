@@ -23,12 +23,7 @@ type Props = {
   onOpenChange?: (open: boolean) => void;
 };
 
-export function SkillMenu({
-  skill,
-  onAfterDelete,
-  variant = 'panel',
-  onOpenChange,
-}: Props) {
+export function SkillMenu({ skill, onAfterDelete, variant = 'panel', onOpenChange }: Props) {
   const handleOpen = () => void openInEditor(skill.path);
   const handleReveal = () => void revealInFinder(skill.path);
 
@@ -73,9 +68,7 @@ export function SkillMenu({
           label="More"
           size="sm"
           className={
-            variant === 'panel'
-              ? 'bg-elevated/80 hover:bg-elevated-2'
-              : 'hover:bg-elevated'
+            variant === 'panel' ? 'bg-elevated/80 hover:bg-elevated-2' : 'hover:bg-elevated'
           }
         />
       }

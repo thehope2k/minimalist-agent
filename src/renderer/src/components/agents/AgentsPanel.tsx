@@ -22,17 +22,9 @@ type Props = {
   onStartChatWithSubmission?: (submit: SeedSubmit) => void;
 };
 
-export function AgentsPanel({
-  activeSlug,
-  onSelect,
-  onStartChatWithSubmission,
-}: Props) {
+export function AgentsPanel({ activeSlug, onSelect, onStartChatWithSubmission }: Props) {
   const agents = useAgents();
-  const { ordered: orderedAgents, reorder } = useOrderedList(
-    agents,
-    'agents',
-    getAgentId,
-  );
+  const { ordered: orderedAgents, reorder } = useOrderedList(agents, 'agents', getAgentId);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -56,11 +48,7 @@ export function AgentsPanel({
       <header className="flex h-10 shrink-0 items-center gap-2 border-b border-border px-3 text-[15px] font-semibold text-fg">
         <Bot className="h-4 w-4 text-fg-muted" strokeWidth={1.75} />
         <span>Agents</span>
-        {agents && (
-          <span className="text-xs tabular-nums text-fg-subtle">
-            {agents.length}
-          </span>
-        )}
+        {agents && <span className="text-xs tabular-nums text-fg-subtle">{agents.length}</span>}
         <div className="flex-1" />
         <button
           type="button"
@@ -127,8 +115,8 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
       <Bot className="h-6 w-6 text-fg-subtle" strokeWidth={1.5} />
       <div className="text-sm font-medium text-fg">No agents yet</div>
       <p className="max-w-65 text-xs text-fg-subtle">
-        Agents are specialized sub-agents the model can delegate work to.
-        Build one with AI or add an <code>AGENT.md</code> under
+        Agents are specialized sub-agents the model can delegate work to. Build one with AI or add
+        an <code>AGENT.md</code> under
         <code> ~/.agents/agents/</code>.
       </p>
       <button

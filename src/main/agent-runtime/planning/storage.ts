@@ -1,6 +1,6 @@
 /**
  * Plan persistence to session storage.
- * 
+ *
  * Saves and loads plans from the session directory so they survive app restarts.
  */
 
@@ -26,7 +26,7 @@ export class PlanStorage {
    */
   private getPlanPath(sessionId: string): string {
     const sessionDir = join(this.sessionsDir, sessionId);
-    
+
     // Ensure session directory exists
     if (!existsSync(sessionDir)) {
       mkdirSync(sessionDir, { recursive: true });
@@ -55,7 +55,7 @@ export class PlanStorage {
   loadPlan(sessionId: string): Plan | null {
     try {
       const planPath = this.getPlanPath(sessionId);
-      
+
       if (!existsSync(planPath)) {
         return null;
       }
@@ -65,7 +65,7 @@ export class PlanStorage {
 
       // Validate with Zod
       const plan = PlanSchema.parse(data);
-      
+
       return plan;
     } catch (error) {
       log.error(`Failed to load plan for session ${sessionId}:`, error);

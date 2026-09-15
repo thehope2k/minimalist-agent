@@ -25,7 +25,11 @@ export function getProjectSkillsDir(cwd: string): string {
 
 /* ---------- single-skill loader ---------- */
 
-function loadSkillFromDir(slug: string, dir: string, source: import('./types').SkillSource): LoadedSkill | null {
+function loadSkillFromDir(
+  slug: string,
+  dir: string,
+  source: import('./types').SkillSource,
+): LoadedSkill | null {
   const skillDir = join(dir, slug);
   const skillFile = join(skillDir, 'SKILL.md');
 
@@ -101,9 +105,7 @@ export function loadAllSkills(cwd?: string): LoadedSkill[] {
   if (cached) return cached;
 
   const userSkills = loadSkillsFromDirectory(getSkillsDir(), 'user');
-  const projectSkills = cwd
-    ? loadSkillsFromDirectory(getProjectSkillsDir(cwd), 'project')
-    : [];
+  const projectSkills = cwd ? loadSkillsFromDirectory(getProjectSkillsDir(cwd), 'project') : [];
 
   const skills = mergeTiers(userSkills, projectSkills);
   cache.set(cwd, skills);

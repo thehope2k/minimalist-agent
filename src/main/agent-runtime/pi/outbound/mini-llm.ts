@@ -4,7 +4,10 @@
 import type { SubprocessHandle } from '../subprocess-handle';
 import type { MsgLlmQueryResult, MsgMiniCompletionResult } from '../protocol';
 
-export function handleMiniCompletionResult(msg: MsgMiniCompletionResult, handle: SubprocessHandle): void {
+export function handleMiniCompletionResult(
+  msg: MsgMiniCompletionResult,
+  handle: SubprocessHandle,
+): void {
   const p = handle.pendingMini.get(msg.requestId);
   if (p) {
     handle.pendingMini.delete(msg.requestId);

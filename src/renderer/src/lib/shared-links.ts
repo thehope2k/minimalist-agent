@@ -43,9 +43,7 @@ function notExpired(r: SharedLinkRecord): boolean {
 export function listSharedLinks(sessionId: string): SharedLinkRecord[] {
   const live = readAll().filter(notExpired);
   writeAll(live); // prune expired as a side effect
-  return live
-    .filter((r) => r.sessionId === sessionId)
-    .sort((a, b) => b.createdAt - a.createdAt);
+  return live.filter((r) => r.sessionId === sessionId).sort((a, b) => b.createdAt - a.createdAt);
 }
 
 export function recordSharedLink(

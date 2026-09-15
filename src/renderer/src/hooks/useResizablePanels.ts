@@ -10,11 +10,7 @@ import * as storage from '@/lib/local-storage';
  * @param defaultSizes Initial percentage sizes (0–100) used when no valid
  *                     saved layout exists.
  */
-export function useResizablePanels(
-  key: string,
-  panelIds: string[],
-  defaultSizes: number[],
-) {
+export function useResizablePanels(key: string, panelIds: string[], defaultSizes: number[]) {
   const defaultLayout = useMemo<Layout | undefined>(() => {
     const saved = storage.get<Layout | null>(storage.KEYS.panelLayout, null, key);
     if (!saved || typeof saved !== 'object') return undefined;
@@ -31,7 +27,7 @@ export function useResizablePanels(
     }
 
     return saved;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onLayoutChange = useCallback(

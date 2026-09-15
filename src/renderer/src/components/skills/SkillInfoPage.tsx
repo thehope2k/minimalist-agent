@@ -20,14 +20,10 @@ export function SkillInfoPage({
 }: SkillInfoPageProps) {
   if (!skill) return <EmptyView />;
 
-  const {
-    mention,
-    copied,
-    editMode,
-    copyMention,
-    handleEdit,
-    closeEditDialog,
-  } = useSkillActions(skill, onStartChatWithSubmission);
+  const { mention, copied, editMode, copyMention, handleEdit, closeEditDialog } = useSkillActions(
+    skill,
+    onStartChatWithSubmission,
+  );
 
   return (
     <div className="flex h-full flex-col">

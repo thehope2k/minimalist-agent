@@ -6,10 +6,20 @@
 // CI / unsupported environments.
 
 import { safeStorage } from 'electron';
-import { existsSync, readFileSync, writeFileSync, renameSync, unlinkSync, chmodSync } from 'node:fs';
+import {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  renameSync,
+  unlinkSync,
+  chmodSync,
+} from 'node:fs';
 import { Paths } from './paths';
 
-export interface ApiKeyCred { type: 'api_key'; apiKey: string; }
+export interface ApiKeyCred {
+  type: 'api_key';
+  apiKey: string;
+}
 export interface OAuthCred {
   type: 'oauth';
   accessToken: string;

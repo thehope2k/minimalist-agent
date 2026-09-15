@@ -120,7 +120,7 @@ on file-system events. See [SYSTEM-PROMPT.md](SYSTEM-PROMPT.md) for the full inv
 All three types support two tiers (same priority rules as skills/agents):
 
 | Tier    | Path                                         | Notes                                                                                        |
-|---------|-----------------------------------------------|------------------------------------------------------------------------------------------------|
+| ------- | -------------------------------------------- | -------------------------------------------------------------------------------------------- |
 | User    | `~/.minimalist-agent/extensions/<slug>/`     | `enabled` flag respected; MCP requires consent + keychain secrets                            |
 | Project | `<cwd>/.minimalist-agent/extensions/<slug>/` | Always active (presence = enabled); MCP auto-consented; env refs resolved from `process.env` |
 
@@ -137,15 +137,15 @@ crossing into Pi subprocess via `MsgInit`.
 `skills/` resolves `@slug` mentions in user messages:
 
 1. `mentions.ts` — scans the message for `@token` mentions. Two token forms are supported:
-    - Plain: `@src/utils.ts` — word chars, dots, slashes, hyphens
-    - Quoted: `` @`My Document.txt` `` — backtick-delimited, used when a path contains spaces
+   - Plain: `@src/utils.ts` — word chars, dots, slashes, hyphens
+   - Quoted: `` @`My Document.txt` `` — backtick-delimited, used when a path contains spaces
 2. `storage.ts` — locates the skill across two tiers (project-local first, then user-global).
 3. `directive.ts` — formats the "read these files first" directive injected before the user message.
 
 Skills are resolved from two tiers in priority order:
 
 | Tier    | Location                                         | Scope                               |
-|---------|----------------------------------------------------|--------------------------------------|
+| ------- | ------------------------------------------------ | ----------------------------------- |
 | Project | `<cwd>/.minimalist-agent/skills/<slug>/SKILL.md` | This project only — git-committable |
 | User    | `~/.minimalist-agent/skills/<slug>/SKILL.md`     | All projects — dotfile-syncable     |
 
@@ -278,7 +278,7 @@ Collapsible side panel (`Cmd+Shift+B`) showing what's available and pinned for t
 **Sections:**
 
 | Section             | Content                                              | Action      |
-|---------------------|------------------------------------------------------|-------------|
+| ------------------- | ---------------------------------------------------- | ----------- |
 | Active this session | Pinned skills                                        | Unpin       |
 | `<project-name>`    | Project-local skills from `<cwd>/.minimalist-agent/` | Pin / Unpin |
 | Global              | User-tier skills from `~/.minimalist-agent/`         | Pin / Unpin |

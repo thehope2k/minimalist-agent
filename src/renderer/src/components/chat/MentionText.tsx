@@ -25,9 +25,7 @@ import type { LoadedExtension, LoadedSkill } from '@/lib/electron';
 // unambiguous because whitespace normally terminates a token.
 const MENTION_RE = /(^|\s)@(`[^`]+`|[\w./-]+)/g;
 
-type Run =
-  | { kind: 'text'; value: string }
-  | { kind: 'mention'; token: string };
+type Run = { kind: 'text'; value: string } | { kind: 'mention'; token: string };
 
 function tokenize(text: string): Run[] {
   const out: Run[] = [];
@@ -52,14 +50,8 @@ function tokenize(text: string): Run[] {
 
 export function MentionText({ text }: { text: string }) {
   const { skills, extensions } = useSessionAssets();
-  const skillBySlug = useMemo(
-    () => new Map(skills.map((s) => [s.slug, s])),
-    [skills],
-  );
-  const extensionBySlug = useMemo(
-    () => new Map(extensions.map((e) => [e.slug, e])),
-    [extensions],
-  );
+  const skillBySlug = useMemo(() => new Map(skills.map((s) => [s.slug, s])), [skills]);
+  const extensionBySlug = useMemo(() => new Map(extensions.map((e) => [e.slug, e])), [extensions]);
 
   const runs = useMemo(() => tokenize(text), [text]);
 
@@ -126,11 +118,7 @@ function MentionChip({
         className="mx-0.5 inline-flex items-center gap-1 rounded-md border border-border/60 bg-elevated/80 px-1.5 py-px align-baseline text-[0.9em] text-fg"
         title={`@${extension.slug}`}
       >
-        <ExtensionAvatar
-          extension={extension}
-          size="sm"
-          className="!h-3.5 !w-3.5 !text-[10px]"
-        />
+        <ExtensionAvatar extension={extension} size="sm" className="!h-3.5 !w-3.5 !text-[10px]" />
         <span>{extensionDisplayName(extension)}</span>
       </span>
     );

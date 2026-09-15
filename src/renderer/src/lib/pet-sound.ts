@@ -142,7 +142,10 @@ function playLayer(
   oscillator.type = layer.waveform;
   oscillator.detune.setValueAtTime(layer.detuneCents, startTime);
   oscillator.frequency.setValueAtTime(jitter(layer.freqStartHz), startTime);
-  oscillator.frequency.exponentialRampToValueAtTime(jitter(layer.freqEndHz), startTime + durationSec);
+  oscillator.frequency.exponentialRampToValueAtTime(
+    jitter(layer.freqEndHz),
+    startTime + durationSec,
+  );
 
   const peak = noteGain * layer.gainMul;
   gain.gain.setValueAtTime(0.0001, startTime);

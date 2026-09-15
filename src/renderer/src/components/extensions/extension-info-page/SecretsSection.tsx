@@ -99,8 +99,8 @@ export function SecretsSection({ extension }: { extension: LoadedExtension }) {
 
       {!status.encryptionAvailable && allKeys.length > 0 && (
         <div className="mb-3 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-200">
-          OS keychain encryption unavailable on this machine — secrets are
-          stored as plaintext on disk. Use sandboxed credentials only.
+          OS keychain encryption unavailable on this machine — secrets are stored as plaintext on
+          disk. Use sandboxed credentials only.
         </div>
       )}
 
@@ -124,7 +124,8 @@ export function SecretsSection({ extension }: { extension: LoadedExtension }) {
             <>
               <ShieldAlert className="h-4 w-4 text-amber-400" strokeWidth={1.75} />
               <span className="flex-1 text-fg-muted">
-                This extension runs its own program in the background — allow it before it can start.
+                This extension runs its own program in the background — allow it before it can
+                start.
               </span>
               <button
                 type="button"
@@ -146,21 +147,14 @@ export function SecretsSection({ extension }: { extension: LoadedExtension }) {
             const showText = !!reveal[keyName];
             const draft = pending[keyName] ?? '';
             return (
-              <div
-                key={keyName}
-                className="rounded-md border border-border bg-elevated/40 p-2"
-              >
+              <div key={keyName} className="rounded-md border border-border bg-elevated/40 p-2">
                 <div className="flex items-center gap-2">
                   <Key className="h-3.5 w-3.5 text-fg-subtle" strokeWidth={1.75} />
-                  <code className="flex-1 truncate font-mono text-xs text-fg">
-                    {keyName}
-                  </code>
+                  <code className="flex-1 truncate font-mono text-xs text-fg">{keyName}</code>
                   <span
                     className={cn(
                       'rounded px-1.5 py-px text-[10px] uppercase tracking-wide',
-                      isSet
-                        ? 'bg-green-500/15 text-green-300'
-                        : 'bg-amber-500/15 text-amber-300',
+                      isSet ? 'bg-green-500/15 text-green-300' : 'bg-amber-500/15 text-amber-300',
                     )}
                   >
                     {isSet ? 'set' : isDeclared ? 'missing' : 'orphan'}
@@ -180,9 +174,7 @@ export function SecretsSection({ extension }: { extension: LoadedExtension }) {
                   <input
                     type={showText ? 'text' : 'password'}
                     value={draft}
-                    onChange={(e) =>
-                      setPending((p) => ({ ...p, [keyName]: e.target.value }))
-                    }
+                    onChange={(e) => setPending((p) => ({ ...p, [keyName]: e.target.value }))}
                     placeholder={isSet ? 'Replace secret…' : 'Enter secret…'}
                     spellCheck={false}
                     autoComplete="off"
@@ -190,9 +182,7 @@ export function SecretsSection({ extension }: { extension: LoadedExtension }) {
                   />
                   <button
                     type="button"
-                    onClick={() =>
-                      setReveal((r) => ({ ...r, [keyName]: !showText }))
-                    }
+                    onClick={() => setReveal((r) => ({ ...r, [keyName]: !showText }))}
                     className="rounded-md p-1 text-fg-subtle hover:bg-elevated hover:text-fg"
                     title={showText ? 'Hide' : 'Show'}
                   >

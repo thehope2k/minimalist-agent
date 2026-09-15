@@ -3,10 +3,7 @@ import type { LoadedExtension } from '@/lib/electron';
 import { Section } from './shared';
 
 export function ConfigSection({ extension }: { extension: LoadedExtension }) {
-  const configJson = useMemo(
-    () => JSON.stringify(extension.config, null, 2),
-    [extension.config],
-  );
+  const configJson = useMemo(() => JSON.stringify(extension.config, null, 2), [extension.config]);
 
   return (
     <Section title="extension.json">

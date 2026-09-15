@@ -221,7 +221,12 @@ export function registerChatIpc(): void {
           reason: `File mention(s) not found: ${missingFiles.join(', ')}`,
         };
       }
-      const directive = formatSkillDirective(skillPaths, extensionGuidePaths, filePaths, folderPaths);
+      const directive = formatSkillDirective(
+        skillPaths,
+        extensionGuidePaths,
+        filePaths,
+        folderPaths,
+      );
       const attachmentsDirective = formatAttachmentsDirective(args.attachments);
       const message = [directive, attachmentsDirective, cleanMessage].filter(Boolean).join('\n\n');
 
@@ -247,7 +252,12 @@ export function registerChatIpc(): void {
     'chat:manualCompact',
     async (
       event,
-      args: { turnId: string; sessionId: string; connectionSlug: string; customInstructions?: string },
+      args: {
+        turnId: string;
+        sessionId: string;
+        connectionSlug: string;
+        customInstructions?: string;
+      },
     ): Promise<void> => {
       await withAbortable(args.turnId, async (signal) => {
         for await (const chunk of runManualCompact({
@@ -292,13 +302,10 @@ export function registerChatIpc(): void {
    * Renderer's response to a `chat:collaboration-request` event.
    * Used by intelligent collaboration system (RequestDecision, etc.).
    */
-  ipcMain.handle(
-    'chat:collaboration-response',
-    (_e, payload: EngagementResponse) => {
-      const entry = pendingCollaborations.get(payload.reqId);
-      if (!entry) return;
-      entry.resolve(payload);
-      pendingCollaborations.delete(payload.reqId);
-    },
-  );
+  ipcMain.handle('chat:collaboration-response', (_e, payload: EngagementResponse) => {
+    const entry = pendingCollaborations.get(payload.reqId);
+    if (!entry) return;
+    entry.resolve(payload);
+    pendingCollaborations.delete(payload.reqId);
+  });
 }

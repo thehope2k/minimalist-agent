@@ -12,32 +12,45 @@ export function detectLanguage(text: string): string {
   // JSON — must parse cleanly
   const trimmed = text.trim();
   if (/^[{[]/.test(trimmed)) {
-    try { JSON.parse(trimmed); return 'json'; } catch {}
+    try {
+      JSON.parse(trimmed);
+      return 'json';
+    } catch {}
   }
 
   // TypeScript — check before JS to catch type annotations
   if (
     /\bimport\b.*\bfrom\b|export\s+(default|const|function|class|type|interface)\b/.test(head) &&
     /:\s*(string|number|boolean|void|any|unknown|never)\b|interface\s+\w|type\s+\w+\s*=/.test(head)
-  ) return 'typescript';
+  )
+    return 'typescript';
 
   // JSX/TSX heuristic
-  if (/\bimport\b.*\bfrom\b|export\s+(default|const|function|class)\b/.test(head) &&
-      /<[A-Z]\w+[\s/>]/.test(head)) {
-    return /:\s*(string|number|boolean|void|any)\b|interface\s+\w/.test(head)
-      ? 'tsx'
-      : 'jsx';
+  if (
+    /\bimport\b.*\bfrom\b|export\s+(default|const|function|class)\b/.test(head) &&
+    /<[A-Z]\w+[\s/>]/.test(head)
+  ) {
+    return /:\s*(string|number|boolean|void|any)\b|interface\s+\w/.test(head) ? 'tsx' : 'jsx';
   }
 
   // JavaScript
-  if (/\bimport\b.*\bfrom\b|export\s+(default|const|function|class)\b|const\s+\w+\s*=|let\s+\w+\s*=/.test(head)) return 'javascript';
+  if (
+    /\bimport\b.*\bfrom\b|export\s+(default|const|function|class)\b|const\s+\w+\s*=|let\s+\w+\s*=/.test(
+      head,
+    )
+  )
+    return 'javascript';
 
   // Python
-  if (/^(import |from \w+\s+import |def \w+\s*\(|class \w+[:(]|@\w+)/m.test(head) &&
-      !/[{}]/.test(head.slice(0, 80))) return 'python';
+  if (
+    /^(import |from \w+\s+import |def \w+\s*\(|class \w+[:(]|@\w+)/m.test(head) &&
+    !/[{}]/.test(head.slice(0, 80))
+  )
+    return 'python';
 
   // SQL
-  if (/\b(SELECT|INSERT|UPDATE|DELETE|CREATE TABLE|ALTER TABLE|DROP TABLE)\b/i.test(head)) return 'sql';
+  if (/\b(SELECT|INSERT|UPDATE|DELETE|CREATE TABLE|ALTER TABLE|DROP TABLE)\b/i.test(head))
+    return 'sql';
 
   // Go
   if (/^package \w+|^import \(|^func \w+\s*\(/m.test(head)) return 'go';
@@ -46,7 +59,8 @@ export function detectLanguage(text: string): string {
   if (/^(use |fn |impl |struct |enum |mod |pub )\w/m.test(head)) return 'rust';
 
   // Java / Kotlin
-  if (/^(package |import java\.|public class |public interface |@interface )/m.test(head)) return 'java';
+  if (/^(package |import java\.|public class |public interface |@interface )/m.test(head))
+    return 'java';
 
   // CSS / SCSS
   if (/[.#]?\w[\w-]*\s*\{[\s\S]*?:\s*[\w#"'(][\s\S]*?;/.test(head)) return 'css';

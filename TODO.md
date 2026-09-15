@@ -3,7 +3,7 @@
 Simple running list of things to do. Add items whenever they come to mind.
 
 **Rule:** when something is resolved, **delete it** — don't tick a checkbox and leave it. This file
-tracks what's *left to do*, not what's done. Add a one-line note only if it'll save someone time later.
+tracks what's _left to do_, not what's done. Add a one-line note only if it'll save someone time later.
 
 ---
 
@@ -22,13 +22,13 @@ tracks what's *left to do*, not what's done. Add a one-line note only if it'll s
 
 ## Features / Improvements
 
-*(Nothing pending)*
+_(Nothing pending)_
 
 ---
 
 ## Documentation
 
-*(Nothing pending)*
+_(Nothing pending)_
 
 ---
 
@@ -59,8 +59,8 @@ tracks what's *left to do*, not what's done. Add a one-line note only if it'll s
 ## Tech Debt
 
 - [ ] **Split "god files"** — several modules far exceed the AGENTS.md ~250-line guideline
-  (13 `.ts` files >400 lines; 13 `.tsx` components >250; ~69.8K lines total across `src/`).
-  Sizes refreshed Sep 15, 2026:
+      (13 `.ts` files >400 lines; 13 `.tsx` components >250; ~69.8K lines total across `src/`).
+      Sizes refreshed Sep 15, 2026:
   - `src/main/pi-server/index.ts` — 1,346 lines. Orchestrates `handleInit`/
     `handlePrompt`/`handleManualCompact`/`dispatch`/the stdin entrypoint, all sharing
     `activePromptPromise` and the OTel span lifecycle via the module-scoped `state` object.
@@ -77,16 +77,16 @@ tracks what's *left to do*, not what's done. Add a one-line note only if it'll s
     `src/renderer/src/App.tsx` (292)
 
 - [ ] **Provider quota fetchers have no shared type** — `src/main/chatgpt/quota.ts` and
-  `src/main/copilot/quota.ts` are independently hand-rolled (justified — genuinely different
-  response shapes/billing models) but share no `QuotaResult` interface despite both feeding
-  the same UI budget pill. Not worth abstracting over just two providers; revisit if a third
-  provider's quota fetcher gets added.
+      `src/main/copilot/quota.ts` are independently hand-rolled (justified — genuinely different
+      response shapes/billing models) but share no `QuotaResult` interface despite both feeding
+      the same UI budget pill. Not worth abstracting over just two providers; revisit if a third
+      provider's quota fetcher gets added.
 
 ---
 
 ## Maybe / Low Priority
 
-*(Ideas that might be worth doing someday)*
+_(Ideas that might be worth doing someday)_
 
 ---
 

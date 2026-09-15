@@ -65,15 +65,14 @@ export function OpenAICompatibleFlow(props: FlowProps) {
         </Field>
       )}
 
-      <Field
-        label="API key"
-        hint={form.preset?.keyHint ?? 'Stored encrypted via the OS keychain.'}
-      >
+      <Field label="API key" hint={form.preset?.keyHint ?? 'Stored encrypted via the OS keychain.'}>
         <PasswordInput
           value={form.apiKey}
           onChange={(event) => form.setApiKey(event.target.value)}
           autoComplete="off"
-          placeholder={form.editing ? 'Enter a new key to replace the stored one' : 'Paste your API key'}
+          placeholder={
+            form.editing ? 'Enter a new key to replace the stored one' : 'Paste your API key'
+          }
         />
       </Field>
 

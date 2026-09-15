@@ -59,16 +59,13 @@ export function buildExportModel(
     }
 
     const parts = selectParts(msg, options.mode);
-    const attachments =
-      msg.role === 'user' ? selectAttachments(msg.attachments) : undefined;
+    const attachments = msg.role === 'user' ? selectAttachments(msg.attachments) : undefined;
 
     // Skip turns that ended up entirely empty after filtering (e.g. an
     // assistant turn that was only thinking + tool noise in summary mode),
     // unless it carries a turn-level error worth surfacing.
     const hasContent =
-      parts.length > 0 ||
-      (attachments && attachments.length > 0) ||
-      Boolean(msg.error);
+      parts.length > 0 || (attachments && attachments.length > 0) || Boolean(msg.error);
     if (!hasContent) continue;
 
     messageCount += 1;
@@ -125,10 +122,7 @@ function selectParts(msg: StoredMessage, mode: ExportMode): ExportPart[] {
   return out;
 }
 
-function convertPart(
-  p: StoredMessagePart,
-  mode: ExportMode,
-): ExportPart | null {
+function convertPart(p: StoredMessagePart, mode: ExportMode): ExportPart | null {
   if (p.kind === 'text') {
     return p.text.trim() ? { kind: 'text', text: p.text } : null;
   }
@@ -249,12 +243,8 @@ function parseDiffInput(name: string, input: unknown): ParsedDiff | null {
   if (Array.isArray(o.edits) && o.edits.length > 0) {
     const edits = o.edits as Array<{ oldText?: unknown; newText?: unknown }>;
     const SEP = '\n\n// \u2500\u2500\u2500 next edit \u2500\u2500\u2500\n\n';
-    const oldValue = edits
-      .map((e) => (typeof e.oldText === 'string' ? e.oldText : ''))
-      .join(SEP);
-    const newValue = edits
-      .map((e) => (typeof e.newText === 'string' ? e.newText : ''))
-      .join(SEP);
+    const oldValue = edits.map((e) => (typeof e.oldText === 'string' ? e.oldText : '')).join(SEP);
+    const newValue = edits.map((e) => (typeof e.newText === 'string' ? e.newText : '')).join(SEP);
     if (!oldValue && !newValue) return null;
     return { filePath, oldValue, newValue };
   }
@@ -292,10 +282,7 @@ function countDiffLines(
   };
 }
 
-function formatInput(
-  input: unknown,
-  partialInputJson: string | undefined,
-): string | undefined {
+function formatInput(input: unknown, partialInputJson: string | undefined): string | undefined {
   if (input !== undefined && input !== null) {
     try {
       return JSON.stringify(input, null, 2);
@@ -314,11 +301,7 @@ function selectAttachments(
   if (!attachments?.length) return undefined;
   return attachments.map((a) => {
     // Images already carry inline base64; embed when small enough.
-    if (
-      a.type === 'image' &&
-      a.resizedBase64 &&
-      a.size <= MAX_INLINE_IMAGE_BYTES
-    ) {
+    if (a.type === 'image' && a.resizedBase64 && a.size <= MAX_INLINE_IMAGE_BYTES) {
       return {
         type: a.type,
         name: a.name,

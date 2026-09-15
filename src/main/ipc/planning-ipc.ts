@@ -2,7 +2,11 @@ import { BrowserWindow, ipcMain } from 'electron';
 import { dirname } from 'node:path';
 import { sessionPath } from '../storage/sessions';
 import { sendPlanApprovalResponse } from '../agent-runtime/pi/agent';
-import { getActivePlan, restorePlanCache, updatePlanCache as updatePlan } from '../agent-runtime/plan-cache';
+import {
+  getActivePlan,
+  restorePlanCache,
+  updatePlanCache as updatePlan,
+} from '../agent-runtime/plan-cache';
 import { PlanStorage } from '../agent-runtime/planning/storage';
 import type { Phase, Plan } from '../../shared/planning-types';
 
@@ -13,7 +17,8 @@ function applyPersistedPhaseDecision(
   notes?: string,
 ): void {
   const sessionsDir = dirname(sessionPath(sessionId));
-  const plan = (getActivePlan(sessionId) ?? restorePlanCache(sessionId, sessionsDir)) as Plan | null;
+  const plan = (getActivePlan(sessionId) ??
+    restorePlanCache(sessionId, sessionsDir)) as Plan | null;
   if (!plan) throw new Error(`No plan found for session ${sessionId}`);
 
   const phase = plan.phases.find((candidate) => candidate.id === phaseId);
@@ -68,39 +73,45 @@ export function registerPlanningIpc(): void {
     updatePlan(sessionId, null);
   });
 
-  ipcMain.handle('planning:approvePhase', async (_e, sessionId: string, phaseId: string, notes?: string) => {
-    // Send approval response to subprocess - let PlanManager handle the logic
-    const sent = sendPlanApprovalResponse({
-      chatSessionPath: sessionPath(sessionId),
-      phaseId,
-      approved: true,
-      notes,
-    });
+  ipcMain.handle(
+    'planning:approvePhase',
+    async (_e, sessionId: string, phaseId: string, notes?: string) => {
+      // Send approval response to subprocess - let PlanManager handle the logic
+      const sent = sendPlanApprovalResponse({
+        chatSessionPath: sessionPath(sessionId),
+        phaseId,
+        approved: true,
+        notes,
+      });
 
-    if (!sent) {
-      applyPersistedPhaseDecision(sessionId, phaseId, true, notes);
-    }
+      if (!sent) {
+        applyPersistedPhaseDecision(sessionId, phaseId, true, notes);
+      }
 
-    // A live subprocess emits the cache/UI updates; the fallback persists and
-    // broadcasts the same updates so a restored approval is not lost.
-  });
+      // A live subprocess emits the cache/UI updates; the fallback persists and
+      // broadcasts the same updates so a restored approval is not lost.
+    },
+  );
 
-  ipcMain.handle('planning:denyPhase', async (_e, sessionId: string, phaseId: string, reason?: string) => {
-    // Send denial response to subprocess - let PlanManager handle the logic
-    const sent = sendPlanApprovalResponse({
-      chatSessionPath: sessionPath(sessionId),
-      phaseId,
-      approved: false,
-      notes: reason,
-    });
+  ipcMain.handle(
+    'planning:denyPhase',
+    async (_e, sessionId: string, phaseId: string, reason?: string) => {
+      // Send denial response to subprocess - let PlanManager handle the logic
+      const sent = sendPlanApprovalResponse({
+        chatSessionPath: sessionPath(sessionId),
+        phaseId,
+        approved: false,
+        notes: reason,
+      });
 
-    if (!sent) {
-      applyPersistedPhaseDecision(sessionId, phaseId, false, reason);
-    }
+      if (!sent) {
+        applyPersistedPhaseDecision(sessionId, phaseId, false, reason);
+      }
 
-    // A live subprocess emits the cache/UI updates; the fallback persists and
-    // broadcasts the same updates so a restored denial is not lost.
-  });
+      // A live subprocess emits the cache/UI updates; the fallback persists and
+      // broadcasts the same updates so a restored denial is not lost.
+    },
+  );
 
   ipcMain.handle('planning:retryPhase', async (_e, sessionId: string, phaseId: string) => {
     const plan = getActivePlan(sessionId);

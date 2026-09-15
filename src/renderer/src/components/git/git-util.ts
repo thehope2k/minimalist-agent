@@ -75,12 +75,10 @@ export function applySelectedHunks(
 
 /** Derive a human-readable label for a hunk (e.g. "+3" / "-1" / "+2 -1"). */
 export function hunkLabel(c: LineChange): string {
-  const added = c.modifiedEndLineNumber > 0
-    ? c.modifiedEndLineNumber - c.modifiedStartLineNumber + 1
-    : 0;
-  const removed = c.originalEndLineNumber > 0
-    ? c.originalEndLineNumber - c.originalStartLineNumber + 1
-    : 0;
+  const added =
+    c.modifiedEndLineNumber > 0 ? c.modifiedEndLineNumber - c.modifiedStartLineNumber + 1 : 0;
+  const removed =
+    c.originalEndLineNumber > 0 ? c.originalEndLineNumber - c.originalStartLineNumber + 1 : 0;
   if (added > 0 && removed > 0) return `+${added} -${removed}`;
   if (added > 0) return `+${added}`;
   return `-${removed}`;
@@ -130,11 +128,8 @@ export function parseLastCommitFiles(raw: string): LastCommitFileEntry[] {
 
 /** Line range label for a hunk, e.g. "L5" or "L5-8". */
 export function hunkRange(c: LineChange): string {
-  const start = c.modifiedEndLineNumber === 0
-    ? c.originalStartLineNumber
-    : c.modifiedStartLineNumber;
-  const end = c.modifiedEndLineNumber === 0
-    ? c.originalEndLineNumber
-    : c.modifiedEndLineNumber;
+  const start =
+    c.modifiedEndLineNumber === 0 ? c.originalStartLineNumber : c.modifiedStartLineNumber;
+  const end = c.modifiedEndLineNumber === 0 ? c.originalEndLineNumber : c.modifiedEndLineNumber;
   return start === end ? `L${start}` : `L${start}-${end}`;
 }

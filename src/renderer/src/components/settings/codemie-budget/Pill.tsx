@@ -65,9 +65,10 @@ export function CodeMieBudgetPill({
       ? 'border-orange-400/40 text-orange-400'
       : 'border-border text-fg-subtle';
 
-  const label = typeof budget.budgetLimit === 'number'
-    ? `$${budget.currentSpending.toFixed(0)}/$${budget.budgetLimit.toFixed(0)}`
-    : `$${budget.currentSpending.toFixed(0)}`;
+  const label =
+    typeof budget.budgetLimit === 'number'
+      ? `$${budget.currentSpending.toFixed(0)}/$${budget.budgetLimit.toFixed(0)}`
+      : `$${budget.currentSpending.toFixed(0)}`;
 
   const tooltipParts: string[] = [`${filledPercent}% of budget used`];
   const reset = formatReset(budget.resetAt);
@@ -83,7 +84,8 @@ export function CodeMieBudgetPill({
         disabled={isRefreshing}
         className={`inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] leading-none tabular-nums transition-opacity cursor-pointer hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50 ${refreshFailed ? 'border-orange-400/40 text-orange-400' : colorClass}`}
       >
-        {isRefreshing ? '…' : label}{refreshFailed && !isRefreshing ? ' ⚠' : ''}
+        {isRefreshing ? '…' : label}
+        {refreshFailed && !isRefreshing ? ' ⚠' : ''}
       </button>
     </Tooltip>
   );

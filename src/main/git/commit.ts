@@ -56,11 +56,9 @@ async function hashAndStageContent(
   const tmpFile = join(tmpDir, 'content');
   try {
     await writeFile(tmpFile, content, 'utf-8');
-    const { stdout } = await execFileAsync(
-      'git',
-      ['-C', repoRoot, 'hash-object', '-w', tmpFile],
-      { timeout: 10_000 },
-    );
+    const { stdout } = await execFileAsync('git', ['-C', repoRoot, 'hash-object', '-w', tmpFile], {
+      timeout: 10_000,
+    });
     const sha = stdout.trim();
     const mode = await getFileMode(absolutePath);
     const args = ['update-index'];
@@ -75,12 +73,13 @@ async function hashAndStageContent(
 /** Returns the current branch name for `repoRoot`, or null if detached/no commits. */
 export async function getBranchName(repoRoot: string): Promise<string | null> {
   try {
-    const { stdout } = await execFileAsync(
-      'git', ['-C', repoRoot, 'branch', '--show-current'],
-      { timeout: 5_000 },
-    );
+    const { stdout } = await execFileAsync('git', ['-C', repoRoot, 'branch', '--show-current'], {
+      timeout: 5_000,
+    });
     return stdout.trim() || null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -90,11 +89,14 @@ export async function getBranchName(repoRoot: string): Promise<string | null> {
 export async function getLastCommitFiles(repoRoot: string): Promise<string | null> {
   try {
     const { stdout } = await execFileAsync(
-      'git', ['-C', repoRoot, 'show', 'HEAD', '--name-status', '--pretty=format:'],
+      'git',
+      ['-C', repoRoot, 'show', 'HEAD', '--name-status', '--pretty=format:'],
       { timeout: 5_000 },
     );
     return stdout.trim() || null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -109,17 +111,17 @@ export async function getLastCommitDiff(repoRoot: string): Promise<string | null
       { timeout: 10_000, maxBuffer: 5 * 1024 * 1024 },
     );
     return stdout.trim() || null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 /** Returns the last commit message for `repoRoot`, or null if no commits. */
 export async function getLastCommitMessage(repoRoot: string): Promise<string | null> {
   try {
-    const { stdout } = await execFileAsync(
-      'git',
-      ['-C', repoRoot, 'log', '-1', '--format=%B'],
-      { timeout: 5_000 },
-    );
+    const { stdout } = await execFileAsync('git', ['-C', repoRoot, 'log', '-1', '--format=%B'], {
+      timeout: 5_000,
+    });
     return stdout.trim() || null;
   } catch {
     return null;
@@ -161,11 +163,9 @@ export async function commitFiles(
         );
       } else {
         // Unedited: stage the full disk file.
-        await execFileAsync(
-          'git',
-          ['-C', repoRoot, 'add', '--force', file.absolutePath],
-          { timeout: 10_000 },
-        );
+        await execFileAsync('git', ['-C', repoRoot, 'add', '--force', file.absolutePath], {
+          timeout: 10_000,
+        });
       }
     }
 

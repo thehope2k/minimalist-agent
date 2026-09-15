@@ -45,7 +45,8 @@ export function summarizePack(parts: MessagePart[]): PackSummary {
       : toolParts.length > 0
         ? pluralize(toolParts.length, 'action')
         : 'Reasoning';
-  const label = editedFileCount > 0 ? `${parenLabel} · ${pluralize(editedFileCount, 'file')}` : parenLabel;
+  const label =
+    editedFileCount > 0 ? `${parenLabel} · ${pluralize(editedFileCount, 'file')}` : parenLabel;
 
   return { label, errorCount, hasSubagent };
 }

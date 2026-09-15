@@ -75,9 +75,6 @@ export function revealInFinder(dirPath: string): Promise<void> {
   return window.api.agents.revealInFinder(dirPath);
 }
 
-export function validate(
-  dirPath: string,
-  slug: string,
-): Promise<{ ok: boolean; report: string }> {
+export function validate(dirPath: string, slug: string): Promise<{ ok: boolean; report: string }> {
   return window.api.agents.validate(dirPath, slug);
 }

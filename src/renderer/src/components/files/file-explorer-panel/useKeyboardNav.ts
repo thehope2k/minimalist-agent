@@ -41,9 +41,7 @@ export function useKeyboardNav({
       // Only handle when panel is focused
       if (!containerRef.current?.contains(document.activeElement)) return;
 
-      const currentIndex = flatItems.findIndex(
-        (item) => item.node.absolutePath === selectedPath,
-      );
+      const currentIndex = flatItems.findIndex((item) => item.node.absolutePath === selectedPath);
 
       if (e.key === 'ArrowDown') {
         e.preventDefault();

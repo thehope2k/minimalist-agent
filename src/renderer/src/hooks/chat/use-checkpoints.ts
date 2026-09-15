@@ -18,29 +18,30 @@ export interface CheckpointStoreDeps {
 
 export function useCheckpoints(deps: CheckpointStoreDeps) {
   const { messagesBySession, streamingBySession } = deps;
-  const checkpointTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(
-    new Map(),
-  );
+  const checkpointTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
-  const flushCheckpoint = useCallback(async (sid: string): Promise<void> => {
-    const timer = checkpointTimers.current.get(sid);
-    if (timer) {
-      clearTimeout(timer);
-      checkpointTimers.current.delete(sid);
-    }
-    const turnId = streamingBySession.current.get(sid)?.turnId;
-    if (!turnId) return;
-    const bucket = messagesBySession.current.get(sid);
-    const msg = bucket?.find((m) => m.id === turnId);
-    if (!msg) return;
-    const stored: StoredMessage = chatToStored(msg);
-    if (!stored.content) stored.content = partsToContent(msg.parts);
-    try {
-      await replaceLastMessage(sid, stored);
-    } catch {
-      /* transient — next checkpoint will catch up */
-    }
-  }, [messagesBySession, streamingBySession]);
+  const flushCheckpoint = useCallback(
+    async (sid: string): Promise<void> => {
+      const timer = checkpointTimers.current.get(sid);
+      if (timer) {
+        clearTimeout(timer);
+        checkpointTimers.current.delete(sid);
+      }
+      const turnId = streamingBySession.current.get(sid)?.turnId;
+      if (!turnId) return;
+      const bucket = messagesBySession.current.get(sid);
+      const msg = bucket?.find((m) => m.id === turnId);
+      if (!msg) return;
+      const stored: StoredMessage = chatToStored(msg);
+      if (!stored.content) stored.content = partsToContent(msg.parts);
+      try {
+        await replaceLastMessage(sid, stored);
+      } catch {
+        /* transient — next checkpoint will catch up */
+      }
+    },
+    [messagesBySession, streamingBySession],
+  );
 
   const scheduleCheckpoint = useCallback(
     (sid: string) => {
@@ -73,11 +74,10 @@ export function useCheckpoints(deps: CheckpointStoreDeps) {
   // through `webContents.executeJavaScript` from its `before-quit` handler.
   // Returns a Promise that executeJavaScript will await before resolving.
   useEffect(() => {
-    (window as unknown as { __flushPendingChat?: () => Promise<void> })
-      .__flushPendingChat = flushAllCheckpoints;
+    (window as unknown as { __flushPendingChat?: () => Promise<void> }).__flushPendingChat =
+      flushAllCheckpoints;
     return () => {
-      delete (window as unknown as { __flushPendingChat?: () => Promise<void> })
-        .__flushPendingChat;
+      delete (window as unknown as { __flushPendingChat?: () => Promise<void> }).__flushPendingChat;
     };
   }, [flushAllCheckpoints]);
 

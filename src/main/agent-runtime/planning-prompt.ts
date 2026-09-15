@@ -1,6 +1,6 @@
 /**
  * System prompt guidance for planning workflow.
- * 
+ *
  * Teaches the LLM when and how to use the planning workflow for complex tasks.
  * The LLM breaks down complex tasks into sequential phases, tracks progress,
  * and adapts plans based on discoveries.
@@ -8,7 +8,7 @@
 
 /**
  * Get planning workflow guidance for system prompt injection.
- * 
+ *
  * @returns System prompt text teaching planning workflow
  */
 export function getPlanningGuidance(): string {

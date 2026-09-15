@@ -28,27 +28,27 @@ interface MergeStateBannerProps {
 }
 
 const OP_LABELS: Record<MergeOperationType, string> = {
-  merge:         'Merge in progress',
-  rebase:        'Rebase in progress',
+  merge: 'Merge in progress',
+  rebase: 'Rebase in progress',
   'cherry-pick': 'Cherry-pick in progress',
-  revert:        'Revert in progress',
-  none:          '',
+  revert: 'Revert in progress',
+  none: '',
 };
 
 const CONTINUE_LABELS: Record<MergeOperationType, string> = {
-  merge:         'Complete Merge',
-  rebase:        'Continue Rebase',
+  merge: 'Complete Merge',
+  rebase: 'Continue Rebase',
   'cherry-pick': 'Continue',
-  revert:        'Continue Revert',
-  none:          'Continue',
+  revert: 'Continue Revert',
+  none: 'Continue',
 };
 
 const ABORT_LABELS: Record<MergeOperationType, string> = {
-  merge:         'Abort Merge',
-  rebase:        'Abort Rebase',
+  merge: 'Abort Merge',
+  rebase: 'Abort Rebase',
   'cherry-pick': 'Abort Cherry-pick',
-  revert:        'Abort Revert',
-  none:          'Abort',
+  revert: 'Abort Revert',
+  none: 'Abort',
 };
 
 export function MergeStateBanner({
@@ -85,18 +85,21 @@ export function MergeStateBanner({
       {/* ── Header row ─────────────────────────────────────────────── */}
       <div className="flex items-start gap-2">
         <div className="mt-0.5 shrink-0">
-          {allResolved
-            ? <Check className="h-3.5 w-3.5 text-emerald-400" strokeWidth={2} />
-            : <AlertTriangle className="h-3.5 w-3.5 text-amber-400" strokeWidth={1.75} />
-          }
+          {allResolved ? (
+            <Check className="h-3.5 w-3.5 text-emerald-400" strokeWidth={2} />
+          ) : (
+            <AlertTriangle className="h-3.5 w-3.5 text-amber-400" strokeWidth={1.75} />
+          )}
         </div>
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <p className={cn(
-              'text-[11px] font-medium leading-tight',
-              allResolved ? 'text-emerald-300' : 'text-amber-300',
-            )}>
+            <p
+              className={cn(
+                'text-[11px] font-medium leading-tight',
+                allResolved ? 'text-emerald-300' : 'text-amber-300',
+              )}
+            >
               {OP_LABELS[type]}
             </p>
             {/* Rebase commit counter badge */}
@@ -110,15 +113,9 @@ export function MergeStateBanner({
           {/* Branch labels */}
           {(headLabel || incomingLabel) && (
             <p className="mt-0.5 truncate font-mono text-[10px] text-fg-subtle">
-              {incomingLabel && (
-                <span className="text-blue-400">{incomingLabel}</span>
-              )}
-              {incomingLabel && headLabel && (
-                <span className="mx-1 text-fg-subtle">→</span>
-              )}
-              {headLabel && (
-                <span className="text-fg-muted">{headLabel}</span>
-              )}
+              {incomingLabel && <span className="text-blue-400">{incomingLabel}</span>}
+              {incomingLabel && headLabel && <span className="mx-1 text-fg-subtle">→</span>}
+              {headLabel && <span className="text-fg-muted">{headLabel}</span>}
             </p>
           )}
 
@@ -153,9 +150,7 @@ export function MergeStateBanner({
               style={{ width: `${progressPct}%` }}
             />
           </div>
-          <span className="shrink-0 text-[10px] tabular-nums text-fg-subtle">
-            {progressPct}%
-          </span>
+          <span className="shrink-0 text-[10px] tabular-nums text-fg-subtle">{progressPct}%</span>
         </div>
       )}
 
@@ -173,10 +168,11 @@ export function MergeStateBanner({
               : 'cursor-not-allowed bg-elevated text-fg-subtle',
           )}
         >
-          {continuing
-            ? <Loader2 className="h-3 w-3 animate-spin" strokeWidth={2} />
-            : <GitMerge className="h-3 w-3" strokeWidth={1.75} />
-          }
+          {continuing ? (
+            <Loader2 className="h-3 w-3 animate-spin" strokeWidth={2} />
+          ) : (
+            <GitMerge className="h-3 w-3" strokeWidth={1.75} />
+          )}
           {CONTINUE_LABELS[type]}
         </button>
 
@@ -187,15 +183,14 @@ export function MergeStateBanner({
           className={cn(
             'flex items-center gap-1.5 rounded px-2 py-1 text-[11px] transition-colors',
             'focus-visible:outline-none',
-            !busy
-              ? 'text-red-400 hover:bg-red-500/10'
-              : 'cursor-not-allowed text-fg-subtle',
+            !busy ? 'text-red-400 hover:bg-red-500/10' : 'cursor-not-allowed text-fg-subtle',
           )}
         >
-          {aborting
-            ? <Loader2 className="h-3 w-3 animate-spin" strokeWidth={2} />
-            : <X className="h-3 w-3" strokeWidth={1.75} />
-          }
+          {aborting ? (
+            <Loader2 className="h-3 w-3 animate-spin" strokeWidth={2} />
+          ) : (
+            <X className="h-3 w-3" strokeWidth={1.75} />
+          )}
           {ABORT_LABELS[type]}
         </button>
       </div>

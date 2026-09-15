@@ -1,12 +1,6 @@
 import { useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
-import {
-  Check,
-  ChevronDown,
-  Folders,
-  Inbox,
-  Settings,
-} from 'lucide-react';
+import { Check, ChevronDown, Folders, Inbox, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProjects } from '@/hooks/useProjects';
 import { projectFilterLabel } from './project-filter';
@@ -23,9 +17,7 @@ export function ProjectSwitcher({ value, onChange, onManage }: ProjectSwitcherPr
   const [open, setOpen] = useState(false);
 
   const selectedProject =
-    value !== 'all' && value !== 'inbox'
-      ? projects?.find((p) => p.id === value)
-      : null;
+    value !== 'all' && value !== 'inbox' ? projects?.find((p) => p.id === value) : null;
   const label = projectFilterLabel(value, projects ?? []);
   const dot = selectedProject?.color;
 
@@ -52,10 +44,7 @@ export function ProjectSwitcher({ value, onChange, onManage }: ProjectSwitcherPr
           )}
           <span className="max-w-40 truncate">{label}</span>
           <ChevronDown
-            className={cn(
-              'h-3.5 w-3.5 text-fg-subtle transition-transform',
-              open && 'rotate-180',
-            )}
+            className={cn('h-3.5 w-3.5 text-fg-subtle transition-transform', open && 'rotate-180')}
             strokeWidth={2}
           />
         </button>
@@ -85,9 +74,7 @@ export function ProjectSwitcher({ value, onChange, onManage }: ProjectSwitcherPr
               setOpen(false);
             }}
           />
-          {projects && projects.length > 0 && (
-            <div className="my-1 h-px bg-border" />
-          )}
+          {projects && projects.length > 0 && <div className="my-1 h-px bg-border" />}
           {projects?.map((p) => (
             <ProjectSwitcherItem
               key={p.id}
@@ -146,9 +133,7 @@ function ProjectSwitcherItem({
         />
       )}
       <span className="flex-1 truncate">{label}</span>
-      {selected && (
-        <Check className="h-3.5 w-3.5 shrink-0 text-accent" strokeWidth={2} />
-      )}
+      {selected && <Check className="h-3.5 w-3.5 shrink-0 text-accent" strokeWidth={2} />}
     </button>
   );
 }

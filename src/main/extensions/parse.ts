@@ -1,9 +1,6 @@
 import matter from 'gray-matter';
 import { z } from 'zod';
-import type {
-  ExtensionConfig,
-  ExtensionGuideFrontmatter,
-} from './types';
+import type { ExtensionConfig, ExtensionGuideFrontmatter } from './types';
 import type { ValidationIssue, ValidationResult } from '../asset-tiers/validation';
 import { invalidResult, validateSlug } from '../asset-tiers/validation';
 
@@ -63,9 +60,7 @@ export const ExtensionConfigSchema = z
     schemaVersion: z.literal(1),
     slug: z.string().min(1),
     name: z.string().min(1, "Add a 'name' field with a human-readable title"),
-    description: z
-      .string()
-      .min(1, "Add a 'description' field explaining the extension"),
+    description: z.string().min(1, "Add a 'description' field explaining the extension"),
     version: z.string().optional(),
     icon: z.string().optional(),
     tags: z.array(z.string()).optional(),
@@ -128,10 +123,7 @@ export function parseExtensionGuide(
 
 /* ---------- structured validation (for the validate IPC handler) ---------- */
 
-export function validateExtensionConfigContent(
-  raw: string,
-  slug: string,
-): ValidationResult {
+export function validateExtensionConfigContent(raw: string, slug: string): ValidationResult {
   const errors: ValidationIssue[] = [];
   const warnings: ValidationIssue[] = [];
 

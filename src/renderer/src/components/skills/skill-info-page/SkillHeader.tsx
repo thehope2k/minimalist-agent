@@ -22,9 +22,7 @@ export function SkillHeader({
   return (
     <header className="flex h-10 shrink-0 items-center gap-3 border-b border-border px-4">
       <SkillAvatar skill={skill} size="sm" />
-      <span className="truncate text-sm font-medium text-fg">
-        {skill.metadata.name}
-      </span>
+      <span className="truncate text-sm font-medium text-fg">{skill.metadata.name}</span>
       <div className="flex-1" />
       <button
         type="button"

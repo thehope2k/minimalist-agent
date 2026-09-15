@@ -36,11 +36,7 @@ export function PlanProgress({ sessionId, plan }: PlanProgressProps) {
 
   return (
     <div className="rounded-md border border-border/50 bg-elevated-1/40 backdrop-blur-sm text-sm">
-      <PlanHeader
-        plan={plan}
-        collapsed={collapsed}
-        onToggle={() => setCollapsed(!collapsed)}
-      />
+      <PlanHeader plan={plan} collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
 
       {!collapsed && (
         <div className="border-t border-border/50 px-3 py-2 space-y-1.5">

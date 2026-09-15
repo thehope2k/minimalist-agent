@@ -32,9 +32,7 @@ export function ToolsAndLimitsSection({ agent }: { agent: LoadedAgent }) {
 
           {hasLimits && (
             <div>
-              <div className="mb-1.5 text-xs font-medium text-fg-subtle">
-                Limits & Config
-              </div>
+              <div className="mb-1.5 text-xs font-medium text-fg-subtle">Limits & Config</div>
               <div className="space-y-1 text-sm text-fg-muted">
                 {maxTurns && (
                   <div>

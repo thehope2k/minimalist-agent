@@ -1,6 +1,6 @@
 /**
  * Collaboration prompts - engagement dialogs for intelligent collaboration.
- * 
+ *
  * Subscribes to collaboration-request events from main and shows appropriate
  * UI based on engagement type. Manages a FIFO queue of requests.
  */

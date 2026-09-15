@@ -21,7 +21,7 @@ needed.
 bump from the actual content:
 
 | Bump    | Signal in the commits                                                                                                                   |
-|---------|-----------------------------------------------------------------------------------------------------------------------------------------|
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | `patch` | Only bug fixes, typo corrections, dependency updates, or minor internal tweaks — nothing user-visible was added or changed in behaviour |
 | `minor` | At least one new user-visible feature, capability, or meaningful UX improvement — no breaking changes                                   |
 | `major` | A breaking change, removed public API, significant redesign, or migration required from users                                           |
@@ -32,8 +32,8 @@ bump from the actual content:
 2. Any new feature or user-visible capability added → **minor**
 3. Only fixes / tweaks / chores → **patch**
 
-After classifying, **state the chosen bump type and your reasoning** in one sentence before proceeding (e.g. *"
-Classifying as `minor` — three new user-facing features added, no breaking changes."*).
+After classifying, **state the chosen bump type and your reasoning** in one sentence before proceeding (e.g. _"
+Classifying as `minor` — three new user-facing features added, no breaking changes."_).
 
 ## 3 — Collect commits since last tag
 
@@ -51,7 +51,7 @@ node -e "console.log(require('./package.json').version)"
 Apply the bump type to the current version yourself (semver arithmetic):
 
 | Current | Bump  | New version |
-|---------|-------|-------------|
+| ------- | ----- | ----------- |
 | 0.1.7   | patch | 0.1.8       |
 | 0.1.7   | minor | 0.2.0       |
 | 0.1.7   | major | 1.0.0       |
@@ -77,7 +77,7 @@ exposed to it. In that case:
 - Silently fold the correction into the related `### Added` entry if it adds useful context, or omit it entirely.
 - This keeps the changelog focused on what users actually experienced changing.
 
-**One-story rule (collapse multi-commit iterations):** Multiple commits often describe the *same* underlying story —
+**One-story rule (collapse multi-commit iterations):** Multiple commits often describe the _same_ underlying story —
 a feature added in one commit and then refined/fixed by later commits in the same release, or a bug patched across
 several follow-up commits. Don't list these as separate, disconnected bullets scattered across `Added`/`Fixed`.
 Before writing bullets, check whether commits reference the same feature area, IPC call, UI surface, or root cause:
@@ -129,7 +129,7 @@ Rules:
   one at this point) and not a guess. If you haven't computed it yet, do it now before writing.
 - Date is today's date (use the user's current date from the session header)
 - **Summary paragraph** — 1–2 short sentences, **target ≤ 160 characters** (hard cap 200). Use broad category labels:
-  *Bug fixes*, *Quality of life improvements*, *SDD native support*, *Performance enhancements*, etc. Combine the most
+  _Bug fixes_, _Quality of life improvements_, _SDD native support_, _Performance enhancements_, etc. Combine the most
   prominent themes (e.g., "Adds native SDD support; quality of life improvements and bug fixes." or "Performance
   enhancements, UI polish, and several bug fixes."). Do not list individual changes — keep it high-level. If a draft
   exceeds 200 characters, trim the least prominent theme until it fits. Place it directly below the `## [X.Y.Z]` header,
@@ -188,8 +188,8 @@ truncated to 60 characters. **This makes the summary paragraph do double duty �
 it is both the opening line of the notes and the source of the title.** So keep
 it punchy and front-load the dominant theme:
 
-- Lead with the broad category label (*Bug fixes*, *Quality of life
-  improvements*, *SDD native support*, *Performance enhancements*, …) so the
+- Lead with the broad category label (_Bug fixes_, _Quality of life
+  improvements_, _SDD native support_, _Performance enhancements_, …) so the
   truncated title still reads well.
 - Aim for the most important theme in the **first ~50 characters** (after the
   `vX.Y.Z — ` prefix there is only ~50 chars of budget before the ellipsis).

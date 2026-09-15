@@ -2,7 +2,10 @@ import { Pin, PinOff, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import type { LoadedSkill, LoadedExtension } from '@/lib/electron';
-import { displayName as extensionDisplayName, displayDescription as extensionDisplayDescription } from '@/lib/extensions';
+import {
+  displayName as extensionDisplayName,
+  displayDescription as extensionDisplayDescription,
+} from '@/lib/extensions';
 import { SkillAvatar } from '@/components/skills';
 import { ExtensionAvatar } from '@/components/extensions';
 
@@ -35,13 +38,9 @@ function ItemRow({
         className="flex min-w-0 flex-1 items-center gap-2 rounded text-left hover:bg-elevated/60 disabled:cursor-default disabled:hover:bg-transparent cursor-pointer"
       >
         {avatar}
-        <span className="min-w-0 flex-1 truncate text-sm text-fg">
-          {name}
-        </span>
+        <span className="min-w-0 flex-1 truncate text-sm text-fg">{name}</span>
         {badge}
-        {slug && (
-          <span className="shrink-0 font-mono text-[10px] text-fg-subtle">@{slug}</span>
-        )}
+        {slug && <span className="shrink-0 font-mono text-[10px] text-fg-subtle">@{slug}</span>}
       </button>
       {action}
     </div>
@@ -124,7 +123,6 @@ export function PinnedSection({
           }
         />
       ))}
-
     </div>
   );
 }
@@ -180,7 +178,10 @@ export function AvailableSection({
                     <button
                       key={type}
                       type="button"
-                      onClick={() => { setMenuOpen(false); onNew(type); }}
+                      onClick={() => {
+                        setMenuOpen(false);
+                        onNew(type);
+                      }}
                       className="flex w-full items-center px-3 py-1.5 text-left text-sm text-fg hover:bg-elevated capitalize"
                     >
                       New {type}
@@ -193,11 +194,7 @@ export function AvailableSection({
         )}
       </div>
 
-      {!hasItems && (
-        <p className="px-3 pb-2 text-xs text-fg-subtle">
-          No skills yet.
-        </p>
-      )}
+      {!hasItems && <p className="px-3 pb-2 text-xs text-fg-subtle">No skills yet.</p>}
 
       {skills.map((skill) => {
         const pinned = isPinned(skill.source as 'user' | 'project', skill.slug);
@@ -217,19 +214,24 @@ export function AvailableSection({
             action={
               <button
                 type="button"
-                onClick={pinned ? () => onUnpin(`${skill.source}:${skill.slug}`) : () => onPin(`${skill.source}:${skill.slug}`)}
+                onClick={
+                  pinned
+                    ? () => onUnpin(`${skill.source}:${skill.slug}`)
+                    : () => onPin(`${skill.source}:${skill.slug}`)
+                }
                 className="shrink-0 rounded p-1 text-fg-subtle opacity-0 hover:bg-elevated hover:text-fg group-hover:opacity-100"
                 title={pinned ? `Unpin ${skill.slug}` : `Pin ${skill.slug}`}
               >
-                {pinned
-                  ? <PinOff className="h-3 w-3" strokeWidth={1.75} />
-                  : <Pin className="h-3 w-3" strokeWidth={1.75} />}
+                {pinned ? (
+                  <PinOff className="h-3 w-3" strokeWidth={1.75} />
+                ) : (
+                  <Pin className="h-3 w-3" strokeWidth={1.75} />
+                )}
               </button>
             }
           />
         );
       })}
-
     </div>
   );
 }
@@ -242,7 +244,11 @@ interface ExtensionsSectionProps {
   onOpenExtension: (extension: LoadedExtension) => void;
 }
 
-export function ExtensionsSection({ title = 'Extensions', extensions, onOpenExtension }: ExtensionsSectionProps) {
+export function ExtensionsSection({
+  title = 'Extensions',
+  extensions,
+  onOpenExtension,
+}: ExtensionsSectionProps) {
   if (extensions.length === 0) return null;
 
   return (

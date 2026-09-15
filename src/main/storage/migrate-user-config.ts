@@ -8,7 +8,15 @@
 //   - Source dirs are deleted after marker is written — the loaders no longer
 //     scan userData for these assets, so keeping them is pure dead weight.
 
-import { existsSync, mkdirSync, readdirSync, copyFileSync, statSync, writeFileSync, rmSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  copyFileSync,
+  statSync,
+  writeFileSync,
+  rmSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { app } from 'electron';
 import { homedir } from 'node:os';
@@ -94,11 +102,18 @@ export function runUserConfigMigration(): void {
 
   // All dirs succeeded — write marker so we don't run again.
   try {
-    writeFileSync(marker, JSON.stringify({
-      migratedAt: new Date().toISOString(),
-      results,
-      totalCopied,
-    }, null, 2));
+    writeFileSync(
+      marker,
+      JSON.stringify(
+        {
+          migratedAt: new Date().toISOString(),
+          results,
+          totalCopied,
+        },
+        null,
+        2,
+      ),
+    );
     log.info(`User config migration complete: ${totalCopied} files migrated`, { results });
   } catch (err) {
     log.warn('Failed to write migration marker', err);

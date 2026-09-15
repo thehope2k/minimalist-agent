@@ -28,8 +28,7 @@ export function registerVoiceIpc(): void {
       pushVoiceChunk(token, samples),
   );
 
-  ipcMain.handle(
-    'voice:endSession',
-    async (_e, token: string): Promise<string[]> => endVoiceSession(token),
+  ipcMain.handle('voice:endSession', async (_e, token: string): Promise<string[]> =>
+    endVoiceSession(token),
   );
 }

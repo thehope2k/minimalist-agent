@@ -18,9 +18,7 @@ export {
 export const SkillMetadataSchema = z
   .object({
     name: z.string().min(1, "Add a 'name' field with a human-readable title"),
-    description: z
-      .string()
-      .min(1, "Add a 'description' field explaining what this skill does"),
+    description: z.string().min(1, "Add a 'description' field explaining what this skill does"),
     globs: z.array(z.string()).optional(),
     alwaysAllow: z.array(z.string()).optional(),
     icon: z.string().optional(),
@@ -33,9 +31,7 @@ export const SkillMetadataSchema = z
  * Parse SKILL.md content into metadata + body. Returns null if frontmatter
  * is unparseable or required fields are missing.
  */
-export function parseSkillFile(
-  content: string,
-): { metadata: SkillMetadata; body: string } | null {
+export function parseSkillFile(content: string): { metadata: SkillMetadata; body: string } | null {
   try {
     const parsed = matter(content);
     if (!parsed.data.name || !parsed.data.description) return null;
@@ -49,9 +45,7 @@ export function parseSkillFile(
       metadata: {
         name: String(parsed.data.name),
         description: String(parsed.data.description),
-        globs: Array.isArray(parsed.data.globs)
-          ? (parsed.data.globs as string[])
-          : undefined,
+        globs: Array.isArray(parsed.data.globs) ? (parsed.data.globs as string[]) : undefined,
         alwaysAllow: Array.isArray(parsed.data.alwaysAllow)
           ? (parsed.data.alwaysAllow as string[])
           : undefined,
@@ -70,10 +64,7 @@ export function parseSkillFile(
  * @param markdownContent — full file content
  * @param slug — folder name (validated against slug regex)
  */
-export function validateSkillContent(
-  markdownContent: string,
-  slug: string,
-): ValidationResult {
+export function validateSkillContent(markdownContent: string, slug: string): ValidationResult {
   const errors: ValidationIssue[] = [];
   const warnings: ValidationIssue[] = [];
 
@@ -112,8 +103,7 @@ export function validateSkillContent(
     errors.push({
       path: 'content',
       message: 'Skill content is empty (nothing after frontmatter)',
-      suggestion:
-        'Add instructions after the frontmatter describing what the skill should do',
+      suggestion: 'Add instructions after the frontmatter describing what the skill should do',
     });
   }
 

@@ -2,10 +2,7 @@
  * Helper functions for tool rendering and formatting.
  */
 
-export function formatInput(
-  input: unknown,
-  partialInputJson: string | undefined,
-): string {
+export function formatInput(input: unknown, partialInputJson: string | undefined): string {
   if (input !== undefined && input !== null) {
     try {
       return JSON.stringify(input, null, 2);
@@ -54,9 +51,7 @@ export function normalizeResult(text: string): string {
 }
 
 export function resultPreviewLine(text: string): string {
-  const normalized = normalizeResult(text)
-    .replace(/\s+/g, ' ')
-    .trim();
+  const normalized = normalizeResult(text).replace(/\s+/g, ' ').trim();
   if (!normalized) return '';
   return normalized.length > 220 ? `${normalized.slice(0, 219)}…` : normalized;
 }
@@ -64,25 +59,35 @@ export function resultPreviewLine(text: string): string {
 export function pickTaskPreview(input: unknown, fallback?: string): string {
   if (input && typeof input === 'object') {
     const o = input as Record<string, unknown>;
-    const agent = typeof o.agent === 'string'
-      ? o.agent
-      : (typeof o.subagent_type === 'string' ? o.subagent_type : '');
-    const task = typeof o.task === 'string'
-      ? o.task
-      : (typeof o.description === 'string' ? o.description : '');
+    const agent =
+      typeof o.agent === 'string'
+        ? o.agent
+        : typeof o.subagent_type === 'string'
+          ? o.subagent_type
+          : '';
+    const task =
+      typeof o.task === 'string' ? o.task : typeof o.description === 'string' ? o.description : '';
     const text = [agent, task].filter(Boolean).join(': ');
     if (text.trim()) return text;
   }
   return fallback ?? '';
 }
 
-export function subagentPhaseLabel(phase?: 'spawning' | 'running' | 'finalizing' | 'done' | 'error'): string {
+export function subagentPhaseLabel(
+  phase?: 'spawning' | 'running' | 'finalizing' | 'done' | 'error',
+): string {
   switch (phase) {
-    case 'spawning': return 'Spawning';
-    case 'running': return 'Running';
-    case 'finalizing': return 'Finalizing';
-    case 'done': return 'Done';
-    case 'error': return 'Failed';
-    default: return 'Running';
+    case 'spawning':
+      return 'Spawning';
+    case 'running':
+      return 'Running';
+    case 'finalizing':
+      return 'Finalizing';
+    case 'done':
+      return 'Done';
+    case 'error':
+      return 'Failed';
+    default:
+      return 'Running';
   }
 }

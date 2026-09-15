@@ -1,9 +1,5 @@
 import { EventEmitter } from 'node:events';
-import {
-  invalidateExtensionsCache,
-  loadAllExtensions,
-  loadExtensionBySlug,
-} from './storage';
+import { invalidateExtensionsCache, loadAllExtensions, loadExtensionBySlug } from './storage';
 import { type LoadedExtension } from './types';
 
 /**
@@ -47,9 +43,7 @@ export class ExtensionRegistry extends EventEmitter {
 
   list(): LoadedExtension[] {
     this.ensureLoaded();
-    return Array.from(this.items.values()).sort((a, b) =>
-      a.slug.localeCompare(b.slug),
-    );
+    return Array.from(this.items.values()).sort((a, b) => a.slug.localeCompare(b.slug));
   }
 
   get(slug: string): LoadedExtension | undefined {

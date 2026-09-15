@@ -9,14 +9,14 @@ API's no-op tracer).
 
 ## Where things live
 
-| Concern                                              | File                                                                                                 |
-|------------------------------------------------------|------------------------------------------------------------------------------------------------------|
-| Tracer bootstrap (electron-free)                     | [`src/shared/otel.ts`](../src/shared/otel.ts)                                                        |
-| Span instrumentation                                 | [`src/main/pi-server/index.ts`](../src/main/pi-server/index.ts)                                      |
-| Persisted config (versioned JSON) + `telemetryEnv()` | [`src/main/storage/telemetry.ts`](../src/main/storage/telemetry.ts)                                  |
+| Concern                                              | File                                                                                               |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Tracer bootstrap (electron-free)                     | [`src/shared/otel.ts`](../src/shared/otel.ts)                                                      |
+| Span instrumentation                                 | [`src/main/pi-server/index.ts`](../src/main/pi-server/index.ts)                                    |
+| Persisted config (versioned JSON) + `telemetryEnv()` | [`src/main/storage/telemetry.ts`](../src/main/storage/telemetry.ts)                                |
 | Env hand-off to subprocess                           | [`src/main/agent-runtime/pi/agent.ts`](../src/main/agent-runtime/pi/agent.ts) (`ensureSubprocess`) |
-| IPC (`telemetry:get/save/tracesPath/reveal`)         | [`src/main/ipc/preferences-ipc.ts`](../src/main/ipc/preferences-ipc.ts)                              |
-| Settings UI                                          | `src/renderer/src/components/settings/panels/TelemetryPanel.tsx`                                     |
+| IPC (`telemetry:get/save/tracesPath/reveal`)         | [`src/main/ipc/preferences-ipc.ts`](../src/main/ipc/preferences-ipc.ts)                            |
+| Settings UI                                          | `src/renderer/src/components/settings/panels/TelemetryPanel.tsx`                                   |
 
 ## Architecture
 
@@ -77,12 +77,12 @@ pi-ai normalizes every provider's usage to
 `{ input, output, cacheRead, cacheWrite, totalTokens }`. We report:
 
 - `gen_ai.usage.input_tokens` = **total prompt** = `input + cacheRead + cacheWrite`
-  (OpenAI-style: cached tokens are a *subset* of the prompt). pi-ai's `input` is only the *uncached* delta — with prompt
+  (OpenAI-style: cached tokens are a _subset_ of the prompt). pi-ai's `input` is only the _uncached_ delta — with prompt
   caching that can be tiny (e.g. `2`) while the real prompt is thousands. Cost/usage dashboards sum `input_tokens`, so
   it must be the full prompt, not the delta.
 - `gen_ai.usage.cache_read_input_tokens` / `cache_creation_input_tokens` = the cache split (the uncached delta is
   derivable: `input_tokens − cache_read −
-  cache_creation`).
+cache_creation`).
 - `gen_ai.usage.output_tokens` = `output`.
 
 Usage lives on the per-call **`chat`** spans only — it is deliberately **not**
@@ -153,7 +153,7 @@ reader.
 Every span carries an OTel **Resource**. By default it is just
 `service.name=minimalist-agent` + `service.version`. Two extra sources are merged in (later wins):
 
-1. **`OTEL_RESOURCE_ATTRIBUTES`** — the *standard* W3C env var (`k1=v1,k2=v2`, values percent-encoded). Honored
+1. **`OTEL_RESOURCE_ATTRIBUTES`** — the _standard_ W3C env var (`k1=v1,k2=v2`, values percent-encoded). Honored
    verbatim, so an external setup that exports it before launching the app needs zero in-app config.
 2. **`MA_OTEL_RESOURCE_ATTRIBUTES`** — composed by the Telemetry settings from the **Display name** (`user.name`),
    **Team id** (`team.id`), and an advanced free-form field.

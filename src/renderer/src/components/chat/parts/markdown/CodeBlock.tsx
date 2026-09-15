@@ -15,13 +15,32 @@ const log = createLogger('code-block');
  * is fine but keeps cold-start lean for the typical coding-agent diet.
  */
 const LANGS = [
-  'bash', 'sh', 'zsh',
-  'json', 'jsonc', 'json5',
-  'js', 'jsx', 'ts', 'tsx',
-  'html', 'css', 'scss',
-  'md', 'mdx', 'yaml', 'toml', 'ini',
-  'python', 'go', 'rust', 'sql',
-  'diff', 'dockerfile', 'graphql', 'xml',
+  'bash',
+  'sh',
+  'zsh',
+  'json',
+  'jsonc',
+  'json5',
+  'js',
+  'jsx',
+  'ts',
+  'tsx',
+  'html',
+  'css',
+  'scss',
+  'md',
+  'mdx',
+  'yaml',
+  'toml',
+  'ini',
+  'python',
+  'go',
+  'rust',
+  'sql',
+  'diff',
+  'dockerfile',
+  'graphql',
+  'xml',
 ] as const;
 
 const LANG_ALIASES: Record<string, string> = {
@@ -208,4 +227,3 @@ export function CodeBlock({ code, language, embedded = false }: CodeBlockProps) 
     </>
   );
 }
-

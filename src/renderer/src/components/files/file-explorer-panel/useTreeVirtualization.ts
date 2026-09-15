@@ -35,18 +35,14 @@ export function useTreeVirtualization({
   // Log virtual scrolling activation (helpful for debugging performance)
   useEffect(() => {
     if (useVirtual) {
-      log.debug(
-        `Virtual scrolling activated for ${flatItems.length} items`,
-      );
+      log.debug(`Virtual scrolling activated for ${flatItems.length} items`);
     }
   }, [useVirtual, flatItems.length]);
 
   // Scroll to selected item when using virtual scrolling
   useEffect(() => {
     if (!useVirtual || !selectedPath) return;
-    const index = flatItems.findIndex(
-      (item) => item.node.absolutePath === selectedPath,
-    );
+    const index = flatItems.findIndex((item) => item.node.absolutePath === selectedPath);
     if (index >= 0) {
       virtualizer.scrollToIndex(index, { align: 'center', behavior: 'smooth' });
     }

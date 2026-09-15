@@ -34,12 +34,8 @@ export function UsageSection({ messages }: UsageSectionProps) {
       <div className="grid grid-cols-2 gap-2 rounded-md border border-border bg-elevated/30 p-2.5 text-xs text-fg-muted">
         <UsageRow label="Input tokens" value={inputTotal} />
         <UsageRow label="Output tokens" value={outputTotal} />
-        {cacheReadTotal > 0 && (
-          <UsageRow label="Cache reads" value={cacheReadTotal} />
-        )}
-        {cacheWriteTotal > 0 && (
-          <UsageRow label="Cache writes" value={cacheWriteTotal} />
-        )}
+        {cacheReadTotal > 0 && <UsageRow label="Cache reads" value={cacheReadTotal} />}
+        {cacheWriteTotal > 0 && <UsageRow label="Cache writes" value={cacheWriteTotal} />}
         <UsageRow label="Turns" value={turns} />
       </div>
     </div>

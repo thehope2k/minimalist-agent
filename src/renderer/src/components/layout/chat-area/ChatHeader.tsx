@@ -30,8 +30,12 @@ export function ChatHeader({
   const [hasProjectAssets, setHasProjectAssets] = useState(false);
 
   useEffect(() => {
-    if (!cwd) { setHasProjectAssets(false); return; }
-    window.api.context.hasProjectAssets(cwd)
+    if (!cwd) {
+      setHasProjectAssets(false);
+      return;
+    }
+    window.api.context
+      .hasProjectAssets(cwd)
       .then(setHasProjectAssets)
       .catch(() => setHasProjectAssets(false));
   }, [cwd]);

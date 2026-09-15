@@ -11,18 +11,11 @@ interface AgentHeaderProps {
   onAfterDelete?: () => void;
 }
 
-export function AgentHeader({
-  agent,
-  copied,
-  onCopySlug,
-  onAfterDelete,
-}: AgentHeaderProps) {
+export function AgentHeader({ agent, copied, onCopySlug, onAfterDelete }: AgentHeaderProps) {
   return (
     <header className="flex h-10 shrink-0 items-center gap-3 border-b border-border px-4">
       <AgentAvatar agent={agent} size="sm" />
-      <span className="truncate text-sm font-medium text-fg">
-        {agent.metadata.name}
-      </span>
+      <span className="truncate text-sm font-medium text-fg">{agent.metadata.name}</span>
       <div className="flex-1" />
       <button
         type="button"

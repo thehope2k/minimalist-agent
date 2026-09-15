@@ -12,25 +12,15 @@
 // Lives in main, never the renderer — the access token never crosses the
 // IPC boundary back to JS once it has been refreshed.
 
-import {
-  isExpired as isCopilotExpired,
-  refreshCopilotTokens,
-} from '../oauth/copilot-flow';
-import {
-  isExpired as isChatGptExpired,
-  refreshChatGptTokens,
-} from '../oauth/chatgpt-flow';
+import { isExpired as isCopilotExpired, refreshCopilotTokens } from '../oauth/copilot-flow';
+import { isExpired as isChatGptExpired, refreshChatGptTokens } from '../oauth/chatgpt-flow';
 import {
   type Credential,
   type OAuthCred,
   deleteCredential,
   setCredential,
 } from '../storage/credentials';
-import {
-  getCredential,
-  listConnections,
-  type ConnectionMeta,
-} from '../storage/connections';
+import { getCredential, listConnections, type ConnectionMeta } from '../storage/connections';
 import type { ResolvedAuth } from '../agent-runtime/auth';
 import { createLogger } from '../logger';
 import { ensureCodeMieProxy } from '../codemie/proxy';
@@ -95,12 +85,14 @@ function findConnection(slug: string): ConnectionMeta | undefined {
   return listConnections().find((c) => c.slug === slug);
 }
 
-export async function resolveAuthForSlug(slug: string, signal?: AbortSignal, callerTag?: string): Promise<ResolvedAuth> {
+export async function resolveAuthForSlug(
+  slug: string,
+  signal?: AbortSignal,
+  callerTag?: string,
+): Promise<ResolvedAuth> {
   const conn = findConnection(slug);
   if (!conn) {
-    throw new Error(
-      `Connection "${slug}" not found. It may have been deleted from Settings → AI.`,
-    );
+    throw new Error(`Connection "${slug}" not found. It may have been deleted from Settings → AI.`);
   }
   const cred = getCredential(slug);
   if (!cred) {
@@ -183,15 +175,15 @@ async function ensureFreshCopilotOAuth(
     );
   }
 
-  return guardedRefresh(slug, `Copilot token refresh for ${slug}${callerTag ? ` [${callerTag}]` : ''}`, () =>
-    performCopilotRefresh(slug, cred), signal,
+  return guardedRefresh(
+    slug,
+    `Copilot token refresh for ${slug}${callerTag ? ` [${callerTag}]` : ''}`,
+    () => performCopilotRefresh(slug, cred),
+    signal,
   );
 }
 
-async function performCopilotRefresh(
-  slug: string,
-  cred: OAuthCred,
-): Promise<OAuthCred> {
+async function performCopilotRefresh(slug: string, cred: OAuthCred): Promise<OAuthCred> {
   try {
     const fresh = await refreshCopilotTokens(cred.refreshToken!);
     const next: Credential = {
@@ -206,8 +198,15 @@ async function performCopilotRefresh(
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (/unauthorized|invalid|forbidden|401|403/i.test(msg)) {
-      log.warn(`Copilot OAuth refresh rejected for ${slug} — clearing credential (forced re-auth):`, msg);
-      try { deleteCredential(slug); } catch { /* best effort */ }
+      log.warn(
+        `Copilot OAuth refresh rejected for ${slug} — clearing credential (forced re-auth):`,
+        msg,
+      );
+      try {
+        deleteCredential(slug);
+      } catch {
+        /* best effort */
+      }
       throw new Error(
         `GitHub Copilot session was rejected (${msg}). Sign in again from Settings → AI.`,
       );
@@ -233,15 +232,15 @@ async function ensureFreshChatGptOAuth(
     );
   }
 
-  return guardedRefresh(slug, `ChatGPT token refresh for ${slug}${callerTag ? ` [${callerTag}]` : ''}`, () =>
-    performChatGptRefresh(slug, cred), signal,
+  return guardedRefresh(
+    slug,
+    `ChatGPT token refresh for ${slug}${callerTag ? ` [${callerTag}]` : ''}`,
+    () => performChatGptRefresh(slug, cred),
+    signal,
   );
 }
 
-async function performChatGptRefresh(
-  slug: string,
-  cred: OAuthCred,
-): Promise<OAuthCred> {
+async function performChatGptRefresh(slug: string, cred: OAuthCred): Promise<OAuthCred> {
   try {
     const fresh = await refreshChatGptTokens(cred.refreshToken!);
     const next: Credential = {
@@ -256,11 +255,16 @@ async function performChatGptRefresh(
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (/unauthorized|invalid|forbidden|401|403/i.test(msg)) {
-      log.warn(`ChatGPT OAuth refresh rejected for ${slug} — clearing credential (forced re-auth):`, msg);
-      try { deleteCredential(slug); } catch { /* best effort */ }
-      throw new Error(
-        `ChatGPT session was rejected (${msg}). Sign in again from Settings → AI.`,
+      log.warn(
+        `ChatGPT OAuth refresh rejected for ${slug} — clearing credential (forced re-auth):`,
+        msg,
       );
+      try {
+        deleteCredential(slug);
+      } catch {
+        /* best effort */
+      }
+      throw new Error(`ChatGPT session was rejected (${msg}). Sign in again from Settings → AI.`);
     }
     log.error(`ChatGPT token refresh failed for ${slug}:`, msg);
     throw new Error(`ChatGPT token refresh failed: ${msg}`);

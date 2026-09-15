@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - "v*"
+      - 'v*'
 
 jobs:
   # Create the draft release ONCE, before the build matrix. Without this,
@@ -56,6 +56,9 @@ jobs:
 
       - name: Typecheck
         run: npm run typecheck
+
+      - name: Check formatting
+        run: npm run format:check
 
       # electron-builder picks up GH_TOKEN to upload artifacts + latest-*.yml
       # manifests to the draft release pre-created by the create_draft job

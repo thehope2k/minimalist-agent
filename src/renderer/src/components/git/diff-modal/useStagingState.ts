@@ -1,6 +1,11 @@
 import { useState, useCallback, useMemo } from 'react';
 import type { GitRepo, GitFileEntry, LineChange } from '../types';
-import { buildHunkStates, toggleFileStage, toggleHunkStage, toggleRepoStage } from '../staging-state';
+import {
+  buildHunkStates,
+  toggleFileStage,
+  toggleHunkStage,
+  toggleRepoStage,
+} from '../staging-state';
 import type { PartialContentRefs } from './types';
 
 /**
@@ -19,27 +24,33 @@ export function useStagingState(
   // Paths with pending hunk restore (diff not yet loaded)
   const [pendingPartialPaths, setPendingPartialPaths] = useState<Set<string>>(new Set());
 
-  const handleToggleFile = useCallback((file: GitFileEntry) => {
-    const next = toggleFileStage({ stagedPaths, stagedHunks }, file);
-    setStagedPaths(next.stagedPaths);
-    setStagedHunks(next.stagedHunks);
+  const handleToggleFile = useCallback(
+    (file: GitFileEntry) => {
+      const next = toggleFileStage({ stagedPaths, stagedHunks }, file);
+      setStagedPaths(next.stagedPaths);
+      setStagedHunks(next.stagedHunks);
 
-    if (!next.stagedPaths.has(file.absolutePath) || !next.stagedHunks.has(file.absolutePath)) {
-      partialContentRefs.restoredPartialContent.delete(file.absolutePath);
-    }
-  }, [stagedPaths, stagedHunks, partialContentRefs.restoredPartialContent]);
-
-  const handleToggleRepo = useCallback((repo: GitRepo) => {
-    const next = toggleRepoStage({ stagedPaths, stagedHunks }, repo);
-    setStagedPaths(next.stagedPaths);
-    setStagedHunks(next.stagedHunks);
-
-    for (const f of repo.files) {
-      if (!next.stagedPaths.has(f.absolutePath) || !next.stagedHunks.has(f.absolutePath)) {
-        partialContentRefs.restoredPartialContent.delete(f.absolutePath);
+      if (!next.stagedPaths.has(file.absolutePath) || !next.stagedHunks.has(file.absolutePath)) {
+        partialContentRefs.restoredPartialContent.delete(file.absolutePath);
       }
-    }
-  }, [stagedPaths, stagedHunks, partialContentRefs.restoredPartialContent]);
+    },
+    [stagedPaths, stagedHunks, partialContentRefs.restoredPartialContent],
+  );
+
+  const handleToggleRepo = useCallback(
+    (repo: GitRepo) => {
+      const next = toggleRepoStage({ stagedPaths, stagedHunks }, repo);
+      setStagedPaths(next.stagedPaths);
+      setStagedHunks(next.stagedHunks);
+
+      for (const f of repo.files) {
+        if (!next.stagedPaths.has(f.absolutePath) || !next.stagedHunks.has(f.absolutePath)) {
+          partialContentRefs.restoredPartialContent.delete(f.absolutePath);
+        }
+      }
+    },
+    [stagedPaths, stagedHunks, partialContentRefs.restoredPartialContent],
+  );
 
   const handleToggleHunk = useCallback(
     (selected: GitFileEntry | null, hunkIndex: number, totalHunkCount: number) => {

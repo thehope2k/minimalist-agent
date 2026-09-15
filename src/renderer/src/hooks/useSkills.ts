@@ -2,11 +2,7 @@
 // Single tier — no project scoping in v1.
 
 import { useEffect, useState } from 'react';
-import {
-  bootstrap,
-  snapshot as readSnapshot,
-  subscribe,
-} from '@/lib/skills';
+import { bootstrap, snapshot as readSnapshot, subscribe } from '@/lib/skills';
 import type { LoadedSkill } from '@/lib/electron';
 
 export function useSkills(): LoadedSkill[] | null {

@@ -80,8 +80,8 @@ export function ShareResultDialog({
             </div>
 
             <p className="text-[11px] leading-snug text-fg-subtle">
-              Anyone with this link can view the <b>{MODE_LABELS[record.mode]}</b> export.
-              Paths &amp; common secrets were stripped before upload. Hosted on{' '}
+              Anyone with this link can view the <b>{MODE_LABELS[record.mode]}</b> export. Paths
+              &amp; common secrets were stripped before upload. Hosted on{' '}
               <button
                 type="button"
                 onClick={() => void window.api.app.openExternal('https://brewpage.app')}
@@ -89,7 +89,12 @@ export function ShareResultDialog({
               >
                 brewpage.app
               </button>
-              {expiry && <> · auto-deletes <b>{expiry}</b>.</>}
+              {expiry && (
+                <>
+                  {' '}
+                  · auto-deletes <b>{expiry}</b>.
+                </>
+              )}
             </p>
 
             <div className="flex items-center gap-2">

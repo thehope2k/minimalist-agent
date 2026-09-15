@@ -1,6 +1,6 @@
 /**
  * Collaboration tool handlers.
- * 
+ *
  * These functions handle collaboration tool calls from the LLM, showing
  * appropriate UI dialogs and returning user responses.
  */
@@ -33,7 +33,7 @@ export async function handleRequestDecision(
   context: CollaborationContext,
 ): Promise<{ selected: string; custom_response?: string }> {
   const reqId = `decision-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  
+
   const request: EngagementRequest = {
     reqId,
     turnId: context.turnId,
@@ -41,9 +41,9 @@ export async function handleRequestDecision(
     type: 'decision',
     payload,
   };
-  
+
   const response = await context.askRenderer(request);
-  
+
   return {
     selected: response.selected_option || response.custom_response || 'no_selection',
     custom_response: response.custom_response,
@@ -58,7 +58,7 @@ export async function handleRequestPreference(
   context: CollaborationContext,
 ): Promise<{ selected: string; custom_response?: string }> {
   const reqId = `preference-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  
+
   const request: EngagementRequest = {
     reqId,
     turnId: context.turnId,
@@ -66,9 +66,9 @@ export async function handleRequestPreference(
     type: 'preference',
     payload,
   };
-  
+
   const response = await context.askRenderer(request);
-  
+
   return {
     selected: response.selected_option || response.custom_response || 'no_selection',
     custom_response: response.custom_response,
@@ -83,7 +83,7 @@ export async function handleRequestFeedback(
   context: CollaborationContext,
 ): Promise<{ feedback: string }> {
   const reqId = `feedback-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  
+
   const request: EngagementRequest = {
     reqId,
     turnId: context.turnId,
@@ -91,9 +91,9 @@ export async function handleRequestFeedback(
     type: 'feedback',
     payload,
   };
-  
+
   const response = await context.askRenderer(request);
-  
+
   return {
     feedback: response.feedback || response.custom_response || 'No feedback provided',
   };
@@ -107,7 +107,7 @@ export async function handleRequestGuidance(
   context: CollaborationContext,
 ): Promise<{ guidance: string }> {
   const reqId = `guidance-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  
+
   const request: EngagementRequest = {
     reqId,
     turnId: context.turnId,
@@ -115,9 +115,9 @@ export async function handleRequestGuidance(
     type: 'guidance',
     payload,
   };
-  
+
   const response = await context.askRenderer(request);
-  
+
   return {
     guidance: response.custom_response || 'No guidance provided',
   };
@@ -131,7 +131,7 @@ export async function handleRequestApproval(
   context: CollaborationContext,
 ): Promise<{ approved: boolean; reason?: string }> {
   const reqId = `approval-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  
+
   const request: EngagementRequest = {
     reqId,
     turnId: context.turnId,
@@ -139,13 +139,11 @@ export async function handleRequestApproval(
     type: 'approval',
     payload,
   };
-  
+
   const response = await context.askRenderer(request);
-  
+
   return {
     approved: response.decision === 'approved',
     reason: response.custom_response,
   };
 }
-
-

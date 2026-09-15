@@ -11,7 +11,7 @@ export function StatusFooter({ lastCompaction, isStreaming }: Props) {
   return (
     <div className="mx-auto w-full max-w-240">
       <CompactionNotice notice={lastCompaction} />
-      
+
       {isStreaming && (
         <div className="mb-2 flex items-center justify-end gap-1.5 px-1 text-[10px] text-fg-subtle">
           <span>Send paused while running ·</span>

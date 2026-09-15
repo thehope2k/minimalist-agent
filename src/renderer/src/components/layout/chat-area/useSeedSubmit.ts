@@ -27,8 +27,7 @@ export function useSeedSubmit(
     if (messages.length > 0) return;
 
     const connection =
-      aiData.connections.find((c) => c.slug === aiData.defaultSlug) ??
-      aiData.connections[0];
+      aiData.connections.find((c) => c.slug === aiData.defaultSlug) ?? aiData.connections[0];
     if (!connection) return;
 
     const model =

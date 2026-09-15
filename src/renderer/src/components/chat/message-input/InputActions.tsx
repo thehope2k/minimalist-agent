@@ -98,9 +98,7 @@ export function InputActions({
             </span>
           )}
         </div>
-        {voiceLabel && (
-          <span className="text-xs text-fg-muted">{voiceLabel}</span>
-        )}
+        {voiceLabel && <span className="text-xs text-fg-muted">{voiceLabel}</span>}
         <IconButton
           icon={Paperclip}
           label="Attach file"

@@ -6,17 +6,17 @@ and cost-attributed. Same treatment a tool call gets.
 
 ## Where things live
 
-| Concern                                              | File                                                                                             |
-|------------------------------------------------------|--------------------------------------------------------------------------------------------------|
-| Event model + Pi adapter                             | `src/main/agent-runtime/events.ts`, `src/main/pi-server/event-adapter.ts`                        |
-| Session settings, manual-trigger handling, OTel span | `src/main/pi-server/index.ts`                                                                    |
-| Manual-compact IPC                                   | `src/main/ipc/chat-ipc.ts` (`chat:manualCompact`), `src/main/agent-runtime/pi/agent.ts` |
-| Settings (defaults + shape)                          | `src/main/storage/settings.ts`                                                                   |
-| Persisted `compactionMeta`                           | `src/main/storage/sessions.ts`                                                                   |
-| Settings UI                                          | `src/renderer/src/components/settings/panels/AIPanel.tsx`                                        |
-| Divider (success + failure states)                   | `src/renderer/src/components/chat/message-list/CompactionDivider.tsx`                            |
-| Manual trigger button + preview badge                | `src/renderer/src/components/chat/message-input/MessageToolbar.tsx`, `.../ContextBadge.tsx`      |
-| Fork "with context"                                  | `src/main/storage/session-fork.ts`, `src/main/storage/sessions.ts`                               |
+| Concern                                              | File                                                                                        |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Event model + Pi adapter                             | `src/main/agent-runtime/events.ts`, `src/main/pi-server/event-adapter.ts`                   |
+| Session settings, manual-trigger handling, OTel span | `src/main/pi-server/index.ts`                                                               |
+| Manual-compact IPC                                   | `src/main/ipc/chat-ipc.ts` (`chat:manualCompact`), `src/main/agent-runtime/pi/agent.ts`     |
+| Settings (defaults + shape)                          | `src/main/storage/settings.ts`                                                              |
+| Persisted `compactionMeta`                           | `src/main/storage/sessions.ts`                                                              |
+| Settings UI                                          | `src/renderer/src/components/settings/panels/AIPanel.tsx`                                   |
+| Divider (success + failure states)                   | `src/renderer/src/components/chat/message-list/CompactionDivider.tsx`                       |
+| Manual trigger button + preview badge                | `src/renderer/src/components/chat/message-input/MessageToolbar.tsx`, `.../ContextBadge.tsx` |
+| Fork "with context"                                  | `src/main/storage/session-fork.ts`, `src/main/storage/sessions.ts`                          |
 
 ## Architecture
 
@@ -92,7 +92,7 @@ turn. See [`OTEL.md`](OTEL.md) for the span model this reuses.
 
 Pi checks whether to compact after each completed round within a turn, not continuously. A single round's tool-call
 results (large file reads, several parallel tool calls resolving together) can add far more tokens than
-`reserveTokens` accounts for, appended *between* one check and the next request. If that burst is large enough, the very
+`reserveTokens` accounts for, appended _between_ one check and the next request. If that burst is large enough, the very
 next request can jump past both the auto-compact threshold and the model's hard token cap in one hop — the request fails
 outright (`model_max_prompt_tokens_exceeded`) instead of triggering a graceful compaction, and the context badge's
 last-known-good number (accurate as of the last completed round) will look like it "didn't catch up" — it never had
@@ -104,7 +104,7 @@ any fixed reserve. A structural fix would need one of:
 
 - Tracking cumulative tokens as tool results stream in in-process and proactively aborting + compacting before a request
   that would exceed the hard cap (real feature work, not yet built).
-- Bounding how much a single round's *combined* tool output can inject, independent of per-tool truncation (today's
+- Bounding how much a single round's _combined_ tool output can inject, independent of per-tool truncation (today's
   truncation is per-call, e.g.
   `web_fetch`'s ~60k-char cap — nothing caps the sum across several tool calls in one round). `browser_tool`'s
   `screenshot` command is a sharper version of this same gap: it returns an uncapped base64 PNG (no size/ resolution cap

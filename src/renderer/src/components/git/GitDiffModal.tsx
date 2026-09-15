@@ -30,7 +30,13 @@ import { usePartialContentRefs, usePartialHunkContent } from './diff-modal/usePa
 import type { GitDiffModalProps, DiffCaches } from './diff-modal/types';
 import type { GitFileEntry, LineChange } from './types';
 
-export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }: GitDiffModalProps) {
+export function GitDiffModal({
+  cwd,
+  onClose,
+  connectionSlug,
+  model,
+  sessionId,
+}: GitDiffModalProps) {
   const { repos, branchesByRepo, statusError, statusLoading, loadStatus } = useGitStatus(cwd);
 
   const [splitView, setSplitView] = useState(true);
@@ -81,7 +87,11 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
 
   // ── Merge / conflict state ───────────────────────────────────────────────
   const repoRoots = useMemo(() => repos.map((r) => r.root), [repos]);
-  const { mergeStates, totalConflicts, refresh: refreshMergeState } = useMergeState({
+  const {
+    mergeStates,
+    totalConflicts,
+    refresh: refreshMergeState,
+  } = useMergeState({
     repoRoots,
     enabled: !statusLoading && repos.length > 0,
   });
@@ -134,18 +144,18 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
     handleFetchLastMessage,
     handleFetchLastFiles,
   } = useCommitFlow(
-      repos,
-      stagedPaths,
-      stagedHunks,
-      diffCaches,
-      partialContentRefs,
-      cwd,
-      connectionSlug,
-      model,
-      sessionId,
-      loadStatus,
-      clearPersisted,
-    );
+    repos,
+    stagedPaths,
+    stagedHunks,
+    diffCaches,
+    partialContentRefs,
+    cwd,
+    connectionSlug,
+    model,
+    sessionId,
+    loadStatus,
+    clearPersisted,
+  );
 
   const { handleDiffComputed } = useHunkRestore({
     selected,
@@ -163,7 +173,7 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
   const totalFiles = repos.reduce((n, r) => n + r.files.length, 0);
   const selectedHunks = selected
     ? stagedPaths.has(selected.absolutePath)
-      ? stagedHunks.get(selected.absolutePath) ?? null
+      ? (stagedHunks.get(selected.absolutePath) ?? null)
       : new Set<number>()
     : null;
 

@@ -8,13 +8,13 @@
 //   - Opening the same path again moves it to the front (dedup by path).
 //   - lineNumber is updated to the latest jump target on revisit.
 
-const STORAGE_KEY  = 'recent-files-v1';
-const MAX_ENTRIES  = 30;
+const STORAGE_KEY = 'recent-files-v1';
+const MAX_ENTRIES = 30;
 
 export interface RecentFile {
   absolutePath: string;
-  lineNumber:   number;
-  openedAt:     number;
+  lineNumber: number;
+  openedAt: number;
 }
 
 function read(): RecentFile[] {
@@ -42,9 +42,9 @@ export function list(): RecentFile[] {
 
 /** Push a file to the front of the list. Deduplicates by absolutePath. */
 export function push(absolutePath: string, lineNumber: number): void {
-  const prev    = read();
+  const prev = read();
   const without = prev.filter((e) => e.absolutePath !== absolutePath);
-  const next    = [{ absolutePath, lineNumber, openedAt: Date.now() }, ...without].slice(
+  const next = [{ absolutePath, lineNumber, openedAt: Date.now() }, ...without].slice(
     0,
     MAX_ENTRIES,
   );

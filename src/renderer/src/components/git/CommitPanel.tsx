@@ -54,7 +54,9 @@ export function CommitPanel({
   useEffect(() => {
     if (!onAmendPreviewChange) return;
     onAmendPreviewChange(
-      amend && lastFiles && lastFiles.length > 0 ? { subject: lastSubject, files: lastFiles } : null,
+      amend && lastFiles && lastFiles.length > 0
+        ? { subject: lastSubject, files: lastFiles }
+        : null,
     );
   }, [amend, lastFiles, lastSubject, onAmendPreviewChange]);
 
@@ -139,16 +141,18 @@ export function CommitPanel({
           disabled={committing}
           className="flex items-center gap-2 text-xs text-fg-muted hover:text-fg focus-visible:outline-none disabled:opacity-50"
         >
-          <div className={cn(
-            'flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-sm border transition-colors',
-            amend ? 'border-amber-400 bg-amber-400/20' : 'border-border-strong',
-          )}>
+          <div
+            className={cn(
+              'flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-sm border transition-colors',
+              amend ? 'border-amber-400 bg-amber-400/20' : 'border-border-strong',
+            )}
+          >
             {amend && <Check className="h-2.5 w-2.5 text-amber-400" strokeWidth={2.5} />}
           </div>
-          <span className={amend ? 'text-amber-300' : ''}>
-            Amend
-          </span>
-          {fetchingAmend && <Loader2 className="h-3 w-3 animate-spin text-fg-subtle" strokeWidth={2} />}
+          <span className={amend ? 'text-amber-300' : ''}>Amend</span>
+          {fetchingAmend && (
+            <Loader2 className="h-3 w-3 animate-spin text-fg-subtle" strokeWidth={2} />
+          )}
         </button>
 
         {/* Generate with AI */}
@@ -165,10 +169,11 @@ export function CommitPanel({
               : 'cursor-not-allowed text-fg-subtle/50',
           )}
         >
-          {generating
-            ? <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2} />
-            : <Sparkles className="h-3.5 w-3.5" strokeWidth={1.75} />
-          }
+          {generating ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2} />
+          ) : (
+            <Sparkles className="h-3.5 w-3.5" strokeWidth={1.75} />
+          )}
           {generating ? 'Generating…' : 'Generate'}
         </button>
       </div>

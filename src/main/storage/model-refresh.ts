@@ -92,9 +92,7 @@ function minimalModel(id: string): ModelDef {
   };
 }
 
-async function fetchForProvider(
-  meta: ConnectionMeta,
-): Promise<ModelDef[] | { error: string }> {
+async function fetchForProvider(meta: ConnectionMeta): Promise<ModelDef[] | { error: string }> {
   const cred = getCredential(meta.slug);
 
   // ---- Copilot: authoritative tier-filtered list (replace, drop retired) ---
@@ -118,9 +116,7 @@ async function fetchForProvider(
   if (meta.providerType === 'openai-compatible' || meta.providerType === 'local') {
     if (!meta.baseUrl) return { error: 'Connection has no base URL.' };
     const apiKey = cred?.type === 'api_key' ? cred.apiKey : undefined;
-    const { fetchOpenAICompatibleModelIds } = await import(
-      '../openai-compatible/models'
-    );
+    const { fetchOpenAICompatibleModelIds } = await import('../openai-compatible/models');
     const res = await fetchOpenAICompatibleModelIds(meta.baseUrl, apiKey);
     if ('error' in res) return { error: res.error };
     // The /models endpoint only carries ids — and may be incomplete or gated —
@@ -129,9 +125,7 @@ async function fetchForProvider(
     // do not drop ids the endpoint omitted (custom/hand-entered models often
     // aren't advertised).
     const known = new Set(meta.models.map((m) => m.id));
-    const additions = res.ids
-      .filter((id) => !known.has(id))
-      .map((id) => minimalModel(id));
+    const additions = res.ids.filter((id) => !known.has(id)).map((id) => minimalModel(id));
     return [...meta.models, ...additions];
   }
 

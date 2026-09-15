@@ -19,23 +19,23 @@ export function useDraftPersistence(
 ) {
   const draftValueRef = useRef(value);
   draftValueRef.current = value;
-  
+
   const draftAttachmentsRef = useRef(attachments);
   draftAttachmentsRef.current = attachments;
-  
+
   const pickerOverrideRef = useRef(pickerOverride);
   pickerOverrideRef.current = pickerOverride;
-  
+
   const draftPrevIdRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
     const prevId = draftPrevIdRef.current;
-    
+
     if (prevId !== undefined) {
       // Save current drafts before switching
       setDraft(prevId, draftValueRef.current);
       setAttachmentDraft(prevId, draftAttachmentsRef.current);
-      
+
       // Leaving the null slot → snapshot the picker
       if (prevId === null) {
         const pick = pickerOverrideRef.current;
@@ -45,12 +45,12 @@ export function useDraftPersistence(
         });
       }
     }
-    
+
     draftPrevIdRef.current = sessionId;
-    
+
     // Restore drafts for the new session
     onRestore(getDraft(sessionId), getAttachmentDraft(sessionId));
-    
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]); // intentionally excludes value/attachments — refs handle staleness
 }

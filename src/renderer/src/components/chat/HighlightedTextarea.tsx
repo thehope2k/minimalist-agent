@@ -68,10 +68,7 @@ export const HighlightedTextarea = forwardRef<HTMLTextAreaElement, Props>(
         minHeightRef.current = ta.offsetHeight;
       }
       ta.style.height = 'auto';
-      const next = Math.min(
-        Math.max(ta.scrollHeight, minHeightRef.current),
-        MAX_HEIGHT_PX,
-      );
+      const next = Math.min(Math.max(ta.scrollHeight, minHeightRef.current), MAX_HEIGHT_PX);
       ta.style.height = `${next}px`;
     }, [value]);
 
@@ -140,10 +137,7 @@ function Highlighted({ text }: { text: string }) {
         ) : (
           // Background-only highlight — adding padding would desync the
           // caret because the textarea above doesn't know about it.
-          <span
-            key={i}
-            className="rounded-[3px] bg-accent/15 text-accent"
-          >
+          <span key={i} className="rounded-[3px] bg-accent/15 text-accent">
             {p.value}
           </span>
         ),

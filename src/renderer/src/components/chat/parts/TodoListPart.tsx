@@ -35,10 +35,7 @@ export function TodoListPart({ input }: { input: unknown }) {
       </div>
       <ul className="divide-y divide-border/50">
         {todos.map((t, i) => (
-          <li
-            key={i}
-            className="flex items-start gap-2 px-2.5 py-1.5"
-          >
+          <li key={i} className="flex items-start gap-2 px-2.5 py-1.5">
             <StatusIcon status={t.status} />
             <span
               className={cn(
@@ -50,9 +47,7 @@ export function TodoListPart({ input }: { input: unknown }) {
                     : 'text-fg-muted',
               )}
             >
-              {t.status === 'in_progress' && t.activeForm
-                ? t.activeForm
-                : t.content}
+              {t.status === 'in_progress' && t.activeForm ? t.activeForm : t.content}
             </span>
           </li>
         ))}
@@ -64,26 +59,13 @@ export function TodoListPart({ input }: { input: unknown }) {
 function StatusIcon({ status }: { status: TodoStatus }) {
   if (status === 'completed') {
     return (
-      <CheckCircle2
-        className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-400"
-        strokeWidth={2}
-      />
+      <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-400" strokeWidth={2} />
     );
   }
   if (status === 'in_progress') {
-    return (
-      <CircleDot
-        className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent"
-        strokeWidth={2}
-      />
-    );
+    return <CircleDot className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" strokeWidth={2} />;
   }
-  return (
-    <Circle
-      className="mt-0.5 h-3.5 w-3.5 shrink-0 text-fg-subtle"
-      strokeWidth={1.75}
-    />
-  );
+  return <Circle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-fg-subtle" strokeWidth={1.75} />;
 }
 
 function parseTodos(input: unknown): Todo[] {
@@ -97,8 +79,7 @@ function parseTodos(input: unknown): Todo[] {
     const content = typeof o.content === 'string' ? o.content : '';
     if (!content) continue;
     const status = normalizeStatus(o.status);
-    const activeForm =
-      typeof o.activeForm === 'string' ? o.activeForm : undefined;
+    const activeForm = typeof o.activeForm === 'string' ? o.activeForm : undefined;
     out.push({ content, status, activeForm });
   }
   return out;

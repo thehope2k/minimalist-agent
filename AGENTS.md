@@ -165,9 +165,9 @@ Don't call `console.*` directly — use the scoped, leveled logger.
 
 ```ts
 const log = createLogger('worktree');
-log.debug('progress…');   // dev console only; never in prod
-log.info('milestone');    // file + dev console
-log.warn('recoverable');  // file + console (prod too)
+log.debug('progress…'); // dev console only; never in prod
+log.info('milestone'); // file + dev console
+log.warn('recoverable'); // file + console (prod too)
 log.error('failure', err);
 ```
 
@@ -229,10 +229,10 @@ span shape, resource attributes, or settings.
 
 Skills, agents, and extensions live in two portable tiers (never in `userData`):
 
-| Tier    | Path                                                       | Use case                                          |
-|---------|-------------------------------------------------------------|---------------------------------------------------|
-| User    | `~/.minimalist-agent/skills\|agents\|extensions/`          | Personal, cross-project, dotfile-syncable         |
-| Project | `<cwd>/.minimalist-agent/skills\|agents\|extensions/`      | Project-specific, git-committable, team-shareable |
+| Tier    | Path                                                  | Use case                                          |
+| ------- | ----------------------------------------------------- | ------------------------------------------------- |
+| User    | `~/.minimalist-agent/skills\|agents\|extensions/`     | Personal, cross-project, dotfile-syncable         |
+| Project | `<cwd>/.minimalist-agent/skills\|agents\|extensions/` | Project-specific, git-committable, team-shareable |
 
 Project tier takes precedence over user tier for the same slug. Loaders accept an
 optional `cwd` parameter — always pass it when you have session context so

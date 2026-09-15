@@ -30,9 +30,7 @@ export function getNewSessionStateDraft(): NewSessionStateDraft {
 }
 
 /** Merge `patch` into the stored draft — non-destructive for untouched keys. */
-export function patchNewSessionStateDraft(
-  patch: Partial<NewSessionStateDraft>,
-): void {
+export function patchNewSessionStateDraft(patch: Partial<NewSessionStateDraft>): void {
   stored = { ...stored, ...patch };
 }
 

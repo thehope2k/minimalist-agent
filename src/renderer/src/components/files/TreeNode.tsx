@@ -1,4 +1,12 @@
-import { ChevronRight, ChevronDown, Folder, FolderOpen, File as FileIcon, Copy, ExternalLink } from 'lucide-react';
+import {
+  ChevronRight,
+  ChevronDown,
+  Folder,
+  FolderOpen,
+  File as FileIcon,
+  Copy,
+  ExternalLink,
+} from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import type { FileTreeNode } from './types';
@@ -35,17 +43,17 @@ export function TreeNode({
   // Highlight matched text in filename
   const renderHighlightedName = () => {
     if (!highlightQuery) return node.name;
-    
+
     const lowerName = node.name.toLowerCase();
     const lowerQuery = highlightQuery.toLowerCase();
     const index = lowerName.indexOf(lowerQuery);
-    
+
     if (index === -1) return node.name;
-    
+
     const before = node.name.slice(0, index);
     const match = node.name.slice(index, index + highlightQuery.length);
     const after = node.name.slice(index + highlightQuery.length);
-    
+
     return (
       <>
         {before}
@@ -118,7 +126,7 @@ export function TreeNode({
       <div
         className={cn(
           'flex h-7 cursor-pointer items-center gap-1 px-2 text-sm transition-colors',
-          isSelected 
+          isSelected
             ? 'border-l-2 border-accent bg-elevated-2 text-fg'
             : 'border-l-2 border-transparent text-fg hover:bg-elevated',
         )}
@@ -158,9 +166,7 @@ export function TreeNode({
 
         {/* Size (files only, show if <1MB) */}
         {!isDirectory && node.size && node.size < 1024 * 1024 && (
-          <span className="shrink-0 text-xs text-fg-subtle">
-            {formatSize(node.size)}
-          </span>
+          <span className="shrink-0 text-xs text-fg-subtle">{formatSize(node.size)}</span>
         )}
       </div>
 

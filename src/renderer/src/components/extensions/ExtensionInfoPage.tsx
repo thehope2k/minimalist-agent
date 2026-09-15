@@ -27,9 +27,7 @@ export function ExtensionInfoPage({ extension, onClose, onOpenFile }: ExtensionI
         <div className="mx-auto max-w-[1100px] space-y-6 px-6 py-6">
           <PageHeader extension={extension} />
 
-          {extension.variant === 'mcp-backed' && (
-            <McpNoticeSection slug={extension.slug} />
-          )}
+          {extension.variant === 'mcp-backed' && <McpNoticeSection slug={extension.slug} />}
 
           <MetadataSection extension={extension} />
 

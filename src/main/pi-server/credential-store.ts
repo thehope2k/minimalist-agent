@@ -1,13 +1,23 @@
 // In-memory CredentialStore for the pi-server subprocess, plus the auth
 // refresh round-trip to main (`auth_refresh_request` / `auth_refresh_result`).
-import type { Credential, CredentialInfo, CredentialStore, OAuthCredential } from '@earendil-works/pi-ai';
+import type {
+  Credential,
+  CredentialInfo,
+  CredentialStore,
+  OAuthCredential,
+} from '@earendil-works/pi-ai';
 import { createLogger } from '../../shared/sub-logger';
 import { AUTH_REFRESH_CEILING_MS, AUTH_REFRESH_MAIN_ROUNDTRIP_MS } from '../../shared/timeouts';
 import { withTimeout } from '../../shared/with-timeout';
 import { withOperation } from './operation-tracker';
 import { send } from './transport';
 import { state, sessionTag } from './state';
-import type { MsgAuthRefreshRequest, MsgAuthRefreshResult, MsgInit, MsgTokenUpdate } from '../agent-runtime/pi/protocol';
+import type {
+  MsgAuthRefreshRequest,
+  MsgAuthRefreshResult,
+  MsgInit,
+  MsgTokenUpdate,
+} from '../agent-runtime/pi/protocol';
 
 const log = createLogger('pi-server');
 
@@ -26,7 +36,11 @@ export function isTransientOAuthRefreshError(err: unknown): boolean {
 export const OAUTH_REFRESH_RETRY_DELAY_MS = 500;
 const DEFAULT_OAUTH_CREDENTIAL_TTL_MS = 30 * 60 * 1000;
 
-export function toOAuthCredential(cred: { access: string; refresh: string; expires?: number }): OAuthCredential {
+export function toOAuthCredential(cred: {
+  access: string;
+  refresh: string;
+  expires?: number;
+}): OAuthCredential {
   return {
     type: 'oauth',
     access: cred.access,
@@ -51,10 +65,15 @@ function requestAuthRefresh(): Promise<MsgAuthRefreshResult> {
     };
     state.pendingAuthRefresh.set(requestId, { resolve: settle });
     const timer = setTimeout(
-      () => settle({ type: 'auth_refresh_result', requestId, error: 'main did not respond in time' }),
+      () =>
+        settle({ type: 'auth_refresh_result', requestId, error: 'main did not respond in time' }),
       AUTH_REFRESH_MAIN_ROUNDTRIP_MS,
     );
-    const req: MsgAuthRefreshRequest = { type: 'auth_refresh_request', requestId, turnId: state.currentTurnId };
+    const req: MsgAuthRefreshRequest = {
+      type: 'auth_refresh_request',
+      requestId,
+      turnId: state.currentTurnId,
+    };
     send(req);
   });
 }
@@ -62,7 +81,9 @@ function requestAuthRefresh(): Promise<MsgAuthRefreshResult> {
 async function refreshViaMain(): Promise<OAuthCredential | undefined> {
   const startedAt = Date.now();
   const result = await requestAuthRefresh();
-  log.info(`Main round-trip refresh took ${Date.now() - startedAt}ms (${result.credential ? 'got credential' : 'no credential'}${result.error ? `, error: ${result.error}` : ''}) [${sessionTag()}]`);
+  log.info(
+    `Main round-trip refresh took ${Date.now() - startedAt}ms (${result.credential ? 'got credential' : 'no credential'}${result.error ? `, error: ${result.error}` : ''}) [${sessionTag()}]`,
+  );
   return result.credential ? toOAuthCredential(result.credential) : undefined;
 }
 
@@ -112,17 +133,22 @@ export class InMemoryCredentialStore implements CredentialStore {
     const startedAt = Date.now();
     log.info(`Credential refresh starting for ${id} [${sessionTag()}]`);
     try {
-      const next = await withOperation('oauth_refresh', async () =>
-        (await refreshViaMain()) ?? (await refreshWithLocalRetry(fn, current)),
+      const next = await withOperation(
+        'oauth_refresh',
+        async () => (await refreshViaMain()) ?? (await refreshWithLocalRetry(fn, current)),
       );
-      log.info(`Credential refresh for ${id} finished in ${Date.now() - startedAt}ms (${next !== undefined ? 'refreshed' : 'unchanged'}) [${sessionTag()}]`);
+      log.info(
+        `Credential refresh for ${id} finished in ${Date.now() - startedAt}ms (${next !== undefined ? 'refreshed' : 'unchanged'}) [${sessionTag()}]`,
+      );
       if (next !== undefined) this.data.set(id, next);
       return next;
     } catch (e) {
       // Always log completion, even on failure — without this, a rejection
       // (e.g. our own withTimeout firing) leaves no trace at this level since
       // the success-path log above never runs.
-      log.warn(`Credential refresh for ${id} failed after ${Date.now() - startedAt}ms: ${errMessage(e)} [${sessionTag()}]`);
+      log.warn(
+        `Credential refresh for ${id} failed after ${Date.now() - startedAt}ms: ${errMessage(e)} [${sessionTag()}]`,
+      );
       throw e;
     }
   }

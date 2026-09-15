@@ -13,14 +13,17 @@ const PASTE_CONFIRM_MIN_LINES = 2;
 export function usePasteGuard(termRef: React.RefObject<XTerminal | null>) {
   const [pendingPaste, setPendingPaste] = useState<string | null>(null);
 
-  const pasteOrConfirm = useCallback((text: string) => {
-    if (!text) return;
-    if (text.split('\n').length >= PASTE_CONFIRM_MIN_LINES) {
-      setPendingPaste(text);
-    } else {
-      termRef.current?.paste(text);
-    }
-  }, [termRef]);
+  const pasteOrConfirm = useCallback(
+    (text: string) => {
+      if (!text) return;
+      if (text.split('\n').length >= PASTE_CONFIRM_MIN_LINES) {
+        setPendingPaste(text);
+      } else {
+        termRef.current?.paste(text);
+      }
+    },
+    [termRef],
+  );
 
   const confirmPaste = useCallback(() => {
     setPendingPaste((text) => {

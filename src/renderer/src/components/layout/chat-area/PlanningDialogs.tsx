@@ -44,7 +44,6 @@ export function PlanningDialogs({
         />
       )}
 
-
       {planError && activePlan && (
         <PlanErrorNotification
           error={planError}

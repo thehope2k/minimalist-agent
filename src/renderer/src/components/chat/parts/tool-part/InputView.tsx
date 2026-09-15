@@ -114,9 +114,7 @@ function InputField({ field, value }: { field: string; value: unknown }) {
   }
   return (
     <div className="flex gap-2">
-      <dt className="shrink-0 font-mono text-[11px] text-fg-subtle">
-        {field}
-      </dt>
+      <dt className="shrink-0 font-mono text-[11px] text-fg-subtle">{field}</dt>
       <dd className="min-w-0 flex-1 wrap-break-word font-mono text-xs text-fg">
         {value === null || value === undefined
           ? String(value)
@@ -133,11 +131,7 @@ type Props = {
 };
 
 export function InputView({ input }: Props) {
-  if (
-    typeof input !== 'object' ||
-    input === null ||
-    Array.isArray(input)
-  ) {
+  if (typeof input !== 'object' || input === null || Array.isArray(input)) {
     let text: string;
     try {
       text = JSON.stringify(input, null, 2);

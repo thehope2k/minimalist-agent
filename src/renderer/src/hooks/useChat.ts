@@ -11,14 +11,8 @@ import { useChatRetry, useChatSend, useChatStreamControls } from './chat/use-cha
 
 export type { CompactionNotice };
 
-
-export function useChat(
-  sessionId: string | null,
-  defaultProjectIdForNewSession?: string | null,
-) {
-  const defaultProjectIdRef = useRef<string | null | undefined>(
-    defaultProjectIdForNewSession,
-  );
+export function useChat(sessionId: string | null, defaultProjectIdForNewSession?: string | null) {
+  const defaultProjectIdRef = useRef<string | null | undefined>(defaultProjectIdForNewSession);
   defaultProjectIdRef.current = defaultProjectIdForNewSession;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -31,9 +25,9 @@ export function useChat(
    * (e.g. SessionsPanel) render a "running" indicator on every session that
    * has an active turn, regardless of which one the user is viewing.
    */
-  const [streamingSessionIds, setStreamingSessionIds] = useState<
-    ReadonlySet<string>
-  >(() => new Set());
+  const [streamingSessionIds, setStreamingSessionIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
 
   /**
    * All chat state is keyed by app session id. Streaming events from main

@@ -61,9 +61,7 @@ export function useOpenAICompatibleForm({
     if (editing) return editingMeta!.models;
     const base = isCustom ? parseCustomModels(customModels) : (preset?.models ?? []);
     const known = new Set(base.map((current) => current.id));
-    const discovered = fetchedIds
-      .filter((id) => !known.has(id))
-      .map((id) => minimalModel(id));
+    const discovered = fetchedIds.filter((id) => !known.has(id)).map((id) => minimalModel(id));
     return [...base, ...discovered];
   }, [customModels, editing, editingMeta, fetchedIds, isCustom, preset]);
   const effectiveModel = model || models[0]?.id || '';
@@ -105,7 +103,7 @@ export function useOpenAICompatibleForm({
       }
 
       setFetchedIds(result.ids);
-      const known = new Set((isCustom ? [] : preset?.models ?? []).map((current) => current.id));
+      const known = new Set((isCustom ? [] : (preset?.models ?? [])).map((current) => current.id));
       const added = result.ids.filter((id) => !known.has(id)).length;
       setFetchNote(
         `Found ${result.ids.length} model${result.ids.length === 1 ? '' : 's'}` +

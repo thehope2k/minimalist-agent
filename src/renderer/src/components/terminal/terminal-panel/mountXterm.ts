@@ -6,43 +6,43 @@ import { createPathLinkProvider } from './path-link-provider';
 import { attachNativePasteInterceptor } from './usePasteGuard';
 
 const TERMINAL_THEME = {
-  background:          '#0c0c0c',
-  foreground:          '#e8e8e8',
-  cursor:              '#e8e8e8',
-  cursorAccent:        '#0c0c0c',
+  background: '#0c0c0c',
+  foreground: '#e8e8e8',
+  cursor: '#e8e8e8',
+  cursorAccent: '#0c0c0c',
   selectionBackground: 'rgba(255,255,255,0.2)',
-  black:               '#1e1e1e',
-  red:                 '#f14c4c',
-  green:               '#23d18b',
-  yellow:              '#f5f543',
-  blue:                '#3b8eea',
-  magenta:             '#d670d6',
-  cyan:                '#29b8db',
-  white:               '#e5e5e5',
-  brightBlack:         '#666666',
-  brightRed:           '#f14c4c',
-  brightGreen:         '#23d18b',
-  brightYellow:        '#f5f543',
-  brightBlue:          '#3b8eea',
-  brightMagenta:       '#d670d6',
-  brightCyan:          '#29b8db',
-  brightWhite:         '#ffffff',
+  black: '#1e1e1e',
+  red: '#f14c4c',
+  green: '#23d18b',
+  yellow: '#f5f543',
+  blue: '#3b8eea',
+  magenta: '#d670d6',
+  cyan: '#29b8db',
+  white: '#e5e5e5',
+  brightBlack: '#666666',
+  brightRed: '#f14c4c',
+  brightGreen: '#23d18b',
+  brightYellow: '#f5f543',
+  brightBlue: '#3b8eea',
+  brightMagenta: '#d670d6',
+  brightCyan: '#29b8db',
+  brightWhite: '#ffffff',
 };
 
 export interface MountXtermOptions {
-  tabId:              string;
-  getCwd:             () => string;
-  isAlive:            () => boolean;
-  onOpenPath:         (absolutePath: string, lineNumber: number) => void;
+  tabId: string;
+  getCwd: () => string;
+  isAlive: () => boolean;
+  onOpenPath: (absolutePath: string, lineNumber: number) => void;
   onPasteIntercepted: (text: string) => void;
   onPasteGuardInactive: () => void;
 }
 
 export interface XtermMount {
-  term:        XTerminal;
-  fitAddon:    FitAddon;
+  term: XTerminal;
+  fitAddon: FitAddon;
   searchAddon: SearchAddon;
-  dispose:     () => void;
+  dispose: () => void;
 }
 
 /**
@@ -53,35 +53,39 @@ export interface XtermMount {
  */
 export async function mountXterm(
   container: HTMLElement,
-  { tabId, getCwd, isAlive, onOpenPath, onPasteIntercepted, onPasteGuardInactive }: MountXtermOptions,
+  {
+    tabId,
+    getCwd,
+    isAlive,
+    onOpenPath,
+    onPasteIntercepted,
+    onPasteGuardInactive,
+  }: MountXtermOptions,
 ): Promise<XtermMount> {
-  const [
-    { Terminal },
-    { FitAddon },
-    { WebLinksAddon },
-    { SearchAddon },
-    { Unicode11Addon },
-  ] = await Promise.all([
-    import('@xterm/xterm'),
-    import('@xterm/addon-fit'),
-    import('@xterm/addon-web-links'),
-    import('@xterm/addon-search'),
-    import('@xterm/addon-unicode11'),
-  ]);
+  const [{ Terminal }, { FitAddon }, { WebLinksAddon }, { SearchAddon }, { Unicode11Addon }] =
+    await Promise.all([
+      import('@xterm/xterm'),
+      import('@xterm/addon-fit'),
+      import('@xterm/addon-web-links'),
+      import('@xterm/addon-search'),
+      import('@xterm/addon-unicode11'),
+    ]);
   await import('@xterm/xterm/css/xterm.css');
 
   const settings = getTerminalSettings();
   const term = new Terminal({
-    fontFamily:       settings.fontFamily,
-    fontSize:         settings.fontSize,
-    scrollback:       settings.scrollback,
-    theme:            TERMINAL_THEME,
-    cursorBlink:      true,
+    fontFamily: settings.fontFamily,
+    fontSize: settings.fontSize,
+    scrollback: settings.scrollback,
+    theme: TERMINAL_THEME,
+    cursorBlink: true,
     allowProposedApi: true,
   });
 
-  const fitAddon    = new FitAddon();
-  const linksAddon  = new WebLinksAddon((_event, uri) => { void window.api.app.openExternal(uri); });
+  const fitAddon = new FitAddon();
+  const linksAddon = new WebLinksAddon((_event, uri) => {
+    void window.api.app.openExternal(uri);
+  });
   const searchAddon = new SearchAddon();
 
   term.loadAddon(fitAddon);
@@ -126,7 +130,11 @@ export async function mountXterm(
     return true;
   });
 
-  const detachPaste = attachNativePasteInterceptor(container, onPasteIntercepted, onPasteGuardInactive);
+  const detachPaste = attachNativePasteInterceptor(
+    container,
+    onPasteIntercepted,
+    onPasteGuardInactive,
+  );
 
   let resizeTimer: ReturnType<typeof setTimeout> | null = null;
   const ro = new ResizeObserver(() => {

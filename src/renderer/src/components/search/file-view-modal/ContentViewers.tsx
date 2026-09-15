@@ -1,13 +1,7 @@
 import { Markdown } from '@/components/chat/parts/markdown/Markdown';
 import { CodeViewer } from './CodeViewer';
 
-export function MarkdownViewer({
-  content,
-  showSource,
-}: {
-  content: string;
-  showSource: boolean;
-}) {
+export function MarkdownViewer({ content, showSource }: { content: string; showSource: boolean }) {
   if (showSource) {
     return <CodeViewer content={content} language="markdown" lineNumber={1} />;
   }
@@ -21,13 +15,7 @@ export function MarkdownViewer({
   );
 }
 
-export function HtmlViewer({
-  content,
-  showSource,
-}: {
-  content: string;
-  showSource: boolean;
-}) {
+export function HtmlViewer({ content, showSource }: { content: string; showSource: boolean }) {
   if (showSource) {
     return <CodeViewer content={content} language="html" lineNumber={1} />;
   }

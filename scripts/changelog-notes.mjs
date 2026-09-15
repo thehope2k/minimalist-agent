@@ -33,9 +33,7 @@ const changelog = readFileSync(resolve(root, 'CHANGELOG.md'), 'utf8');
 // Locate the "## [X.Y.Z]" header for this version, then capture everything up
 // to the next "## [" header (the previous release).
 const lines = changelog.split('\n');
-const headerIdx = lines.findIndex((l) =>
-  l.startsWith(`## [${version}]`),
-);
+const headerIdx = lines.findIndex((l) => l.startsWith(`## [${version}]`));
 if (headerIdx === -1) {
   console.error(`✗ No CHANGELOG entry found for version ${version}`);
   process.exit(1);
@@ -76,11 +74,12 @@ xattr -d com.apple.quarantine /Applications/Minimalist\\ Agent.app
 const bodyWithFooter = `${body}\n\n${MACOS_FOOTER}`;
 
 // Summary = first non-empty paragraph of the body (before the first "###").
-const summary = body
-  .split('\n')
-  .find((l) => l.trim() !== '' && !l.startsWith('#'))
-  ?.trim()
-  ?.replace(/\.$/, '') ?? '';
+const summary =
+  body
+    .split('\n')
+    .find((l) => l.trim() !== '' && !l.startsWith('#'))
+    ?.trim()
+    ?.replace(/\.$/, '') ?? '';
 
 const prefix = `v${version} — `;
 let title = prefix + summary;

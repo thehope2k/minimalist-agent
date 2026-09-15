@@ -51,5 +51,3 @@ function buildMetadataRows(skill: LoadedSkill): KeyValueRow[] {
     },
   ];
 }
-
-

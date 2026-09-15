@@ -1,11 +1,7 @@
 import type { ConnectionMeta } from '@/lib/electron';
 
 export type ConnectionKind =
-  | 'chatgpt'
-  | 'github-copilot'
-  | 'openai-compatible'
-  | 'codemie-sso'
-  | 'local';
+  'chatgpt' | 'github-copilot' | 'openai-compatible' | 'codemie-sso' | 'local';
 
 export interface FlowProps {
   onBack: () => void;

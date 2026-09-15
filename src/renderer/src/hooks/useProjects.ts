@@ -1,9 +1,5 @@
 import { useEffect, useState } from 'react';
-import {
-  bootstrap,
-  snapshot as readSnapshot,
-  subscribe,
-} from '@/lib/projects';
+import { bootstrap, snapshot as readSnapshot, subscribe } from '@/lib/projects';
 import type { Project } from '@/lib/electron';
 
 /**

@@ -3,13 +3,13 @@
 // the app actually exposes, and the rules for changing any of it, see
 // docs/SYSTEM-PROMPT.md — keep that doc in sync with this file.
 
-import type {Dirent} from 'node:fs';
-import {readFileSync, readdirSync, statSync} from 'node:fs';
-import {hostname, release} from 'node:os';
-import {join, sep} from 'node:path';
-import {formatPreferencesForPrompt, getCoAuthorPreference,} from '../storage/preferences';
+import type { Dirent } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { hostname, release } from 'node:os';
+import { join, sep } from 'node:path';
+import { formatPreferencesForPrompt, getCoAuthorPreference } from '../storage/preferences';
 import { findProjectForPath } from '../storage/projects';
-import {formatExtensionsAwareness} from '../extensions/directive';
+import { formatExtensionsAwareness } from '../extensions/directive';
 
 import { getCollaborationGuidance } from './collaboration-prompt';
 import { getPlanningGuidance } from './planning-prompt';
@@ -86,41 +86,43 @@ const AGENTS_CACHE_TTL = 60_000; // 1 minute
  */
 function formatActivePlanContext(plan: Plan): string {
   try {
-    const completedCount = plan.phases.filter(p => 
-      p.status === 'complete' || p.status === 'skipped'
+    const completedCount = plan.phases.filter(
+      (p) => p.status === 'complete' || p.status === 'skipped',
     ).length;
-    
-    const currentPhase = plan.phases.find(p => 
-      p.status === 'running' || p.status === 'pending'
-    );
-    
+
+    const currentPhase = plan.phases.find((p) => p.status === 'running' || p.status === 'pending');
+
     if (!currentPhase) {
       // All phases complete or error
       return `<active_plan>\nTask: ${plan.task}\nStatus: ${plan.status} (${completedCount}/${plan.phases.length} phases complete)\n</active_plan>`;
     }
-    
+
     // Build phase progress list
-    const progressList = plan.phases.map((p, idx) => {
-      let icon = '○'; // pending
-      if (p.status === 'complete') icon = '✓';
-      else if (p.status === 'skipped') icon = '⊘';
-      else if (p.status === 'error') icon = '✗';
-      else if (p.status === 'running') icon = '→';
-      else if (p === currentPhase) icon = '→'; // pending but current
-      
-      const label = `${icon} Phase ${idx}: ${p.name}`;
-      const statusStr = p.status === 'complete' ? '' : ` (${p.status})`;
-      const isCurrent = p === currentPhase ? ' - YOU ARE HERE' : '';
-      
-      return `  ${label}${statusStr}${isCurrent}`;
-    }).join('\n');
-    
+    const progressList = plan.phases
+      .map((p, idx) => {
+        let icon = '○'; // pending
+        if (p.status === 'complete') icon = '✓';
+        else if (p.status === 'skipped') icon = '⊘';
+        else if (p.status === 'error') icon = '✗';
+        else if (p.status === 'running') icon = '→';
+        else if (p === currentPhase) icon = '→'; // pending but current
+
+        const label = `${icon} Phase ${idx}: ${p.name}`;
+        const statusStr = p.status === 'complete' ? '' : ` (${p.status})`;
+        const isCurrent = p === currentPhase ? ' - YOU ARE HERE' : '';
+
+        return `  ${label}${statusStr}${isCurrent}`;
+      })
+      .join('\n');
+
     // Risk description
-    const riskLevel = 
-      currentPhase.risk < 30 ? 'Low risk - minimal changes' :
-      currentPhase.risk < 60 ? 'Medium risk - file modifications' :
-      'High risk - significant changes';
-    
+    const riskLevel =
+      currentPhase.risk < 30
+        ? 'Low risk - minimal changes'
+        : currentPhase.risk < 60
+          ? 'Medium risk - file modifications'
+          : 'High risk - significant changes';
+
     // Approval status note
     let statusNote: string = currentPhase.status;
     if (currentPhase.approvalStatus === 'awaiting') {
@@ -136,12 +138,13 @@ function formatActivePlanContext(plan: Plan): string {
       // High-risk phase that hasn't been approved yet - may need approval
       statusNote = 'pending (may require user approval before execution)';
     }
-    
+
     // Format actions list
-    const actions = currentPhase.actions.length <= 3
-      ? currentPhase.actions.map(a => `    • ${a}`).join('\n')
-      : `    • ${currentPhase.actions.slice(0, 2).join('\n    • ')}\n    • ... and ${currentPhase.actions.length - 2} more`;
-    
+    const actions =
+      currentPhase.actions.length <= 3
+        ? currentPhase.actions.map((a) => `    • ${a}`).join('\n')
+        : `    • ${currentPhase.actions.slice(0, 2).join('\n    • ')}\n    • ... and ${currentPhase.actions.length - 2} more`;
+
     return `<active_plan>
 Task: ${plan.task}
 Status: Active (Phase ${currentPhase.index + 1} of ${plan.phases.length})${plan.version > 1 ? ` | Version: ${plan.version}` : ''}
@@ -161,7 +164,7 @@ ${progressList}
   }
 }
 
-/** 
+/**
  * Invalidate the cached agents awareness block. Call when agents are added/removed.
  * Exported so agents/storage.ts can call it alongside its own cache invalidation.
  */
@@ -195,11 +198,12 @@ function walkForContextFiles(root: string): string[] {
       if (!e.isFile()) continue;
       if (fileSet.has(e.name.toLowerCase())) {
         const abs = join(dir, e.name);
-        const rel = abs === join(root, e.name)
-          ? e.name
-          : abs.startsWith(root + sep)
-            ? abs.slice(root.length + 1)
-            : abs;
+        const rel =
+          abs === join(root, e.name)
+            ? e.name
+            : abs.startsWith(root + sep)
+              ? abs.slice(root.length + 1)
+              : abs;
         matches.push(rel);
         if (matches.length >= MAX_CONTEXT_FILES) return;
       }
@@ -296,7 +300,9 @@ export function getWorkingDirectoryContext(workingDirectory?: string): string {
  */
 export function getScratchDirContext(scratchDir?: string, sessionId?: string): string {
   if (!scratchDir) return '';
-  const assetBase = sessionId ? `\n<scratch_asset_base>ma-asset://${sessionId}/</scratch_asset_base>` : '';
+  const assetBase = sessionId
+    ? `\n<scratch_asset_base>ma-asset://${sessionId}/</scratch_asset_base>`
+    : '';
   return `<scratch_directory>${scratchDir}</scratch_directory>${assetBase}\nUse this exact path for throwaway files (quote it if it contains spaces) — do not use /tmp instead.`;
 }
 
@@ -342,12 +348,12 @@ export function getProjectContextFilesPrompt(workingDirectory?: string): string 
       const content = readFileSync(join(workingDirectory, file), 'utf8');
       parts.push(
         `<project_context>\n\nProject-specific instructions and guidelines:\n\n` +
-        `<project_instructions path="${join(workingDirectory, file)}">\n${content}\n</project_instructions>\n\n</project_context>`
+          `<project_instructions path="${join(workingDirectory, file)}">\n${content}\n</project_instructions>\n\n</project_context>`,
       );
     } catch {
       // File disappeared between discovery and read — fall back to pointer.
       parts.push(
-        `<project_context_files working_directory="${workingDirectory}">\n- ${file} (root)\n</project_context_files>`
+        `<project_context_files working_directory="${workingDirectory}">\n- ${file} (root)\n</project_context_files>`,
       );
     }
   }
@@ -357,7 +363,7 @@ export function getProjectContextFilesPrompt(workingDirectory?: string): string 
   if (subFiles.length > 0) {
     const fileList = subFiles.map((f) => `- ${f}`).join('\n');
     parts.push(
-      `<project_context_files working_directory="${workingDirectory}">\n${fileList}\n</project_context_files>`
+      `<project_context_files working_directory="${workingDirectory}">\n${fileList}\n</project_context_files>`,
     );
   }
 
@@ -569,14 +575,18 @@ Every code block has an **Expand** button for fullscreen view.
 
 !!IMPORTANT!!. You must refer to yourself as Minimalist Agent when asked. You can acknowledge that you are powered by ${providerDescription}.
 
-${includeCoAuthoredBy ? `## Git Conventions
+${
+  includeCoAuthoredBy
+    ? `## Git Conventions
 
 When creating git commits, include Minimalist Agent as a co-author:
 
 \`\`\`
 Co-Authored-By: Minimalist Agent <noreply@minimalist-agent.local>
 \`\`\`
-` : ''}
+`
+    : ''
+}
 ## Web Search
 
 You have web search access. Use it proactively for up-to-date information and best practices.
@@ -635,7 +645,8 @@ export interface SystemPromptOptions {
  */
 export function getSystemPrompt(opts: SystemPromptOptions = {}): string {
   const projectCoAuthor = findProjectForPath(opts.workingDirectory)?.includeCoAuthoredBy;
-  const includeCoAuthoredBy = opts.includeCoAuthoredBy ?? projectCoAuthor ?? getCoAuthorPreference();
+  const includeCoAuthoredBy =
+    opts.includeCoAuthoredBy ?? projectCoAuthor ?? getCoAuthorPreference();
   const preferences = formatPreferencesForPrompt();
   const userPreferences = preferences ? `\n\n${preferences}` : '';
   const projectContextFiles = getProjectContextFilesPrompt(opts.workingDirectory);
@@ -663,14 +674,16 @@ export function getSystemPrompt(opts: SystemPromptOptions = {}): string {
   // Cached to avoid repeated disk I/O for AGENT.md files.
   let agentsBlock = '';
   const now = Date.now();
-  
+
   if (!agentsBlockCache || now - agentsBlockCache.ts > AGENTS_CACHE_TTL) {
     const agents = loadAllAgents(); // Expensive: reads AGENT.md files from disk
     if (agents.length > 0) {
-      const agentsList = agents.map((a) => {
-        const toolsStr = a.metadata.tools?.join('/') || 'all';
-        return `- ${a.slug} (tools: ${toolsStr}): ${a.metadata.description}`;
-      }).join('\n');
+      const agentsList = agents
+        .map((a) => {
+          const toolsStr = a.metadata.tools?.join('/') || 'all';
+          return `- ${a.slug} (tools: ${toolsStr}): ${a.metadata.description}`;
+        })
+        .join('\n');
       agentsBlock = `<agents>
 Delegate focused work to these sub-agents via the Agent tool when a task strongly matches one; give clear scope, target files, and the expected output. Otherwise do it directly.
 ${agentsList}
@@ -734,10 +747,7 @@ export function buildSystemPromptAppend(input: {
  *
  * Cost: ~25 tokens per item regardless of content length.
  */
-export function buildPinnedContextBlock(
-  pinnedAssets: string[] | undefined,
-  cwd?: string,
-): string {
+export function buildPinnedContextBlock(pinnedAssets: string[] | undefined, cwd?: string): string {
   if (!pinnedAssets || pinnedAssets.length === 0) return '';
 
   const allSkills = loadAllSkills(cwd);
@@ -777,10 +787,7 @@ ${lines.join('\n')}
  * Token cost estimate for pinned assets.
  * ~25 tokens per item (name + description + absolute file path).
  */
-export function estimatePinnedTokens(
-  pinnedAssets: string[] | undefined,
-  _cwd?: string,
-): number {
+export function estimatePinnedTokens(pinnedAssets: string[] | undefined, _cwd?: string): number {
   return (pinnedAssets?.length ?? 0) * 25;
 }
 

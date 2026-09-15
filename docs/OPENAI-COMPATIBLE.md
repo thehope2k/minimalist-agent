@@ -20,16 +20,16 @@ and any OpenAI-compatible API works.
 
 Source: `src/renderer/src/lib/openai-compatible-presets.ts`.
 
-| Preset | Base URL | Notes |
-|---|---|---|
-| **StepFun** | `https://api.stepfun.ai/v1` | Step series — agent-focused multimodal (阶跃星辰) |
-| **DeepSeek** | `https://api.deepseek.com/v1` | V-series + reasoning models, very low cost |
-| **Moonshot (Kimi)** | `https://api.moonshot.ai/v1` | Kimi K-series — long context, agentic coding |
-| **Together AI** | `https://api.together.xyz/v1` | Hosted open-weight models (Qwen, Llama, DeepSeek…) |
-| **Groq** | `https://api.groq.com/openai/v1` | Ultra-low-latency inference for open models |
-| **OpenRouter** | `https://openrouter.ai/api/v1` | One key, hundreds of models routed across providers |
-| **xAI (Grok)** | `https://api.x.ai/v1` | Grok models via the OpenAI-compatible xAI API |
-| **Custom endpoint** | _(you provide)_ | Any OpenAI-compatible API — base URL + model ids |
+| Preset              | Base URL                         | Notes                                               |
+| ------------------- | -------------------------------- | --------------------------------------------------- |
+| **StepFun**         | `https://api.stepfun.ai/v1`      | Step series — agent-focused multimodal (阶跃星辰)   |
+| **DeepSeek**        | `https://api.deepseek.com/v1`    | V-series + reasoning models, very low cost          |
+| **Moonshot (Kimi)** | `https://api.moonshot.ai/v1`     | Kimi K-series — long context, agentic coding        |
+| **Together AI**     | `https://api.together.xyz/v1`    | Hosted open-weight models (Qwen, Llama, DeepSeek…)  |
+| **Groq**            | `https://api.groq.com/openai/v1` | Ultra-low-latency inference for open models         |
+| **OpenRouter**      | `https://openrouter.ai/api/v1`   | One key, hundreds of models routed across providers |
+| **xAI (Grok)**      | `https://api.x.ai/v1`            | Grok models via the OpenAI-compatible xAI API       |
+| **Custom endpoint** | _(you provide)_                  | Any OpenAI-compatible API — base URL + model ids    |
 
 Each preset ships a starter model list with rich metadata (context window, vision/reasoning
 flags, max output tokens). You can always type a custom model id on top.
@@ -88,11 +88,13 @@ for the backend flow.
 For contributors:
 
 **Renderer**
+
 - `lib/openai-compatible-presets.ts` — preset catalog (`OPENAI_COMPATIBLE_PRESETS`, `CUSTOM_PRESET_ID`)
 - `components/settings/connection-flow/OpenAICompatibleFlow.tsx` — add/edit flow
 - `components/settings/ai-panel/utils.ts` — display-name resolution
 
 **Main**
+
 - `openai-compatible/models.ts` — `fetchOpenAICompatibleModelIds` (`/v1/models` discovery)
 - `auth/resolve.ts` — `openai-compatible` → `ResolvedApiAuth`
 - `storage/connections.ts` — `providerType: 'openai-compatible'`, `presetId`, `baseUrl`

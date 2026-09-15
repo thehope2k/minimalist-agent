@@ -32,10 +32,7 @@ function preprocessLatex(raw: string): string {
 
   // 2. Remove all \[ \] and $$ display-math delimiters (global, not anchored —
   //    they can appear mid-block when the AI writes multiple equations).
-  code = code
-    .replace(/\\\[/g, '')
-    .replace(/\\\]/g, '')
-    .replace(/\$\$/g, '');
+  code = code.replace(/\\\[/g, '').replace(/\\\]/g, '').replace(/\$\$/g, '');
 
   // 3. Split on blank lines into individual equation blocks. Within each block,
   //    join lines with a space so multi-line equations stay as one expression.

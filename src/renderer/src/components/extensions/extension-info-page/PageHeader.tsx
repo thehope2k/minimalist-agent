@@ -19,9 +19,7 @@ export function PageHeader({ extension }: { extension: LoadedExtension }) {
             </span>
           )}
         </div>
-        <p className="mt-0.5 text-sm text-fg-muted">
-          {displayDescription(extension)}
-        </p>
+        <p className="mt-0.5 text-sm text-fg-muted">{displayDescription(extension)}</p>
       </div>
     </div>
   );

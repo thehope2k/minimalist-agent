@@ -20,9 +20,7 @@ export function SnippetLine({ lineContent, matchStart, matchEnd }: SnippetLinePr
   return (
     <>
       {trimmed.slice(0, start)}
-      <mark className="bg-transparent font-semibold text-accent">
-        {trimmed.slice(start, end)}
-      </mark>
+      <mark className="bg-transparent font-semibold text-accent">{trimmed.slice(start, end)}</mark>
       {trimmed.slice(end)}
     </>
   );

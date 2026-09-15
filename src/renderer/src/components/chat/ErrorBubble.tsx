@@ -51,9 +51,7 @@ export function ErrorBubble({
           <div className={cn('font-medium', palette.title)}>{error.title}</div>
           <div className="mt-0.5 text-fg-muted">{error.message}</div>
 
-          {error.retryAfterMs != null && (
-            <RetryAfterCountdown deadline={error.retryAfterMs} />
-          )}
+          {error.retryAfterMs != null && <RetryAfterCountdown deadline={error.retryAfterMs} />}
 
           {(error.canRetry || error.originalError) && (
             <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -76,10 +74,7 @@ export function ErrorBubble({
                 >
                   <ChevronDown
                     size={12}
-                    className={cn(
-                      'transition-transform',
-                      open && 'rotate-180',
-                    )}
+                    className={cn('transition-transform', open && 'rotate-180')}
                   />
                   {open ? 'Hide diagnostics' : 'Show diagnostics'}
                 </button>
@@ -116,11 +111,7 @@ function RetryAfterCountdown({ deadline }: { deadline: number }) {
   }, [endsAt, remaining]);
 
   if (remaining <= 0) {
-    return (
-      <div className="mt-1 font-mono text-[11px] text-fg-subtle">
-        Ready to retry.
-      </div>
-    );
+    return <div className="mt-1 font-mono text-[11px] text-fg-subtle">Ready to retry.</div>;
   }
   return (
     <div className="mt-1 font-mono text-[11px] text-fg-subtle">

@@ -63,10 +63,7 @@ export function LeftSidebar({
 }: Props) {
   if (inSettings) {
     return (
-      <SettingsCategoriesPanel
-        active={settingsCategory}
-        onChange={onSettingsCategoryChange}
-      />
+      <SettingsCategoriesPanel active={settingsCategory} onChange={onSettingsCategoryChange} />
     );
   }
 

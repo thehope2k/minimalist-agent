@@ -18,9 +18,7 @@ export function AgentRow({ agent, active, dragHandle, onClick, onAfterDelete }: 
 
   return (
     <div className="group/agent relative border-b border-border last:border-b-0">
-      {active && (
-        <span className="absolute inset-y-2 left-0 z-10 w-0.5 rounded-r-sm bg-accent" />
-      )}
+      {active && <span className="absolute inset-y-2 left-0 z-10 w-0.5 rounded-r-sm bg-accent" />}
       <div className="flex items-stretch">
         <div className="flex w-5 shrink-0 items-center justify-center">
           <DragHandle
@@ -38,9 +36,7 @@ export function AgentRow({ agent, active, dragHandle, onClick, onAfterDelete }: 
           <AgentAvatar agent={agent} size="md" />
 
           <div className="min-w-0 flex-1">
-            <div className="truncate text-[0.95rem] font-medium text-fg">
-              {agent.metadata.name}
-            </div>
+            <div className="truncate text-[0.95rem] font-medium text-fg">{agent.metadata.name}</div>
             <div className="mt-0.5 truncate text-xs text-fg-subtle">
               {agent.metadata.description}
             </div>
@@ -69,11 +65,7 @@ export function AgentRow({ agent, active, dragHandle, onClick, onAfterDelete }: 
         )}
         onClick={(e) => e.stopPropagation()}
       >
-        <AgentMenu
-          agent={agent}
-          onAfterDelete={onAfterDelete}
-          onOpenChange={setMenuOpen}
-        />
+        <AgentMenu agent={agent} onAfterDelete={onAfterDelete} onOpenChange={setMenuOpen} />
       </div>
     </div>
   );

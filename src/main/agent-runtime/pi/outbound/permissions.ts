@@ -23,7 +23,10 @@ export function handlePreToolUseRequest(msg: MsgPreToolUseRequest, handle: Subpr
     });
     return;
   }
-  const decision: { action: 'allow' | 'block'; reason?: string } = { action: 'allow', reason: undefined };
+  const decision: { action: 'allow' | 'block'; reason?: string } = {
+    action: 'allow',
+    reason: undefined,
+  };
 
   // Server-declared tool blocklist (extension.json permissions.blockedTools)
   // applies regardless of permission mode — it's a capability boundary,
@@ -55,7 +58,10 @@ export function handlePreToolUseRequest(msg: MsgPreToolUseRequest, handle: Subpr
   });
 }
 
-export function handlePermissionModeChanged(msg: { sessionId?: string; mode: any }, handle: SubprocessHandle): void {
+export function handlePermissionModeChanged(
+  msg: { sessionId?: string; mode: any },
+  handle: SubprocessHandle,
+): void {
   const sessionId = msg.sessionId ?? handle.chatSessionId;
   const mode = msg.mode;
 
