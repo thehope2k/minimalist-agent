@@ -9,13 +9,11 @@
 //   - All files checked by default; uncheck a file to exclude it entirely.
 //   - On commit: staged files are committed via git hash-object + update-index.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { GitCommitHorizontal, Loader2 } from 'lucide-react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { ExpandModal } from '@/components/ui';
 import { GitDiffView } from './GitDiffView';
 import { ConflictView } from './ConflictView';
 import { MergeStateBanner } from './MergeStateBanner';
-import { hunkKey } from './git-review-state';
 import { GitHeader } from './git-flow/GitHeader';
 import { GitLeftPanel } from './git-flow/GitLeftPanel';
 import { useGitReviewPersistence } from './git-flow/useGitReviewPersistence';
@@ -25,10 +23,12 @@ import { useGitStatus } from './diff-modal/useGitStatus';
 import { useFileSelection } from './diff-modal/useFileSelection';
 import { useStagingState } from './diff-modal/useStagingState';
 import { useCommitFlow } from './diff-modal/useCommitFlow';
-import { resolveAmendRepoRoot, type LastCommitFileEntry } from './git-util';
-import type { AmendPreview } from './CommitPanel';
-import type { GitDiffModalProps, DiffCaches, PartialContentRefs } from './diff-modal/types';
-import type { GitFileDiff, GitFileEntry, LineChange } from './types';
+import { useAmendPreview } from './diff-modal/useAmendPreview';
+import { AmendFilePreview } from './diff-modal/AmendFilePreview';
+import { useHunkRestore } from './diff-modal/useHunkRestore';
+import { usePartialContentRefs, usePartialHunkContent } from './diff-modal/usePartialHunkContent';
+import type { GitDiffModalProps, DiffCaches } from './diff-modal/types';
+import type { GitFileEntry, LineChange } from './types';
 
 export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }: GitDiffModalProps) {
   const { repos, branchesByRepo, statusError, statusLoading, loadStatus } = useGitStatus(cwd);
@@ -44,38 +44,10 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
     lineChanges: lineChangesCacheRef.current,
   };
 
-  // Partial content refs for persistence/restore
-  const pendingHunkRestoreRef = useRef<Map<string, Set<string>>>(new Map());
-  const restoredPartialContentRef = useRef<Map<string, string>>(new Map());
-  const partialContentRefs: PartialContentRefs = {
-    pendingHunkKeys: pendingHunkRestoreRef.current,
-    restoredPartialContent: restoredPartialContentRef.current,
-  };
+  const { partialContentRefs, pendingHunkRestoreRef } = usePartialContentRefs();
 
   const allFiles = useMemo(() => repos.flatMap((r) => r.files), [repos]);
   const { selected, setSelected, diff } = useFileSelection(allFiles, diffCaches);
-
-  // ── Amend preview: the commit being amended + a click-through read-only diff ──
-  const [amendPreview, setAmendPreview] = useState<AmendPreview | null>(null);
-  const [selectedAmendFile, setSelectedAmendFile] = useState<LastCommitFileEntry | null>(null);
-  const [amendFileDiff, setAmendFileDiff] = useState<GitFileDiff | null>(null);
-  const [amendFileLoading, setAmendFileLoading] = useState(false);
-
-  useEffect(() => {
-    if (!amendPreview) {
-      setSelectedAmendFile(null);
-      setAmendFileDiff(null);
-    }
-  }, [amendPreview]);
-
-  const handleSelectFile = useCallback(
-    (file: GitFileEntry) => {
-      setSelectedAmendFile(null);
-      setAmendFileDiff(null);
-      setSelected(file);
-    },
-    [setSelected],
-  );
 
   const {
     stagedPaths,
@@ -89,26 +61,22 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
     hunkStates,
   } = useStagingState(lineChangesCacheRef, partialContentRefs);
 
-  const handleSelectAmendFile = useCallback(
-    (file: LastCommitFileEntry) => {
-      const repoRoot = resolveAmendRepoRoot(repos, stagedPaths, cwd);
-      if (!repoRoot) return;
-      setSelected(null);
-      setSelectedAmendFile(file);
-      setAmendFileDiff(null);
-      setAmendFileLoading(true);
-      window.api.git
-        .lastCommitFileDiff({
-          repoRoot,
-          relativePath: file.path,
-          oldPath: file.oldPath,
-          status: file.status,
-        })
-        .then(setAmendFileDiff)
-        .catch(() => setAmendFileDiff(null))
-        .finally(() => setAmendFileLoading(false));
+  const {
+    amendPreview,
+    setAmendPreview,
+    selectedAmendFile,
+    amendFileDiff,
+    amendFileLoading,
+    clearSelectedAmendFile,
+    selectAmendFile,
+  } = useAmendPreview({ cwd, repos, stagedPaths, setSelected });
+
+  const handleSelectFile = useCallback(
+    (file: GitFileEntry) => {
+      clearSelectedAmendFile();
+      setSelected(file);
     },
-    [repos, stagedPaths, cwd, setSelected],
+    [clearSelectedAmendFile, setSelected],
   );
 
   // ── Merge / conflict state ───────────────────────────────────────────────
@@ -138,19 +106,11 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
     void loadStatus();
   }, [refreshMergeState, loadStatus]);
 
-  // ── Persistence ───────────────────────────────────────────────────────────
-  const partialContentByPath = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const [path, hs] of stagedHunks) {
-      if (hs.size === 0) continue;
-      const fileDiff = diffCacheRef.current.get(path);
-      const fileChanges = lineChangesCacheRef.current.get(path) ?? [];
-      if (!fileDiff || hs.size >= fileChanges.length) continue;
-      const { applySelectedHunks } = require('./git-util');
-      map.set(path, applySelectedHunks(fileDiff.original, fileDiff.modified, fileChanges, hs));
-    }
-    return map;
-  }, [stagedHunks]);
+  const partialContentByPath = usePartialHunkContent(
+    diffCacheRef.current,
+    lineChangesCacheRef.current,
+    stagedHunks,
+  );
 
   const { clearPersisted } = useGitReviewPersistence({
     cwd,
@@ -187,59 +147,17 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
       clearPersisted,
     );
 
-  // ── Line changes ──────────────────────────────────────────────────────────
-  const handleDiffComputed = useCallback(
-    (changes: LineChange[]) => {
-      setCurrentChanges(changes);
-      if (!selected) return;
-
-      const path = selected.absolutePath;
-      lineChangesCacheRef.current.set(path, changes);
-
-      // Check if this file has a pending hunk restore
-      const pending = pendingHunkRestoreRef.current.get(path);
-      if (pending) {
-        const selectedIndices = new Set<number>();
-        changes.forEach((c, i) => {
-          if (pending.has(hunkKey(c))) selectedIndices.add(i);
-        });
-        pendingHunkRestoreRef.current.delete(path);
-        setPendingPartialPaths((prev) => {
-          const n = new Set(prev);
-          n.delete(path);
-          return n;
-        });
-
-        setStagedPaths((prev) => {
-          const n = new Set(prev);
-          if (selectedIndices.size > 0) n.add(path);
-          else n.delete(path);
-          return n;
-        });
-        setStagedHunks((prev) => {
-          const next = new Map(prev);
-          if (selectedIndices.size === 0) next.set(path, new Set());
-          else if (selectedIndices.size === changes.length) next.delete(path);
-          else next.set(path, selectedIndices);
-          return next;
-        });
-        if (selectedIndices.size === changes.length) {
-          restoredPartialContentRef.current.delete(path);
-        }
-        return;
-      }
-
-      // Initialize hunk staging for this file if not already set
-      setStagedHunks((prev) => {
-        if (prev.has(path)) return prev;
-        const next = new Map(prev);
-        if (stagedPaths.has(path)) next.set(path, new Set(changes.map((_, i) => i)));
-        else next.set(path, new Set());
-        return next;
-      });
-    },
-    [selected, stagedPaths, setStagedPaths, setStagedHunks, setPendingPartialPaths],
-  );
+  const { handleDiffComputed } = useHunkRestore({
+    selected,
+    stagedPaths,
+    partialContentRefs,
+    pendingHunkRestoreRef,
+    setCurrentChanges,
+    setStagedPaths,
+    setStagedHunks,
+    setPendingPartialPaths,
+    lineChangesCache: lineChangesCacheRef.current,
+  });
 
   // ── Rendering ──────────────────────────────────────────────────────────────
   const totalFiles = repos.reduce((n, r) => n + r.files.length, 0);
@@ -313,36 +231,17 @@ export function GitDiffModal({ cwd, onClose, connectionSlug, model, sessionId }:
             onAmendPreviewChange={setAmendPreview}
             amendPreview={amendPreview}
             selectedAmendFile={selectedAmendFile}
-            onSelectAmendFile={handleSelectAmendFile}
+            onSelectAmendFile={selectAmendFile}
           />
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col bg-panel">
           {selectedAmendFile ? (
-            <>
-              <div className="flex shrink-0 items-center gap-2 border-b border-border/60 bg-elevated/40 px-3 py-1.5">
-                <GitCommitHorizontal className="h-3.5 w-3.5 shrink-0 text-fg-subtle" strokeWidth={1.75} />
-                <span className="text-[11px] font-medium text-fg-subtle">
-                  Read-only — already part of the commit being amended
-                </span>
-              </div>
-              <div className="min-h-0 flex-1">
-                {amendFileLoading ? (
-                  <div className="flex h-full items-center justify-center">
-                    <Loader2 className="h-5 w-5 animate-spin text-fg-subtle" strokeWidth={1.5} />
-                  </div>
-                ) : (
-                  <GitDiffView
-                    diff={amendFileDiff}
-                    splitView={splitView}
-                    changes={[]}
-                    stagedHunks={undefined}
-                    onToggleHunk={() => {}}
-                    hunksInteractive={false}
-                  />
-                )}
-              </div>
-            </>
+            <AmendFilePreview
+              diff={amendFileDiff}
+              loading={amendFileLoading}
+              splitView={splitView}
+            />
           ) : selected?.status === 'U' ? (
             <ConflictView
               key={selected.absolutePath}
