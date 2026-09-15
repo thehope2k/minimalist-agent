@@ -34,33 +34,15 @@ _(Nothing pending)_
 
 ## Bugs / Issues
 
-- [ ] **Git worktree isolation disabled for sub-agents** (stubbed out in commit b68c671)
-  - Feature implemented in commit 77e7599 (May 27, 2026)
-  - Disabled next day due to Electron import issues in subprocess
-  - `subagent/worktree-stub.ts` (moved from `agent-tool.ts`) uses stub that always returns original CWD
-  - AGENTS.md now documents this as disabled (Sep 4, 2026) — re-enable still pending
-  - Risk: parallel sub-agents can conflict on package locks, git ops, build outputs
-  - Context isolation works ✅ (only input+output in LLM context)
-  - Storage isolation works ✅ (unique session paths per sub-agent)
-  - Full transcripts persist ✅ (nested events saved to disk)
-  - **Root cause found (Sep 4, 2026):** `worktree-manager.ts` is otherwise plain Node
-    (`child_process`/`fs`/`path`/`minimatch`) — the only thing that can't load in the
-    pi-server subprocess is `import { createLogger } from '../../../logger'`, which pulls
-    in `electron-log` + `electron`. That single import is the entire blocker.
-  - **Proposed fix:** inject the logger instead of hard-importing it — main process passes
-    the real `electron-log`-backed logger, the pi-server subprocess passes
-    `shared/sub-logger.ts` (already electron-free, same pattern used elsewhere). Then wire
-    `subagent/lifecycle.ts` to the real `createAgentWorktree`/`removeAgentWorktree`/
-    `cleanupOrphanedWorktrees` instead of the stubs. Not yet implemented — worth a full
-    check for other transitive electron-only imports before flipping the switch.
+_(Nothing pending)_
 
 ---
 
 ## Tech Debt
 
 - [ ] **Split "god files"** — several modules exceed the AGENTS.md ~250-line guideline.
-      Full inventory refreshed Sep 15, 2026 (9 `.ts` files >400 lines; 4 `.tsx` components >250;
-      ~70.4K lines total across `src/`):
+      Full inventory refreshed Sep 15, 2026 (7 `.ts` files >400 lines; 4 `.tsx` components >250;
+      ~70.4K lines total across `src`):
   - `src/main/pi-server/index.ts` — 1,444 lines. Orchestrates `handleInit`/
     `handlePrompt`/`handleManualCompact`/`dispatch`/the stdin entrypoint, all sharing
     `activePromptPromise` and the OTel span lifecycle via the module-scoped `state` object.
@@ -71,11 +53,9 @@ _(Nothing pending)_
     type definitions by domain only when the shared contract becomes difficult to navigate.
   - `src/main/agent-runtime/pi/agent.ts` — 728 lines
   - `src/main/agent-runtime/planning/manager.ts` — 552 lines
-  - `src/main/agent-runtime/pi/worktree-manager.ts` — 542 lines
-  - `src/shared/otel.ts` — 505 lines
+  - `src/main/agent-runtime/pi/worktree-manager.ts` — 556 lines
   - `src/main/browser/browser-cdp.ts` — 450 lines
   - `src/main/pi-server/ssrf-guard.ts` — 422 lines
-  - `src/main/pi-server/planning-tools.ts` — 411 lines
   - `.tsx`: `src/renderer/src/components/chat/MessageInput.tsx` — 400 lines
   - `.tsx`: `src/renderer/src/components/layout/ChatArea.tsx` — 270 lines
   - `.tsx`: `src/renderer/src/components/git/GitDiffModal.tsx` — 266 lines

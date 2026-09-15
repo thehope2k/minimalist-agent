@@ -4,8 +4,8 @@ import type { Interface as ReadlineInterface } from 'node:readline';
 import type { LoadedAgent } from '../../../agents/types';
 import type { ModelProvider, RuntimeCredential } from '../protocol';
 
-// Duplicated from worktree-manager.ts to avoid importing it (and its
-// electron-aware logger) into the pi-server subprocess. See worktree-stub.ts.
+// Kept local so the sub-agent handle stays independent from worktree-manager's
+// implementation details. See worktree-stub.ts for the process-safe facade.
 export interface WorktreeResult {
   path: string;
   branch: string;

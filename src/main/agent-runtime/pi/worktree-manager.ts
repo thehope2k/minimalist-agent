@@ -23,9 +23,23 @@ import {
   writeFileSync,
 } from 'fs';
 import { minimatch } from 'minimatch';
-import { createLogger } from '../../logger';
+import type { Logger } from '../../../shared/log';
 
-const log = createLogger('worktree');
+let configuredLogger: Logger | undefined;
+
+/** Supply the logger for the process loading this Electron-free module. */
+export function configureWorktreeLogger(logger: Logger): void {
+  configuredLogger = logger;
+}
+
+function getLogger(): Logger {
+  if (!configuredLogger) throw new Error('Worktree logger must be configured before use');
+  return configuredLogger;
+}
+
+const log = new Proxy({} as Logger, {
+  get: (_target, property) => Reflect.get(getLogger(), property),
+});
 
 // Run git via execFile (no shell): every ref/path/branch travels as a discrete
 // argv entry, so injection metacharacters in filenames/refs stay inert literals.

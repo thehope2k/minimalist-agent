@@ -19,7 +19,7 @@ import {
   registerAssetProtocolHandler,
 } from './protocols/asset-protocol';
 
-import { isWorktreeSupported } from './agent-runtime/pi/worktree-manager';
+import { configureWorktreeLogger, isWorktreeSupported } from './agent-runtime/pi/worktree-manager';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -260,6 +260,7 @@ function createWindow(icon?: Electron.NativeImage | null) {
 
 app.whenReady().then(async () => {
   initLogging(Paths.logsDir());
+  configureWorktreeLogger(createLogger('worktree'));
   registerAssetProtocolHandler();
 
   installSkillsReferenceDoc();

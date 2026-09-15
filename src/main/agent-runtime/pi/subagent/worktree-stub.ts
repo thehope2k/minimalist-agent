@@ -1,20 +1,14 @@
-// Worktree functions - always use stubs (no worktrees for sub-agents).
-// This simplifies the build and avoids electron import issues (the real
-// worktree-manager.ts imports the electron-aware main logger, which cannot
-// be loaded inside the pi-server subprocess). Main agent sessions get
-// worktrees from a different code path if needed. See TODO.md for the
-// re-enable plan and AGENTS.md for background.
-import type { WorktreeResult } from './types';
+// Process-safe worktree facade for pi-server. The shared manager contains no
+// Electron imports; this facade supplies the subprocess logger before exposing
+// its lifecycle functions to the sub-agent runtime.
+import { createLogger } from '../../../../shared/sub-logger';
+import { configureWorktreeLogger } from '../worktree-manager';
 
-export const createAgentWorktree = async (
-  cwd: string,
-  _execId: string,
-): Promise<WorktreeResult> => ({
-  path: cwd,
-  branch: '',
-  created: false,
-});
+configureWorktreeLogger(createLogger('worktree'));
 
-export const removeAgentWorktree = async (_execId: string): Promise<void> => {};
-export const cleanupAllWorktrees = async (): Promise<void> => {};
-export const cleanupOrphanedWorktrees = async (_cwd: string, _daysOld: number): Promise<void> => {};
+export {
+  createAgentWorktree,
+  removeAgentWorktree,
+  cleanupAllWorktrees,
+  cleanupOrphanedWorktrees,
+} from '../worktree-manager';
