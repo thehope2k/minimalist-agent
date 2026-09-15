@@ -143,8 +143,6 @@ export function ChatArea({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [streamingSessionIds]);
 
-  // Plan-execution actions: Continue/Retry connection-model resolution,
-  // and phase approve/deny/retry/skip/cancel handlers.
   const {
     handleContinue,
     handleRetry,

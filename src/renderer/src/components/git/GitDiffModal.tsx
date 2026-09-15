@@ -1,14 +1,3 @@
-// Git diff review + commit modal — opened with Cmd+G.
-//
-// Layout: ExpandModal with a two-column body:
-//   left  ~256 px  GitFileList (file list with stage checkboxes, indeterminate for partial)
-//                  CommitPanel (message + commit button, pinned bottom)
-//   right flex-1   GitDiffView (Monaco DiffEditor, readonly)
-//
-// Staging model:
-//   - All files checked by default; uncheck a file to exclude it entirely.
-//   - On commit: staged files are committed via git hash-object + update-index.
-
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { ExpandModal } from '@/components/ui';
 import { GitDiffView } from './GitDiffView';

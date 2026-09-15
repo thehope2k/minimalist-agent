@@ -1,16 +1,5 @@
 import { useState } from 'react';
-import {
-  Archive,
-  ArchiveRestore,
-  CheckCircle2,
-  Circle,
-  FolderOpen,
-  Inbox,
-  MoreHorizontal,
-  Pencil,
-  Sparkles,
-  Trash2,
-} from 'lucide-react';
+import { Archive, CheckCircle2, Circle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   deleteSession,
@@ -18,10 +7,11 @@ import {
   setSessionProject,
   updateSessionMeta,
 } from '@/lib/sessions';
-import { IconButton, Menu, Tooltip, type MenuItem } from '../../ui';
 import type { Project, SessionMeta } from '@/lib/electron';
+import { Tooltip } from '../../ui';
 import { RunningDot } from './RunningDot';
-import { relativeTime, revealLabel } from './utils';
+import { SessionRowActions } from './SessionRowActions';
+import { relativeTime } from './utils';
 
 export interface SessionRowProps {
   session: SessionMeta;
@@ -51,7 +41,7 @@ export function SessionRow({
   const [renameValue, setRenameValue] = useState('');
   const [regenerating, setRegenerating] = useState(false);
   const project = session.projectId
-    ? (projects.find((p) => p.id === session.projectId) ?? null)
+    ? (projects.find((candidate) => candidate.id === session.projectId) ?? null)
     : null;
 
   const handleRename = () => {
@@ -64,56 +54,21 @@ export function SessionRow({
     if (!trimmed || trimmed === session.title) return;
     await updateSessionMeta(session.id, { title: trimmed });
   };
-  const cancelRename = () => setRenaming(false);
-  const handleArchiveToggle = async () => {
-    await updateSessionMeta(session.id, { archived: !session.archived });
+  const handleRegenerateTitle = async () => {
+    setRegenerating(true);
+    try {
+      await regenerateSessionTitle(session.id);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Failed to regenerate title.');
+    } finally {
+      setRegenerating(false);
+    }
   };
   const handleDelete = async () => {
     if (!window.confirm(`Delete "${session.title}"? This cannot be undone.`)) return;
     await deleteSession(session.id);
     if (active) onAfterDelete();
   };
-  const handleReveal = () => void window.api.sessions.revealInFolder(session.id);
-  const handleRegenerateTitle = async () => {
-    setRegenerating(true);
-    try {
-      await regenerateSessionTitle(session.id);
-    } catch (e) {
-      window.alert(e instanceof Error ? e.message : 'Failed to regenerate title.');
-    } finally {
-      setRegenerating(false);
-    }
-  };
-  const handleMoveTo = async (projectId: string | null) => {
-    await setSessionProject(session.id, projectId);
-  };
-
-  const items: Array<MenuItem | 'separator'> = [
-    { label: 'Rename', icon: Pencil, onSelect: handleRename },
-    {
-      label: regenerating ? 'Regenerating…' : 'Regenerate title',
-      icon: Sparkles,
-      onSelect: handleRegenerateTitle,
-    },
-    {
-      label: session.archived ? 'Restore' : 'Archive',
-      icon: session.archived ? ArchiveRestore : Archive,
-      onSelect: handleArchiveToggle,
-    },
-    { label: revealLabel(), icon: FolderOpen, onSelect: handleReveal },
-    'separator',
-    {
-      label: session.projectId === null ? 'Unassigned ✓' : 'Remove from project',
-      icon: Inbox,
-      onSelect: () => void handleMoveTo(null),
-    },
-    ...projects.map<MenuItem>((p) => ({
-      label: session.projectId === p.id ? `In ${p.name} ✓` : `Move to ${p.name}`,
-      onSelect: () => void handleMoveTo(p.id),
-    })),
-    'separator',
-    { label: 'Delete', icon: Trash2, variant: 'destructive', onSelect: handleDelete },
-  ];
 
   const selectionIcon = selected ? (
     <CheckCircle2
@@ -149,30 +104,6 @@ export function SessionRow({
     <Circle className="h-4 w-4 shrink-0 text-fg-subtle" strokeWidth={1.75} />
   );
 
-  const sessionDetails = (
-    <div className="min-w-0 flex-1">
-      <div className="flex items-center gap-2">
-        <span
-          className={cn(
-            'flex-1 truncate text-[0.95rem]',
-            regenerating ? 'italic text-fg-muted' : 'text-fg',
-          )}
-        >
-          {regenerating ? 'Regenerating title…' : session.title}
-        </span>
-        <span
-          className={cn(
-            'shrink-0 text-xs group-hover/session:invisible',
-            isStreaming ? 'font-medium text-accent' : 'text-fg-subtle',
-            menuOpen && 'invisible',
-          )}
-        >
-          {isStreaming ? 'Running…' : relativeTime(session.lastMessageAt)}
-        </span>
-      </div>
-    </div>
-  );
-
   return (
     <div
       className={cn(
@@ -183,8 +114,8 @@ export function SessionRow({
         active && 'border-b-transparent',
       )}
       data-active={active ? '' : undefined}
-      onContextMenu={(e) => {
-        e.preventDefault();
+      onContextMenu={(event) => {
+        event.preventDefault();
         setMenuOpen(true);
       }}
     >
@@ -201,19 +132,19 @@ export function SessionRow({
           <input
             autoFocus
             value={renameValue}
-            onChange={(e) => setRenameValue(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
+            onChange={(event) => setRenameValue(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
                 void commitRename();
               }
-              if (e.key === 'Escape') {
-                e.preventDefault();
-                cancelRename();
+              if (event.key === 'Escape') {
+                event.preventDefault();
+                setRenaming(false);
               }
             }}
             onBlur={() => void commitRename()}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
             className="flex-1 min-w-0 rounded border border-accent bg-elevated px-1.5 py-0.5 text-[0.95rem] text-fg outline-none"
           />
         </div>
@@ -246,7 +177,27 @@ export function SessionRow({
             {selectionIcon}
           </button>
           <button type="button" onClick={onClick} className="min-w-0 flex-1 text-left">
-            {sessionDetails}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span
+                  className={cn(
+                    'flex-1 truncate text-[0.95rem]',
+                    regenerating ? 'italic text-fg-muted' : 'text-fg',
+                  )}
+                >
+                  {regenerating ? 'Regenerating title…' : session.title}
+                </span>
+                <span
+                  className={cn(
+                    'shrink-0 text-xs group-hover/session:invisible',
+                    isStreaming ? 'font-medium text-accent' : 'text-fg-subtle',
+                    menuOpen && 'invisible',
+                  )}
+                >
+                  {isStreaming ? 'Running…' : relativeTime(session.lastMessageAt)}
+                </span>
+              </div>
+            </div>
           </button>
         </div>
       )}
@@ -258,20 +209,22 @@ export function SessionRow({
           menuOpen && 'opacity-100',
           renaming && 'opacity-0! pointer-events-none',
         )}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
       >
-        <Menu
+        <SessionRowActions
+          session={session}
+          projects={projects}
           open={menuOpen}
+          regenerating={regenerating}
           onOpenChange={setMenuOpen}
-          trigger={
-            <IconButton
-              icon={MoreHorizontal}
-              label="More"
-              size="sm"
-              className="bg-elevated/80 hover:bg-elevated-2"
-            />
+          onRename={handleRename}
+          onRegenerateTitle={() => void handleRegenerateTitle()}
+          onArchiveToggle={() =>
+            void updateSessionMeta(session.id, { archived: !session.archived })
           }
-          items={items}
+          onReveal={() => void window.api.sessions.revealInFolder(session.id)}
+          onMoveTo={(projectId) => void setSessionProject(session.id, projectId)}
+          onDelete={() => void handleDelete()}
         />
       </div>
     </div>

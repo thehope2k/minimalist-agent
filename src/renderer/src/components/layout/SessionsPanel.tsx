@@ -1,17 +1,13 @@
 import { useState } from 'react';
-import { Archive, ArchiveRestore, Plus, Search, Trash2, X } from 'lucide-react';
 import { useSessions } from '@/hooks/useSessions';
 import { useProjects } from '@/hooks/useProjects';
 import { deleteSession, updateSessionMeta } from '@/lib/sessions';
-import { Button, IconButton, Input } from '../ui';
-import { cn } from '@/lib/utils';
 import { useHasNewSessionDraft } from '@/hooks/useHasNewSessionDraft';
 import type { ProjectFilter, View } from './TopBar';
-import { projectFilterLabel } from './top-bar/project-filter';
-import { ProjectSwitcher } from './top-bar/ProjectSwitcher';
+import { NewSessionRow } from './sessions-panel/NewSessionRow';
 import { SessionRow } from './sessions-panel/SessionRow';
+import { SessionsPanelHeader } from './sessions-panel/SessionsPanelHeader';
 import { groupByDate } from './sessions-panel/utils';
-import { Circle } from 'lucide-react';
 
 type Props = {
   view: View;
@@ -50,64 +46,17 @@ export function SessionsPanel({
   const [query, setQuery] = useState('');
   const trimmedQuery = query.trim().toLowerCase();
 
-  const heading = view === 'archived' ? 'Archived' : projectFilterLabel(projectFilter, projects);
-
-  const showProjectDot = view !== 'archived' && projectFilter === 'all';
-  const headerTitle =
-    view === 'all' ? (
-      <ProjectSwitcher
-        value={projectFilter}
-        onChange={onProjectFilterChange}
-        onManage={onManageProjects}
-      />
-    ) : (
-      <h2 className="flex items-center gap-2 text-[15px] font-semibold text-fg">
-        {view === 'archived' && <Archive className="h-4 w-4 text-fg-muted" strokeWidth={1.75} />}
-        {heading}
-      </h2>
-    );
-
-  if (sessions === null) {
-    return (
-      <section className="flex h-full w-full flex-col bg-panel">
-        <header className="flex h-10 shrink-0 items-center border-b border-border px-3">
-          {headerTitle}
-        </header>
-        <div className="px-3 py-6 text-center text-xs text-fg-subtle">Loading…</div>
-      </section>
-    );
-  }
-
-  const items = sessions
-    .filter((s) => (view === 'archived' ? s.archived : !s.archived))
-    .filter((s) => {
-      if (view === 'archived') return true;
-      if (projectFilter === 'all') return true;
-      if (projectFilter === 'inbox') return !s.projectId;
-      return s.projectId === projectFilter;
-    })
-    .filter((s) => {
-      if (!trimmedQuery) return true;
-      return (
-        s.title.toLowerCase().includes(trimmedQuery) ||
-        (s.workingDirectory?.toLowerCase().includes(trimmedQuery) ?? false)
-      );
-    });
-
-  /* ---- bulk selection helpers ---- */
   const clearSelection = () => setSelectedIds(new Set());
-  const openSearch = () => setSearchMode(true);
   const closeSearch = () => {
     setSearchMode(false);
     setQuery('');
   };
   const toggleSelect = (id: string) =>
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
+    setSelectedIds((previous) => {
+      const next = new Set(previous);
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
-
   const handleBulkDelete = async () => {
     const ids = [...selectedIds];
     if (!ids.length) return;
@@ -122,92 +71,70 @@ export function SessionsPanel({
     clearSelection();
     if (deletedActive) onActiveDeleted?.();
   };
-
-  const handleBulkArchive = async () => {
+  const updateSelectedArchiveState = async (archived: boolean) => {
     if (!selectedIds.size) return;
-    await Promise.all([...selectedIds].map((id) => updateSessionMeta(id, { archived: true })));
+    await Promise.all([...selectedIds].map((id) => updateSessionMeta(id, { archived })));
     clearSelection();
   };
 
-  const handleBulkRestore = async () => {
-    if (!selectedIds.size) return;
-    await Promise.all([...selectedIds].map((id) => updateSessionMeta(id, { archived: false })));
-    clearSelection();
-  };
+  const header = (
+    <SessionsPanelHeader
+      view={view}
+      projectFilter={projectFilter}
+      projects={projects}
+      searchMode={searchMode}
+      query={query}
+      selectedCount={selectedIds.size}
+      onProjectFilterChange={onProjectFilterChange}
+      onManageProjects={onManageProjects}
+      onOpenSearch={() => setSearchMode(true)}
+      onCloseSearch={closeSearch}
+      onQueryChange={setQuery}
+      onArchiveSelected={() => void updateSelectedArchiveState(true)}
+      onRestoreSelected={() => void updateSelectedArchiveState(false)}
+      onDeleteSelected={() => void handleBulkDelete()}
+      onClearSelection={clearSelection}
+      onNewSession={onNewSession}
+    />
+  );
+
+  if (sessions === null) {
+    return (
+      <section className="flex h-full w-full flex-col bg-panel">
+        {header}
+        <div className="px-3 py-6 text-center text-xs text-fg-subtle">Loading…</div>
+      </section>
+    );
+  }
+
+  const items = sessions
+    .filter((session) => (view === 'archived' ? session.archived : !session.archived))
+    .filter((session) => {
+      if (view === 'archived' || projectFilter === 'all') return true;
+      if (projectFilter === 'inbox') return !session.projectId;
+      return session.projectId === projectFilter;
+    })
+    .filter((session) => {
+      if (!trimmedQuery) return true;
+      return (
+        session.title.toLowerCase().includes(trimmedQuery) ||
+        (session.workingDirectory?.toLowerCase().includes(trimmedQuery) ?? false)
+      );
+    });
+  const showProjectDot = view !== 'archived' && projectFilter === 'all';
+  const showNewSessionRow =
+    view === 'all' && !trimmedQuery && (activeId == null || hasNewSessionDraft);
+  const isEmpty = items.length === 0 && !(view === 'all' && !trimmedQuery && activeId == null);
 
   return (
     <section className="relative flex h-full w-full flex-col bg-panel">
-      {/* Normal header */}
-      {!searchMode && (
-        <header className="flex h-10 shrink-0 items-center justify-between border-b border-border px-3">
-          {headerTitle}
-          <div className="flex items-center gap-1">
-            <IconButton icon={Search} label="Search sessions" size="sm" onClick={openSearch} />
-            {selectedIds.size > 0 && (
-              <>
-                <span className="px-1 text-xs text-fg-muted">{selectedIds.size} selected</span>
-                <IconButton
-                  icon={view === 'archived' ? ArchiveRestore : Archive}
-                  label={
-                    view === 'archived' ? 'Restore selected sessions' : 'Archive selected sessions'
-                  }
-                  size="sm"
-                  onClick={() =>
-                    void (view === 'archived' ? handleBulkRestore() : handleBulkArchive())
-                  }
-                />
-                <IconButton
-                  icon={Trash2}
-                  label="Delete selected sessions"
-                  size="sm"
-                  className="text-red-400 hover:text-red-300"
-                  onClick={() => void handleBulkDelete()}
-                />
-                <IconButton icon={X} label="Clear selection" size="sm" onClick={clearSelection} />
-              </>
-            )}
-            {view === 'all' && selectedIds.size === 0 && onNewSession && (
-              <Button
-                variant="outline"
-                size="sm"
-                icon={Plus}
-                onClick={onNewSession}
-                className="border-accent/40 bg-accent/10 text-accent hover:bg-accent/20 hover:text-accent"
-              >
-                New
-              </Button>
-            )}
-          </div>
-        </header>
-      )}
-
-      {/* Search-mode header */}
-      {searchMode && (
-        <header className="flex h-10 shrink-0 items-center gap-1 border-b border-border px-2">
-          <Search className="ml-1 h-4 w-4 shrink-0 text-fg-subtle" strokeWidth={1.75} />
-          <Input
-            autoFocus
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') {
-                e.preventDefault();
-                closeSearch();
-              }
-            }}
-            placeholder="Search by name…"
-            className="h-7 border-0 bg-transparent px-1"
-          />
-          <IconButton icon={X} label="Close search" size="sm" onClick={closeSearch} />
-        </header>
-      )}
-
+      {header}
       <div className="scroll-thin flex-1 overflow-y-auto px-2 pb-3">
-        {view === 'all' && !trimmedQuery && (activeId == null || hasNewSessionDraft) && (
+        {showNewSessionRow && (
           <NewSessionRow active={activeId == null} onSelect={onResumeNewSession ?? onNewSession} />
         )}
 
-        {items.length === 0 && !(view === 'all' && !trimmedQuery && activeId == null) ? (
+        {isEmpty ? (
           <div className="px-3 py-6 text-center text-xs text-fg-subtle">
             {trimmedQuery
               ? `No sessions match “${query.trim()}”`
@@ -215,63 +142,32 @@ export function SessionsPanel({
                 ? 'Nothing archived'
                 : 'No sessions yet'}
           </div>
-        ) : items.length > 0 ? (
-          <>
-            {groupByDate(items).map(([label, group]) => (
-              <div key={label}>
-                <div className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wider text-fg-subtle">
-                  {label}
-                </div>
-                <div className="flex flex-col gap-1">
-                  {group.map((s) => (
-                    <SessionRow
-                      key={s.id}
-                      session={s}
-                      active={s.id === activeId}
-                      projects={projects}
-                      showProjectDot={showProjectDot}
-                      isStreaming={!!streamingSessionIds?.has(s.id)}
-                      selected={selectedIds.has(s.id)}
-                      onClick={() => onSelect(s.id)}
-                      onAfterDelete={() => onActiveDeleted?.()}
-                      onToggleSelect={() => toggleSelect(s.id)}
-                    />
-                  ))}
-                </div>
+        ) : (
+          groupByDate(items).map(([label, group]) => (
+            <div key={label}>
+              <div className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wider text-fg-subtle">
+                {label}
               </div>
-            ))}
-          </>
-        ) : null}
+              <div className="flex flex-col gap-1">
+                {group.map((session) => (
+                  <SessionRow
+                    key={session.id}
+                    session={session}
+                    active={session.id === activeId}
+                    projects={projects}
+                    showProjectDot={showProjectDot}
+                    isStreaming={!!streamingSessionIds?.has(session.id)}
+                    selected={selectedIds.has(session.id)}
+                    onClick={() => onSelect(session.id)}
+                    onAfterDelete={() => onActiveDeleted?.()}
+                    onToggleSelect={() => toggleSelect(session.id)}
+                  />
+                ))}
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </section>
-  );
-}
-
-function NewSessionRow({ active, onSelect }: { active: boolean; onSelect?: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={cn(
-        'relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors',
-        active ? 'bg-elevated' : 'hover:bg-elevated/60 text-fg-muted',
-      )}
-    >
-      {active && <span className="absolute inset-y-1.5 left-0 z-10 w-0.5 rounded-r-sm bg-accent" />}
-      <Circle
-        className={cn('h-4 w-4 shrink-0', active ? 'text-fg-subtle' : 'text-fg-subtle/50')}
-        strokeWidth={1.75}
-      />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span
-            className={cn('flex-1 truncate text-[0.95rem]', active ? 'text-fg' : 'text-fg-muted')}
-          >
-            New session
-          </span>
-          {active && <span className="shrink-0 text-xs text-fg-subtle">now</span>}
-        </div>
-      </div>
-    </button>
   );
 }

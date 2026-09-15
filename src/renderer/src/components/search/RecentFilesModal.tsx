@@ -1,19 +1,3 @@
-// Recent Files palette — opened with Cmd+E.
-//
-// Shows the 30 most recently opened files, most recent first.
-// Typing narrows the list with a simple case-insensitive substring match
-// on both filename and full path.
-//
-// Keyboard:
-//   ↑/↓   — move highlight
-//   Enter — open highlighted result
-//   Esc   — close (parent listener)
-//   click — open clicked result
-//
-// The same mouseMovedRef guard used in SearchModal is applied here so
-// Enter always opens the keyboard-highlighted row, not whatever the
-// cursor happens to be hovering over.
-
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Clock, File as FileIcon, X } from 'lucide-react';

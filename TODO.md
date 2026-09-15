@@ -59,7 +59,7 @@ _(Nothing pending)_
 ## Tech Debt
 
 - [ ] **Split "god files"** — several modules far exceed the AGENTS.md ~250-line guideline
-      (13 `.ts` files >400 lines; 9 `.tsx` components >250; ~70.5K lines total across `src/`).
+      (12 `.ts` files >400 lines; 6 `.tsx` components >250; ~70.6K lines total across `src/`).
       Sizes refreshed Sep 15, 2026:
   - `src/main/pi-server/index.ts` — 1,444 lines. Orchestrates `handleInit`/
     `handlePrompt`/`handleManualCompact`/`dispatch`/the stdin entrypoint, all sharing
@@ -71,8 +71,8 @@ _(Nothing pending)_
   - `src/preload/index.ts` — 1,029 lines
   - `src/main/agent-runtime/pi/agent.ts` — 728 lines
   - Largest `.tsx`: `src/renderer/src/components/chat/MessageInput.tsx` (400),
-    `src/renderer/src/components/layout/sessions-panel/SessionRow.tsx` (279),
-    `src/renderer/src/components/layout/SessionsPanel.tsx` (277)
+    `src/renderer/src/components/context/ContextPanelSections.tsx` (274),
+    `src/renderer/src/components/settings/projects/ProjectEditDialog.tsx` (273),
 
 - [ ] **Provider quota fetchers have no shared type** — `src/main/chatgpt/quota.ts` and
       `src/main/copilot/quota.ts` are independently hand-rolled (justified — genuinely different
