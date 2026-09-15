@@ -41,7 +41,7 @@ _(Nothing pending)_
 ## Tech Debt
 
 - [ ] **Split "god files"** — several modules exceed the AGENTS.md ~250-line guideline.
-      Full inventory refreshed Sep 15, 2026 (7 `.ts` files >400 lines; 4 `.tsx` components >250;
+      Full inventory refreshed Sep 15, 2026 (6 `.ts` files >400 lines; 4 `.tsx` components >250;
       ~70.4K lines total across `src`):
   - `src/main/pi-server/index.ts` — 1,444 lines. Orchestrates `handleInit`/
     `handlePrompt`/`handleManualCompact`/`dispatch`/the stdin entrypoint, all sharing
@@ -51,7 +51,6 @@ _(Nothing pending)_
   - `src/shared/electron-api.ts` — 1,311 lines. Authoritative `window.api` contract shared by the
     renderer declaration and six preload-domain factories; this prevents contract drift. Split its
     type definitions by domain only when the shared contract becomes difficult to navigate.
-  - `src/main/agent-runtime/pi/agent.ts` — 728 lines
   - `src/main/agent-runtime/planning/manager.ts` — 552 lines
   - `src/main/agent-runtime/pi/worktree-manager.ts` — 556 lines
   - `src/main/browser/browser-cdp.ts` — 450 lines
