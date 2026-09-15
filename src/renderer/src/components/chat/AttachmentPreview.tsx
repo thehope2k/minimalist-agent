@@ -43,7 +43,9 @@ export function AttachmentPreview({
           />
         )
       ))}
-      {Array.from({ length: loadingCount }, (_, index) => <LoadingChip key={`loading-${index}`} />)}
+      {Array.from({ length: loadingCount }, (_, index) => (
+        <LoadingChip key={`loading-${index}`} />
+      ))}
     </div>
   );
 }

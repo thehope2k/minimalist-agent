@@ -74,9 +74,7 @@ tracks what's *left to do*, not what's done. Add a one-line note only if it'll s
   - `src/main/agent-runtime/pi/agent.ts` — 724 lines
   - Largest `.tsx`: `src/renderer/src/components/chat/MessageInput.tsx` (419),
     `src/renderer/src/components/pet/DesktopPet.tsx` (319),
-    `src/renderer/src/App.tsx` (292),
-    `src/renderer/src/components/chat/AttachmentPreview.tsx` (286),
-    `src/renderer/src/components/settings/connection-flow/OpenAICompatibleFlow.tsx` (284)
+    `src/renderer/src/App.tsx` (292)
 
 - [ ] **Provider quota fetchers have no shared type** — `src/main/chatgpt/quota.ts` and
   `src/main/copilot/quota.ts` are independently hand-rolled (justified — genuinely different

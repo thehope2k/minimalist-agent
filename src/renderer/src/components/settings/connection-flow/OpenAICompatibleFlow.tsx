@@ -1,209 +1,63 @@
-import { useMemo, useState } from 'react';
 import { CheckCircle2, ExternalLink } from 'lucide-react';
-import { generateSlug, saveConnection } from '@/lib/connections';
-import type { ConnectionMeta, Credential } from '@/lib/electron';
-import type { ModelDef } from '@/lib/models';
-import {
-  CUSTOM_PRESET_ID,
-  OPENAI_COMPATIBLE_PRESETS,
-  getPreset,
-} from '@/lib/openai-compatible-presets';
 import { Button, Field, Input, PasswordInput, Select, Textarea } from '@/components/ui';
+import { OPENAI_COMPATIBLE_PRESETS } from '@/lib/openai-compatible-presets';
 import { Actions, ErrorBox, FormShell } from './shared';
 import type { FlowProps } from './types';
+import { useOpenAICompatibleForm } from './openai-compatible/useOpenAICompatibleForm';
 
-/** Build a ModelDef for an id we have no rich metadata for (custom / discovered). */
-function minimalModel(id: string, source = 'Discovered'): ModelDef {
-  return {
-    id,
-    name: id,
-    shortName: id.split('/').pop() ?? id,
-    description: `${source} · OpenAI-compatible`,
-    contextWindow: 128_000,
-    supportsToolCalls: true,
-    supportsStreaming: true,
-    maxOutputTokens: 8_192,
-  };
-}
-
-/** Parse a newline/comma-separated list of model ids into ModelDefs. */
-function parseCustomModels(raw: string): ModelDef[] {
-  return raw
-    .split(/[\n,]+/)
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .map((id) => minimalModel(id, 'Custom'));
-}
-
-export function OpenAICompatibleFlow({ onBack, onClose, onSaved, editingMeta }: FlowProps) {
-  const editing = !!editingMeta;
-
-  const [presetId, setPresetId] = useState(
-    editingMeta?.presetId ?? OPENAI_COMPATIBLE_PRESETS[0].id,
-  );
-  const preset = getPreset(presetId);
-  const isCustom = presetId === CUSTOM_PRESET_ID;
-
-  const [name, setName] = useState(editingMeta?.name ?? preset?.name ?? 'OpenAI-compatible');
-  const [baseUrl, setBaseUrl] = useState(editingMeta?.baseUrl ?? preset?.baseUrl ?? '');
-  const [apiKey, setApiKey] = useState('');
-  const [customModels, setCustomModels] = useState(
-    editing && editingMeta?.presetId === CUSTOM_PRESET_ID
-      ? editingMeta.models.map((m) => m.id).join('\n')
-      : '',
-  );
-
-  // Live ids discovered from the provider's /v1/models endpoint, merged onto
-  // preset metadata (preset models keep rich fields; extras get safe defaults).
-  const [fetchedIds, setFetchedIds] = useState<string[]>([]);
-  const [fetching, setFetching] = useState(false);
-  const [fetchNote, setFetchNote] = useState<string | null>(null);
-
-  // Models offered for the "default model" picker.
-  const models: ModelDef[] = useMemo(() => {
-    if (editing) return editingMeta!.models;
-    const base = isCustom ? parseCustomModels(customModels) : (preset?.models ?? []);
-    if (fetchedIds.length === 0) return base;
-    const known = new Set(base.map((m) => m.id));
-    return [...base, ...fetchedIds.filter((id) => !known.has(id)).map((id) => minimalModel(id))];
-  }, [editing, editingMeta, isCustom, customModels, preset, fetchedIds]);
-
-  const [model, setModel] = useState(editingMeta?.defaultModel ?? '');
-  const effectiveModel = model || models[0]?.id || '';
-
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [tested, setTested] = useState(false);
-
-  // Switching preset: refresh name/baseUrl/model so the form follows the choice.
-  const onPickPreset = (id: string) => {
-    setPresetId(id);
-    setTested(false);
-    setError(null);
-    setFetchedIds([]);
-    setFetchNote(null);
-    const p = getPreset(id);
-    if (p && id !== CUSTOM_PRESET_ID) {
-      setName(p.name);
-      setBaseUrl(p.baseUrl);
-      setModel(p.models[0]?.id ?? '');
-    } else {
-      setBaseUrl('');
-      setModel('');
-    }
-  };
-
-  const fetchModels = async () => {
-    setFetchNote(null);
-    const url = baseUrl.trim().replace(/\/+$/, '');
-    if (!/^https?:\/\//.test(url)) {
-      setFetchNote('Enter a valid base URL first.');
-      return;
-    }
-    setFetching(true);
-    try {
-      const res = await window.api.connections.listRemoteModels({
-        baseUrl: url,
-        apiKey: apiKey.trim() || undefined,
-      });
-      if ('error' in res) {
-        setFetchNote(res.error);
-        return;
-      }
-      setFetchedIds(res.ids);
-      const known = new Set((isCustom ? [] : preset?.models ?? []).map((m) => m.id));
-      const added = res.ids.filter((id) => !known.has(id)).length;
-      setFetchNote(
-        `Found ${res.ids.length} model${res.ids.length === 1 ? '' : 's'}` +
-          (added ? ` (+${added} new)` : ''),
-      );
-    } finally {
-      setFetching(false);
-    }
-  };
-
-  const submit = async () => {
-    setError(null);
-    if (!name.trim()) return setError('Name is required.');
-    const url = baseUrl.trim().replace(/\/+$/, '');
-    if (!/^https?:\/\//.test(url)) return setError('Base URL must start with http(s)://');
-    if (models.length === 0) return setError('Add at least one model id.');
-    if (!effectiveModel) return setError('Select a default model.');
-    if (!apiKey.trim()) return setError('API key is required.');
-
-    setSaving(true);
-    try {
-      const meta: ConnectionMeta = editing
-        ? { ...editingMeta!, name: name.trim(), defaultModel: effectiveModel }
-        : {
-            slug: generateSlug(name),
-            name: name.trim(),
-            providerType: 'openai-compatible',
-            baseUrl: url,
-            presetId,
-            defaultModel: effectiveModel,
-            models,
-            createdAt: Date.now(),
-          };
-      const credential: Credential = {
-        type: 'api_key',
-        apiKey: apiKey.trim(),
-      };
-      await saveConnection(meta, credential);
-
-      // Validate the key with a real round-trip (main process, no CORS).
-      const result = await window.api.connections.test(meta.slug);
-      if (!result.ok) {
-        setError(result.error.message ?? 'Connection test failed. Check the API key and base URL.');
-        setSaving(false);
-        return;
-      }
-      setTested(true);
-      onSaved(meta);
-      onClose();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to save connection.');
-      setSaving(false);
-    }
-  };
+export function OpenAICompatibleFlow(props: FlowProps) {
+  const form = useOpenAICompatibleForm(props);
 
   return (
-    <FormShell title={editing ? 'Update API key' : 'OpenAI-compatible provider'} onBack={onBack}>
-      {!editing && (
+    <FormShell
+      title={form.editing ? 'Update API key' : 'OpenAI-compatible provider'}
+      onBack={props.onBack}
+    >
+      {!form.editing && (
         <Field label="Provider">
           <Select
-            value={presetId}
-            onChange={onPickPreset}
-            options={OPENAI_COMPATIBLE_PRESETS.map((p) => ({ value: p.id, label: p.name }))}
+            value={form.presetId}
+            onChange={form.pickPreset}
+            options={OPENAI_COMPATIBLE_PRESETS.map((preset) => ({
+              value: preset.id,
+              label: preset.name,
+            }))}
           />
         </Field>
       )}
 
-      {preset && !isCustom && !editing && (
-        <p className="text-xs text-fg-subtle">{preset.blurb}</p>
+      {form.preset && !form.isCustom && !form.editing && (
+        <p className="text-xs text-fg-subtle">{form.preset.blurb}</p>
       )}
 
       <Field label="Name">
-        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="StepFun" />
+        <Input
+          value={form.name}
+          onChange={(event) => form.setName(event.target.value)}
+          placeholder="StepFun"
+        />
       </Field>
 
-      {(isCustom || editing) && (
-        <Field label="Base URL" hint="OpenAI-compatible endpoint, including the version path (e.g. /v1).">
+      {(form.isCustom || form.editing) && (
+        <Field
+          label="Base URL"
+          hint="OpenAI-compatible endpoint, including the version path (e.g. /v1)."
+        >
           <Input
-            value={baseUrl}
-            onChange={(e) => setBaseUrl(e.target.value)}
+            value={form.baseUrl}
+            onChange={(event) => form.setBaseUrl(event.target.value)}
             placeholder="https://api.stepfun.ai/v1"
             mono
-            disabled={editing}
+            disabled={form.editing}
           />
         </Field>
       )}
 
-      {isCustom && !editing && (
+      {form.isCustom && !form.editing && (
         <Field label="Model ids" hint="One per line. These are passed verbatim to the API.">
           <Textarea
-            value={customModels}
-            onChange={(e) => setCustomModels(e.target.value)}
+            value={form.customModels}
+            onChange={(event) => form.setCustomModels(event.target.value)}
             placeholder={'step-3.7-flash\nstep-3.5-flash'}
             rows={3}
             mono
@@ -213,22 +67,19 @@ export function OpenAICompatibleFlow({ onBack, onClose, onSaved, editingMeta }: 
 
       <Field
         label="API key"
-        hint={preset?.keyHint ?? 'Stored encrypted via the OS keychain.'}
+        hint={form.preset?.keyHint ?? 'Stored encrypted via the OS keychain.'}
       >
         <PasswordInput
-          value={apiKey}
-          onChange={(e) => {
-            setApiKey(e.target.value);
-            setTested(false);
-          }}
+          value={form.apiKey}
+          onChange={(event) => form.setApiKey(event.target.value)}
           autoComplete="off"
-          placeholder={editing ? 'Enter a new key to replace the stored one' : 'Paste your API key'}
+          placeholder={form.editing ? 'Enter a new key to replace the stored one' : 'Paste your API key'}
         />
       </Field>
 
-      {preset?.keyUrl && (
+      {form.preset?.keyUrl && (
         <a
-          href={preset.keyUrl}
+          href={form.preset.keyUrl}
           target="_blank"
           rel="noreferrer"
           className="inline-flex items-center gap-1 text-xs text-accent hover:underline"
@@ -237,46 +88,46 @@ export function OpenAICompatibleFlow({ onBack, onClose, onSaved, editingMeta }: 
         </a>
       )}
 
-      {!editing && (
+      {!form.editing && (
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            onClick={fetchModels}
-            loading={fetching}
-            disabled={!baseUrl.trim()}
+            onClick={form.fetchModels}
+            loading={form.fetching}
+            disabled={!form.baseUrl.trim()}
           >
             Fetch models from API
           </Button>
-          {fetchNote && <span className="text-xs text-fg-subtle">{fetchNote}</span>}
+          {form.fetchNote && <span className="text-xs text-fg-subtle">{form.fetchNote}</span>}
         </div>
       )}
 
-      {models.length > 0 && (
+      {form.models.length > 0 && (
         <Field label="Default model">
           <Select
-            value={effectiveModel}
-            onChange={setModel}
-            options={models.map((m) => ({
-              value: m.id,
-              label: m.description ? `${m.name} — ${m.description}` : m.name,
+            value={form.effectiveModel}
+            onChange={form.setModel}
+            options={form.models.map((model) => ({
+              value: model.id,
+              label: model.description ? `${model.name} — ${model.description}` : model.name,
             }))}
           />
         </Field>
       )}
 
-      {error && <ErrorBox>{error}</ErrorBox>}
-      {tested && (
+      {form.error && <ErrorBox>{form.error}</ErrorBox>}
+      {form.tested && (
         <p className="inline-flex items-center gap-1.5 text-xs text-green-400">
           <CheckCircle2 className="h-3.5 w-3.5" /> Connection verified.
         </p>
       )}
 
       <Actions>
-        <Button variant="ghost" onClick={onClose} disabled={saving}>
+        <Button variant="ghost" onClick={props.onClose} disabled={form.saving}>
           Cancel
         </Button>
-        <Button variant="primary" onClick={submit} loading={saving}>
-          {editing ? 'Update key' : 'Save & verify'}
+        <Button variant="primary" onClick={form.submit} loading={form.saving}>
+          {form.editing ? 'Update key' : 'Save & verify'}
         </Button>
       </Actions>
     </FormShell>
