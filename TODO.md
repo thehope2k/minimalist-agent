@@ -59,7 +59,7 @@ _(Nothing pending)_
 ## Tech Debt
 
 - [ ] **Split "god files"** — several modules exceed the AGENTS.md ~250-line guideline.
-      Full inventory refreshed Sep 15, 2026 (12 `.ts` files >400 lines; 4 `.tsx` components >250;
+      Full inventory refreshed Sep 15, 2026 (9 `.ts` files >400 lines; 4 `.tsx` components >250;
       ~70.4K lines total across `src/`):
   - `src/main/pi-server/index.ts` — 1,444 lines. Orchestrates `handleInit`/
     `handlePrompt`/`handleManualCompact`/`dispatch`/the stdin entrypoint, all sharing
@@ -72,10 +72,7 @@ _(Nothing pending)_
   - `src/main/agent-runtime/pi/agent.ts` — 728 lines
   - `src/main/agent-runtime/planning/manager.ts` — 552 lines
   - `src/main/agent-runtime/pi/worktree-manager.ts` — 542 lines
-  - `src/main/pi-server/event-adapter.ts` — 526 lines
   - `src/shared/otel.ts` — 505 lines
-  - `src/main/agent-runtime/errors.ts` — 490 lines
-  - `src/main/agent-runtime/pi/protocol.ts` — 472 lines
   - `src/main/browser/browser-cdp.ts` — 450 lines
   - `src/main/pi-server/ssrf-guard.ts` — 422 lines
   - `src/main/pi-server/planning-tools.ts` — 411 lines

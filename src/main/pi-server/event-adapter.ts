@@ -6,53 +6,24 @@
 //   - Normalize tool argument shapes for the renderer's tool components
 
 import type { AgentSessionEvent } from '@earendil-works/pi-coding-agent';
-import type { AgentChatEvent, AgentUsage, SubagentProgressUpdate } from '../agent-runtime/events';
+import type { AgentChatEvent } from '../agent-runtime/events';
 import { parseError } from '../agent-runtime/errors';
 
-interface NormalizedUsage {
-  input?: number;
-  output?: number;
-  cacheRead?: number;
-  cacheWrite?: number;
-}
-
-function toAgentUsage(u: NormalizedUsage): AgentUsage {
-  return {
-    inputTokens: u.input ?? 0,
-    outputTokens: u.output ?? 0,
-    cacheReadInputTokens: u.cacheRead ?? 0,
-    cacheCreationInputTokens: u.cacheWrite ?? 0,
-  };
-}
-
-function hasAnyUsage(u: AgentUsage): boolean {
-  return !!(
-    u.inputTokens ||
-    u.outputTokens ||
-    u.cacheReadInputTokens ||
-    u.cacheCreationInputTokens
-  );
-}
-
-/**
- * Aggregate usage for one Pi run. `messages` is a fresh array allocated per
- * run()/continue() call in pi-agent-core's agent loop (never the whole session
- * history), so summing it here cannot double-count across turns.
- */
-function sumRunUsage(
-  messages: { role?: string; usage?: NormalizedUsage }[],
-): AgentUsage | undefined {
-  const total: Required<NormalizedUsage> = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
-  for (const m of messages) {
-    if (m.role !== 'assistant' || !m.usage) continue;
-    total.input += m.usage.input ?? 0;
-    total.output += m.usage.output ?? 0;
-    total.cacheRead += m.usage.cacheRead ?? 0;
-    total.cacheWrite += m.usage.cacheWrite ?? 0;
-  }
-  const usage = toAgentUsage(total);
-  return hasAnyUsage(usage) ? usage : undefined;
-}
+import { debug } from './event-adapter/debug';
+import {
+  isAssistantMessage,
+  looksLikeAssistantSnapshot,
+  parseSubagentUpdate,
+  pickAssistantText,
+  stringifyToolResult,
+} from './event-adapter/message-helpers';
+import { normalizeArgs } from './event-adapter/tool-arguments';
+import {
+  hasAnyUsage,
+  sumRunUsage,
+  toAgentUsage,
+  type NormalizedUsage,
+} from './event-adapter/usage';
 
 interface AdapterState {
   /** Text accumulated for the current message; flushed on message_end. */
@@ -77,56 +48,6 @@ function reset(): void {
 }
 
 /**
- * Normalize Pi tool argument shapes to the field names the UI expects.
- * This keeps runtime-specific shapes out of the renderer.
- *
- *   Pi `path`              ↔ UI `file_path`   (Read/Write/Edit)
- *   Pi `edits[].oldText`   ↔ UI `old_string`  (Edit, single entry)
- *   Pi `edits[].newText`   ↔ UI `new_string`  (Edit, single entry)
- *
- * Multi-entry `edits[]` arrays are left as-is; DiffPart.tsx handles them
- * natively via the array branch in parseDiffInput.
- */
-const FIELD_RENAME: Record<string, Record<string, string>> = {
-  read: { path: 'file_path' },
-  write: { path: 'file_path' },
-  edit: { path: 'file_path' },
-};
-
-function normalizeArgs(toolName: string, args: unknown): unknown {
-  if (!args || typeof args !== 'object') return args;
-  const rename = FIELD_RENAME[toolName.toLowerCase()];
-  // Apply top-level field renames (path → file_path).
-  const out: Record<string, unknown> = rename
-    ? (() => {
-        const o = { ...(args as Record<string, unknown>) };
-        for (const [from, to] of Object.entries(rename)) {
-          if (from in o && !(to in o)) {
-            o[to] = o[from];
-            delete o[from];
-          }
-        }
-        return o;
-      })()
-    : { ...(args as Record<string, unknown>) };
-
-  // Pi edit: edits[] with a single entry → flatten to old_string / new_string
-  // for renderer helpers that consume the flat format.
-  // Multi-entry arrays are kept; DiffPart handles them with its own branch.
-  if (toolName.toLowerCase() === 'edit' && Array.isArray(out.edits) && out.edits.length === 1) {
-    const e = out.edits[0] as { oldText?: unknown; newText?: unknown };
-    if (typeof e.oldText === 'string' && typeof e.newText === 'string') {
-      out.old_string = e.oldText;
-      out.new_string = e.newText;
-      // Keep edits[] as well — DiffPart prefers the array branch, but
-      // tool-summary fallbacks may inspect the flat fields.
-    }
-  }
-
-  return out;
-}
-
-/**
  * Extract the streaming text delta from a Pi message_update event.
  * Pi sends the full updated AssistantMessage each time; we diff against
  * what we've already streamed.
@@ -137,130 +58,6 @@ function extractDelta(fullText: string): string {
   }
   // Out-of-band edit (rare) — emit the entire content as a fresh delta.
   return fullText;
-}
-
-function parseSubagentUpdate(update: unknown): SubagentProgressUpdate | null {
-  if (!update || typeof update !== 'object') return null;
-  const u = update as Partial<SubagentProgressUpdate> & { kind?: unknown };
-  if (u.kind !== 'subagent') return null;
-  if (typeof u.execId !== 'string' || typeof u.agentSlug !== 'string') return null;
-  return {
-    kind: 'subagent',
-    execId: u.execId,
-    agentSlug: u.agentSlug,
-    agentName: typeof u.agentName === 'string' ? u.agentName : undefined,
-    phase: u.phase,
-    detail: typeof u.detail === 'string' ? u.detail : undefined,
-    event: u.event,
-    at: typeof u.at === 'number' ? u.at : undefined,
-  };
-}
-
-function pickAssistantText(message: unknown): string {
-  // AgentMessage.content is an array of content blocks; collect text blocks.
-  const m = message as {
-    role?: string;
-    content?: Array<{ type?: string; text?: string }> | string;
-  };
-  if (!m?.content) return '';
-  if (typeof m.content === 'string') return m.content;
-  return m.content
-    .filter((b) => b?.type === 'text' && typeof b.text === 'string')
-    .map((b) => b.text!)
-    .join('');
-}
-
-function isAssistantMessage(message: unknown): boolean {
-  return (message as { role?: string } | null)?.role === 'assistant';
-}
-
-/**
- * Looser check used in the snapshot-diff fallback: accept anything that
- * *isn't* clearly a user message. Some Pi providers omit `role` on the
- * partial assistant message during early streaming; refusing those would
- * leave us with an empty bubble.
- */
-function looksLikeAssistantSnapshot(message: unknown): boolean {
-  const m = message as { role?: string } | null;
-  if (!m) return false;
-  return m.role !== 'user' && m.role !== 'tool';
-}
-
-function stringifyToolResult(result: unknown): string {
-  if (typeof result === 'string') return result;
-  if (result == null) return '';
-  if (typeof result === 'object') {
-    // Pi tool results often expose `output` or `text`. Fall back to JSON.
-    const r = result as { output?: unknown; text?: unknown };
-    if (typeof r.output === 'string') return r.output;
-    if (typeof r.text === 'string') return r.text;
-    try {
-      return JSON.stringify(result);
-    } catch {
-      /* */
-    }
-  }
-  return String(result);
-}
-
-/** Set PI_DEBUG=1 in the environment to dump every Pi event to stderr.
- *  Useful when adapter output is empty and we need to see what Pi actually sent. */
-const PI_DEBUG = process.env.PI_DEBUG === '1';
-
-function debug(event: AgentSessionEvent): void {
-  if (!PI_DEBUG) return;
-  try {
-    const t = (event as { type?: string }).type;
-    const sub = (event as { assistantMessageEvent?: { type?: string } }).assistantMessageEvent;
-    const msg = (
-      event as {
-        message?: {
-          role?: string;
-          content?: unknown;
-          stopReason?: string;
-          errorMessage?: string;
-          api?: string;
-          provider?: string;
-          model?: string;
-          usage?: unknown;
-        };
-      }
-    ).message;
-    const role = msg?.role;
-    const contentPreview =
-      typeof msg?.content === 'string'
-        ? msg.content.slice(0, 120)
-        : Array.isArray(msg?.content)
-          ? `[${msg.content.length} blocks: ${msg.content
-              .map((b: unknown) => (b as { type?: string }).type ?? '?')
-              .join(',')}]`
-          : '';
-    const extras: string[] = [];
-    if (msg?.stopReason) extras.push(`stop=${msg.stopReason}`);
-    if (msg?.errorMessage) extras.push(`err=${JSON.stringify(msg.errorMessage)}`);
-    if (msg?.api) extras.push(`api=${msg.api}`);
-    if (msg?.provider) extras.push(`provider=${msg.provider}`);
-    if (msg?.model) extras.push(`model=${msg.model}`);
-    process.stderr.write(
-      `[pi-event] ${t}` +
-        (sub ? ` sub=${sub.type}` : '') +
-        (role ? ` role=${role}` : '') +
-        (contentPreview ? ` content=${contentPreview}` : '') +
-        (extras.length ? ' ' + extras.join(' ') : '') +
-        '\n',
-    );
-    // For terminal events, also dump the full message payload — that's
-    // where Copilot-specific failure details usually hide.
-    if (t === 'message_end' || t === 'agent_end' || t === 'turn_end') {
-      try {
-        process.stderr.write(`[pi-event-detail] ${JSON.stringify(event).slice(0, 10000)}\n`);
-      } catch {
-        /* */
-      }
-    }
-  } catch {
-    /* never crash on debug */
-  }
 }
 
 export function adaptAgentEvent(event: AgentSessionEvent): AgentChatEvent[] {
