@@ -1,14 +1,3 @@
-// Right panel of the git diff modal: Monaco DiffEditor.
-// Lazy-loaded so the ~5 MB Monaco bundle doesn't block app startup.
-//
-// Hunk staging: each diff hunk gets a glyph margin icon (left side of
-// the modified editor — visually the "center" of the split view).
-// Clicking the glyph toggles that hunk in/out of the commit.
-// CSS classes git-hunk-checked / git-hunk-unchecked defined in globals.css.
-//
-// New / deleted files skip the DiffEditor entirely and render a single
-// read-only Editor with a status banner — there is nothing to diff.
-
 import { lazy, Suspense, useCallback, useEffect, useRef } from 'react';
 import type { DiffOnMount, OnMount } from '@monaco-editor/react';
 import type * as MonacoType from 'monaco-editor';
@@ -30,9 +19,7 @@ interface GitDiffViewProps {
   stagedHunks: Set<number> | undefined;
   onToggleHunk: (index: number) => void;
   onDiffComputed?: (changes: LineChange[]) => void;
-  /** Forces a clean Monaco remount when the file changes (prevents TextModel disposed race). */
   fileKey?: string;
-  /** Set to false to hide/disable the hunk-staging glyphs — used for read-only historical diffs. */
   hunksInteractive?: boolean;
 }
 
@@ -178,8 +165,6 @@ export function GitDiffView({
     );
   }
 
-  // New (A/?) or deleted (D) files have no meaningful diff — one side is
-  // always empty. Render a single read-only panel with a status banner.
   const isNewFile = diff.original === '' && diff.modified !== '';
   const isDeletedFile = diff.modified === '' && diff.original !== '';
 

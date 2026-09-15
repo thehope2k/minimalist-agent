@@ -26,6 +26,7 @@
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "test": "vitest run",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "generate-icons": "node scripts/generate-icons.mjs",
@@ -118,6 +119,7 @@
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
-    "vite": "^7.3.5"
+    "vite": "^7.3.5",
+    "vitest": "^5.0.1"
   }
 }
