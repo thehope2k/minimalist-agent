@@ -63,7 +63,6 @@ export interface MsgInit {
       description: string;
       model?: string;
       tools?: string[];
-      maxTurns?: number;
     };
     content: string; // system prompt
     path: string;

@@ -32,7 +32,6 @@ export interface AgentChatRequest {
   attachments?: StoredAttachment[];
   cwd?: string;
   resumeSessionId?: string;
-  maxTurns?: number;
   permissionMode?: PermissionMode;
   /** Effective thinking level for this turn. */
   thinkingLevel?: ThinkingLevel;

@@ -663,7 +663,6 @@ export interface AgentMetadata {
   description: string;
   model?: string;
   tools?: string[];
-  maxTurns?: number;
   permissionMode?: 'plan' | 'auto';
   effort?: 'low' | 'medium' | 'high';
   icon?: string;

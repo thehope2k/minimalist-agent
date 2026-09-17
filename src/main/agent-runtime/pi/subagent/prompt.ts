@@ -15,12 +15,6 @@ export function buildAgentSystemPrompt(agent: LoadedAgent): string {
     parts.push('');
   }
 
-  // Turn limits
-  const maxTurns = agent.metadata.maxTurns || 10;
-  parts.push(`You have a maximum of ${maxTurns} turns to complete the task.`);
-  parts.push('Be focused and efficient.');
-  parts.push('');
-
   // Custom instructions from AGENT.md
   parts.push(agent.content);
 

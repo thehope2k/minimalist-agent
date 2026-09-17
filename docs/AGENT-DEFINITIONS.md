@@ -46,7 +46,6 @@ name: 'Code Reviewer'
 description: 'Performs comprehensive code reviews analyzing bugs, security vulnerabilities, performance issues, maintainability, and best practices.'
 model: claude-haiku-4.5 # Optional: override session model
 tools: [Read, Grep, Find, Ls] # Optional: restrict to specific tools
-maxTurns: 25 # Optional: max turns (default: 10)
 ---
 
 # Code Review Agent
@@ -92,7 +91,6 @@ Return findings as a structured report:
 - **`tools`** — Array of allowed tool names (e.g., `[Read, Grep, Find, Ls]`)
   - Built-in tools: `Read`, `Write`, `Edit`, `Bash`, `Grep`, `Glob`, `Find`, `Ls`, `WebFetch`, `WebSearch`, `Agent`
   - If omitted, inherits all session tools
-- **`maxTurns`** — Maximum number of turns before agent stops (default: 10)
 - **`icon`** — Emoji (e.g., `🔍`) or URL
 
 ---

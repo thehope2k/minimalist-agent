@@ -8,8 +8,6 @@ export interface AgentMetadata {
   model?: string;
   /** Optional tool names to restrict this agent to (e.g., ["Read", "Grep", "Find"]). If omitted, uses all available tools. */
   tools?: string[];
-  /** Maximum turns this agent can take before returning (default: 10). */
-  maxTurns?: number;
   /** Optional icon — emoji or URL only. */
   icon?: string;
 }

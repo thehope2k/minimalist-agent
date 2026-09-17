@@ -22,7 +22,7 @@ import { defineTool, type ToolDefinition } from '@earendil-works/pi-coding-agent
 import { createLogger } from '../../../shared/sub-logger';
 import type { LoadedAgent } from '../../agents/types';
 import type { AgentToolContext, SpawnedAgentHandle } from './subagent/types';
-import { cleanupOrphanedWorktrees } from './subagent/worktree-stub';
+import { cleanupOrphanedWorktrees } from './worktree-manager';
 import {
   getActiveAgentCount,
   killHandle,
@@ -32,7 +32,7 @@ import {
 import { emitSubagentUpdate, spawnAgentSubprocess } from './subagent/spawn';
 import { initializeAgent, executeAgentTask } from './subagent/lifecycle';
 import { formatAgentResult } from './subagent/prompt';
-import { removeAgentWorktree } from './subagent/worktree-stub';
+import { removeAgentWorktree } from './worktree-manager';
 
 export { shutdownAllAgentSubprocesses } from './subagent/handle-registry';
 export type { AgentToolContext } from './subagent/types';
@@ -177,7 +177,7 @@ export function createAgentTool(
         });
 
         // Execute the task
-        await executeAgentTask(handle, task, agent);
+        await executeAgentTask(handle, task);
 
         // Clean up
         if (!handle.finished) {

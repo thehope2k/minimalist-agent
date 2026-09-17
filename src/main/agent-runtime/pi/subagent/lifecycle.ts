@@ -86,13 +86,8 @@ export async function initializeAgent(
   await handle.ready;
 }
 
-export async function executeAgentTask(
-  handle: SpawnedAgentHandle,
-  task: string,
-  agent: LoadedAgent,
-): Promise<void> {
-  const maxTurns = agent.metadata.maxTurns || 10;
-  const timeout = Math.min(maxTurns * 60 * 1000, MAX_AGENT_RUNTIME_MINUTES * 60 * 1000);
+export async function executeAgentTask(handle: SpawnedAgentHandle, task: string): Promise<void> {
+  const timeout = MAX_AGENT_RUNTIME_MINUTES * 60 * 1000;
 
   const promptMsg: MsgPrompt = {
     type: 'prompt',

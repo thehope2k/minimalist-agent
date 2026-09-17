@@ -30,7 +30,6 @@ export const AgentMetadataSchema = z
     description: z.string().min(1, "Add a 'description' field explaining when to use this agent"),
     model: z.string().optional(),
     tools: z.array(z.string()).optional(),
-    maxTurns: z.number().int().min(1).optional(),
     icon: z.string().optional(),
   })
   .passthrough();
@@ -59,7 +58,6 @@ export function parseAgentFile(content: string): { metadata: AgentMetadata; body
         description: String(parsed.data.description),
         model: parsed.data.model ? String(parsed.data.model) : undefined,
         tools,
-        maxTurns: parsed.data.maxTurns ? Number(parsed.data.maxTurns) : undefined,
         icon,
       } as AgentMetadata,
       body: parsed.content,

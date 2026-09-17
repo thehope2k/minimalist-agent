@@ -177,7 +177,6 @@ Frontmatter fields reference:
 - \`description\` (required) — one-sentence summary used by the model to decide when to spawn this agent
 - \`model\` (optional) — full provider model ID only (e.g. claude-sonnet-4, gpt-4o); omit to inherit session model
 - \`tools\` (optional) — array from: Read Write Edit Bash Grep Find Ls WebFetch WebSearch Agent
-- \`maxTurns\` (optional) — number, default 10
 - \`icon\` (optional) — emoji or URL
 
 Read the file back to confirm it looks correct, then briefly summarize what you changed.

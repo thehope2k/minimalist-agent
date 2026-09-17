@@ -2,8 +2,8 @@ import type { LoadedAgent } from '@/lib/electron';
 
 export function ToolsAndLimitsSection({ agent }: { agent: LoadedAgent }) {
   const tools = agent.metadata.tools || [];
-  const { maxTurns, effort } = agent.metadata;
-  const hasLimits = maxTurns || effort;
+  const { effort } = agent.metadata;
+  const hasLimits = Boolean(effort);
 
   return (
     <section>
@@ -34,11 +34,6 @@ export function ToolsAndLimitsSection({ agent }: { agent: LoadedAgent }) {
             <div>
               <div className="mb-1.5 text-xs font-medium text-fg-subtle">Limits & Config</div>
               <div className="space-y-1 text-sm text-fg-muted">
-                {maxTurns && (
-                  <div>
-                    Max turns: <span className="text-fg">{maxTurns}</span>
-                  </div>
-                )}
                 {effort && (
                   <div>
                     Effort: <span className="text-fg">{effort}</span>

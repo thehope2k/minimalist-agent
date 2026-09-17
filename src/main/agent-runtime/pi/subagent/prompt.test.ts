@@ -8,7 +8,6 @@ const agent: LoadedAgent = {
     name: 'Reviewer',
     description: 'Reviews changes.',
     tools: ['Read', 'Grep'],
-    maxTurns: 3,
   },
   content: 'Return concise findings.',
   path: '/agents/reviewer',
@@ -16,8 +15,7 @@ const agent: LoadedAgent = {
 };
 
 describe('buildAgentSystemPrompt', () => {
-  it('includes the declared tool guidance and turn limit', () => {
+  it('includes the declared tool guidance', () => {
     expect(buildAgentSystemPrompt(agent)).toContain('You may ONLY use these tools: Read, Grep');
-    expect(buildAgentSystemPrompt(agent)).toContain('maximum of 3 turns');
   });
 });
