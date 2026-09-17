@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [2.2.1] — 2026-09-17
+
+Cross-platform release reliability improvements.
+
+### Fixed
+
+- Windows release builds now preserve LF line endings, keeping Prettier checks consistent across all build platforms.
+
+---
+
 ## [2.2.0] — 2026-09-17
 
 Agent workflow simplification, stronger transcript recovery, and improved archived-session organization.
