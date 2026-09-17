@@ -5,6 +5,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [2.2.0] — 2026-09-17
+
+Agent workflow simplification, stronger transcript recovery, and improved archived-session organization.
+
+### Changed
+
+**Subagents**
+
+- Subagents now run autonomously with the shared runtime timeout, simplifying agent definitions.
+
+### Fixed
+
+- Transcript forks now recover reliably when session metadata is incomplete or lacks a runtime session ID.
+- Archived sessions are now grouped by date.
+
+---
+
 ## [2.1.2] — 2026-09-13
 
 Commit-message options, project-label polish, and fixes across sessions, lists, help, and Mermaid rendering.
