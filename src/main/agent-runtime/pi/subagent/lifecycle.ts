@@ -16,7 +16,7 @@ import type { MsgInit, MsgPrompt } from '../protocol';
 import type { AgentToolContext, SpawnedAgentHandle } from './types';
 import { createAgentWorktree } from './worktree-stub';
 import { send } from './transport';
-import { buildAgentSystemPrompt, mapAgentPermissionMode } from './prompt';
+import { buildAgentSystemPrompt } from './prompt';
 import { killHandle, MAX_AGENT_RUNTIME_MINUTES } from './handle-registry';
 
 const log = createLogger('agent-tool');
@@ -78,7 +78,7 @@ export async function initializeAgent(
           customEndpoint: ctx.customEndpoint,
         }
       : {}),
-    permissionMode: mapAgentPermissionMode(agent.metadata.permissionMode || ctx.permissionMode),
+    permissionMode: 'auto',
     systemPrompt,
   };
 

@@ -10,8 +10,6 @@ export interface AgentMetadata {
   tools?: string[];
   /** Maximum turns this agent can take before returning (default: 10). */
   maxTurns?: number;
-  /** Permission mode for this agent: "plan" (no mutations) or "auto" (intelligent autonomy-based collaboration). */
-  permissionMode?: 'plan' | 'auto';
   /** Optional icon — emoji or URL only. */
   icon?: string;
 }

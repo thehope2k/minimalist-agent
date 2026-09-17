@@ -2,8 +2,8 @@ import type { LoadedAgent } from '@/lib/electron';
 
 export function ToolsAndLimitsSection({ agent }: { agent: LoadedAgent }) {
   const tools = agent.metadata.tools || [];
-  const { maxTurns, permissionMode, effort } = agent.metadata;
-  const hasLimits = maxTurns || permissionMode || effort;
+  const { maxTurns, effort } = agent.metadata;
+  const hasLimits = maxTurns || effort;
 
   return (
     <section>
@@ -37,11 +37,6 @@ export function ToolsAndLimitsSection({ agent }: { agent: LoadedAgent }) {
                 {maxTurns && (
                   <div>
                     Max turns: <span className="text-fg">{maxTurns}</span>
-                  </div>
-                )}
-                {permissionMode && (
-                  <div>
-                    Permission mode: <span className="text-fg">{permissionMode}</span>
                   </div>
                 )}
                 {effort && (

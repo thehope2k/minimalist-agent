@@ -197,7 +197,6 @@ function buildWrappedTools(
       reasoning?: boolean;
       thinkingFormat?: 'qwen';
     };
-    permissionMode: 'plan' | 'auto';
   },
 ): ToolDefinition<any, any>[] {
   const bashTool = createBashToolDefinition(cwd);
@@ -441,7 +440,6 @@ async function handleInit(msg: MsgInit): Promise<void> {
           customEndpoint: msg.customEndpoint,
         }
       : {}),
-    permissionMode: msg.permissionMode as 'plan' | 'auto',
   };
 
   // Connect MCP-backed extensions before building tools so their adapted

@@ -196,7 +196,6 @@ description: "One sentence — what this agent does. The model uses this to deci
 #        Short names like "haiku" or "sonnet" are NOT valid and will fail.
 tools: [Read, Grep, Find]   # optional — restrict from: Read Write Edit Bash Grep Find Ls WebFetch WebSearch Agent
 maxTurns: 10                # optional — default 10
-permissionMode: plan        # optional — "plan" (no mutations) or "auto" (intelligent autonomy)
 icon: "🔍"                  # optional — emoji or URL
 ---
 

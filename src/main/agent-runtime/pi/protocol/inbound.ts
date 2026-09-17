@@ -63,7 +63,6 @@ export interface MsgInit {
       description: string;
       model?: string;
       tools?: string[];
-      permissionMode?: 'plan' | 'auto';
       maxTurns?: number;
     };
     content: string; // system prompt

@@ -1,5 +1,5 @@
-// Pure helper functions: system-prompt construction, permission-mode
-// mapping, and result formatting. No subprocess/state dependencies.
+// Pure helper functions for system-prompt construction and result formatting.
+// No subprocess/state dependencies.
 import type { LoadedAgent } from '../../../agents/types';
 
 export function buildAgentSystemPrompt(agent: LoadedAgent): string {
@@ -25,10 +25,6 @@ export function buildAgentSystemPrompt(agent: LoadedAgent): string {
   parts.push(agent.content);
 
   return parts.join('\n');
-}
-
-export function mapAgentPermissionMode(mode: 'plan' | 'auto' | undefined): 'plan' | 'auto' {
-  return mode || 'auto';
 }
 
 export function formatAgentResult(

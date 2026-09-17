@@ -31,7 +31,6 @@ export const AgentMetadataSchema = z
     model: z.string().optional(),
     tools: z.array(z.string()).optional(),
     maxTurns: z.number().int().min(1).optional(),
-    permissionMode: z.enum(['plan', 'auto']).optional(),
     icon: z.string().optional(),
   })
   .passthrough();
@@ -61,7 +60,6 @@ export function parseAgentFile(content: string): { metadata: AgentMetadata; body
         model: parsed.data.model ? String(parsed.data.model) : undefined,
         tools,
         maxTurns: parsed.data.maxTurns ? Number(parsed.data.maxTurns) : undefined,
-        permissionMode: parsed.data.permissionMode ? String(parsed.data.permissionMode) : undefined,
         icon,
       } as AgentMetadata,
       body: parsed.content,

@@ -47,7 +47,6 @@ description: 'Performs comprehensive code reviews analyzing bugs, security vulne
 model: claude-haiku-4.5 # Optional: override session model
 tools: [Read, Grep, Find, Ls] # Optional: restrict to specific tools
 maxTurns: 25 # Optional: max turns (default: 10)
-permissionMode: plan # Optional: 'plan' or 'auto'
 ---
 
 # Code Review Agent
@@ -94,8 +93,6 @@ Return findings as a structured report:
   - Built-in tools: `Read`, `Write`, `Edit`, `Bash`, `Grep`, `Glob`, `Find`, `Ls`, `WebFetch`, `WebSearch`, `Agent`
   - If omitted, inherits all session tools
 - **`maxTurns`** — Maximum number of turns before agent stops (default: 10)
-- **`permissionMode`** — `plan` (read-only) or `auto` (execution allowed)
-  - If omitted, inherits session permission mode
 - **`icon`** — Emoji (e.g., `🔍`) or URL
 
 ---

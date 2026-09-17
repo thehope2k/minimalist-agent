@@ -38,8 +38,6 @@ export interface AgentToolContext {
     reasoning?: boolean;
     thinkingFormat?: 'qwen';
   };
-  /** Permission mode inherited from parent session. */
-  permissionMode: 'plan' | 'auto';
   /** Parent session's model (for resolving session-default). */
   sessionModel: string;
 }
