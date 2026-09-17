@@ -3,7 +3,8 @@ import { type ParsedDiff, parseDiffInput, countDiffLines, EDIT_SEP } from './dif
 
 export interface FileSummary {
   filePath: string;
-  /** 'write' if the last op was a Write; 'edit' otherwise. */
+  /** 'write' if any op in the group was a Write (it defines the baseline
+   *  content, superseding earlier ops); 'edit' only when every op was an edit. */
   lastOpKind: 'edit' | 'write';
   /** Net merged diff (old = pre-turn state, new = post-turn state). */
   merged: ParsedDiff;
@@ -42,10 +43,10 @@ export function collectFileSummaries(parts: MessagePart[]): FileSummary[] {
 
   return order.map((fp) => {
     const ops = groups.get(fp)!;
-    const merged = mergeOps(ops);
+    const { merged, kind } = mergeOps(ops);
     return {
       filePath: fp,
-      lastOpKind: ops[ops.length - 1].opKind,
+      lastOpKind: kind,
       merged,
       stats: countDiffLines(merged.oldValue, merged.newValue),
       opCount: ops.length,
@@ -53,25 +54,54 @@ export function collectFileSummaries(parts: MessagePart[]): FileSummary[] {
   });
 }
 
-function mergeOps(ops: Array<{ parsed: ParsedDiff; opKind: 'edit' | 'write' }>): ParsedDiff {
+function mergeOps(ops: Array<{ parsed: ParsedDiff; opKind: 'edit' | 'write' }>): {
+  merged: ParsedDiff;
+  kind: 'edit' | 'write';
+} {
   const { filePath } = ops[0].parsed;
 
-  // If the last op is a Write it defines the authoritative final state.
-  // oldValue is '' because we don't have the pre-turn snapshot — the diff
-  // reads as "this is what the file looks like after the turn".
-  const lastOp = ops[ops.length - 1];
-  if (lastOp.opKind === 'write') {
-    return { filePath, oldValue: '', newValue: lastOp.parsed.newValue };
+  // A Write anywhere in the group rewrites the whole file, so everything
+  // before it is moot — including any earlier Edits. Find the *last* Write
+  // (there could be several) and treat it as the new baseline.
+  const lastWriteIdx = ops.map((o) => o.opKind).lastIndexOf('write');
+
+  if (lastWriteIdx === -1) {
+    // All edits: fast-path for the common single-edit case.
+    if (ops.length === 1) return { merged: ops[0].parsed, kind: 'edit' };
+
+    // Multiple edit patches: join with the separator so ReactDiffViewer shows
+    // each hunk in context — same separator the edits[] parser already uses.
+    return {
+      merged: {
+        filePath,
+        oldValue: ops.map((o) => o.parsed.oldValue).join(EDIT_SEP),
+        newValue: ops.map((o) => o.parsed.newValue).join(EDIT_SEP),
+      },
+      kind: 'edit',
+    };
   }
 
-  // All edits: fast-path for the common single-edit case.
-  if (ops.length === 1) return ops[0].parsed;
+  // Joining trailing edits as separate hunks (like the all-edits path above)
+  // would show the Write's full content *and* the edit's snippet as two
+  // unrelated hunks, double-counting the change — so replay them instead.
+  let content = ops[lastWriteIdx].parsed.newValue;
+  for (let i = lastWriteIdx + 1; i < ops.length; i++) {
+    content = applyEditPairs(content, ops[i].parsed);
+  }
 
-  // Multiple edit patches: join with the separator so ReactDiffViewer shows
-  // each hunk in context — same separator the edits[] parser already uses.
-  return {
-    filePath,
-    oldValue: ops.map((o) => o.parsed.oldValue).join(EDIT_SEP),
-    newValue: ops.map((o) => o.parsed.newValue).join(EDIT_SEP),
-  };
+  return { merged: { filePath, oldValue: '', newValue: content }, kind: 'write' };
+}
+
+function applyEditPairs(content: string, parsed: ParsedDiff): string {
+  const oldParts = parsed.oldValue.split(EDIT_SEP);
+  const newParts = parsed.newValue.split(EDIT_SEP);
+  let result = content;
+  for (let i = 0; i < oldParts.length; i++) {
+    const oldText = oldParts[i];
+    const newText = newParts[i] ?? '';
+    // Skip rather than corrupt if an earlier replay already touched this text.
+    if (!oldText || !result.includes(oldText)) continue;
+    result = result.replace(oldText, newText);
+  }
+  return result;
 }
