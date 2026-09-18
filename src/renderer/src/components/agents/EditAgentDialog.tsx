@@ -75,6 +75,7 @@ export function EditAgentDialog({
       displayText: desc,
       agentText: buildEditPrompt(mode, desc, agent),
       intentTag: copy.intentTag,
+      ...(agent.source === 'project' ? { workingDirectory: projectRootFor(agent.path) } : {}),
     });
     onClose();
   };
@@ -161,6 +162,10 @@ export function EditAgentDialog({
 }
 
 /* ---------- prompt builder ---------- */
+
+function projectRootFor(agentPath: string): string {
+  return agentPath.replace(/[\\/]\.minimalist-agent[\\/]agents[\\/][^\\/]+$/, '');
+}
 
 function buildEditPrompt(mode: EditAgentMode, description: string, agent: LoadedAgent): string {
   const target = `${agent.path}/AGENT.md`;

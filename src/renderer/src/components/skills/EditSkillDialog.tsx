@@ -80,6 +80,7 @@ export function EditSkillDialog({
       displayText: desc,
       agentText: buildEditPrompt(mode, desc, skill, refDocPath),
       intentTag: copy.intentTag,
+      ...(skill.source === 'project' ? { workingDirectory: projectRootFor(skill.path) } : {}),
     });
     onClose();
   };
@@ -166,6 +167,10 @@ export function EditSkillDialog({
 }
 
 /* ---------- prompt builder ---------- */
+
+function projectRootFor(skillPath: string): string {
+  return skillPath.replace(/[\\/]\.minimalist-agent[\\/]skills[\\/][^\\/]+$/, '');
+}
 
 function buildEditPrompt(
   mode: EditSkillMode,
