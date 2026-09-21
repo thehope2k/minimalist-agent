@@ -5,6 +5,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [2.2.2] — 2026-09-21
+
+Bug fixes for project asset editing and chat turn summaries.
+
+### Fixed
+
+- Editing a project-level agent or skill now correctly works from its project root.
+- Chat turn summaries now accurately combine Write and Edit operations without duplicate or raw file content in diffs.
+
+---
+
 ## [2.2.1] — 2026-09-17
 
 Cross-platform release reliability improvements.
