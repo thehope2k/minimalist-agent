@@ -259,11 +259,64 @@ export function registerChatIpc(): void {
         customInstructions?: string;
       },
     ): Promise<void> => {
+      const session = loadSession(args.sessionId);
+      const meta = session?.meta;
+      if (!meta?.model || !meta.connectionSlug) {
+        event.sender.send('chat:event', {
+          id: args.turnId,
+          type: 'error',
+          error: {
+            code: 'unknown_error',
+            title: 'Nothing to compact yet',
+            message: 'Send a chat message before compacting this conversation.',
+            canRetry: false,
+          },
+        });
+        return;
+      }
+
+      const {
+        connectionSlug,
+        model,
+        workingDirectory,
+        permissionMode,
+        thinkingLevel,
+        autonomyLevel,
+        pinnedAssets,
+      } = meta;
       await withAbortable(args.turnId, async (signal) => {
+        let auth;
+        try {
+          auth = await resolveAuthForSlug(connectionSlug, signal);
+        } catch (e) {
+          if (!event.sender.isDestroyed()) {
+            event.sender.send('chat:event', {
+              id: args.turnId,
+              type: 'error',
+              error: parseError(e),
+            });
+          }
+          return;
+        }
+
         for await (const chunk of runManualCompact({
           chatSessionPath: sessionPath(args.sessionId),
           turnId: args.turnId,
           customInstructions: args.customInstructions,
+          initialize: {
+            auth,
+            connectionSlug,
+            turnId: args.turnId,
+            chatSessionId: args.sessionId,
+            chatSessionPath: sessionPath(args.sessionId),
+            model,
+            prompt: '',
+            cwd: workingDirectory,
+            permissionMode,
+            thinkingLevel,
+            autonomyLevel,
+            pinnedAssets,
+          },
           signal,
         })) {
           if (event.sender.isDestroyed()) break;

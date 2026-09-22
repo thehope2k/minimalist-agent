@@ -151,27 +151,47 @@ export async function* runChat(req: ChatRequest): AsyncGenerator<AgentChatEvent>
  * Triggers manual compaction via the persistent Pi subprocess for this chat
  * session, streaming compaction_start/compaction_end events through a
  * synthetic per-turn `EventQueue`, like {@link runChat} does for a real
- * turn. Requires a live subprocess for this session.
+ * turn. Rehydrates the subprocess when reopening a persisted session.
  */
 export async function* runManualCompact(req: {
   chatSessionPath: string;
   turnId: string;
   customInstructions?: string;
+  initialize?: ChatRequest;
   signal?: AbortSignal;
 }): AsyncGenerator<AgentChatEvent> {
-  const handle = handles.get(req.chatSessionPath);
+  let handle = handles.get(req.chatSessionPath);
   if (!handle || handle.child.killed) {
-    yield {
-      type: 'error',
-      error: {
-        code: 'unknown_error',
-        title: 'No active session',
-        message:
-          'Start a chat turn before compacting — there is no running session to compact yet.',
-        canRetry: false,
-      },
-    };
-    return;
+    if (!req.initialize) {
+      yield {
+        type: 'error',
+        error: {
+          code: 'unknown_error',
+          title: 'No active session',
+          message:
+            'Start a chat turn before compacting — there is no running session to compact yet.',
+          canRetry: false,
+        },
+      };
+      return;
+    }
+
+    try {
+      const initAppend = buildSystemPromptAppend({
+        cwd: req.initialize.cwd,
+        sessionId: req.initialize.chatSessionId,
+        userMessage: '',
+        authType: req.initialize.auth.type,
+        provider: req.initialize.auth.provider,
+        model: req.initialize.model,
+        autonomyLevel: req.initialize.autonomyLevel,
+      });
+      handle = ensureSubprocess(req.initialize, initAppend);
+      await handle.ready;
+    } catch (e) {
+      yield { type: 'error', error: parseError(e) };
+      return;
+    }
   }
 
   const queue = new EventQueue();
