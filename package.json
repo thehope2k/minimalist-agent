@@ -37,7 +37,7 @@
     "release:major": "bash scripts/release.sh major"
   },
   "overrides": {
-    "undici": "8.10.2",
+    "undici": "8.11.2",
     "dompurify": "^3.4.13"
   },
   "dependencies": {
@@ -62,7 +62,7 @@
     "sherpa-onnx-node": "^1.13.4",
     "tar": "^7.5.20",
     "unbzip2-stream": "^1.4.3",
-    "undici": "8.10.2",
+    "undici": "8.11.2",
     "zod": "^4.6.5"
   },
   "devDependencies": {
@@ -102,7 +102,7 @@
     "lucide-react": "^1.24.0",
     "mark.js": "^8.11.1",
     "mermaid": "^12.0.0",
-    "monaco-editor": "^0.56.0",
+    "monaco-editor": "^0.57.0",
     "prettier": "^3.9.9",
     "react": "^19.2.7",
     "react-diff-viewer-continued": "^4.4.0",
