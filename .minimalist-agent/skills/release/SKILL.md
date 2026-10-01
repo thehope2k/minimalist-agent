@@ -1,6 +1,6 @@
 ---
-name: Minimalist Agent Release
-slug: minimalist-agent-release
+name: Release
+slug: release
 description: Cut a new release for minimalist-agent — changelog, version bump, tag, push.
 ---
 

@@ -7,7 +7,6 @@ node_modules/
 out/
 dist/
 dist-electron/
-release/
 *.local
 
 # Editor / OS
