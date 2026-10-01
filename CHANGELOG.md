@@ -5,6 +5,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [2.3.0] — 2026-10-01
+
+Native MCP integration with new tool exposure modes, plus planning and session reliability fixes.
+
+### Added
+
+**MCP tool integration**
+
+- MCP tools now run through pi's native integration, adding new exposure modes (direct, deferred, codemode, hidden) for how MCP tools are surfaced to the agent.
+- The MCP status badge now reports an "unsupported transport" reason when a server's connection type isn't supported.
+
+### Fixed
+
+- Cancelling a running plan no longer lets it resurrect later in the same session — cancellation now reliably sticks.
+- Persisted chat sessions are now correctly rehydrated before compaction, preventing lost context on restored sessions.
+
+---
+
 ## [2.2.2] — 2026-09-21
 
 Bug fixes for project asset editing and chat turn summaries.
