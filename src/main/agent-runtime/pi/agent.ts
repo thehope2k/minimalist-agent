@@ -127,3 +127,22 @@ export function sendPlanApprovalResponse(args: {
 
   return true;
 }
+
+/**
+ * Tell the subprocess's live PlanManager the plan was cancelled. Without this,
+ * cancelling only clears the main-process display cache, so a later planning
+ * tool call (e.g. ReportPhaseProgress) still finds the plan active in the
+ * subprocess and resurrects it.
+ * Returns true if the subprocess was found and the message was sent.
+ */
+export function sendPlanCancelRequest(args: { chatSessionPath: string }): boolean {
+  const handle = handles.get(args.chatSessionPath);
+  if (!handle) return false;
+
+  send(handle, {
+    type: 'planning:cancel-request',
+    sessionId: handle.chatSessionId,
+  });
+
+  return true;
+}

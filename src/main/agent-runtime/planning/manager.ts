@@ -92,16 +92,19 @@ export class PlanManager extends EventEmitter {
     return plan;
   }
 
-  /**
-   * Get active plan for a session.
-   */
+  /** Get active plan for a session. */
   getActivePlan(sessionId: string): Plan | null {
     const cached = this.activePlans.get(sessionId);
     if (cached) return cached;
 
     const persisted = this.storage.loadPlan(sessionId);
-    if (persisted) this.activePlans.set(sessionId, persisted);
-    return persisted;
+    // A cancelled plan stays on disk for history; treat it as absent so a
+    // stale 'active' reload can't resurrect it into the in-memory cache.
+    if (persisted && persisted.status !== 'cancelled') {
+      this.activePlans.set(sessionId, persisted);
+      return persisted;
+    }
+    return null;
   }
 
   /**

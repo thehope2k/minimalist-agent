@@ -1349,6 +1349,26 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
       return;
     }
 
+    case 'planning:cancel-request': {
+      // Keeps PlanManager's in-memory/disk state in sync with the cancel the
+      // user already made in the UI, so a later planning tool call can't
+      // resurrect the plan as still 'active'.
+      const { sessionId } = msg;
+
+      if (!state.planManager) {
+        log.warn('Cancel request received but planManager not initialized');
+        return;
+      }
+
+      try {
+        state.planManager.cancelPlan(sessionId);
+      } catch (error) {
+        log.error('Failed to handle cancel request:', error);
+      }
+
+      return;
+    }
+
     case 'steer': {
       // Inject a user message into the in-flight turn. Pi's AgentSession
       // exposes streamingBehavior: 'steer' which interrupts the model

@@ -198,6 +198,12 @@ export interface MsgPlanApprovalResponse {
   notes?: string;
 }
 
+/** Plan cancellation from main → subprocess (user cancelled via the UI). */
+export interface MsgPlanCancelRequest {
+  type: 'planning:cancel-request';
+  sessionId: string;
+}
+
 export type SubprocessInbound =
   | MsgInit
   | MsgPrompt
@@ -213,6 +219,7 @@ export type SubprocessInbound =
   | MsgLlmQuery
   | MsgSteer
   | MsgPlanApprovalResponse
+  | MsgPlanCancelRequest
   | MsgAuthRefreshResult
   | MsgBrowserToolResult
   | MsgShutdown;

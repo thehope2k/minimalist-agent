@@ -1,7 +1,7 @@
 import { BrowserWindow, ipcMain } from 'electron';
 import { dirname } from 'node:path';
 import { sessionPath } from '../storage/sessions';
-import { sendPlanApprovalResponse } from '../agent-runtime/pi/agent';
+import { sendPlanApprovalResponse, sendPlanCancelRequest } from '../agent-runtime/pi/agent';
 import {
   getActivePlan,
   restorePlanCache,
@@ -63,7 +63,8 @@ export function registerPlanningIpc(): void {
     const plan = getActivePlan(sessionId);
     if (plan) {
       plan.status = 'cancelled';
-      updatePlan(sessionId, plan);
+      // Persist so a restored session doesn't reload it as 'active' from disk
+      new PlanStorage(dirname(sessionPath(sessionId))).savePlan(sessionId, plan);
       // Notify renderer
       BrowserWindow.getAllWindows()[0]?.webContents.send('planning:cancelled', {
         sessionId,
@@ -71,6 +72,9 @@ export function registerPlanningIpc(): void {
       });
     }
     updatePlan(sessionId, null);
+
+    // Sync the live subprocess's PlanManager, not just the display cache
+    sendPlanCancelRequest({ chatSessionPath: sessionPath(sessionId) });
   });
 
   ipcMain.handle(
