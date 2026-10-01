@@ -111,8 +111,12 @@ on file-system events. See [SYSTEM-PROMPT.md](SYSTEM-PROMPT.md) for the full inv
 `extensions/` manages installable capability packs. Three variant types:
 
 - **MCP-backed** — spawns an MCP server (stdio or HTTP/SSE) and exposes its tools as `mcp__<slug>__<tool>`. The Pi
-  backend resolves serializable configs with `buildResolvedMcpServers(cwd?)`, and `pi-server/mcp-tools.ts` bridges
-  them into Pi's `customTools: ToolDefinition[]`.
+  backend resolves serializable configs with `buildResolvedMcpServers(cwd?)`; the subprocess registers them with
+  pi's native `createMcpExtension()` (`pi-server/mcp-native-config.ts` adapts them to its `LoadedMcpConfig` shape).
+  Permission gating and OTel instrumentation for MCP tool calls come from `pi-server/mcp-governance.ts` (pi's
+  `tool_call`/`tool_result` hooks, since native MCP tools bypass the `customTools` wrappers everything else uses).
+  A separate, diagnostics-only probe (`pi-server/mcp-diagnostics.ts`) reports per-server connect status to the UI,
+  since pi exposes no live connection-status hook.
 - **CLI-bound** — injects env vars into the Pi subprocess via
   `resolveExtensionEnv(cwd?)`, enabling bundled CLI tools.
 - **Guide-only** — provides a `guide.md` referenced in the per-turn awareness block.

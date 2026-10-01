@@ -34,6 +34,7 @@ import {
   createLsToolDefinition,
   createReadToolDefinition,
   createWriteToolDefinition,
+  createMcpExtension,
   type AgentSessionEvent,
   type ToolDefinition,
   type InlineExtension,
@@ -47,6 +48,7 @@ import { initOperationTracker, reportOperation, withOperation } from './operatio
 import {
   AUTO_COMPACTION_TIMEOUT_MS,
   HTTP_IDLE_TIMEOUT_MS,
+  MCP_CONNECT_CEILING_MS,
   MINI_COMPLETION_CEILING_MS,
 } from '../../shared/timeouts';
 import { withTimeout } from '../../shared/with-timeout';
@@ -85,7 +87,9 @@ const modelCatalog = builtinModels();
 import { adaptAgentEvent } from './event-adapter';
 import { createWebFetchTool, createWebSearchTool } from './web-tools';
 import { createBrowserTool } from './browser-tool';
-import { connectMcpServers, closeMcpClients } from './mcp-tools';
+import { probeMcpServers } from './mcp-diagnostics';
+import { buildLoadedMcpConfig } from './mcp-native-config';
+import { mcpGovernanceExtension } from './mcp-governance';
 import { createAgentTool } from '../agent-runtime/pi/agent-tool';
 import type {
   MsgAuthRequired,
@@ -242,10 +246,9 @@ function buildWrappedTools(
   // Add planning tools (not wrapped with permission gate - they manage the workflow)
   tools.push(...createPlanningTools(agentContext?.sessionId || ''));
 
-  // MCP-backed extension tools. Connected once at init and reused across
-  // session rebuilds. Routed through the permission gate like any other write
-  // tool — an MCP call is an external side effect the user should control.
-  tools.push(...state.mcpTools.map((t) => wrapWithPermissionGate(t)));
+  // MCP tools are registered natively by createMcpExtension below, with
+  // permission gating/OTel from mcpGovernanceExtension (mcp-governance.ts) —
+  // not part of this customTools array.
 
   return tools.map(instrumentTool);
 }
@@ -442,14 +445,11 @@ async function handleInit(msg: MsgInit): Promise<void> {
       : {}),
   };
 
-  // Connect MCP-backed extensions before building tools so their adapted
-  // tools are present on the very first turn. Failures are isolated per server
-  // and never block boot (bounded global budget inside connectMcpServers).
+  // Status-only probe for the MCP badge (mcp-diagnostics.ts) — the real
+  // connection is createMcpExtension below. Never blocks boot (bounded).
   if (msg.mcpServers && msg.mcpServers.length > 0) {
-    const mcp = await connectMcpServers(msg.mcpServers);
-    state.mcpTools = mcp.tools;
-    state.mcpClients = mcp.clients;
-    send({ type: 'mcp_status', sessionId: msg.sessionId, servers: mcp.diagnostics });
+    const diagnostics = await probeMcpServers(msg.mcpServers);
+    send({ type: 'mcp_status', sessionId: msg.sessionId, servers: diagnostics });
   }
 
   const tools = buildWrappedTools(msg.cwd, agentContext);
@@ -459,7 +459,14 @@ async function handleInit(msg: MsgInit): Promise<void> {
     cwd: msg.cwd,
     agentDir,
     appendSystemPrompt: state.appendArr,
-    extensionFactories: [compactionObservabilityExtension()],
+    extensionFactories: [
+      compactionObservabilityExtension(),
+      createMcpExtension({
+        loadConfig: () => buildLoadedMcpConfig(msg.mcpServers),
+        startupWaitMs: MCP_CONNECT_CEILING_MS,
+      }),
+      mcpGovernanceExtension(),
+    ],
   });
   await resourceLoader.reload();
   state.resourceLoader = resourceLoader;
@@ -479,6 +486,7 @@ async function handleInit(msg: MsgInit): Promise<void> {
     noTools: 'builtin',
     customTools: tools as never,
   });
+  await session.bindExtensions({ mode: 'rpc' });
   state.session = session;
   state.compactionSettings = resolvedCompaction;
   state.unsubscribe = session.subscribe(forwardEvent);
@@ -1376,7 +1384,9 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
       } catch {
         /* */
       }
-      await closeMcpClients(state.mcpClients);
+      // createMcpExtension's connections are torn down by session.dispose()
+      // above; the mcp-diagnostics.ts probe never keeps a client open past
+      // its own call. Nothing left to close here.
       await shutdownOtel();
       process.exit(0);
   }

@@ -4,7 +4,7 @@
  * content changes; the install pass overwrites stale copies.
  */
 
-export const EXTENSIONS_REFERENCE_VERSION = '0.3.0';
+export const EXTENSIONS_REFERENCE_VERSION = '0.4.1';
 
 export const EXTENSIONS_REFERENCE_MD = `# Extensions
 
@@ -67,7 +67,12 @@ Each extension folder requires two files:
     "transport": "stdio",
     "command": "npx",
     "args": ["-y", "@linear/mcp-server"],
-    "envFromBinding": true
+    "envFromBinding": true,
+
+    // optional, all default to the agent declaring every tool directly:
+    "description": "Issue tracking and project management",
+    "exposure": "direct",                     // "direct" | "deferred" | "codemode" | "hidden"
+    "toolExposure": { "delete_issue": "hidden" } // per-tool override, by the server's own tool name
   },
 
   // optional. Only \`blockedTools\` is currently enforced (MCP-backed
@@ -142,11 +147,27 @@ approval (see **Consent**).
 ### + MCP server
 
 \`mcp\` block configures a Model Context Protocol server. Stdio servers are
-spawned as subprocesses; HTTP/SSE servers are connected over the network.
+spawned as subprocesses; HTTP servers are connected over the network. \`sse\`
+is accepted for \`transport\` but not actually supported — the agent runtime
+has no sse client, so a server configured with it will never register
+tools. Use \`http\` (Streamable HTTP) instead; it supersedes sse in the MCP
+spec and almost every server that still advertises sse also offers it.
 Tools exposed by the server appear to the agent as \`mcp__<slug>__<toolname>\`.
 Add this when the service ships an official MCP server, or has no good CLI
 and you'd benefit from typed tool calls — Linear, Notion, etc. Always
 requires the user's one-time approval before it can be spawned/connected.
+
+\`exposure\` controls whether the server's tools are declared to the model
+directly (\`direct\`, the default this app applies), deferred until searched
+(\`deferred\`), only reachable from codemode scripts (\`codemode\` — not used
+by this app today), or unreachable (\`hidden\`). \`toolExposure\` overrides it
+per tool, keyed by the server's own (unsanitized) tool name.
+
+HTTP/SSE servers that require authentication should use \`auth: { provider:
+"<name>" }\` to forward an already-signed-in pi provider's token — **not**
+the server's own interactive OAuth. This app drives pi headlessly and has
+no UI to complete an MCP OAuth browser flow, so an HTTP server that only
+offers its own OAuth cannot be connected yet.
 
 To restrict which of the server's tools the agent may call, set
 \`permissions.blockedTools\` to the bare tool names (no \`mcp__<slug>__\`

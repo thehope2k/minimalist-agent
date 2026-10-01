@@ -1,19 +1,21 @@
 # Pi SDK Utilization Audit
 
 Date: 2026-07-22 · updated 2026-07-23 (compaction redesign — see
-[`COMPACTION.md`](COMPACTION.md))
+[`COMPACTION.md`](COMPACTION.md)) · updated 2026-10-01 (native MCP integration)
 
 This document inventories what the `@earendil-works/pi-coding-agent` SDK offers versus what minimalist-agent actually
 uses, based on reading the SDK's bundled docs (`node_modules/@earendil-works/pi-coding-agent/docs/`) against every
 `@earendil-works/pi-*` import in this codebase. Re-audit periodically as new SDK surfaces get adopted — item 6
 (compaction) below is the template for how a 🟡 finding graduates to 🟢 once a full design lands.
 
-**Files that touch the pi SDK** (11 total):
+**Files that touch the pi SDK** (13 total):
 
 ```
 src/main/pi-server/index.ts
 src/main/pi-server/event-adapter.ts
-src/main/pi-server/mcp-tools.ts
+src/main/pi-server/mcp-native-config.ts
+src/main/pi-server/mcp-governance.ts
+src/main/pi-server/mcp-diagnostics.ts
 src/main/pi-server/web-tools.ts
 src/main/agent-runtime/pi/agent.ts
 src/main/agent-runtime/pi/agent-tool.ts
@@ -26,18 +28,19 @@ src/main/ipc/chat-ipc.ts
 
 ## 🟢 Well utilized
 
-| Feature                                                                                                              | Where                                                                            | Notes                                                                                                                                                                         |
-| -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `createAgentSession()` core loop                                                                                     | `pi-server/index.ts`                                                             | Direct SDK embedding in a custom subprocess (not pi's `--mode rpc`). Pi's own `docs/rpc.md` explicitly recommends this for Node.js hosts — validated architecture, not a gap. |
-| Full event stream                                                                                                    | `event-adapter.ts`                                                               | Consumes `message_update`, `tool_execution_*`, `turn_start/end`, `agent_start/end`, `compaction_start/end`, `auto_retry_*` — mapped to `AgentChatEvent` / OTel GenAI shape.   |
-| `defineTool()` custom tools                                                                                          | `agent-tool.ts`, `web-tools.ts`, `mcp-tools.ts`                                  | Sub-agent spawning, web fetch/search, MCP bridging.                                                                                                                           |
-| `SessionManager` tree API                                                                                            | `storage/session-fork.ts`                                                        | `SessionManager.open()`, `getEntries()`, `createBranchedSession()` for the chat-session-fork feature.                                                                         |
-| `ModelRuntime` + custom `CredentialStore`                                                                            | `pi-server/index.ts`                                                             | In-memory store fed by `token_update` IPC, since credentials live in Electron's `safeStorage`, not pi's `auth.json`.                                                          |
-| `registerProvider()`                                                                                                 | `pi-server/index.ts:1314`                                                        | One custom-endpoint provider for user-configured OpenAI-compatible/local models.                                                                                              |
-| `steer()`, `setThinkingLevel()`                                                                                      | `pi-server/index.ts`                                                             | Mid-stream interjection wired to a `steer` protocol message.                                                                                                                  |
-| `SettingsManager` (compaction)                                                                                       | `pi-server/index.ts` (`SettingsManager.inMemory`), `storage/settings.ts`         | `enabled`/`reserveTokens`/`keepRecentTokens` are a real settings-UI-backed config object now, not hardcoded — see `COMPACTION.md` §2.                                         |
-| `session_before_compact`                                                                                             | `pi-server/index.ts` (`compactionObservabilityExtension`, `handleManualCompact`) | OTel span attribution for auto-compaction + plan-state-preservation instructions for the manual trigger — see `COMPACTION.md` §4.                                             |
-| Branch summarization (`collectEntriesForBranchSummary`, `generateBranchSummary`, `SessionManager.branchWithSummary`) | `storage/session-fork.ts`, `storage/sessions.ts`                                 | Powers "Fork with context" — see `COMPACTION.md` §6.                                                                                                                          |
+| Feature                                                                                                              | Where                                                                            | Notes                                                                                                                                                                                                           |
+| -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `createAgentSession()` core loop                                                                                     | `pi-server/index.ts`                                                             | Direct SDK embedding in a custom subprocess (not pi's `--mode rpc`). Pi's own `docs/rpc.md` explicitly recommends this for Node.js hosts — validated architecture, not a gap.                                   |
+| Full event stream                                                                                                    | `event-adapter.ts`                                                               | Consumes `message_update`, `tool_execution_*`, `turn_start/end`, `agent_start/end`, `compaction_start/end`, `auto_retry_*` — mapped to `AgentChatEvent` / OTel GenAI shape.                                     |
+| `defineTool()` custom tools                                                                                          | `agent-tool.ts`, `web-tools.ts`                                                  | Sub-agent spawning, web fetch/search. MCP tools are now registered by pi's own `createMcpExtension()`, not `defineTool()` — see the native-MCP row below.                                                       |
+| `createMcpExtension()` + `tool_call`/`tool_result` hooks                                                             | `mcp-native-config.ts`, `mcp-governance.ts`                                      | MCP execution, permission gating, and OTel instrumentation now go through pi's native MCP integration and global tool hooks instead of a hand-rolled `customTools` bridge. Graduated from the 🟡 finding below. |
+| `SessionManager` tree API                                                                                            | `storage/session-fork.ts`                                                        | `SessionManager.open()`, `getEntries()`, `createBranchedSession()` for the chat-session-fork feature.                                                                                                           |
+| `ModelRuntime` + custom `CredentialStore`                                                                            | `pi-server/index.ts`                                                             | In-memory store fed by `token_update` IPC, since credentials live in Electron's `safeStorage`, not pi's `auth.json`.                                                                                            |
+| `registerProvider()`                                                                                                 | `pi-server/index.ts:1314`                                                        | One custom-endpoint provider for user-configured OpenAI-compatible/local models.                                                                                                                                |
+| `steer()`, `setThinkingLevel()`                                                                                      | `pi-server/index.ts`                                                             | Mid-stream interjection wired to a `steer` protocol message.                                                                                                                                                    |
+| `SettingsManager` (compaction)                                                                                       | `pi-server/index.ts` (`SettingsManager.inMemory`), `storage/settings.ts`         | `enabled`/`reserveTokens`/`keepRecentTokens` are a real settings-UI-backed config object now, not hardcoded — see `COMPACTION.md` §2.                                                                           |
+| `session_before_compact`                                                                                             | `pi-server/index.ts` (`compactionObservabilityExtension`, `handleManualCompact`) | OTel span attribution for auto-compaction + plan-state-preservation instructions for the manual trigger — see `COMPACTION.md` §4.                                                                               |
+| Branch summarization (`collectEntriesForBranchSummary`, `generateBranchSummary`, `SessionManager.branchWithSummary`) | `storage/session-fork.ts`, `storage/sessions.ts`                                 | Powers "Fork with context" — see `COMPACTION.md` §6.                                                                                                                                                            |
 
 ## 🟡 Partially utilized — reimplemented in parallel instead of using pi's native mechanism
 
@@ -47,17 +50,21 @@ src/main/ipc/chat-ipc.ts
    disclosure). Zero use of `DefaultResourceLoader`'s `skillsOverride`, the `Skill` type, or native discovery paths —
    reinvented with a custom directory convention and directive-injection code (`skills/directive.ts`,
    `skills/storage.ts`).
-2. **Extensions** — same story. The MCP-backed/CLI-bound/guide-only extension system is a parallel invention. Pi's
-   `ExtensionAPI`
-   (`registerTool`, `registerCommand`, `registerShortcut`, event hooks) is never imported anywhere in the codebase.
+2. **Extensions** — mostly a parallel invention. The CLI-bound/guide-only extension system still has no counterpart
+   in pi's `ExtensionAPI` (`registerCommand`, `registerShortcut` are unused). MCP-backed extensions are the
+   exception as of 2026-10: they go through pi's native `createMcpExtension()` and the `tool_call`/`tool_result`
+   hooks (`registerTool` itself is still unused — MCP tools are registered by pi's own extension, not by us calling
+   `registerTool` directly).
 3. **Tool truncation** — `web-tools.ts` hand-rolls a `clamp()` function instead of importing `truncateHead` /
    `truncateTail` / `formatSize` from the SDK.
 4. **Permission gating** — built as a custom cross-process round-trip (`pre_tool_use_request` / `pre_tool_use_response`)
    rather than the
-   `tool_call` extension hook's `{ block: true }` return. Defensible — the UI lives in a separate Electron process from
-   the pi subprocess, and this is the flagship extension use case in pi's docs ("confirm before `rm -rf`") — but it
-   means the whole `tool_call` / `tool_result` / `context` /
-   `before_agent_start` hook family is unused even though they'd work identically in-process.
+   `tool_call` extension hook's `{ block: true }` return, for every built-in/web/agent tool (`tool-wrapping.ts`).
+   Defensible — the UI lives in a separate Electron process from the pi subprocess, and this is the flagship
+   extension use case in pi's docs ("confirm before `rm -rf`"). As of 2026-10, native MCP tool calls DO use the
+   `tool_call`/`tool_result` hook family (`mcp-governance.ts`), replaying the same cross-process round-trip from
+   inside the hook rather than skipping it — the hook was necessary there because MCP tools bypass the
+   `customTools` wrapping this gate otherwise relies on. `context` / `before_agent_start` remain unused.
 5. **`DefaultResourceLoader`** — imported, but only for the
    `systemPromptOverride` / mutable-append-array trick to inject per-turn context. Never used for its actual purpose
    (extensions/skills/prompts/ themes discovery).
@@ -67,9 +74,8 @@ src/main/ipc/chat-ipc.ts
 
 ## 🔴 Not touched at all — powerful, available, unused
 
-- **`tool_call` / `context` / `before_agent_start` hooks** — in-process mutation of tool args, message pruning before
-  each LLM call, dynamic system-prompt injection per turn. All strictly more powerful than the current pre/post
-  round-trip approach for anything that doesn't need cross-process UI.
+- **`context` / `before_agent_start` hooks** — in-process message pruning before each LLM call, dynamic
+  system-prompt injection per turn. (`tool_call`/`tool_result` are now partially used — see item 4 above.)
 - **`before_provider_headers` / `before_provider_request` /
   `after_provider_response`** — would give free request/response-level tracing/debugging hooks without touching provider
   code.

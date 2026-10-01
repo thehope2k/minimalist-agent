@@ -5,7 +5,7 @@
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import type { LoadedExtension } from './types';
+import type { LoadedExtension, McpExposure } from './types';
 import { requiresConsent, resolveEnvValue } from './types';
 import { loadAllExtensions } from './storage';
 import { getSecret } from './secrets';
@@ -136,6 +136,9 @@ function resolveEnv(ext: LoadedExtension): Record<string, string> | null {
  * decrypted here, because the agent subprocess cannot read the secret store.
  *
  * Carries `slug` so the subprocess can namespace tools as `mcp__<slug>__<tool>`.
+ * `exposure`/`toolExposure`/`description` are passed through as authored;
+ * the subprocess applies its own default for unset `exposure`, so this type
+ * stays a faithful mirror of `extension.json`.
  */
 export type ResolvedMcpServerConfig =
   | {
@@ -144,12 +147,19 @@ export type ResolvedMcpServerConfig =
       command: string;
       args?: string[];
       env?: Record<string, string>;
+      description?: string;
+      exposure?: McpExposure;
+      toolExposure?: Record<string, McpExposure>;
     }
   | {
       slug: string;
       transport: 'http' | 'sse';
       url: string;
       headers?: Record<string, string>;
+      description?: string;
+      exposure?: McpExposure;
+      toolExposure?: Record<string, McpExposure>;
+      auth?: { provider: string };
     };
 
 function toResolvedConfig(ext: LoadedExtension): ResolvedMcpServerConfig | null {
@@ -162,6 +172,9 @@ function toResolvedConfig(ext: LoadedExtension): ResolvedMcpServerConfig | null 
       transport: 'stdio',
       command: mcp.command,
       args: mcp.args,
+      description: mcp.description,
+      exposure: mcp.exposure,
+      toolExposure: mcp.toolExposure,
     };
     if (mcp.envFromBinding) {
       const env = resolveEnv(ext);
@@ -176,6 +189,10 @@ function toResolvedConfig(ext: LoadedExtension): ResolvedMcpServerConfig | null 
     transport: mcp.transport,
     url: mcp.url,
     headers: mcp.headers,
+    description: mcp.description,
+    exposure: mcp.exposure,
+    toolExposure: mcp.toolExposure,
+    auth: mcp.auth,
   };
 }
 
@@ -207,14 +224,26 @@ interface RuntimeMcpStatus {
   ok: boolean;
   toolCount?: number;
   error?: string;
+  reason?: 'unsupported-transport';
 }
 const runtimeMcpStatus = new Map<string, RuntimeMcpStatus>();
 
 export function recordMcpStatus(
-  servers: Array<{ slug: string; ok: boolean; toolCount?: number; error?: string }>,
+  servers: Array<{
+    slug: string;
+    ok: boolean;
+    toolCount?: number;
+    error?: string;
+    reason?: 'unsupported-transport';
+  }>,
 ): void {
   for (const s of servers) {
-    runtimeMcpStatus.set(s.slug, { ok: s.ok, toolCount: s.toolCount, error: s.error });
+    runtimeMcpStatus.set(s.slug, {
+      ok: s.ok,
+      toolCount: s.toolCount,
+      error: s.error,
+      reason: s.reason,
+    });
   }
 }
 
@@ -225,7 +254,7 @@ export function recordMcpStatus(
 export function listMcpExtensionsStatus(cwd?: string): Array<{
   slug: string;
   ok: boolean;
-  reason?: 'missing-secrets' | 'no-consent' | 'connect-failed';
+  reason?: 'missing-secrets' | 'no-consent' | 'connect-failed' | 'unsupported-transport';
   toolCount?: number;
   error?: string;
 }> {
@@ -237,7 +266,12 @@ export function listMcpExtensionsStatus(cwd?: string): Array<{
         return { slug: e.slug, ok: false, reason: 'missing-secrets' as const };
       const runtime = runtimeMcpStatus.get(e.slug);
       if (runtime && !runtime.ok)
-        return { slug: e.slug, ok: false, reason: 'connect-failed' as const, error: runtime.error };
+        return {
+          slug: e.slug,
+          ok: false,
+          reason: runtime.reason ?? ('connect-failed' as const),
+          error: runtime.error,
+        };
       return { slug: e.slug, ok: true, toolCount: runtime?.toolCount };
     });
 }

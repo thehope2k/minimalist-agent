@@ -20,11 +20,9 @@ export const AUTH_REFRESH_MAIN_ROUNDTRIP_MS = AUTH_REFRESH_CEILING_MS + 5_000;
 /** Ceiling for a single mini_completion / llm_query one-shot call. */
 export const MINI_COMPLETION_CEILING_MS = envMs('MA_MINI_COMPLETION_TIMEOUT_MS', 45_000);
 
-/** Ceiling for a single MCP server's connect + listTools handshake. */
+/** Ceiling for a single MCP server's connect + listTools handshake (used by
+ *  both the mcp-diagnostics.ts probe and createMcpExtension's startupWaitMs). */
 export const MCP_CONNECT_CEILING_MS = envMs('MA_MCP_CONNECT_TIMEOUT_MS', 15_000);
-
-/** Ceiling for a single MCP tool invocation. */
-export const MCP_CALL_CEILING_MS = envMs('MA_MCP_CALL_TIMEOUT_MS', 120_000);
 
 /** Ceiling for the whole MCP server pool to come up; never blocks session boot past this. */
 export const MCP_POOL_BUDGET_MS = envMs('MA_MCP_POOL_TIMEOUT_MS', 30_000);

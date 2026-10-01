@@ -696,17 +696,26 @@ export interface SecretRef {
 
 export type EnvValue = string | SecretRef;
 
+export type McpExposure = 'codemode' | 'deferred' | 'direct' | 'hidden';
+
 export type McpConfig =
   | {
       transport: 'stdio';
       command: string;
       args?: string[];
       envFromBinding?: boolean;
+      description?: string;
+      exposure?: McpExposure;
+      toolExposure?: Record<string, McpExposure>;
     }
   | {
       transport: 'http' | 'sse';
       url: string;
       headers?: Record<string, string>;
+      description?: string;
+      exposure?: McpExposure;
+      toolExposure?: Record<string, McpExposure>;
+      auth?: { provider: string };
     };
 
 export interface ExtensionPermissions {

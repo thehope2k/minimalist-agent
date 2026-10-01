@@ -10,7 +10,6 @@ import type {
   DefaultResourceLoader,
   ModelRegistry,
   ModelRuntime,
-  ToolDefinition,
 } from '@earendil-works/pi-coding-agent';
 import type { Api, Model } from '@earendil-works/pi-ai';
 import type {
@@ -68,11 +67,6 @@ export interface State {
   pendingAuthRefresh: Map<string, { resolve: (r: MsgAuthRefreshResult) => void }>;
   pendingBrowserTool: Map<string, { resolve: (r: MsgBrowserToolResult) => void }>;
   planManager?: PlanManager;
-  /** Adapted MCP tools from connected mcp-backed extensions, appended to every
-   *  session build (init + model-switch recreate). */
-  mcpTools: ToolDefinition<any, any>[];
-  /** Live MCP clients, closed on shutdown. */
-  mcpClients: import('@modelcontextprotocol/sdk/client/index.js').Client[];
   currentPhaseId?: string; // Track active phase for error attribution
   turnAbort?: AbortController;
   shuttingDown?: boolean;
@@ -112,8 +106,6 @@ export const state: State = {
   pendingBrowserTool: new Map(),
   appendArr: [],
   availableAgents: [],
-  mcpTools: [],
-  mcpClients: [],
   // planManager initialized in handleInit with sessions directory
 };
 

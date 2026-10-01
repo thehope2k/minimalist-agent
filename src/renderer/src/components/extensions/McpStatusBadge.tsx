@@ -28,13 +28,17 @@ export function McpStatusBadge({ status }: { status: McpStatus | undefined }) {
       ? 'consent'
       : status.reason === 'missing-secrets'
         ? 'secret'
-        : 'failed';
+        : status.reason === 'unsupported-transport'
+          ? 'unsupported'
+          : 'failed';
   const title =
     status.reason === 'no-consent'
       ? 'MCP tools blocked: consent not granted. Open this extension to approve the server.'
       : status.reason === 'missing-secrets'
         ? 'MCP tools blocked: a required secret is not set.'
-        : `MCP server failed to start${status.error ? `: ${status.error}` : ''}`;
+        : status.reason === 'unsupported-transport'
+          ? `This server's transport isn't supported by the agent runtime and will never register tools${status.error ? `: ${status.error}` : ''}`
+          : `MCP server failed to start${status.error ? `: ${status.error}` : ''}`;
   return (
     <span
       className="rounded bg-amber-500/15 px-1.5 py-px text-[10px] uppercase tracking-wide text-amber-300"

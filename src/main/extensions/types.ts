@@ -34,17 +34,40 @@ export interface SecretRef {
 
 export type EnvValue = string | SecretRef;
 
-export interface McpStdioTransport {
+/**
+ * How pi's native MCP integration exposes a server's tools to the model
+ * (`direct`/`deferred`/`codemode`/`hidden`). This app defaults unset servers
+ * to `direct` rather than pi's own `codemode` default, since it doesn't use
+ * codemode.
+ */
+export type McpExposure = 'codemode' | 'deferred' | 'direct' | 'hidden';
+
+interface McpTransportBase {
+  description?: string;
+  exposure?: McpExposure;
+  /** Per-tool override, keyed by the server's own (unsanitized) tool name;
+   * takes precedence over `exposure` for the listed tools. */
+  toolExposure?: Record<string, McpExposure>;
+}
+
+export interface McpStdioTransport extends McpTransportBase {
   transport: 'stdio';
   command: string;
   args?: string[];
   envFromBinding?: boolean;
 }
 
-export interface McpHttpTransport {
+export interface McpHttpTransport extends McpTransportBase {
   transport: 'http' | 'sse';
   url: string;
   headers?: Record<string, string>;
+  /**
+   * Send the current token of a pi provider (`/login <provider>`) as the
+   * bearer token, instead of interactive MCP OAuth — the only HTTP auth mode
+   * this app can drive headlessly (no UI exists to complete an interactive
+   * MCP OAuth browser flow).
+   */
+  auth?: { provider: string };
 }
 
 export type McpConfig = McpStdioTransport | McpHttpTransport;
@@ -146,9 +169,23 @@ export function requiresConsent(config: ExtensionConfig): boolean {
 const MCP_TOOL_PREFIX = 'mcp__';
 
 /**
+ * Mirrors pi's native MCP tool-name sanitizer (`extensions/mcp/tools.ts`):
+ * every character outside `[A-Za-z0-9_]` becomes `_`. Needed to match a
+ * qualified tool name back to an extension slug/tool whose original name
+ * contains sanitized characters, e.g. slug `github-thehope2k` produces
+ * tool names prefixed `mcp__github_thehope2k__`.
+ */
+export function normalizeMcpNamePart(part: string): string {
+  return part.replace(/[^A-Za-z0-9_]/g, '_');
+}
+
+/**
  * Split a fully-qualified MCP tool name (`mcp__<slug>__<tool>`) into its
  * parts. Returns null for anything that isn't shaped like one — including
- * built-in tool names, which this must never mistake for MCP tools.
+ * built-in tool names, which this must never mistake for MCP tools. The
+ * returned `slug`/`tool` are whatever the caller sent (sanitized by pi's
+ * native naming, or literal under the legacy bridge) — use `mcpSlugMatches`
+ * to compare against a known extension slug.
  */
 export function parseMcpToolName(fullToolName: string): { slug: string; tool: string } | null {
   if (!fullToolName.startsWith(MCP_TOOL_PREFIX)) return null;
@@ -158,12 +195,28 @@ export function parseMcpToolName(fullToolName: string): { slug: string; tool: st
   return { slug: rest.slice(0, sep), tool: rest.slice(sep + 2) };
 }
 
-/** Whether `config` blocks `bareToolName` via `permissions.blockedTools`. */
+/**
+ * Whether a qualified tool name's slug segment (as returned by
+ * `parseMcpToolName`) belongs to `extensionSlug`. Tries a literal match
+ * first (the legacy bridge preserves the slug as-is) and falls back to
+ * pi's sanitized form (native MCP replaces `-` and other non-`[A-Za-z0-9_]`
+ * characters with `_`), so this works for both naming schemes during the
+ * migration and after it.
+ */
+export function mcpSlugMatches(parsedSlug: string, extensionSlug: string): boolean {
+  return parsedSlug === extensionSlug || parsedSlug === normalizeMcpNamePart(extensionSlug);
+}
+
+/** Whether `config` blocks `bareToolName` via `permissions.blockedTools`.
+ * `bareToolName` may be sanitized (native MCP) or literal (legacy bridge);
+ * both sides are compared through the same sanitizer so an authored entry
+ * like `delete-issue` still matches a sanitized `delete_issue` call. */
 export function isToolBlocked(config: ExtensionConfig, bareToolName: string): boolean {
   if (!config.mcp) return false;
   const blocked = config.permissions?.blockedTools;
   if (!blocked || blocked.length === 0) return false;
-  return blocked.includes(bareToolName);
+  const sanitized = normalizeMcpNamePart(bareToolName);
+  return blocked.some((name) => name === bareToolName || normalizeMcpNamePart(name) === sanitized);
 }
 
 /* ---------- loaded record ---------- */

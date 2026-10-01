@@ -162,6 +162,7 @@ export interface MsgMcpStatus {
     ok: boolean;
     toolCount?: number;
     error?: string;
+    reason?: 'unsupported-transport';
   }>;
 }
 

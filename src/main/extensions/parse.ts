@@ -19,17 +19,33 @@ const SecretRefSchema = z.object({ secret: z.string().min(1) });
 
 const EnvValueSchema = z.union([z.string(), SecretRefSchema]);
 
+const McpExposureSchema = z.union([
+  z.literal('codemode'),
+  z.literal('deferred'),
+  z.literal('direct'),
+  z.literal('hidden'),
+]);
+
+const McpTransportBaseSchema = {
+  description: z.string().optional(),
+  exposure: McpExposureSchema.optional(),
+  toolExposure: z.record(z.string(), McpExposureSchema).optional(),
+};
+
 const StdioTransportSchema = z.object({
   transport: z.literal('stdio'),
   command: z.string().min(1),
   args: z.array(z.string()).optional(),
   envFromBinding: z.boolean().optional(),
+  ...McpTransportBaseSchema,
 });
 
 const HttpTransportSchema = z.object({
   transport: z.union([z.literal('http'), z.literal('sse')]),
   url: z.string().url(),
   headers: z.record(z.string(), z.string()).optional(),
+  auth: z.object({ provider: z.string().min(1) }).optional(),
+  ...McpTransportBaseSchema,
 });
 
 const McpConfigSchema = z.union([StdioTransportSchema, HttpTransportSchema]);
