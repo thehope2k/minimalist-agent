@@ -186,6 +186,18 @@ export function updateConnectionModels(
   return next;
 }
 
+export function setConnectionDefaultModel(slug: string, modelId: string): ConnectionMeta | null {
+  const d = load(SCHEMA);
+  const idx = d.connections.findIndex((c) => c.slug === slug);
+  if (idx === -1) return null;
+  const prev = d.connections[idx];
+  if (!prev.models.some((m) => m.id === modelId)) return null;
+  const next = { ...prev, defaultModel: modelId };
+  d.connections[idx] = next;
+  save(SCHEMA, d);
+  return next;
+}
+
 const MAX_CONNECTION_NAME_LENGTH = 100;
 
 /**

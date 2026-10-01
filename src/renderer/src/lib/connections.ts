@@ -165,6 +165,21 @@ export async function setDefaultModel(modelId: string | undefined): Promise<void
   await reload();
 }
 
+export async function setConnectionDefaultModel(slug: string, modelId: string): Promise<boolean> {
+  if (cache) {
+    cache = {
+      ...cache,
+      connections: cache.connections.map((c) =>
+        c.slug === slug ? { ...c, defaultModel: modelId } : c,
+      ),
+    };
+    notify();
+  }
+  const ok = await window.api.connections.setDefaultModel(slug, modelId);
+  await reload();
+  return ok;
+}
+
 export async function setDefaultThinking(level: ThinkingLevel): Promise<void> {
   const next = { ...snapshot().settings, defaultThinking: level };
   await window.api.settings.save(next);

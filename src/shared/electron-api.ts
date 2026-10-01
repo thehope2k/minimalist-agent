@@ -982,6 +982,7 @@ export interface AppApi {
     delete: (slug: string) => Promise<void>;
     rename: (slug: string, name: string) => Promise<void>;
     reorder: (slugs: string[]) => Promise<void>;
+    setDefaultModel: (slug: string, modelId: string) => Promise<boolean>;
     getCredential: (slug: string) => Promise<Credential | null>;
     isEncryptionAvailable: () => Promise<boolean>;
     test: (slug: string) => Promise<{ ok: true } | { ok: false; error: AgentError }>;

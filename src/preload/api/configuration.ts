@@ -27,6 +27,8 @@ export function createConfigurationApi(): Pick<
       rename: (slug: string, name: string): Promise<void> =>
         ipcRenderer.invoke('connections:rename', { slug, name }),
       reorder: (slugs: string[]): Promise<void> => ipcRenderer.invoke('connections:reorder', slugs),
+      setDefaultModel: (slug: string, modelId: string): Promise<boolean> =>
+        ipcRenderer.invoke('connections:setDefaultModel', { slug, modelId }),
       getCredential: (slug: string): Promise<Credential | null> =>
         ipcRenderer.invoke('connections:getCredential', slug),
       isEncryptionAvailable: (): Promise<boolean> =>

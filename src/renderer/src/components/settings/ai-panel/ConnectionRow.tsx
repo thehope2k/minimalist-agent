@@ -2,6 +2,7 @@ import { useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
 import {
   Activity,
+  Check,
   ChevronDown,
   KeyRound,
   LogIn,
@@ -37,6 +38,7 @@ export function ConnectionRow({
   onTest,
   onReauth,
   onRefreshModels,
+  onSetDefaultModel,
 }: {
   conn: ConnectionMeta;
   isDefault?: boolean;
@@ -46,11 +48,13 @@ export function ConnectionRow({
   onRename: (name: string) => void;
   onTest: () => void;
   onReauth: () => void;
-  onRefreshModels?: () => void;
+  onRefreshModels?: () => Promise<void>;
+  onSetDefaultModel: (modelId: string) => void;
 }) {
   const [renaming, setRenaming] = useState(false);
   const [modelsOpen, setModelsOpen] = useState(false);
   const [renameValue, setRenameValue] = useState(conn.name);
+  const [refreshingModels, setRefreshingModels] = useState(false);
 
   const startRename = () => {
     setRenameValue(conn.name);
@@ -63,20 +67,28 @@ export function ConnectionRow({
     onRename(trimmed);
   };
 
+  const refreshModels = async () => {
+    if (!onRefreshModels || refreshingModels) return;
+    setRefreshingModels(true);
+    try {
+      await onRefreshModels();
+    } finally {
+      setRefreshingModels(false);
+    }
+  };
+
   const reconnects =
     conn.providerType === 'github-copilot' ||
     conn.providerType === 'openai-codex' ||
     conn.providerType === 'codemie-sso';
   const reauthLabel = reconnects ? 'Reconnect' : 'Update API key';
   const reauthIcon = reconnects ? LogIn : KeyRound;
+  const defaultModelDef = conn.models.find((m) => m.id === conn.defaultModel);
 
   const items: Array<MenuItem | 'separator'> = [
     { label: 'Rename', icon: Pencil, onSelect: startRename },
     ...(isDefault ? [] : [{ label: 'Make default', icon: Star, onSelect: onMakeDefault }]),
     { label: 'Test connection', icon: Activity, onSelect: onTest },
-    ...(onRefreshModels
-      ? [{ label: 'Refresh models', icon: RefreshCw, onSelect: onRefreshModels }]
-      : []),
     { label: reauthLabel, icon: reauthIcon, onSelect: onReauth },
     'separator',
     { label: 'Delete', icon: Trash2, variant: 'destructive', onSelect: onDelete },
@@ -125,6 +137,9 @@ export function ConnectionRow({
                 className="inline-flex items-center gap-0.5 rounded px-1 text-fg-muted transition-colors hover:bg-elevated hover:text-fg"
               >
                 {conn.models.length} {conn.models.length === 1 ? 'model' : 'models'}
+                {defaultModelDef && (
+                  <span className="truncate text-fg-subtle">· Default: {defaultModelDef.name}</span>
+                )}
                 <ChevronDown className="h-3 w-3" strokeWidth={1.75} aria-hidden="true" />
               </button>
             </Popover.Trigger>
@@ -136,8 +151,21 @@ export function ConnectionRow({
                 collisionPadding={8}
                 className="z-50 w-80 overflow-hidden rounded-lg border border-border bg-panel p-1 shadow-2xl"
               >
-                <div className="border-b border-border px-2.5 py-2 text-xs font-medium text-fg">
-                  {conn.models.length} {conn.models.length === 1 ? 'model' : 'models'} available
+                <div className="flex items-center justify-between gap-2 border-b border-border px-2.5 py-2 text-xs font-medium text-fg">
+                  <span>
+                    {conn.models.length} {conn.models.length === 1 ? 'model' : 'models'} available
+                  </span>
+                  {onRefreshModels && (
+                    <IconButton
+                      icon={RefreshCw}
+                      size="sm"
+                      label="Refresh models"
+                      iconClassName={refreshingModels ? 'animate-spin' : undefined}
+                      disabled={refreshingModels}
+                      onClick={() => void refreshModels()}
+                      className="-my-1 shrink-0"
+                    />
+                  )}
                 </div>
                 <div className="scroll-thin max-h-80 overflow-auto py-1">
                   {conn.models.length === 0 ? (
@@ -145,21 +173,42 @@ export function ConnectionRow({
                       No models on this connection.
                     </div>
                   ) : (
-                    conn.models.map((model) => (
-                      <div key={model.id} className="px-2.5 py-1.5">
-                        <div className="flex items-baseline justify-between gap-2">
-                          <div className="truncate text-sm text-fg">{model.name}</div>
-                          {model.contextWindow > 0 && (
-                            <span className="shrink-0 font-mono text-[10px] text-fg-subtle">
-                              {compactNumber(model.contextWindow)} ctx
-                            </span>
+                    conn.models.map((model) => {
+                      const isModelDefault = model.id === conn.defaultModel;
+                      return (
+                        <button
+                          type="button"
+                          key={model.id}
+                          onClick={() => onSetDefaultModel(model.id)}
+                          className={`w-full rounded px-2.5 py-1.5 text-left transition-colors hover:bg-elevated ${isModelDefault ? 'bg-elevated/60' : ''}`}
+                        >
+                          <div className="flex items-baseline justify-between gap-2">
+                            <div className="flex min-w-0 items-center gap-1.5">
+                              {isModelDefault ? (
+                                <Check
+                                  className="h-3 w-3 shrink-0 text-accent"
+                                  strokeWidth={2}
+                                  aria-hidden="true"
+                                />
+                              ) : (
+                                <Star className="h-3 w-3 shrink-0 opacity-0" aria-hidden="true" />
+                              )}
+                              <div className="truncate text-sm text-fg">{model.name}</div>
+                            </div>
+                            {model.contextWindow > 0 && (
+                              <span className="shrink-0 font-mono text-[10px] text-fg-subtle">
+                                {compactNumber(model.contextWindow)} ctx
+                              </span>
+                            )}
+                          </div>
+                          {model.name !== model.id && (
+                            <div className="truncate pl-[18px] text-xs text-fg-subtle">
+                              {model.id}
+                            </div>
                           )}
-                        </div>
-                        {model.name !== model.id && (
-                          <div className="truncate text-xs text-fg-subtle">{model.id}</div>
-                        )}
-                      </div>
-                    ))
+                        </button>
+                      );
+                    })
                   )}
                 </div>
               </Popover.Content>

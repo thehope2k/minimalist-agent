@@ -10,6 +10,7 @@ import {
   renameConnection,
   reorderConnections,
   saveConnection,
+  setConnectionDefaultModel,
   setDefaultSlug,
 } from '../storage/connections';
 import { onConnectionModelsChanged, refreshConnectionModels } from '../storage/model-refresh';
@@ -53,6 +54,9 @@ export function registerConnectionsIpc(): void {
   });
   ipcMain.handle('connections:reorder', (_e, slugs: string[]) => {
     reorderConnections(slugs);
+  });
+  ipcMain.handle('connections:setDefaultModel', (_e, args: { slug: string; modelId: string }) => {
+    return setConnectionDefaultModel(args.slug, args.modelId) != null;
   });
   ipcMain.handle('connections:delete', (_e, slug: string) => {
     deleteConnection(slug);

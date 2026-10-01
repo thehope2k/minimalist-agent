@@ -4,6 +4,7 @@ import {
   refreshConnectionModels,
   renameConnection,
   reorderConnections,
+  setConnectionDefaultModel,
   setDefaultConnection,
   setDefaultModel,
 } from '@/lib/connections';
@@ -119,9 +120,10 @@ export function ConnectionsSection({
                 onReauth={() => onReauth(conn.slug)}
                 onRefreshModels={
                   supportsModelCatalogRefresh(conn.providerType)
-                    ? () => void refreshModels(conn)
+                    ? () => refreshModels(conn)
                     : undefined
                 }
+                onSetDefaultModel={(modelId) => void setConnectionDefaultModel(conn.slug, modelId)}
               />
             )}
           />
