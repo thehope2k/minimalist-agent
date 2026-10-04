@@ -5,6 +5,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [2.4.1] — 2026-10-04
+
+Bug fixes for git commits and plan approvals.
+
+### Fixed
+
+- Committing from the git panel is now safer and reports clear, structured errors when something goes wrong.
+- Plans loaded from disk now remember phase approvals instead of asking again.
+
+---
+
 ## [2.4.0] — 2026-10-04
 
 Connection model preferences and settings polish.
