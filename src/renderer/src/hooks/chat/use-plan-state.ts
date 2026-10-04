@@ -229,7 +229,12 @@ export function usePlanState(activeSessionId: string | null, deps: PlanStateStor
       .then((plan: Plan | null) => {
         setSessionPlan(activeSessionId, plan);
         if (activeSessionIdRef.current !== activeSessionId) return;
-        const awaitingPhase = plan?.phases.find((phase) => phase.approvalStatus === 'awaiting');
+        const awaitingPhase = plan?.phases.find(
+          (phase) =>
+            phase.approvalStatus === 'awaiting' &&
+            phase.status !== 'complete' &&
+            phase.status !== 'skipped',
+        );
         if (awaitingPhase) {
           setPhaseAwaitingApproval(awaitingPhase);
           setShowPhaseApproval(true);

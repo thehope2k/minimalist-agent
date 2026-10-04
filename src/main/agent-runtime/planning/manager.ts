@@ -117,7 +117,7 @@ export class PlanManager extends EventEmitter {
     findings?: string,
     error?: string,
   ): void {
-    const plan = this.activePlans.get(sessionId);
+    const plan = this.getActivePlan(sessionId);
     if (!plan) {
       throw new Error(`No active plan for session ${sessionId}`);
     }
@@ -164,7 +164,7 @@ export class PlanManager extends EventEmitter {
     autonomyLevel: number,
     permissionMode: string,
   ): boolean {
-    const plan = this.activePlans.get(sessionId);
+    const plan = this.getActivePlan(sessionId);
     if (!plan) return false;
 
     const phase = plan.phases.find((p) => p.id === phaseId);
@@ -209,7 +209,7 @@ export class PlanManager extends EventEmitter {
    * - Any unrecoverable phase-specific error occurs
    */
   recordPhaseError(sessionId: string, phaseId: string, error: string): void {
-    const plan = this.activePlans.get(sessionId);
+    const plan = this.getActivePlan(sessionId);
     if (plan) {
       plan.status = 'error';
       this.emit('plan-error', plan.id, error);
@@ -221,7 +221,7 @@ export class PlanManager extends EventEmitter {
    * Revise a plan.
    */
   revisePlan(sessionId: string, input: RevisePlanInput): Plan {
-    const plan = this.activePlans.get(sessionId);
+    const plan = this.getActivePlan(sessionId);
     if (!plan) {
       throw new Error(`No active plan for session ${sessionId}`);
     }
@@ -247,7 +247,7 @@ export class PlanManager extends EventEmitter {
    * Check if revision is suggested based on findings.
    */
   shouldRevise(sessionId: string, phaseId: string, findings: string): boolean {
-    const plan = this.activePlans.get(sessionId);
+    const plan = this.getActivePlan(sessionId);
     if (!plan) return false;
 
     const phase = plan.phases.find((p) => p.id === phaseId);
@@ -269,7 +269,7 @@ export class PlanManager extends EventEmitter {
    * Approve a phase for execution.
    */
   approvePhase(sessionId: string, phaseId: string, notes?: string): void {
-    const plan = this.activePlans.get(sessionId);
+    const plan = this.getActivePlan(sessionId);
     if (!plan) {
       log.warn(`Cannot approve phase: No active plan for session ${sessionId}`);
       throw new Error(`No active plan for session ${sessionId}`);
@@ -284,7 +284,13 @@ export class PlanManager extends EventEmitter {
     // Check for status conflicts
     if (phase.status === 'complete' || phase.status === 'skipped') {
       log.warn(`Phase ${phaseId} already ${phase.status}, ignoring approval`);
-      return; // Already done, ignore approval
+      // Clear 'awaiting' so a stale flag can't re-open the dialog on reload.
+      if (phase.approvalStatus === 'awaiting') {
+        phase.approvalStatus = 'approved';
+        this.storage.savePlan(sessionId, plan);
+        this.emit('phase-updated', plan.id, phase);
+      }
+      return;
     }
 
     phase.approvalStatus = 'approved';
@@ -304,7 +310,7 @@ export class PlanManager extends EventEmitter {
    * Deny a phase and mark it as skipped.
    */
   denyPhase(sessionId: string, phaseId: string, reason?: string): void {
-    const plan = this.activePlans.get(sessionId);
+    const plan = this.getActivePlan(sessionId);
     if (!plan) {
       log.warn(`Cannot deny phase: No active plan for session ${sessionId}`);
       throw new Error(`No active plan for session ${sessionId}`);
@@ -350,7 +356,7 @@ export class PlanManager extends EventEmitter {
    * Returns null if no phase is ready or all phases are complete.
    */
   getNextPendingPhase(sessionId: string): Phase | null {
-    const plan = this.activePlans.get(sessionId);
+    const plan = this.getActivePlan(sessionId);
     return plan ? nextPendingPhase(plan) : null;
   }
 
@@ -362,7 +368,7 @@ export class PlanManager extends EventEmitter {
     sessionId: string,
     phaseIndex: number,
   ): { valid: boolean; warning?: string; suggestion?: string; expectedPhase?: number } {
-    const plan = this.activePlans.get(sessionId);
+    const plan = this.getActivePlan(sessionId);
     return plan ? validateProgression(plan, phaseIndex) : { valid: true };
   }
 
@@ -373,7 +379,7 @@ export class PlanManager extends EventEmitter {
    * Cancel a plan.
    */
   cancelPlan(sessionId: string): void {
-    const plan = this.activePlans.get(sessionId);
+    const plan = this.getActivePlan(sessionId);
     if (plan) {
       plan.status = 'cancelled';
       plan.lastUpdatedAt = Date.now();
