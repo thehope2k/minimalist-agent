@@ -311,9 +311,10 @@ When the answer to either question is genuinely unclear or the trade-off is
 non-trivial (e.g. an official MCP server exists *and* the CLI works fine),
 the agent should ask the user rather than default.
 
-> **MCP servers.** They are spawned on demand by the agent subprocess and their
-> tools reach the agent as \`mcp__<slug>__<tool>\`. A server that fails to
-> start (or exceeds the connect budget) is skipped without blocking the
+> **MCP servers.** At session start the agent subprocess launches (stdio) or
+> connects to (HTTP) them, and their tools reach the agent as \`mcp__<slug>__<tool>\`.
+> A server that fails to connect, exceeds the connect budget, or uses an
+> unsupported transport (SSE) is skipped without blocking the
 > session; its tools are simply absent that run. Required secrets and user
 > consent are enforced the same way regardless of connection type.
 
