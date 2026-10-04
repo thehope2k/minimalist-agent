@@ -1,149 +1,198 @@
-import { useState, useCallback } from 'react';
-import type { GitRepo, GitFileEntry } from '../types';
-import { applySelectedHunks, resolveAmendRepoRoot } from '../git-util';
+import { useCallback, useRef, useState } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
+import type { GitCommitResult } from '../../../../../shared/electron-api';
+import type { GitRepo } from '../types';
+import { resolveAmendRepoRoot } from '../git-util';
 import { buildDiffContext } from '../git-generate';
 import type { DiffCaches, PartialContentRefs } from './types';
 import { emitPetEvent } from '@/lib/pet-events';
+import { reconcileStagingAfterAttempt } from './commit-flow-state';
+import { buildCommitFiles, groupStagedFiles, unexpectedCommitFailure } from './commit-flow-helpers';
 
-/**
- * Manages commit message generation and commit execution.
- */
-export function useCommitFlow(
-  repos: GitRepo[],
-  stagedPaths: Set<string>,
-  stagedHunks: Map<string, Set<number>>,
-  diffCaches: DiffCaches,
-  partialContentRefs: PartialContentRefs,
-  cwd: string | null,
-  connectionSlug: string | undefined,
-  model: string | undefined,
-  sessionId: string | undefined,
-  loadStatus: () => Promise<unknown>,
-  clearPersisted: () => void,
-) {
+export interface GitCommitAttempt {
+  ok: boolean;
+  outcomes: GitCommitResult[];
+  notAttemptedRepoRoots: string[];
+}
+
+interface UseCommitFlowArgs {
+  repos: GitRepo[];
+  stagedPaths: Set<string>;
+  setStagedPaths: Dispatch<SetStateAction<Set<string>>>;
+  stagedHunks: Map<string, Set<number>>;
+  setStagedHunks: Dispatch<SetStateAction<Map<string, Set<number>>>>;
+  diffCaches: DiffCaches;
+  partialContentRefs: PartialContentRefs;
+  cwd: string | null;
+  connectionSlug: string | undefined;
+  model: string | undefined;
+  sessionId: string | undefined;
+  loadStatus: () => Promise<{ repos: GitRepo[]; error: string | null }>;
+  clearPersisted: () => void;
+}
+
+export function useCommitFlow({
+  repos,
+  stagedPaths,
+  setStagedPaths,
+  stagedHunks,
+  setStagedHunks,
+  diffCaches,
+  partialContentRefs,
+  cwd,
+  connectionSlug,
+  model,
+  sessionId,
+  loadStatus,
+  clearPersisted,
+}: UseCommitFlowArgs) {
   const [committing, setCommitting] = useState(false);
-  const [commitError, setCommitError] = useState<string | null>(null);
+  const [lastAttempt, setLastAttempt] = useState<GitCommitAttempt | null>(null);
+  const operationIdRef = useRef<string | null>(null);
 
   const handleCommit = useCallback(
-    async (message: string, amend: boolean) => {
+    async (message: string, amend: boolean, skipHooks = false): Promise<GitCommitAttempt> => {
       setCommitting(true);
-      setCommitError(null);
-      try {
-        const byRepo = new Map<string, GitFileEntry[]>();
-        for (const repo of repos) {
-          const staged = repo.files.filter((f) => stagedPaths.has(f.absolutePath));
-          if (staged.length > 0) byRepo.set(repo.root, staged);
-        }
+      setLastAttempt(null);
+      const outcomes: GitCommitResult[] = [];
+      const operationId = crypto.randomUUID();
+      operationIdRef.current = operationId;
+      const groupedFiles = groupStagedFiles(repos, stagedPaths);
 
-        for (const [repoRoot, files] of byRepo) {
+      try {
+        const preflightResults = await Promise.all(
+          [...groupedFiles.keys()].map((repoRoot) => window.api.git.preflightCommit(repoRoot)),
+        );
+        const preflightFailure = preflightResults.find((result) => !result.ok);
+        if (preflightFailure && !preflightFailure.ok) outcomes.push(preflightFailure);
+
+        for (const [repoRoot, files] of preflightFailure ? [] : groupedFiles) {
           const result = await window.api.git.commitFiles({
+            operationId,
             repoRoot,
             message,
             amend,
-            files: files.map((f) => {
-              const hs = stagedHunks.get(f.absolutePath);
-
-              // No hunk state means "all hunks staged"
-              if (!hs) {
-                return {
-                  relativePath: f.relativePath,
-                  absolutePath: f.absolutePath,
-                  status: f.status,
-                  content: undefined,
-                };
-              }
-
-              const fileDiff = diffCaches.diffs.get(f.absolutePath);
-              const fileChanges = diffCaches.lineChanges.get(f.absolutePath) ?? [];
-              const allStaged = hs.size >= fileChanges.length;
-
-              const restoredPartial = partialContentRefs.restoredPartialContent.get(f.absolutePath);
-              const content = allStaged
-                ? undefined
-                : fileDiff
-                  ? applySelectedHunks(fileDiff.original, fileDiff.modified, fileChanges, hs)
-                  : restoredPartial;
-
-              return {
-                relativePath: f.relativePath,
-                absolutePath: f.absolutePath,
-                status: f.status,
-                content,
-              };
-            }),
+            skipHooks,
+            files: buildCommitFiles(files, stagedHunks, diffCaches, partialContentRefs),
           });
-
-          if (!result.ok) throw new Error(result.error ?? 'Commit failed');
+          outcomes.push(result);
+          if (!result.ok) break;
         }
-
-        clearPersisted();
-        await loadStatus();
-        emitPetEvent('commit-success');
-      } catch (e) {
-        setCommitError(e instanceof Error ? e.message : String(e));
+      } catch (error) {
+        const failedRepo = [...groupedFiles.keys()].find(
+          (repoRoot) => !outcomes.some((outcome) => outcome.repoRoot === repoRoot),
+        );
+        outcomes.push(unexpectedCommitFailure(failedRepo ?? cwd ?? 'Unknown repository', error));
       } finally {
+        operationIdRef.current = null;
+        diffCaches.diffs.clear();
+        diffCaches.lineChanges.clear();
+        const refreshed = await loadStatus();
+        const successfulRepoRoots = new Set(
+          outcomes
+            .filter((outcome) => outcome.ok || (!outcome.ok && outcome.commitCreated))
+            .map((outcome) => outcome.repoRoot),
+        );
+        const reconciled = reconcileStagingAfterAttempt({
+          stagedPaths,
+          stagedHunks,
+          repositoriesBefore: repos,
+          repositoriesAfter: refreshed.repos,
+          successfulRepoRoots,
+        });
+        setStagedPaths(reconciled.stagedPaths);
+        setStagedHunks(reconciled.stagedHunks);
         setCommitting(false);
       }
+
+      const attemptedRepoRoots = new Set(outcomes.map((outcome) => outcome.repoRoot));
+      const attempt = {
+        ok: outcomes.length > 0 && outcomes.every((outcome) => outcome.ok),
+        outcomes,
+        notAttemptedRepoRoots: [...groupedFiles.keys()].filter(
+          (repoRoot) => !attemptedRepoRoots.has(repoRoot),
+        ),
+      };
+      setLastAttempt(attempt);
+      if (attempt.ok) {
+        clearPersisted();
+        emitPetEvent('commit-success');
+      }
+      return attempt;
     },
-    [repos, stagedPaths, stagedHunks, diffCaches, partialContentRefs, loadStatus, clearPersisted],
+    [
+      repos,
+      stagedPaths,
+      setStagedPaths,
+      stagedHunks,
+      setStagedHunks,
+      diffCaches,
+      partialContentRefs,
+      loadStatus,
+      clearPersisted,
+      cwd,
+    ],
   );
+
+  const cancelCommit = useCallback(() => {
+    const operationId = operationIdRef.current;
+    if (operationId) void window.api.git.cancelCommit(operationId);
+  }, []);
 
   const handleGenerateMessage = useCallback(
     async (amend: boolean, userContext?: string) => {
       if (!cwd) return null;
-      const allFiles = repos.flatMap((r) => r.files);
-      const staged = allFiles.filter((f) => stagedPaths.has(f.absolutePath));
+      const staged = repos
+        .flatMap((repo) => repo.files)
+        .filter((file) => stagedPaths.has(file.absolutePath));
       if (staged.length === 0) return null;
 
-      // Resolve connection
       let slug = connectionSlug;
-      let mdl = model;
+      let selectedModel = model;
       if (!slug) {
         const [defaultSlug, connections] = await Promise.all([
           window.api.connections.getDefaultSlug(),
           window.api.connections.list(),
         ]);
-        const conn = connections.find((c) => c.slug === defaultSlug) ?? connections[0];
-        if (!conn) return null;
-        slug = conn.slug;
-        mdl = mdl ?? conn.defaultModel;
+        const connection = connections.find((item) => item.slug === defaultSlug) ?? connections[0];
+        if (!connection) return null;
+        slug = connection.slug;
+        selectedModel = selectedModel ?? connection.defaultModel;
       }
 
       const diffContext = await buildDiffContext({ repos, staged, cwd, amend });
-
       return window.api.git.generateCommitMessage({
         connectionSlug: slug,
-        model: mdl ?? undefined,
+        model: selectedModel,
         diffContext,
         userContext,
-        sessionId: sessionId ?? undefined,
+        sessionId,
         cwd,
       });
     },
     [repos, stagedPaths, cwd, connectionSlug, model, sessionId],
   );
 
-  const resolveRepoRoot = useCallback(() => {
-    return resolveAmendRepoRoot(repos, stagedPaths, cwd);
-  }, [repos, stagedPaths, cwd]);
+  const resolveRepoRoot = useCallback(
+    () => resolveAmendRepoRoot(repos, stagedPaths, cwd),
+    [repos, stagedPaths, cwd],
+  );
 
   const handleFetchLastMessage = useCallback(async () => {
     const repoRoot = resolveRepoRoot();
-    if (!repoRoot) return null;
-    return window.api.git.lastCommitMessage(repoRoot);
+    return repoRoot ? window.api.git.lastCommitMessage(repoRoot) : null;
   }, [resolveRepoRoot]);
 
-  /** Raw "M src/foo.ts\nA src/bar.ts" name-status string for the commit being amended. */
   const handleFetchLastFiles = useCallback(async () => {
     const repoRoot = resolveRepoRoot();
-    if (!repoRoot) return null;
-    return window.api.git.lastCommitFiles(repoRoot);
+    return repoRoot ? window.api.git.lastCommitFiles(repoRoot) : null;
   }, [resolveRepoRoot]);
 
   return {
     committing,
-    commitError,
+    lastAttempt,
     handleCommit,
+    cancelCommit,
     handleGenerateMessage,
     handleFetchLastMessage,
     handleFetchLastFiles,

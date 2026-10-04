@@ -111,31 +111,23 @@ export function GitDiffModal({
     stagedHunks,
   );
 
-  const { clearPersisted } = useGitReviewPersistence({
-    cwd,
-    repos,
-    statusLoading,
-    committing: false,
-    selected,
-    stagedPaths,
-    stagedHunks,
-    lineChangesByPath: lineChangesCacheRef.current,
-    partialContentByPath,
-    pendingHunkKeysRef: pendingHunkRestoreRef,
-  });
+  const clearPersistedRef = useRef<() => void>(() => {});
+  const clearPersisted = useCallback(() => clearPersistedRef.current(), []);
 
-  // ── Commit flow ──────────────────────────────────────────────────────────
   const {
     committing,
-    commitError,
+    lastAttempt,
     handleCommit,
+    cancelCommit,
     handleGenerateMessage,
     handleFetchLastMessage,
     handleFetchLastFiles,
-  } = useCommitFlow(
+  } = useCommitFlow({
     repos,
     stagedPaths,
+    setStagedPaths,
     stagedHunks,
+    setStagedHunks,
     diffCaches,
     partialContentRefs,
     cwd,
@@ -144,7 +136,21 @@ export function GitDiffModal({
     sessionId,
     loadStatus,
     clearPersisted,
-  );
+  });
+
+  const persistence = useGitReviewPersistence({
+    cwd,
+    repos,
+    statusLoading,
+    committing,
+    selected,
+    stagedPaths,
+    stagedHunks,
+    lineChangesByPath: lineChangesCacheRef.current,
+    partialContentByPath,
+    pendingHunkKeysRef: pendingHunkRestoreRef,
+  });
+  clearPersistedRef.current = persistence.clearPersisted;
 
   const { handleDiffComputed } = useHunkRestore({
     selected,
@@ -226,7 +232,8 @@ export function GitDiffModal({
             onFetchLastFiles={handleFetchLastFiles}
             onGenerateMessage={handleGenerateMessage}
             committing={committing}
-            error={commitError}
+            attempt={lastAttempt}
+            onCancel={cancelCommit}
             onAmendPreviewChange={setAmendPreview}
             amendPreview={amendPreview}
             selectedAmendFile={selectedAmendFile}

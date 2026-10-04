@@ -1,8 +1,30 @@
 import { ipcMain } from 'electron';
 import { isWithinAllowedRoots, resolveWithinAllowedRoots } from '../files/path-guard';
+import { isAbsolute, normalize } from 'node:path';
+import type { GitCommitRequest, GitCommitResult } from '../../shared/electron-api';
 import { createLogger } from '../logger';
 
 const log = createLogger('ipc:git');
+const pendingCommits = new Map<string, AbortController>();
+
+function hasEscapingRelativePath(relativePath: string): boolean {
+  const normalized = normalize(relativePath);
+  return isAbsolute(normalized) || normalized.split(/[\\/]/)[0] === '..';
+}
+
+/** Returns a rejection reason, or null when the request stays inside known roots. */
+export function findCommitRequestViolation(args: GitCommitRequest): string | null {
+  if (!isWithinAllowedRoots(args.repoRoot))
+    return 'Repository is outside the allowed workspace roots';
+  for (const file of args.files) {
+    if (hasEscapingRelativePath(file.relativePath)) return `Unsafe path: ${file.relativePath}`;
+    // Deleted files have no on-disk path to canonicalize; update-index uses relativePath only.
+    if (file.status !== 'D' && !resolveWithinAllowedRoots(file.absolutePath)) {
+      return `File is outside the allowed workspace roots: ${file.relativePath}`;
+    }
+  }
+  return null;
+}
 
 /** Git diff review (Cmd+G modal) and merge/conflict resolution IPC. */
 export function registerGitIpc(): void {
@@ -31,31 +53,47 @@ export function registerGitIpc(): void {
     },
   );
 
+  ipcMain.handle('git:preflightCommit', async (_e, repoRoot: string) => {
+    const { blockedCommitFailure, preflightCommit } = await import('../git/commit');
+    if (!isWithinAllowedRoots(repoRoot)) {
+      log.warn('Blocked git preflight outside allowed roots');
+      return blockedCommitFailure(repoRoot, 'Repository is outside the allowed workspace roots');
+    }
+    return preflightCommit(repoRoot);
+  });
+
   ipcMain.handle(
     'git:commitFiles',
-    async (
-      _e,
-      args: {
-        repoRoot: string;
-        files: Array<{
-          relativePath: string;
-          absolutePath: string;
-          status: string;
-          content?: string;
-        }>;
-        message: string;
-        amend?: boolean;
-      },
-    ) => {
-      const { commitFiles } = await import('../git/commit');
-      return commitFiles(
-        args.repoRoot,
-        args.files as import('../git/commit').FileToCommit[],
-        args.message,
-        args.amend,
-      );
+    async (_e, args: GitCommitRequest): Promise<GitCommitResult> => {
+      const { blockedCommitFailure, commitFiles } = await import('../git/commit');
+      const violation = findCommitRequestViolation(args);
+      if (violation) {
+        log.warn(`Blocked git commit request: ${violation}`);
+        return blockedCommitFailure(args.repoRoot, violation);
+      }
+      if (args.operationId && pendingCommits.has(args.operationId)) {
+        return blockedCommitFailure(
+          args.repoRoot,
+          'A commit with this operation id is already running',
+        );
+      }
+      const controller = new AbortController();
+      if (args.operationId) pendingCommits.set(args.operationId, controller);
+      try {
+        const result = await commitFiles(args, controller.signal);
+        if (!result.ok && result.kind === 'execution') {
+          log.warn(`Git commit failed during ${result.phase} for ${result.repoRoot}`);
+        }
+        return result;
+      } finally {
+        if (args.operationId) pendingCommits.delete(args.operationId);
+      }
     },
   );
+
+  ipcMain.handle('git:cancelCommit', async (_e, operationId: string) => {
+    pendingCommits.get(operationId)?.abort();
+  });
 
   ipcMain.handle('git:lastCommitMessage', async (_e, repoRoot: string) => {
     const { getLastCommitMessage } = await import('../git/commit');

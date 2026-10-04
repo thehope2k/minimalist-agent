@@ -7,7 +7,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, Loader2, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui';
 import { parseLastCommitFiles, type LastCommitFileEntry } from './git-util';
+import type { GitCommitAttempt } from './diff-modal/useCommitFlow';
+import { shouldClearCommitDraft } from './diff-modal/commit-flow-state';
+import { CommitFailurePanel } from './CommitFailurePanel';
 
 export interface AmendPreview {
   /** First line of the commit being amended — fixed at fetch time, unaffected by textarea edits. */
@@ -19,12 +23,13 @@ interface CommitPanelProps {
   stagedCount: number;
   totalCount: number;
   stagedRepos: string[];
-  onCommit: (message: string, amend: boolean) => Promise<void>;
+  onCommit: (message: string, amend: boolean, skipHooks?: boolean) => Promise<GitCommitAttempt>;
   onFetchLastMessage: () => Promise<string | null>;
   onFetchLastFiles: () => Promise<string | null>;
   onGenerateMessage: (amend: boolean, userContext?: string) => Promise<string | null>;
   committing: boolean;
-  error: string | null;
+  attempt: GitCommitAttempt | null;
+  onCancel: () => void;
   /** Reports the commit-being-amended (subject + files) so the file tree above can render it inline. */
   onAmendPreviewChange?: (preview: AmendPreview | null) => void;
 }
@@ -38,7 +43,8 @@ export function CommitPanel({
   onFetchLastFiles,
   onGenerateMessage,
   committing,
-  error,
+  attempt,
+  onCancel,
   onAmendPreviewChange,
 }: CommitPanelProps) {
   const [message, setMessage] = useState('');
@@ -82,9 +88,10 @@ export function CommitPanel({
     }
   };
 
-  const handleSubmit = () => {
+  const submitCommit = (skipHooks: boolean) => {
     if (!canCommit) return;
-    void onCommit(message.trim(), amend).then(() => {
+    void onCommit(message.trim(), amend, skipHooks).then((result) => {
+      if (!shouldClearCommitDraft(result)) return;
       setMessage('');
       savedMessageRef.current = '';
       setAmend(false);
@@ -92,6 +99,8 @@ export function CommitPanel({
       setLastSubject(null);
     });
   };
+
+  const handleSubmit = () => submitCommit(false);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
@@ -209,6 +218,11 @@ export function CommitPanel({
           )}
         </span>
 
+        {committing && (
+          <Button type="button" variant="ghost" size="md" onClick={onCancel}>
+            Cancel
+          </Button>
+        )}
         <button
           type="button"
           onClick={handleSubmit}
@@ -228,10 +242,18 @@ export function CommitPanel({
         </button>
       </div>
 
-      {(error || generateError) && (
+      {generateError && (
         <div className="mt-2 rounded bg-red-500/10 px-3 py-2">
-          <p className="font-mono text-xs leading-relaxed text-red-400">{error ?? generateError}</p>
+          <p className="font-mono text-xs leading-relaxed text-red-400">{generateError}</p>
         </div>
+      )}
+
+      {attempt && !attempt.ok && (
+        <CommitFailurePanel
+          attempt={attempt}
+          onRetry={() => submitCommit(false)}
+          onRetryWithoutHooks={() => submitCommit(true)}
+        />
       )}
     </div>
   );

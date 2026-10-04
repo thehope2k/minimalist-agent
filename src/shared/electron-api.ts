@@ -829,6 +829,65 @@ export interface GitOperationResult {
   allResolved?: boolean;
 }
 
+export interface GitCommitFile {
+  relativePath: string;
+  absolutePath: string;
+  status: string;
+  content?: string;
+}
+
+export type GitCommitFailurePhase = 'preflight' | 'staging' | 'commit' | 'index-reconcile';
+
+export type GitCommitFailureKind =
+  | 'rejected'
+  | 'timeout'
+  | 'git-config'
+  | 'nothing-to-commit'
+  | 'unmerged-index'
+  | 'cancelled'
+  | 'output-too-large'
+  | 'execution';
+
+export interface GitCommitDiagnostics {
+  stdout: string;
+  stderr: string;
+  exitCode: number | null;
+  signal: string | null;
+  timedOut: boolean;
+  cancelled: boolean;
+  outputTooLarge: boolean;
+}
+
+export interface GitCommitSuccess {
+  ok: true;
+  repoRoot: string;
+  commitHash: string;
+  workingTreeChanged: boolean;
+}
+
+export interface GitCommitFailure {
+  ok: false;
+  repoRoot: string;
+  phase: GitCommitFailurePhase;
+  kind: GitCommitFailureKind;
+  summary: string;
+  diagnostics: GitCommitDiagnostics;
+  workingTreeChanged: boolean;
+  commitCreated: boolean;
+}
+
+export type GitCommitResult = GitCommitSuccess | GitCommitFailure;
+export type GitCommitPreflightResult = { ok: true; repoRoot: string } | GitCommitFailure;
+
+export interface GitCommitRequest {
+  repoRoot: string;
+  files: GitCommitFile[];
+  message: string;
+  amend?: boolean;
+  skipHooks?: boolean;
+  operationId?: string;
+}
+
 export interface TerminalTabInfo {
   tabId: string;
   title: string;
@@ -1222,17 +1281,9 @@ export interface AppApi {
       status: string;
     }) => Promise<GitFileDiff>;
     /** Stage specific files (with optional line-level custom content) and commit. */
-    commitFiles: (args: {
-      repoRoot: string;
-      files: Array<{
-        relativePath: string;
-        absolutePath: string;
-        status: string;
-        content?: string;
-      }>;
-      message: string;
-      amend?: boolean;
-    }) => Promise<{ ok: boolean; error?: string }>;
+    preflightCommit: (repoRoot: string) => Promise<GitCommitPreflightResult>;
+    commitFiles: (args: GitCommitRequest) => Promise<GitCommitResult>;
+    cancelCommit: (operationId: string) => Promise<void>;
     lastCommitMessage: (repoRoot: string) => Promise<string | null>;
     branchName: (repoRoot: string) => Promise<string | null>;
     lastCommitFiles: (repoRoot: string) => Promise<string | null>;

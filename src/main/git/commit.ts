@@ -1,80 +1,70 @@
-// Git commit operations for the Cmd+G modal.
-//
-// Commit algorithm:
-//   1. git reset HEAD           — clear index to HEAD (working tree untouched)
-//   2. Per checked file:
-//      - Unedited disk file     → git add --force <absolutePath>
-//      - Monaco-edited content  → git hash-object -w <tmpFile>
-//                                  → git update-index --cacheinfo <mode>,<sha>,<relPath>
-//      - Deleted file           → git rm --cached --force <relPath>
-//   3. git commit -m "<message>"
-//
-// Using hash-object + update-index instead of diff/patch avoids all the
-// edge cases (CRLF, BOM, trailing newlines) that make git apply unreliable.
-
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtemp, writeFile, rm, stat } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import type {
+  GitCommitFailure,
+  GitCommitFailureKind,
+  GitCommitFailurePhase,
+  GitCommitPreflightResult,
+  GitCommitRequest,
+  GitCommitResult,
+} from '../../shared/electron-api';
+import {
+  assertHasStagedChanges,
+  assertIndexIsResolved,
+  createTemporaryIndex,
+  readHead,
+  reconcileRealIndex,
+  removeTemporaryIndex,
+  stageCommitFiles,
+  type TemporaryIndex,
+} from './commit-index';
+import { normalizeProcessFailure } from './process-error';
+import { runCancellableGit } from './cancellable-git';
+import { hasWorkingTreeChanged, tryCaptureWorkingTree } from './working-tree-fingerprint';
 
 const execFileAsync = promisify(execFile);
+const GIT_QUERY_TIMEOUT_MS = 30_000;
+const COMMIT_TIMEOUT_MS = 5 * 60_000;
+const MAX_COMMIT_OUTPUT_BYTES = 10 * 1024 * 1024;
 
-export interface FileToCommit {
-  relativePath: string;
-  absolutePath: string;
-  /** Raw git status character: M, A, D, R, ? */
-  status: string;
-  /** If set, commit this content (Monaco-edited). Otherwise use the disk file. */
-  content?: string;
-}
-
-export interface CommitResult {
-  ok: boolean;
-  error?: string;
-}
-
-async function getFileMode(absolutePath: string): Promise<string> {
-  try {
-    const s = await stat(absolutePath);
-    // Executable bit: 0o111 covers user+group+other exec
-    return (s.mode & 0o111) !== 0 ? '100755' : '100644';
-  } catch {
-    return '100644';
+function classifyFailure(
+  phase: GitCommitFailurePhase,
+  diagnostics: ReturnType<typeof normalizeProcessFailure>,
+): { kind: GitCommitFailureKind; summary: string } {
+  // Hook output shares git's stderr, so text matching is only trusted before hooks run.
+  const output = phase === 'commit' ? '' : `${diagnostics.stderr}\n${diagnostics.stdout}`;
+  if (diagnostics.cancelled) return { kind: 'cancelled', summary: 'Commit cancelled' };
+  if (diagnostics.outputTooLarge) {
+    return { kind: 'output-too-large', summary: 'Commit checks produced too much output' };
   }
-}
-
-async function hashAndStageContent(
-  repoRoot: string,
-  relativePath: string,
-  absolutePath: string,
-  content: string,
-  isNew: boolean,
-): Promise<void> {
-  // Write to a temp file so git hash-object can read it as bytes.
-  const tmpDir = await mkdtemp(join(tmpdir(), 'ma-git-'));
-  const tmpFile = join(tmpDir, 'content');
-  try {
-    await writeFile(tmpFile, content, 'utf-8');
-    const { stdout } = await execFileAsync('git', ['-C', repoRoot, 'hash-object', '-w', tmpFile], {
-      timeout: 10_000,
-    });
-    const sha = stdout.trim();
-    const mode = await getFileMode(absolutePath);
-    const args = ['update-index'];
-    if (isNew) args.push('--add');
-    args.push('--cacheinfo', `${mode},${sha},${relativePath}`);
-    await execFileAsync('git', ['-C', repoRoot, ...args], { timeout: 5_000 });
-  } finally {
-    await rm(tmpDir, { recursive: true, force: true });
+  if (diagnostics.timedOut) return { kind: 'timeout', summary: 'Commit timed out' };
+  if (/unresolved conflicts/i.test(output)) {
+    return { kind: 'unmerged-index', summary: 'Resolve conflicts before committing' };
   }
+  if (/user\.email|user\.name|author identity unknown|please tell me who you are/i.test(output)) {
+    return { kind: 'git-config', summary: 'Git author identity is not configured' };
+  }
+  if (/nothing to commit|no changes added to commit/i.test(output)) {
+    return { kind: 'nothing-to-commit', summary: 'Nothing to commit' };
+  }
+  if (phase === 'commit' && diagnostics.exitCode !== null) {
+    return { kind: 'rejected', summary: 'Commit rejected' };
+  }
+  if (phase === 'staging')
+    return { kind: 'execution', summary: 'Could not stage selected changes' };
+  if (phase === 'index-reconcile') {
+    return {
+      kind: 'execution',
+      summary: 'Commit created, but staged state could not be refreshed',
+    };
+  }
+  return { kind: 'execution', summary: 'Commit failed' };
 }
 
-/** Returns the current branch name for `repoRoot`, or null if detached/no commits. */
 export async function getBranchName(repoRoot: string): Promise<string | null> {
   try {
     const { stdout } = await execFileAsync('git', ['-C', repoRoot, 'branch', '--show-current'], {
-      timeout: 5_000,
+      timeout: GIT_QUERY_TIMEOUT_MS,
     });
     return stdout.trim() || null;
   } catch {
@@ -82,16 +72,12 @@ export async function getBranchName(repoRoot: string): Promise<string | null> {
   }
 }
 
-/**
- * Returns the files changed in the last commit as a compact name-status string,
- * e.g. "M src/foo.ts\nA src/bar.ts". Used to give amend context to the AI.
- */
 export async function getLastCommitFiles(repoRoot: string): Promise<string | null> {
   try {
     const { stdout } = await execFileAsync(
       'git',
       ['-C', repoRoot, 'show', 'HEAD', '--name-status', '--pretty=format:'],
-      { timeout: 5_000 },
+      { timeout: GIT_QUERY_TIMEOUT_MS },
     );
     return stdout.trim() || null;
   } catch {
@@ -99,16 +85,12 @@ export async function getLastCommitFiles(repoRoot: string): Promise<string | nul
   }
 }
 
-/**
- * Returns the unified diff of the last commit (what actually changed),
- * truncated to avoid overwhelming the AI context.
- */
 export async function getLastCommitDiff(repoRoot: string): Promise<string | null> {
   try {
     const { stdout } = await execFileAsync(
       'git',
       ['-C', repoRoot, 'show', 'HEAD', '-p', '--pretty=format:', '--no-color', '-U2'],
-      { timeout: 10_000, maxBuffer: 5 * 1024 * 1024 },
+      { timeout: GIT_QUERY_TIMEOUT_MS, maxBuffer: 5 * 1024 * 1024 },
     );
     return stdout.trim() || null;
   } catch {
@@ -116,11 +98,10 @@ export async function getLastCommitDiff(repoRoot: string): Promise<string | null
   }
 }
 
-/** Returns the last commit message for `repoRoot`, or null if no commits. */
 export async function getLastCommitMessage(repoRoot: string): Promise<string | null> {
   try {
     const { stdout } = await execFileAsync('git', ['-C', repoRoot, 'log', '-1', '--format=%B'], {
-      timeout: 5_000,
+      timeout: GIT_QUERY_TIMEOUT_MS,
     });
     return stdout.trim() || null;
   } catch {
@@ -128,58 +109,110 @@ export async function getLastCommitMessage(repoRoot: string): Promise<string | n
   }
 }
 
-export async function commitFiles(
-  repoRoot: string,
-  files: FileToCommit[],
-  message: string,
-  amend = false,
-): Promise<CommitResult> {
+export function blockedCommitFailure(repoRoot: string, summary: string): GitCommitFailure {
+  return {
+    ok: false,
+    repoRoot,
+    phase: 'preflight',
+    kind: 'execution',
+    summary,
+    diagnostics: {
+      stdout: '',
+      stderr: summary,
+      exitCode: null,
+      signal: null,
+      timedOut: false,
+      cancelled: false,
+      outputTooLarge: false,
+    },
+    workingTreeChanged: false,
+    commitCreated: false,
+  };
+}
+
+export async function preflightCommit(repoRoot: string): Promise<GitCommitPreflightResult> {
   try {
-    // 1. Clear index — start from HEAD state, working tree unchanged.
-    //    Ignore errors here (nothing staged is fine).
-    await execFileAsync('git', ['-C', repoRoot, 'reset', 'HEAD'], {
-      timeout: 5_000,
-    }).catch(() => null);
+    await Promise.all([
+      assertIndexIsResolved(repoRoot),
+      execFileAsync('git', ['-C', repoRoot, 'rev-parse', '--git-dir'], {
+        timeout: GIT_QUERY_TIMEOUT_MS,
+      }),
+      execFileAsync('git', ['-C', repoRoot, 'var', 'GIT_AUTHOR_IDENT'], {
+        timeout: GIT_QUERY_TIMEOUT_MS,
+      }),
+    ]);
+    return { ok: true, repoRoot };
+  } catch (error) {
+    const diagnostics = normalizeProcessFailure(error);
+    return {
+      ok: false,
+      repoRoot,
+      phase: 'preflight',
+      ...classifyFailure('preflight', diagnostics),
+      diagnostics,
+      workingTreeChanged: false,
+      commitCreated: false,
+    };
+  }
+}
 
-    // 2. Stage each file.
-    for (const file of files) {
-      const isNew = file.status === 'A' || file.status === '?';
+export async function commitFiles(
+  request: GitCommitRequest,
+  signal?: AbortSignal,
+): Promise<GitCommitResult> {
+  const { repoRoot, files, message, amend = false, skipHooks = false } = request;
+  let phase: GitCommitFailurePhase = 'preflight';
+  let temporaryIndex: TemporaryIndex | null = null;
+  let commitHash: string | null = null;
+  let initialSnapshot: Awaited<ReturnType<typeof tryCaptureWorkingTree>> = null;
 
-      if (file.status === 'D') {
-        // Deleted: remove from index.
-        await execFileAsync(
-          'git',
-          ['-C', repoRoot, 'rm', '--cached', '--force', file.relativePath],
-          { timeout: 5_000 },
-        );
-      } else if (file.content !== undefined) {
-        // Monaco-edited content: stage exactly what the user trimmed.
-        await hashAndStageContent(
-          repoRoot,
-          file.relativePath,
-          file.absolutePath,
-          file.content,
-          isNew,
-        );
-      } else {
-        // Unedited: stage the full disk file.
-        await execFileAsync('git', ['-C', repoRoot, 'add', '--force', file.absolutePath], {
-          timeout: 10_000,
-        });
-      }
-    }
+  try {
+    await assertIndexIsResolved(repoRoot);
+    const previousHead = await readHead(repoRoot);
+    signal?.throwIfAborted();
+    initialSnapshot = await tryCaptureWorkingTree(repoRoot);
+    temporaryIndex = await createTemporaryIndex(repoRoot);
 
-    // 3. Commit (or amend).
+    phase = 'staging';
+    await stageCommitFiles(repoRoot, files, temporaryIndex, signal);
+    if (!amend) await assertHasStagedChanges(repoRoot, temporaryIndex);
+    signal?.throwIfAborted();
+
+    phase = 'commit';
     const commitArgs = ['-C', repoRoot, 'commit', '--allow-empty-message'];
     if (amend) commitArgs.push('--amend');
+    if (skipHooks) commitArgs.push('--no-verify');
     commitArgs.push('-m', message);
-    await execFileAsync('git', commitArgs, { timeout: 15_000 });
+    await runCancellableGit(commitArgs, {
+      env: temporaryIndex.env,
+      timeoutMs: COMMIT_TIMEOUT_MS,
+      maxOutputBytes: MAX_COMMIT_OUTPUT_BYTES,
+      signal,
+    });
 
-    return { ok: true };
-  } catch (e) {
-    const raw = e instanceof Error ? e.message : String(e);
-    // Strip the node execFile wrapper noise — just return the git stderr.
-    const match = raw.match(/stderr: ([\s\S]+)/);
-    return { ok: false, error: match ? match[1].trim() : raw };
+    commitHash = await readHead(repoRoot);
+    if (!commitHash) throw new Error('Git did not create a commit');
+
+    phase = 'index-reconcile';
+    await reconcileRealIndex(repoRoot, previousHead, commitHash);
+    const workingTreeChanged = await hasWorkingTreeChanged(repoRoot, initialSnapshot);
+
+    return { ok: true, repoRoot, commitHash, workingTreeChanged };
+  } catch (error) {
+    const diagnostics = normalizeProcessFailure(error);
+    const classification = classifyFailure(phase, diagnostics);
+    const workingTreeChanged = await hasWorkingTreeChanged(repoRoot, initialSnapshot);
+
+    return {
+      ok: false,
+      repoRoot,
+      phase,
+      ...classification,
+      diagnostics,
+      workingTreeChanged,
+      commitCreated: commitHash !== null,
+    };
+  } finally {
+    await removeTemporaryIndex(temporaryIndex);
   }
 }

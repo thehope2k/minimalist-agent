@@ -30,12 +30,20 @@ export function useGitReviewPersistence({
 }: UseGitReviewPersistenceArgs) {
   const branchByRepoRef = useRef<Map<string, string | null>>(new Map());
 
+  const skipNextSaveRef = useRef(false);
+
   const clearPersisted = useCallback(() => {
     if (!cwd) return;
     clearGitReviewState(cwd);
+    // The render that follows a commit would otherwise immediately re-save the post-commit state.
+    skipNextSaveRef.current = true;
   }, [cwd]);
 
   useEffect(() => {
+    if (skipNextSaveRef.current) {
+      skipNextSaveRef.current = false;
+      return;
+    }
     if (!cwd || statusLoading || repos.length === 0 || committing) return;
     const snapshot = buildPersistedState({
       cwd,

@@ -2,6 +2,7 @@ import { CommitPanel, type AmendPreview } from '../CommitPanel';
 import { GitFileList } from '../GitFileList';
 import type { GitFileEntry, GitRepo } from '../types';
 import type { LastCommitFileEntry } from '../git-util';
+import type { GitCommitAttempt } from '../diff-modal/useCommitFlow';
 
 interface GitLeftPanelProps {
   statusLoading: boolean;
@@ -17,12 +18,13 @@ interface GitLeftPanelProps {
   stagedCount: number;
   totalCount: number;
   stagedRepos: string[];
-  onCommit: (message: string, amend: boolean) => Promise<void>;
+  onCommit: (message: string, amend: boolean, skipHooks?: boolean) => Promise<GitCommitAttempt>;
   onFetchLastMessage: () => Promise<string | null>;
   onFetchLastFiles: () => Promise<string | null>;
   onGenerateMessage: (amend: boolean) => Promise<string | null>;
   committing: boolean;
-  error: string | null;
+  attempt: GitCommitAttempt | null;
+  onCancel: () => void;
   onAmendPreviewChange: (preview: AmendPreview | null) => void;
   amendPreview: AmendPreview | null;
   selectedAmendFile: LastCommitFileEntry | null;
@@ -49,7 +51,8 @@ export function GitLeftPanel(props: GitLeftPanelProps) {
     onFetchLastFiles,
     onGenerateMessage,
     committing,
-    error,
+    attempt,
+    onCancel,
     onAmendPreviewChange,
     amendPreview,
     selectedAmendFile,
@@ -111,7 +114,8 @@ export function GitLeftPanel(props: GitLeftPanelProps) {
         onFetchLastFiles={onFetchLastFiles}
         onGenerateMessage={onGenerateMessage}
         committing={committing}
-        error={error}
+        attempt={attempt}
+        onCancel={onCancel}
         onAmendPreviewChange={onAmendPreviewChange}
       />
     </>

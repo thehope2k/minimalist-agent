@@ -1,5 +1,10 @@
 import { ipcRenderer } from 'electron';
-import type { AppApi, BrowserPaneState, TerminalTabInfo } from '../../shared/electron-api';
+import type {
+  AppApi,
+  BrowserPaneState,
+  GitCommitRequest,
+  TerminalTabInfo,
+} from '../../shared/electron-api';
 
 export function createToolsApi(): Pick<AppApi, 'git' | 'terminal' | 'voice' | 'browser'> {
   return {
@@ -11,17 +16,9 @@ export function createToolsApi(): Pick<AppApi, 'git' | 'terminal' | 'voice' | 'b
         absolutePath: string;
         status: string;
       }) => ipcRenderer.invoke('git:diff', args),
-      commitFiles: (args: {
-        repoRoot: string;
-        files: Array<{
-          relativePath: string;
-          absolutePath: string;
-          status: string;
-          content?: string;
-        }>;
-        message: string;
-        amend?: boolean;
-      }) => ipcRenderer.invoke('git:commitFiles', args),
+      preflightCommit: (repoRoot: string) => ipcRenderer.invoke('git:preflightCommit', repoRoot),
+      commitFiles: (args: GitCommitRequest) => ipcRenderer.invoke('git:commitFiles', args),
+      cancelCommit: (operationId: string) => ipcRenderer.invoke('git:cancelCommit', operationId),
       lastCommitMessage: (repoRoot: string) =>
         ipcRenderer.invoke('git:lastCommitMessage', repoRoot),
       branchName: (repoRoot: string) => ipcRenderer.invoke('git:branchName', repoRoot),
