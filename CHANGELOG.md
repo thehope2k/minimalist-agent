@@ -5,6 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [2.4.0] — 2026-10-04
+
+Connection model preferences and settings polish.
+
+### Added
+
+- Choose and save a default model for each AI connection directly from its model list.
+
+### Changed
+
+- Refreshing a connection's available models now shows progress while the updated list is fetched.
+
+---
+
 ## [2.3.0] — 2026-10-01
 
 Native MCP integration with new tool exposure modes, plus planning and session reliability fixes.
