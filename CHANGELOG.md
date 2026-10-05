@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [2.5.0] — 2026-10-05
+
+Extension setup improvements and project-tier reliability fixes.
+
+### Added
+
+**Extension setup**
+
+- Extension setup forms now provide guided fields, focus management, and placeholder detection for required configuration.
+
+### Fixed
+
+- Project-tier extensions now resolve their setup paths correctly when configured from their containing folder.
+
+---
+
 ## [2.4.1] — 2026-10-04
 
 Bug fixes for git commits and plan approvals.
