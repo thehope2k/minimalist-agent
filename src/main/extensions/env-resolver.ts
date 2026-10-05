@@ -8,7 +8,7 @@
 
 import { loadAllExtensions } from './storage';
 import { requiresConsent, resolveEnvValue } from './types';
-import { getSecret } from './secrets';
+import { envLookupFor } from './setup';
 import { hasConsent } from './mcp-config';
 
 /**
@@ -32,9 +32,10 @@ export function resolveExtensionEnv(cwd?: string): Record<string, string> {
     // A credential-bearing cli-bound extension is the same trust decision
     // as an mcp-backed one — withhold the whole binding until consented.
     if (requiresConsent(ext.config) && !hasConsent(ext)) continue;
+    const lookup = envLookupFor(ext.slug);
     for (const [name, value] of Object.entries(ext.config.env)) {
-      const resolved = resolveEnvValue(value, ext.scope, (key) => getSecret(ext.slug, key));
-      // null = missing secret (skip silently for CLI-bound, no spawn block needed)
+      const resolved = resolveEnvValue(value, ext.scope, lookup);
+      // null = missing setup value (skip silently for CLI-bound, no spawn block needed)
       // undefined = ${VAR} not set in environment (skip silently)
       if (resolved != null) out[name] = resolved;
     }

@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { ExtensionConfig } from './types';
-import { isToolBlocked, mcpSlugMatches, normalizeMcpNamePart, parseMcpToolName } from './types';
+import {
+  hasSecretRefs,
+  isPlaceholderValue,
+  isToolBlocked,
+  mcpSlugMatches,
+  normalizeMcpNamePart,
+  parseMcpToolName,
+  resolveEnvValue,
+  type EnvLookup,
+} from './types';
 
 describe('normalizeMcpNamePart', () => {
   it('replaces every non [A-Za-z0-9_] character with _', () => {
@@ -64,5 +73,49 @@ describe('isToolBlocked', () => {
   it('never blocks when the extension has no mcp block', () => {
     const noMcp: ExtensionConfig = { ...baseConfig, mcp: undefined };
     expect(isToolBlocked(noMcp, 'delete-issue')).toBe(false);
+  });
+});
+
+describe('isPlaceholderValue', () => {
+  it.each(['REPLACE_WITH_EMAIL', 'YOUR_API_URL', '<your-email>'])('flags %j', (value) =>
+    expect(isPlaceholderValue(value)).toBe(true),
+  );
+
+  it.each(['https://jira-pg.atlassian.net', 'me@example.com', 'todo-sync', 'change-log', ''])(
+    'accepts %j',
+    (value) => expect(isPlaceholderValue(value)).toBe(false),
+  );
+});
+
+describe('resolveEnvValue', () => {
+  const lookup: EnvLookup = {
+    secret: (key) => (key === 'tok' ? 'secret-value' : null),
+    input: (key) => (key === 'email' ? 'me@x.com' : ''),
+  };
+
+  it('resolves secret and input refs from their own stores', () => {
+    expect(resolveEnvValue({ secret: 'tok' }, 'user', lookup)).toBe('secret-value');
+    expect(resolveEnvValue({ input: 'email' }, 'user', lookup)).toBe('me@x.com');
+  });
+
+  it('returns null (blocking) for unset refs and placeholder literals', () => {
+    expect(resolveEnvValue({ secret: 'nope' }, 'user', lookup)).toBeNull();
+    expect(resolveEnvValue({ input: 'nope' }, 'user', lookup)).toBeNull();
+    expect(resolveEnvValue('REPLACE_ME', 'user', lookup)).toBeNull();
+  });
+
+  it('passes real literals through', () => {
+    expect(resolveEnvValue('https://x.atlassian.net', 'user', lookup)).toBe(
+      'https://x.atlassian.net',
+    );
+  });
+});
+
+describe('hasSecretRefs', () => {
+  const base = { schemaVersion: 1, slug: 'x', name: 'x', description: 'x' } as const;
+
+  it('does not treat a plain input as a credential', () => {
+    expect(hasSecretRefs({ ...base, env: { A: { input: 'a' } } })).toBe(false);
+    expect(hasSecretRefs({ ...base, env: { A: { secret: 'a' } } })).toBe(true);
   });
 });

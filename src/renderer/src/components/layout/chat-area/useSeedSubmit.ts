@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { homedir } from '@/lib/path';
+import type { PermissionMode } from '@/lib/electron';
 import type { useAiData } from '@/hooks/useAiData';
 import type { SeedSubmit } from './types';
 
@@ -14,7 +15,7 @@ export function useSeedSubmit(
   isStreaming: boolean,
   messages: any[],
   cwd: string | undefined,
-  permissionMode: any,
+  permissionMode: PermissionMode,
   send: (args: any) => void,
 ) {
   const seedFiredRef = useRef<SeedSubmit | null>(null);
@@ -46,6 +47,7 @@ export function useSeedSubmit(
       model,
       cwd: cwd ?? (homedir() || undefined),
       permissionMode,
+      turnPermissionMode: seedSubmit.permissionMode,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seedSubmit, aiData, isStreaming, messages.length]);

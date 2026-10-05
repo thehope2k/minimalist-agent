@@ -81,6 +81,7 @@ export function AddExtensionDialog({
       displayText: desc,
       agentText: buildScaffoldPrompt(desc, slug, extDir, refDocPath),
       intentTag: 'add-extension',
+      permissionMode: 'auto',
     });
     onClose();
   };
@@ -213,7 +214,11 @@ Then:
 3. **If the running-server question is genuinely unclear or the trade-off is non-trivial** (e.g. an official MCP server exists *and* the CLI works fine, or the user's intent is ambiguous), pause and ask the user before writing files. Frame it as a short choice with a one-line reason for each.
 4. ${slugInstructions}
 5. After writing, validate by reading both files back.
-6. Briefly summarize what you built and what (if anything) the user needs to do next (e.g. provide an API key — which requires their one-time approval in the Extensions panel before it's used).
+6. The user must never have to edit files by hand, and extension.json must contain no placeholders:
+   - Credentials → \`{ "secret": "<service>.<purpose>" }\`.
+   - Per-user values you don't know (email, workspace URL, account id) → \`{ "input": "<service>.<name>" }\`. Ask the user for a value only if you need it to decide the design.
+   - Give every secret/input a label and hint under \`setup.fields\`.
+7. Finish with a short summary and a "Next steps" list that maps 1:1 to the fields the user will see in the extension's Setup section (plus "Allow" for MCP). Don't say the tools work yet — they only appear in new chats, and the Setup section offers "Test connection" and "Start a chat with it" once setup is complete.
 
 User wants an extension that will: ${description}`;
 }

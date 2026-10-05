@@ -17,6 +17,10 @@
  * No lifecycle FSM. Presence in the folder = active. Remove to deactivate.
  */
 
+import type { ExtensionSetup, InputRef } from '../../shared/electron-api';
+
+export type { ExtensionSetup, InputRef };
+
 /* ---------- frontmatter (guide.md) ---------- */
 
 export interface ExtensionGuideFrontmatter {
@@ -32,7 +36,22 @@ export interface SecretRef {
   secret: string;
 }
 
-export type EnvValue = string | SecretRef;
+export type EnvValue = string | SecretRef | InputRef;
+
+export function isSecretRef(value: EnvValue): value is SecretRef {
+  return typeof value === 'object' && 'secret' in value;
+}
+
+export function isInputRef(value: EnvValue): value is InputRef {
+  return typeof value === 'object' && 'input' in value;
+}
+
+const PLACEHOLDER_PATTERN = /^(replace|your)_|^<[^>]+>$/i;
+
+/** A literal env value the author left as a to-do instead of a real value. */
+export function isPlaceholderValue(value: string): boolean {
+  return PLACEHOLDER_PATTERN.test(value.trim());
+}
 
 /**
  * How pi's native MCP integration exposes a server's tools to the model
@@ -107,6 +126,7 @@ export interface ExtensionConfig {
   icon?: string;
   tags?: string[];
   env?: Record<string, EnvValue>;
+  setup?: ExtensionSetup;
   mcp?: McpConfig;
   permissions?: ExtensionPermissions;
   provenance?: ExtensionProvenance;
@@ -122,27 +142,30 @@ export function variantOf(config: ExtensionConfig): ExtensionVariant {
   return 'guide-only';
 }
 
+export interface EnvLookup {
+  secret: (key: string) => string | null | undefined;
+  input: (key: string) => string | null | undefined;
+}
+
 /**
  * Resolve a single env value for an extension.
  * - Literal string: used as-is for user-tier; `${VAR}` refs resolved from
- *   `process.env` for project-tier (silently skipped if unset).
- * - SecretRef: resolved from the keychain (caller provides `getSecretFn`).
- *   Returns null when the secret is required but missing (blocks MCP spawn).
+ *   `process.env` for project-tier (silently skipped if unset). A placeholder
+ *   literal (`REPLACE_…`, `<your-email>`) is treated as missing.
+ * - SecretRef / InputRef: resolved from the matching store.
+ *   Returns null when the value is required but missing (blocks MCP spawn).
  */
 export function resolveEnvValue(
   value: EnvValue,
   scope: ExtensionScope,
-  getSecretFn: (secretKey: string) => string | null | undefined,
+  lookup: EnvLookup,
 ): string | null | undefined {
-  if (typeof value === 'string') {
-    if (scope === 'project' && value.startsWith('${') && value.endsWith('}')) {
-      const varName = value.slice(2, -1);
-      return process.env[varName]; // undefined = skip silently
-    }
-    return value;
+  if (isSecretRef(value)) return lookup.secret(value.secret) ?? null;
+  if (isInputRef(value)) return lookup.input(value.input) || null;
+  if (scope === 'project' && value.startsWith('${') && value.endsWith('}')) {
+    return process.env[value.slice(2, -1)]; // undefined = skip silently
   }
-  // SecretRef
-  return getSecretFn(value.secret) ?? null; // null = missing, blocks spawn
+  return isPlaceholderValue(value) ? null : value;
 }
 
 /**
@@ -152,7 +175,7 @@ export function resolveEnvValue(
  */
 export function hasSecretRefs(config: ExtensionConfig): boolean {
   if (!config.env) return false;
-  return Object.values(config.env).some((v) => typeof v !== 'string');
+  return Object.values(config.env).some(isSecretRef);
 }
 
 /**

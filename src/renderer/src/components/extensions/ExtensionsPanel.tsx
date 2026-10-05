@@ -33,7 +33,7 @@ export function ExtensionsPanel({ activeSlug, onSelect, onStartChatWithSubmissio
   const loadMcpStatus = async () => {
     try {
       const list = await window.api.extensions.mcpStatus();
-      setMcpStatus(Object.fromEntries(list.map((s) => [s.slug, s as McpStatus])));
+      setMcpStatus(Object.fromEntries(list.map((s) => [s.slug, s])));
     } catch {
       /* diagnostics are best-effort; never block the panel */
     }

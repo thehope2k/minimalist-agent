@@ -1,3 +1,5 @@
+import type { PermissionMode } from '@/lib/electron';
+
 export type SeedSubmit = {
   /** What the user sees in the chat transcript. */
   displayText: string;
@@ -5,6 +7,8 @@ export type SeedSubmit = {
   agentText: string;
   /** Origin tag for the contextual chip above the user bubble. */
   intentTag: string;
+  /** Applies to this submission's turn only; the session's own mode is left untouched. */
+  permissionMode?: PermissionMode;
 };
 
 export type ChatAreaProps = {

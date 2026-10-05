@@ -65,6 +65,7 @@ export function AddAgentDialog({
       displayText: desc,
       agentText: buildAgentScaffoldPrompt(desc, slug, agentsDir),
       intentTag: 'add-agent',
+      permissionMode: 'auto',
     });
     onClose();
   };

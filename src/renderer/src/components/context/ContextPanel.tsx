@@ -225,6 +225,7 @@ export function ContextPanel({
               extension={detail.item}
               onClose={() => setDetail(null)}
               onOpenFile={onOpenFile}
+              onStartChatWithSubmission={onStartChatWithSubmission}
             />
           </div>
         </ExpandModal>

@@ -694,7 +694,56 @@ export interface SecretRef {
   secret: string;
 }
 
-export type EnvValue = string | SecretRef;
+export interface InputRef {
+  input: string;
+}
+
+export type EnvValue = string | SecretRef | InputRef;
+
+export interface SetupFieldMeta {
+  label: string;
+  hint?: string;
+  placeholder?: string;
+}
+
+export interface ExtensionSetup {
+  fields?: Record<string, SetupFieldMeta>;
+}
+
+export interface SetupField {
+  key: string;
+  label: string;
+  hint?: string;
+  placeholder?: string;
+  secret: boolean;
+  isSet: boolean;
+  /** Present only for non-secret fields. */
+  value?: string;
+}
+
+export interface ExtensionSetupStatus {
+  fields: SetupField[];
+  /** Env vars whose literal value is still a to-do the user can't fill in the form. */
+  unresolvedLiterals: string[];
+  /** Secrets stored for this extension that its config no longer declares. */
+  orphanSecrets: string[];
+}
+
+export interface ExtensionSetupSnapshot extends ExtensionSetupStatus {
+  encryptionAvailable: boolean;
+  hasConsent: boolean;
+}
+
+export type McpTestResult = { ok: true; toolCount: number } | { ok: false; error: string };
+
+export interface McpExtensionStatus {
+  slug: string;
+  ok: boolean;
+  reason?: 'missing-setup' | 'no-consent' | 'connect-failed' | 'unsupported-transport';
+  toolCount?: number;
+  error?: string;
+  missing?: string[];
+}
 
 export type McpExposure = 'codemode' | 'deferred' | 'direct' | 'hidden';
 
@@ -740,6 +789,7 @@ export interface ExtensionConfig {
   icon?: string;
   tags?: string[];
   env?: Record<string, EnvValue>;
+  setup?: ExtensionSetup;
   mcp?: McpConfig;
   permissions?: ExtensionPermissions;
   provenance?: ExtensionProvenance;
@@ -1230,26 +1280,17 @@ export interface AppApi {
     revealInFinder: (dirPath: string) => Promise<void>;
     validate: (dirPath: string, slug: string) => Promise<{ ok: boolean; report: string }>;
 
-    secretsEncryptionAvailable: () => Promise<boolean>;
-    listSecretKeys: (slug: string) => Promise<string[]>;
+    setupStatus: (slug: string) => Promise<ExtensionSetupSnapshot | null>;
     setSecret: (slug: string, keyName: string, value: string) => Promise<void>;
     deleteSecret: (slug: string, keyName: string) => Promise<void>;
-    declaredSecrets: (slug: string) => Promise<string[]>;
-    missingSecrets: (slug: string) => Promise<string[]>;
+    setInput: (slug: string, key: string, value: string) => Promise<void>;
+    deleteInput: (slug: string, key: string) => Promise<void>;
 
-    hasConsent: (slug: string) => Promise<boolean>;
     grantConsent: (slug: string) => Promise<boolean>;
     revokeConsent: (slug: string) => Promise<boolean>;
 
-    mcpStatus: () => Promise<
-      Array<{
-        slug: string;
-        ok: boolean;
-        reason?: 'disabled' | 'missing-secrets' | 'no-consent' | 'connect-failed';
-        toolCount?: number;
-        error?: string;
-      }>
-    >;
+    mcpStatus: () => Promise<McpExtensionStatus[]>;
+    testMcp: (slug: string) => Promise<McpTestResult>;
     onMcpStatus: (cb: () => void) => () => void;
   };
   attachments: {

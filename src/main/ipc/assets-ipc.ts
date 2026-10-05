@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
-import { BrowserWindow, ipcMain, shell } from 'electron';
+import { ipcMain, shell } from 'electron';
 import {
   deleteSkill,
   getSkillsDir,
@@ -45,25 +45,11 @@ import {
   validateExtensionGuideContent,
 } from '../extensions/parse';
 import { getExtensionRegistry } from '../extensions/registry';
-import {
-  deleteSecret as deleteExtensionSecret,
-  isSecretsEncryptionAvailable,
-  listSecretKeys as listExtensionSecretKeys,
-  setSecret as setExtensionSecret,
-} from '../extensions/secrets';
-import {
-  grantConsent,
-  hasConsent,
-  listDeclaredSecrets,
-  listMcpExtensionsStatus,
-  listMissingSecrets,
-  revokeConsent,
-} from '../extensions/mcp-config';
 import { pinAsset, unpinAsset } from '../storage/sessions';
 import { estimatePinnedTokens } from '../agent-runtime/system-prompt';
 import { Paths } from '../storage/paths';
 
-/** Skills, agents, extensions (incl. secrets/consent), and the context-panel
+/** Skills, agents, extensions (files/validation), and the context-panel
  *  asset listing/pinning surface. */
 export function registerAssetsIpc(): void {
   // ---- Skills -----------------------------------------------------------
@@ -196,72 +182,6 @@ export function registerAssetsIpc(): void {
 
       return { ok: allValid, report: lines.join('\n') };
     },
-  );
-
-  // ---- Extension secrets + consent --------------------------------------
-
-  // Consent/secret changes alter which mcp-backed extensions are eligible.
-  // Broadcasting lets open panels re-read `mcp.status` and refresh their
-  // badges immediately, rather than waiting for a manual refresh.
-  const broadcastMcpStatusChanged = () => {
-    for (const win of BrowserWindow.getAllWindows()) {
-      if (!win.isDestroyed()) win.webContents.send('mcp-status');
-    }
-  };
-
-  ipcMain.handle('extensions:secrets.encryptionAvailable', (): boolean =>
-    isSecretsEncryptionAvailable(),
-  );
-  ipcMain.handle('extensions:secrets.listKeys', (_e, slug: string): string[] =>
-    listExtensionSecretKeys(slug),
-  );
-  ipcMain.handle(
-    'extensions:secrets.set',
-    (_e, slug: string, keyName: string, value: string): void => {
-      setExtensionSecret(slug, keyName, value);
-      // Saving a secret is itself the deliberate, explicit act of trust for
-      // a credential-only extension (no `mcp`) — a separate "Allow" click
-      // would just ask the user to confirm the same decision twice. MCP
-      // servers keep the explicit step: running code the user hasn't
-      // reviewed is a different kind of decision than handing over a token.
-      const ext = loadExtensionBySlug(slug);
-      if (ext && !ext.config.mcp) grantConsent(ext);
-      broadcastMcpStatusChanged();
-    },
-  );
-  ipcMain.handle('extensions:secrets.delete', (_e, slug: string, keyName: string): void => {
-    deleteExtensionSecret(slug, keyName);
-    broadcastMcpStatusChanged();
-  });
-  ipcMain.handle('extensions:secrets.declared', (_e, slug: string): string[] => {
-    const ext = loadExtensionBySlug(slug);
-    return ext ? listDeclaredSecrets(ext) : [];
-  });
-  ipcMain.handle('extensions:secrets.missing', (_e, slug: string): string[] => {
-    const ext = loadExtensionBySlug(slug);
-    return ext ? listMissingSecrets(ext) : [];
-  });
-  ipcMain.handle('extensions:consent.has', (_e, slug: string): boolean => {
-    const ext = loadExtensionBySlug(slug);
-    return ext ? hasConsent(ext) : false;
-  });
-  ipcMain.handle('extensions:consent.grant', (_e, slug: string): boolean => {
-    const ext = loadExtensionBySlug(slug);
-    if (!ext) return false;
-    grantConsent(ext);
-    broadcastMcpStatusChanged();
-    return true;
-  });
-  ipcMain.handle('extensions:consent.revoke', (_e, slug: string): boolean => {
-    const ext = loadExtensionBySlug(slug);
-    if (!ext) return false;
-    revokeConsent(ext);
-    broadcastMcpStatusChanged();
-    return true;
-  });
-  ipcMain.handle(
-    'extensions:mcp.status',
-    (): Array<{ slug: string; ok: boolean; reason?: string }> => listMcpExtensionsStatus(),
   );
 
   // ── Context Panel: project-local config + session pinned assets ──────────

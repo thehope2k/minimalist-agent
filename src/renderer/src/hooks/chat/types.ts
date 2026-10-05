@@ -13,6 +13,8 @@ export interface SendArgs {
   cwd?: string;
   /** Permission mode for this turn ('plan' | 'auto'). */
   permissionMode: PermissionMode;
+  /** Overrides `permissionMode` for this turn's request only; not persisted to session meta. */
+  turnPermissionMode?: PermissionMode;
   /**
    * Autonomy level (0-100) for this turn. Persisted to session meta so the
    * in-session slider value survives the fresh-chat null → newId transition

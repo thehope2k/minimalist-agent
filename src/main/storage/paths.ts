@@ -105,6 +105,7 @@ export const Paths = {
   },
   extensionSecrets: () => join(root(), 'extension-secrets.enc'),
   extensionConsents: () => join(root(), 'extension-consents.json'),
+  extensionInputs: () => join(root(), 'extension-inputs.json'),
 } as const;
 
 export const MIGRATION_BACKUP_RETENTION = 10;

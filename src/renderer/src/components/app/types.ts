@@ -1,3 +1,5 @@
+import type { PermissionMode } from '@/lib/electron';
+
 /** Payload pushed from non-chat surfaces (e.g. New Skill) into a fresh chat. */
 export interface SeedSubmit {
   /** What the user sees in the chat transcript. */
@@ -6,6 +8,8 @@ export interface SeedSubmit {
   agentText: string;
   /** Origin tag for the contextual chip above the user bubble. */
   intentTag: string;
+  /** Applies to this submission's turn only; the session's own mode is left untouched. */
+  permissionMode?: PermissionMode;
   /** Optional working directory for the new session. When set, the session opens rooted here. */
   workingDirectory?: string;
 }

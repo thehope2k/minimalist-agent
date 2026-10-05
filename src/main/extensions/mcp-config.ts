@@ -6,9 +6,9 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import type { LoadedExtension, McpExposure } from './types';
-import { requiresConsent, resolveEnvValue } from './types';
+import { isSecretRef, requiresConsent, resolveEnvValue } from './types';
 import { loadAllExtensions } from './storage';
-import { getSecret } from './secrets';
+import { envLookupFor, listMissingSetup } from './setup';
 import { Paths } from '../storage/paths';
 
 /* ---------- consent ---------- */
@@ -30,7 +30,7 @@ function consentKey(ext: LoadedExtension): string {
   // MCP-backed extension: envFromBinding feeds them to the spawned server,
   // so a new one is a new credential flowing somewhere, not a no-op.
   const secretKeys = Object.entries(config.env ?? {})
-    .filter(([, v]) => typeof v !== 'string')
+    .filter(([, v]) => isSecretRef(v))
     .map(([k]) => k)
     .sort()
     .join(',');
@@ -88,41 +88,14 @@ export function revokeConsent(ext: LoadedExtension): void {
 
 /* ---------- env resolution ---------- */
 
-/**
- * Names of secrets declared in extension.env that are not yet set in the
- * secret store. Used by the UI to nudge the user before enabling.
- */
-export function listMissingSecrets(ext: LoadedExtension): string[] {
-  const env = ext.config.env;
-  if (!env) return [];
-  const missing: string[] = [];
-  for (const [_name, value] of Object.entries(env)) {
-    if (typeof value !== 'string') {
-      const stored = getSecret(ext.slug, value.secret);
-      if (!stored) missing.push(value.secret);
-    }
-  }
-  return missing;
-}
-
-/** Names of all secret refs declared (whether or not they're set). */
-export function listDeclaredSecrets(ext: LoadedExtension): string[] {
-  const env = ext.config.env;
-  if (!env) return [];
-  const out: string[] = [];
-  for (const value of Object.values(env)) {
-    if (typeof value !== 'string') out.push(value.secret);
-  }
-  return out;
-}
-
 function resolveEnv(ext: LoadedExtension): Record<string, string> | null {
   const env = ext.config.env;
   if (!env) return undefined as unknown as Record<string, string> | null;
+  const lookup = envLookupFor(ext.slug);
   const out: Record<string, string> = {};
   for (const [name, value] of Object.entries(env)) {
-    const resolved = resolveEnvValue(value, ext.scope, (key) => getSecret(ext.slug, key));
-    if (resolved === null) return null; // missing secret — can't spawn safely
+    const resolved = resolveEnvValue(value, ext.scope, lookup);
+    if (resolved === null) return null; // missing setup value — can't spawn safely
     if (resolved !== undefined) out[name] = resolved;
   }
   return out;
@@ -162,7 +135,7 @@ export type ResolvedMcpServerConfig =
       auth?: { provider: string };
     };
 
-function toResolvedConfig(ext: LoadedExtension): ResolvedMcpServerConfig | null {
+export function toResolvedConfig(ext: LoadedExtension): ResolvedMcpServerConfig | null {
   const mcp = ext.config.mcp;
   if (!mcp) return null;
 
@@ -207,6 +180,7 @@ export function buildResolvedMcpServers(cwd?: string): ResolvedMcpServerConfig[]
   for (const ext of loadAllExtensions(cwd)) {
     if (!ext.config.mcp) continue;
     if (!hasConsent(ext)) continue;
+    if (listMissingSetup(ext).length > 0) continue;
     const cfg = toResolvedConfig(ext);
     if (cfg) out.push(cfg);
   }
@@ -254,16 +228,18 @@ export function recordMcpStatus(
 export function listMcpExtensionsStatus(cwd?: string): Array<{
   slug: string;
   ok: boolean;
-  reason?: 'missing-secrets' | 'no-consent' | 'connect-failed' | 'unsupported-transport';
+  reason?: 'missing-setup' | 'no-consent' | 'connect-failed' | 'unsupported-transport';
   toolCount?: number;
   error?: string;
+  missing?: string[];
 }> {
   return loadAllExtensions(cwd)
     .filter((e) => e.config.mcp)
     .map((e) => {
       if (!hasConsent(e)) return { slug: e.slug, ok: false, reason: 'no-consent' as const };
-      if (listMissingSecrets(e).length > 0)
-        return { slug: e.slug, ok: false, reason: 'missing-secrets' as const };
+      const missing = listMissingSetup(e);
+      if (missing.length > 0)
+        return { slug: e.slug, ok: false, reason: 'missing-setup' as const, missing };
       const runtime = runtimeMcpStatus.get(e.slug);
       if (runtime && !runtime.ok)
         return {

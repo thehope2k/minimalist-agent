@@ -5,11 +5,16 @@ import { MetadataSection } from './extension-info-page/MetadataSection';
 import { McpNoticeSection } from './extension-info-page/McpNoticeSection';
 import { GuideSection } from './extension-info-page/GuideSection';
 import { ConfigSection } from './extension-info-page/ConfigSection';
-import { SecretsSection } from './extension-info-page/SecretsSection';
+import { SetupSection } from './extension-info-page/SetupSection';
 import { useExtensionActions } from './extension-info-page/useExtensionActions';
 import type { ExtensionInfoPageProps } from './extension-info-page/types';
 
-export function ExtensionInfoPage({ extension, onClose, onOpenFile }: ExtensionInfoPageProps) {
+export function ExtensionInfoPage({
+  extension,
+  onClose,
+  onOpenFile,
+  onStartChatWithSubmission,
+}: ExtensionInfoPageProps) {
   if (!extension) return <EmptyView />;
 
   const { copied, copySlug } = useExtensionActions(extension);
@@ -31,7 +36,10 @@ export function ExtensionInfoPage({ extension, onClose, onOpenFile }: ExtensionI
 
           <MetadataSection extension={extension} />
 
-          <SecretsSection extension={extension} />
+          <SetupSection
+            extension={extension}
+            onStartChatWithSubmission={onStartChatWithSubmission}
+          />
 
           <GuideSection extension={extension} onOpenFile={onOpenFile} />
 

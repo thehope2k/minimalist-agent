@@ -3,7 +3,7 @@ import type { McpStatus } from './mcpStatus';
 /** Compact badge describing why an mcp-backed extension's tools aren't loaded
  *  (or that they are). Returns null for non-mcp extensions or unknown status. */
 export function McpStatusBadge({ status }: { status: McpStatus | undefined }) {
-  if (!status || status.reason === 'disabled') return null;
+  if (!status) return null;
   if (status.ok) {
     // toolCount is only known once some session has actually connected the
     // server — a stale, cross-session signal, not "live right now." It's
@@ -13,7 +13,7 @@ export function McpStatusBadge({ status }: { status: McpStatus | undefined }) {
     const title =
       status.toolCount != null
         ? `Ready — connects on use, last verified with ${status.toolCount} tool(s)`
-        : 'Ready — consent and secrets satisfied, connects on first use this session';
+        : 'Ready — setup complete and access allowed, connects on first use this session';
     return (
       <span
         className="rounded bg-emerald-500/15 px-1.5 py-px text-[10px] uppercase tracking-wide text-emerald-300"
@@ -26,16 +26,16 @@ export function McpStatusBadge({ status }: { status: McpStatus | undefined }) {
   const label =
     status.reason === 'no-consent'
       ? 'consent'
-      : status.reason === 'missing-secrets'
-        ? 'secret'
+      : status.reason === 'missing-setup'
+        ? 'setup'
         : status.reason === 'unsupported-transport'
           ? 'unsupported'
           : 'failed';
   const title =
     status.reason === 'no-consent'
       ? 'MCP tools blocked: consent not granted. Open this extension to approve the server.'
-      : status.reason === 'missing-secrets'
-        ? 'MCP tools blocked: a required secret is not set.'
+      : status.reason === 'missing-setup'
+        ? `MCP tools blocked: setup incomplete${status.missing?.length ? ` (${status.missing.join(', ')})` : ''}. Open this extension to finish it.`
         : status.reason === 'unsupported-transport'
           ? `This server's transport isn't supported by the agent runtime and will never register tools${status.error ? `: ${status.error}` : ''}`
           : `MCP server failed to start${status.error ? `: ${status.error}` : ''}`;

@@ -116,6 +116,7 @@ export function MainContent({
           extension={activeExtension}
           onClose={onExtensionClose}
           onOpenFile={onOpenFile}
+          onStartChatWithSubmission={startSessionWithSubmission}
         />
       )}
     </>

@@ -12,6 +12,7 @@ import { registerSessionsIpc } from './sessions-ipc';
 import { registerProjectsIpc } from './projects-ipc';
 import { registerFilesIpc } from './files-ipc';
 import { registerAssetsIpc } from './assets-ipc';
+import { registerExtensionSetupIpc } from './extension-setup-ipc';
 import { registerGitIpc } from './git-ipc';
 import { registerTerminalIpc } from './terminal-ipc';
 import { registerBrowserIpc } from './browser-ipc';
@@ -30,6 +31,7 @@ export function registerIpc(): void {
   registerProjectsIpc();
   registerFilesIpc();
   registerAssetsIpc();
+  registerExtensionSetupIpc();
   registerGitIpc();
   registerTerminalIpc();
   registerBrowserIpc();

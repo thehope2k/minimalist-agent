@@ -56,6 +56,7 @@ export function useChatSend(deps: ChatSendDeps) {
       model,
       cwd,
       permissionMode,
+      turnPermissionMode,
       autonomyLevel,
       thinkingLevel,
       attachments: drafts,
@@ -66,6 +67,7 @@ export function useChatSend(deps: ChatSendDeps) {
       const draftsList = drafts ?? [];
       if (!trimmed && draftsList.length === 0) return;
       const promptForAgent = (agentText ?? trimmed).trim();
+      const requestPermissionMode = turnPermissionMode ?? permissionMode;
 
       let sid = activeSessionIdRef.current;
       const isFreshSession = !sid;
@@ -152,7 +154,7 @@ export function useChatSend(deps: ChatSendDeps) {
           connection,
           model,
           cwd,
-          permissionMode,
+          permissionMode: requestPermissionMode,
           attachments: drafts,
         },
         assistantId,
@@ -184,7 +186,7 @@ export function useChatSend(deps: ChatSendDeps) {
           model,
           prompt: promptForAgent,
           cwd,
-          permissionMode,
+          permissionMode: requestPermissionMode,
           sessionId: sid,
           attachments: stored.length > 0 ? stored : undefined,
         });

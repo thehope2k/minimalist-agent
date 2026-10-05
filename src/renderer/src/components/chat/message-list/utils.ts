@@ -37,6 +37,8 @@ export function labelForIntent(tag?: string): string | null {
       return 'Edit System Prompt';
     case 'add-extension':
       return 'Add Extension';
+    case 'verify-extension':
+      return 'Verify Extension';
     case 'edit-extension-metadata':
       return 'Edit Extension';
     case 'edit-extension-instructions':

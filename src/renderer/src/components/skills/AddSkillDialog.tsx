@@ -74,6 +74,7 @@ export function AddSkillDialog({
       // What the agent receives — wraps the description in scaffold context.
       agentText: buildScaffoldPrompt(desc, slug, skillsDir, refDocPath),
       intentTag: 'add-skill',
+      permissionMode: 'auto',
     });
     onClose();
   };

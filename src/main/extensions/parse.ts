@@ -1,6 +1,7 @@
 import matter from 'gray-matter';
 import { z } from 'zod';
 import type { ExtensionConfig, ExtensionGuideFrontmatter } from './types';
+import { isPlaceholderValue } from './types';
 import type { ValidationIssue, ValidationResult } from '../asset-tiers/validation';
 import { invalidResult, validateSlug } from '../asset-tiers/validation';
 
@@ -17,7 +18,22 @@ export {
 
 const SecretRefSchema = z.object({ secret: z.string().min(1) });
 
-const EnvValueSchema = z.union([z.string(), SecretRefSchema]);
+const InputRefSchema = z.object({ input: z.string().min(1) });
+
+const EnvValueSchema = z.union([z.string(), SecretRefSchema, InputRefSchema]);
+
+const SetupSchema = z.object({
+  fields: z
+    .record(
+      z.string(),
+      z.object({
+        label: z.string().min(1),
+        hint: z.string().optional(),
+        placeholder: z.string().optional(),
+      }),
+    )
+    .optional(),
+});
 
 const McpExposureSchema = z.union([
   z.literal('codemode'),
@@ -82,6 +98,7 @@ export const ExtensionConfigSchema = z
     tags: z.array(z.string()).optional(),
 
     env: z.record(z.string(), EnvValueSchema).optional(),
+    setup: SetupSchema.optional(),
     mcp: McpConfigSchema.optional(),
     permissions: PermissionsSchema.optional(),
     provenance: ProvenanceSchema.optional(),
@@ -178,6 +195,16 @@ export function validateExtensionConfigContent(raw: string, slug: string): Valid
       message: `extension.json slug ('${cfg.slug}') does not match folder name ('${slug}')`,
       suggestion: `Set "slug": "${slug}" or rename the folder`,
     });
+  }
+
+  for (const [name, value] of Object.entries(cfg.env ?? {})) {
+    if (typeof value === 'string' && isPlaceholderValue(value)) {
+      errors.push({
+        path: `env.${name}`,
+        message: `'${name}' is a placeholder, so the extension can't work until it is replaced`,
+        suggestion: `Use { "input": "<service>.<name>" } with a setup.fields entry so the user fills it in the Setup form`,
+      });
+    }
   }
 
   if (cfg.mcp?.transport === 'stdio' && !cfg.mcp.command) {

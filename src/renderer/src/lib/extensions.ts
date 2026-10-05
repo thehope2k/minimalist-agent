@@ -126,5 +126,5 @@ export function isMcpBacked(ext: LoadedExtension): boolean {
 /** Whether this extension declares a credential (a SecretRef anywhere in `env`). */
 export function hasCredentials(ext: LoadedExtension): boolean {
   if (!ext.config.env) return false;
-  return Object.values(ext.config.env).some((v) => typeof v !== 'string');
+  return Object.values(ext.config.env).some((v) => typeof v === 'object' && 'secret' in v);
 }

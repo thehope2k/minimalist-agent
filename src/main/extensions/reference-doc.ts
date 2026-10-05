@@ -4,7 +4,7 @@
  * content changes; the install pass overwrites stale copies.
  */
 
-export const EXTENSIONS_REFERENCE_VERSION = '0.4.1';
+export const EXTENSIONS_REFERENCE_VERSION = '0.5.0';
 
 export const EXTENSIONS_REFERENCE_MD = `# Extensions
 
@@ -54,12 +54,24 @@ Each extension folder requires two files:
   "icon": "🟣",                               // optional
   "tags": ["pm", "issues"],
 
-  // env values (only needed if this extension requires credentials/config
-  // in Bash): literal OR a SecretRef.
+  // env values (only needed if this extension requires credentials/config):
+  // a literal, a SecretRef (credential), or an InputRef (value the user types
+  // into the Setup form — email, workspace URL, region).
   // ⚠ Credentials (API keys, tokens, passwords) MUST be SecretRefs — never
   // literal strings. See "Secrets" below.
+  // ⚠ NEVER leave a placeholder literal ("REPLACE_ME", "<your-email>") — use
+  // an InputRef. See "User-provided values" below.
   "env": {
-    "LINEAR_API_KEY": { "secret": "linear.apiKey" }
+    "LINEAR_API_KEY": { "secret": "linear.apiKey" },
+    "LINEAR_WORKSPACE": { "input": "linear.workspace" }
+  },
+
+  // labels/hints for the Setup form, keyed by the secret/input name above
+  "setup": {
+    "fields": {
+      "linear.apiKey": { "label": "Linear API key", "hint": "Settings → API → Personal API keys" },
+      "linear.workspace": { "label": "Workspace slug", "placeholder": "acme" }
+    }
   },
 
   // only needed if this extension runs an MCP server:
@@ -280,19 +292,38 @@ silently lose the second account's setup.
 The agent does NOT see plaintext credentials, and SHOULD NOT ask the user
 to paste them into the chat. Instead:
 
-1. Write \`extension.json\` with the \`{ secret: "<key>" }\` reference.
-2. Tell the user to set the value on the extension's info page
-   (Extensions → \`<extension>\` → Keys & access), or via:
-   \`window.api.extensions.setSecret(<slug>, <key>, <value>)\`
-3. Until the secret is set, the env var simply won't be exported — the
-   CLI will fail at runtime and the user will know to set it. That's the
-   intended UX, not a bug.
+1. Write \`extension.json\` with the \`{ secret: "<key>" }\` reference and a
+   \`setup.fields\` entry giving it a label and a hint on where to get it.
+2. Tell the user to enter the value in the **Setup** section of the
+   extension's page (Extensions → \`<extension>\`).
+3. Until it is set, the extension shows "N steps left" and its MCP server
+   won't start. That's the intended UX, not a bug.
 
-### Non-secrets are fine to inline
+### Non-secrets are fine to inline — when they are fixed
 
-Region names, endpoint URLs, default project IDs, feature flags, etc. —
-all of those can stay as literal strings. The hard rule applies only to
-values that grant access.
+Endpoint URLs, region names, default project IDs, feature flags that are the
+same for every user can stay as literal strings. The hard rule applies only
+to values that grant access.
+
+## User-provided values
+
+Anything that differs per user and that you don't know yet — their email,
+workspace/tenant URL, account id — is NOT something to guess or leave as a
+placeholder, and the user must never be asked to edit \`extension.json\` by
+hand. Declare it as an input instead:
+
+\`\`\`jsonc
+"env": { "JIRA_USERNAME": { "input": "jira.email" } },
+"setup": { "fields": { "jira.email": { "label": "Atlassian email" } } }
+\`\`\`
+
+The Setup form renders a field for it, stores the value locally (plain,
+non-secret), and substitutes it into the env at run time. If you already know
+the value (the user told you), write it as a literal instead.
+
+A literal that looks like a placeholder (\`REPLACE_…\`, \`YOUR_…\`, \`<…>\`, empty)
+is treated as "setup incomplete": the extension is flagged and its MCP server
+will not start.
 
 ## Choosing capabilities
 
@@ -325,7 +356,7 @@ in \`env\`, requires one-time user approval before it can act —
 spawning/connecting the MCP server, or exporting the credential into Bash.
 
 - **MCP:** approval is a dedicated step in the Extensions panel (\`<extension>\`
-  → Keys & access → Allow) — spawning a server neither the user nor the
+  → Setup → Allow) — spawning a server neither the user nor the
   agent-drafted config has necessarily been reviewed line-by-line deserves an
   explicit beat.
 - **Credential-only (no \`mcp\`):** approval happens automatically the moment
@@ -344,5 +375,16 @@ Project-tier extensions are always auto-approved (presence in
 
 Click "+ New Extension" or ask the agent: "connect Linear" / "add an aws-iac
 extension". The agent will research the integration, draft \`extension.json\`
-and \`guide.md\`, write them to disk, and verify they work.
+and \`guide.md\`, write them to disk, and verify they load.
+
+An extension is only done when the user's remaining work is entirely in the
+Setup section. When you finish:
+
+- Every user-specific value is a \`secret\` or \`input\` with a \`setup.fields\`
+  label. No placeholders, no hand-editing of files.
+- Your summary ends with a short "Next steps" list that maps 1:1 to the Setup
+  fields (and the Allow step, for MCP).
+- Don't claim the tools work yet. They appear only in **new** chats, and the
+  Setup section offers "Test connection" and "Start a chat with it" once
+  everything is filled in.
 `;

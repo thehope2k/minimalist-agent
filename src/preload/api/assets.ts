@@ -4,9 +4,12 @@ import type {
   AppApi,
   DraftAttachment,
   ExtensionFileNode,
+  ExtensionSetupSnapshot,
   LoadedAgent,
   LoadedExtension,
   LoadedSkill,
+  McpExtensionStatus,
+  McpTestResult,
   SkillFileNode,
   StoredAttachment,
 } from '../../shared/electron-api';
@@ -91,38 +94,28 @@ export function createAssetsApi(): Pick<
       validate: (dirPath: string, slug: string): Promise<{ ok: boolean; report: string }> =>
         ipcRenderer.invoke('extensions:validate', dirPath, slug),
 
-      /* secrets */
-      secretsEncryptionAvailable: (): Promise<boolean> =>
-        ipcRenderer.invoke('extensions:secrets.encryptionAvailable'),
-      listSecretKeys: (slug: string): Promise<string[]> =>
-        ipcRenderer.invoke('extensions:secrets.listKeys', slug),
+      /* setup */
+      setupStatus: (slug: string): Promise<ExtensionSetupSnapshot | null> =>
+        ipcRenderer.invoke('extensions:setup.status', slug),
       setSecret: (slug: string, keyName: string, value: string): Promise<void> =>
         ipcRenderer.invoke('extensions:secrets.set', slug, keyName, value),
       deleteSecret: (slug: string, keyName: string): Promise<void> =>
         ipcRenderer.invoke('extensions:secrets.delete', slug, keyName),
-      declaredSecrets: (slug: string): Promise<string[]> =>
-        ipcRenderer.invoke('extensions:secrets.declared', slug),
-      missingSecrets: (slug: string): Promise<string[]> =>
-        ipcRenderer.invoke('extensions:secrets.missing', slug),
+      setInput: (slug: string, key: string, value: string): Promise<void> =>
+        ipcRenderer.invoke('extensions:inputs.set', slug, key, value),
+      deleteInput: (slug: string, key: string): Promise<void> =>
+        ipcRenderer.invoke('extensions:inputs.delete', slug, key),
 
       /* consent */
-      hasConsent: (slug: string): Promise<boolean> =>
-        ipcRenderer.invoke('extensions:consent.has', slug),
       grantConsent: (slug: string): Promise<boolean> =>
         ipcRenderer.invoke('extensions:consent.grant', slug),
       revokeConsent: (slug: string): Promise<boolean> =>
         ipcRenderer.invoke('extensions:consent.revoke', slug),
 
       /* mcp diagnostics */
-      mcpStatus: (): Promise<
-        Array<{
-          slug: string;
-          ok: boolean;
-          reason?: 'disabled' | 'missing-secrets' | 'no-consent' | 'connect-failed';
-          toolCount?: number;
-          error?: string;
-        }>
-      > => ipcRenderer.invoke('extensions:mcp.status'),
+      mcpStatus: (): Promise<McpExtensionStatus[]> => ipcRenderer.invoke('extensions:mcp.status'),
+      testMcp: (slug: string): Promise<McpTestResult> =>
+        ipcRenderer.invoke('extensions:mcp.test', slug),
       /** Runtime MCP connection outcomes, pushed when a session connects its
        *  servers. Fires a refresh hint; callers re-read `mcpStatus()`. */
       onMcpStatus: (cb: () => void): (() => void) => {

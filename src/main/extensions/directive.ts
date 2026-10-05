@@ -22,8 +22,8 @@ export function formatExtensionsAwareness(cwd?: string): string {
       switch (s.reason) {
         case 'no-consent':
           return 'consent not granted — user must approve it in the Extensions panel';
-        case 'missing-secrets':
-          return 'a required secret is not set';
+        case 'missing-setup':
+          return `setup incomplete — user must fill in${s.missing?.length ? `: ${s.missing.join(', ')}` : ' the Setup form'} on the extension's page`;
         case 'connect-failed':
           return `server failed to start${s.error ? `: ${s.error}` : ''}`;
         default:
