@@ -80,6 +80,7 @@ export function EditSkillDialog({
       displayText: desc,
       agentText: buildEditPrompt(mode, desc, skill, refDocPath),
       intentTag: copy.intentTag,
+      permissionMode: 'auto',
       ...(skill.source === 'project' ? { workingDirectory: projectRootFor(skill.path) } : {}),
     });
     onClose();

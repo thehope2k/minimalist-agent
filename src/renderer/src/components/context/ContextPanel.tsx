@@ -141,7 +141,7 @@ export function ContextPanel({
             onUnpin={handleUnpin}
             onOpenSkill={(skill) => setDetail({ kind: 'skill', item: skill })}
             cwd={cwd}
-            onNew={onStartChatWithSubmission ? openNewDialog : undefined}
+            onNew={onStartChatWithSubmission ? () => void openNewDialog('skill') : undefined}
           />
         )}
 
@@ -156,12 +156,15 @@ export function ContextPanel({
           cwd={cwd}
         />
 
-        {/* Extensions — project then user, read-only */}
-        {projectExtensions.length > 0 && (
+        {/* Extensions — project then user */}
+        {(projectExtensions.length > 0 || (cwd && onStartChatWithSubmission)) && (
           <ExtensionsSection
             title={cwd ? basename(cwd) : 'Project'}
             extensions={projectExtensions}
             onOpenExtension={(ext) => setDetail({ kind: 'extension', item: ext })}
+            onNew={
+              cwd && onStartChatWithSubmission ? () => void openNewDialog('extension') : undefined
+            }
           />
         )}
         <ExtensionsSection

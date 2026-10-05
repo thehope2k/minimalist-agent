@@ -4,3 +4,4 @@ export { ExtensionAvatar } from './ExtensionAvatar';
 export { ExtensionMenu } from './ExtensionMenu';
 export { ExtensionRow } from './ExtensionRow';
 export { AddExtensionDialog } from './AddExtensionDialog';
+export { EditExtensionDialog, type EditExtensionMode } from './EditExtensionDialog';

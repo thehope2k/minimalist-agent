@@ -14,9 +14,9 @@ export function SetupSection({
   extension: LoadedExtension;
   onStartChatWithSubmission?: (submit: SeedSubmit) => void;
 }) {
-  const { slug } = extension;
+  const { slug, path } = extension;
   const spawnsServer = !!extension.config.mcp;
-  const { snapshot, apply } = useSetupStatus(slug);
+  const { snapshot, apply } = useSetupStatus(path);
 
   if (!snapshot) return null;
 
@@ -33,16 +33,16 @@ export function SetupSection({
   const saveField = (field: SetupField, value: string) =>
     apply(() =>
       field.secret
-        ? window.api.extensions.setSecret(slug, field.key, value)
-        : window.api.extensions.setInput(slug, field.key, value),
+        ? window.api.extensions.setSecret(path, field.key, value)
+        : window.api.extensions.setInput(path, field.key, value),
     );
 
   const clearField = (field: SetupField) => {
     if (!window.confirm(`Clear "${field.label}" for ${slug}?`)) return;
     void apply(() =>
       field.secret
-        ? window.api.extensions.deleteSecret(slug, field.key)
-        : window.api.extensions.deleteInput(slug, field.key),
+        ? window.api.extensions.deleteSecret(path, field.key)
+        : window.api.extensions.deleteInput(path, field.key),
     );
   };
 
@@ -89,8 +89,8 @@ export function SetupSection({
           <ConsentBanner
             granted={snapshot.hasConsent}
             slug={slug}
-            onGrant={() => void apply(() => window.api.extensions.grantConsent(slug))}
-            onRevoke={() => void apply(() => window.api.extensions.revokeConsent(slug))}
+            onGrant={() => void apply(() => window.api.extensions.grantConsent(path))}
+            onRevoke={() => void apply(() => window.api.extensions.revokeConsent(path))}
           />
         )}
 
@@ -101,7 +101,7 @@ export function SetupSection({
             <button
               type="button"
               className="text-fg-muted hover:text-fg"
-              onClick={() => void apply(() => window.api.extensions.deleteSecret(slug, key))}
+              onClick={() => void apply(() => window.api.extensions.deleteSecret(path, key))}
             >
               Delete
             </button>
@@ -110,7 +110,7 @@ export function SetupSection({
 
         {stepsLeft === 0 && (
           <ConnectionCheck
-            slug={slug}
+            extensionPath={path}
             testable={spawnsServer}
             onStartChat={
               onStartChatWithSubmission &&

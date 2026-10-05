@@ -2,12 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { reload as reloadExtensions } from '@/lib/extensions';
 import type { ExtensionSetupSnapshot } from '@/lib/electron';
 
-export function useSetupStatus(slug: string) {
+export function useSetupStatus(extensionPath: string) {
   const [snapshot, setSnapshot] = useState<ExtensionSetupSnapshot | null>(null);
 
   const refresh = useCallback(async () => {
-    setSnapshot(await window.api.extensions.setupStatus(slug));
-  }, [slug]);
+    setSnapshot(await window.api.extensions.setupStatus(extensionPath));
+  }, [extensionPath]);
 
   useEffect(() => {
     setSnapshot(null);

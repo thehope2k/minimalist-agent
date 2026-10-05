@@ -1,8 +1,8 @@
-import { Pin, PinOff, Plus } from 'lucide-react';
-import { useState } from 'react';
 import type { LoadedSkill } from '@/lib/electron';
 import { SkillAvatar } from '@/components/skills';
+import { Pin, PinOff } from 'lucide-react';
 import { ItemRow } from './ItemRow';
+import { NewAssetButton } from './NewAssetButton';
 
 export interface AvailableSectionProps {
   title: string;
@@ -12,7 +12,7 @@ export interface AvailableSectionProps {
   onUnpin: (scopedSlug: string) => void;
   onOpenSkill: (skill: LoadedSkill) => void;
   cwd?: string;
-  onNew?: (type: 'skill' | 'extension') => void;
+  onNew?: () => void;
 }
 
 export function AvailableSection({
@@ -24,7 +24,6 @@ export function AvailableSection({
   onOpenSkill,
   onNew,
 }: AvailableSectionProps) {
-  const [menuOpen, setMenuOpen] = useState(false);
   const hasItems = skills.length > 0;
 
   return (
@@ -33,45 +32,13 @@ export function AvailableSection({
         <span className="flex-1 text-[10px] font-medium uppercase tracking-wide text-fg-subtle">
           {title}
         </span>
-        {onNew && (
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setMenuOpen((open) => !open)}
-              className="inline-flex items-center gap-1 rounded-md border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[11px] font-medium text-accent hover:bg-accent/20"
-              title="New project asset"
-            >
-              <Plus className="h-3 w-3" strokeWidth={2.5} />
-              New
-            </button>
-            {menuOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-                <div className="absolute right-0 top-full z-50 mt-1 w-36 overflow-hidden rounded-lg border border-border bg-panel shadow-xl">
-                  {(['skill', 'extension'] as const).map((type) => (
-                    <button
-                      key={type}
-                      type="button"
-                      onClick={() => {
-                        setMenuOpen(false);
-                        onNew(type);
-                      }}
-                      className="flex w-full items-center px-3 py-1.5 text-left text-sm text-fg hover:bg-elevated capitalize"
-                    >
-                      New {type}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        )}
+        {onNew && <NewAssetButton label="New project skill" onClick={onNew} />}
       </div>
 
       {!hasItems && <p className="px-3 pb-2 text-xs text-fg-subtle">No skills yet.</p>}
 
       {skills.map((skill) => {
-        const pinned = isPinned(skill.source as 'user' | 'project', skill.slug);
+        const pinned = isPinned(skill.source, skill.slug);
         return (
           <ItemRow
             key={`skill:${skill.slug}`}

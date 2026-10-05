@@ -1280,17 +1280,18 @@ export interface AppApi {
     revealInFinder: (dirPath: string) => Promise<void>;
     validate: (dirPath: string, slug: string) => Promise<{ ok: boolean; report: string }>;
 
-    setupStatus: (slug: string) => Promise<ExtensionSetupSnapshot | null>;
-    setSecret: (slug: string, keyName: string, value: string) => Promise<void>;
-    deleteSecret: (slug: string, keyName: string) => Promise<void>;
-    setInput: (slug: string, key: string, value: string) => Promise<void>;
-    deleteInput: (slug: string, key: string) => Promise<void>;
+    /** Setup/consent/test calls take the extension's folder path so either tier resolves. */
+    setupStatus: (extensionPath: string) => Promise<ExtensionSetupSnapshot | null>;
+    setSecret: (extensionPath: string, keyName: string, value: string) => Promise<void>;
+    deleteSecret: (extensionPath: string, keyName: string) => Promise<void>;
+    setInput: (extensionPath: string, key: string, value: string) => Promise<void>;
+    deleteInput: (extensionPath: string, key: string) => Promise<void>;
 
-    grantConsent: (slug: string) => Promise<boolean>;
-    revokeConsent: (slug: string) => Promise<boolean>;
+    grantConsent: (extensionPath: string) => Promise<void>;
+    revokeConsent: (extensionPath: string) => Promise<void>;
 
     mcpStatus: () => Promise<McpExtensionStatus[]>;
-    testMcp: (slug: string) => Promise<McpTestResult>;
+    testMcp: (extensionPath: string) => Promise<McpTestResult>;
     onMcpStatus: (cb: () => void) => () => void;
   };
   attachments: {

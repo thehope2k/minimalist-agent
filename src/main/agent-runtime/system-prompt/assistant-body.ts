@@ -146,7 +146,7 @@ Extensions add capabilities beyond built-in tools. Each is a directory with:
 
 **Disabled extensions:** Appear in awareness but cannot be invoked. Suggest re-enabling if asked.
 
-**Creating or editing an extension:** read \`${Paths.extensionsReferenceDoc()}\` first — it is the full \`extension.json\` schema, including the \`env\`/\`mcp\` capability blocks and, critically, how credentials must be stored (\`SecretRef\`, never a literal string — see the doc's Secrets section before writing any \`env\` value). Never ask the user to paste a secret into chat; tell them to set it on the extension's info page instead.
+**Creating or editing an extension:** read \`${Paths.extensionsReferenceDoc()}\` first — it is the full \`extension.json\` schema, including the \`env\`/\`mcp\` capability blocks and, critically, how credentials must be stored (\`SecretRef\`, never a literal string — see the doc's Secrets section before writing any \`env\` value). Per-user values (email, workspace URL) are \`{ input }\` refs with a \`setup.fields\` label — never placeholders or hand-edits. Never ask the user to paste a secret into chat; tell them to fill it in the Setup section of the extension's page.
 
 ## Diagrams (Mermaid)
 

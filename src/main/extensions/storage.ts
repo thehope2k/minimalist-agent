@@ -126,6 +126,14 @@ export function loadExtensionBySlug(slug: string, cwd?: string): LoadedExtension
   return loadExtensionFromDir(slug, getExtensionsDir(), 'user');
 }
 
+/** Load by folder path so either tier resolves without needing the session cwd. */
+export function loadExtensionAtPath(extDir: string): LoadedExtension | null {
+  const parent = dirname(extDir);
+  if (basename(parent) !== 'extensions') return null;
+  const scope: ExtensionScope = parent === getExtensionsDir() ? 'user' : 'project';
+  return loadExtensionFromDir(basename(extDir), parent, scope);
+}
+
 export function deleteExtension(dirPath: string): boolean {
   if (basename(dirname(dirPath)) !== 'extensions') return false;
   if (!existsSync(dirPath)) return false;

@@ -16,11 +16,20 @@ export function KeyValueTable({ rows }: { rows: KeyValueRow[] }) {
   );
 }
 
-export function Section({ title, children }: { title: string; children: React.ReactNode }) {
+export function Section({
+  title,
+  action,
+  children,
+}: {
+  title: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <section>
-      <div className="mb-2">
+      <div className="mb-2 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-fg">{title}</h2>
+        {action}
       </div>
       <div className="overflow-hidden rounded-lg border border-border/50 bg-elevated/20">
         {children}

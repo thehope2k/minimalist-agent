@@ -75,6 +75,7 @@ export function EditAgentDialog({
       displayText: desc,
       agentText: buildEditPrompt(mode, desc, agent),
       intentTag: copy.intentTag,
+      permissionMode: 'auto',
       ...(agent.source === 'project' ? { workingDirectory: projectRootFor(agent.path) } : {}),
     });
     onClose();

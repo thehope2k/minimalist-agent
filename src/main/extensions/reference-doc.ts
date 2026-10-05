@@ -4,7 +4,7 @@
  * content changes; the install pass overwrites stale copies.
  */
 
-export const EXTENSIONS_REFERENCE_VERSION = '0.5.0';
+export const EXTENSIONS_REFERENCE_VERSION = '0.5.1';
 
 export const EXTENSIONS_REFERENCE_MD = `# Extensions
 
@@ -31,7 +31,7 @@ also polluting the global Bash env).
 
 Extensions live in two scopes:
 - **Global:** \`~/.minimalist-agent/extensions/<slug>/\` — personal, available across all projects
-- **Project:** \`<cwd>/.minimalist-agent/extensions/<slug>/\` — always active and auto-consented; env vars use \`\${VAR}\` syntax resolved from \`process.env\` (not the encrypted keychain)
+- **Project:** \`<cwd>/.minimalist-agent/extensions/<slug>/\` — always active and auto-consented; env values may use \`\${VAR}\` resolved from \`process.env\`, and \`secret\`/\`input\` refs work too (filled in the extension's Setup section)
 
 Each extension folder requires two files:
 

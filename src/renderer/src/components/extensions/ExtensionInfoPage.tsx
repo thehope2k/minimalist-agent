@@ -6,6 +6,7 @@ import { McpNoticeSection } from './extension-info-page/McpNoticeSection';
 import { GuideSection } from './extension-info-page/GuideSection';
 import { ConfigSection } from './extension-info-page/ConfigSection';
 import { SetupSection } from './extension-info-page/SetupSection';
+import { EditExtensionDialog } from './EditExtensionDialog';
 import { useExtensionActions } from './extension-info-page/useExtensionActions';
 import type { ExtensionInfoPageProps } from './extension-info-page/types';
 
@@ -17,7 +18,8 @@ export function ExtensionInfoPage({
 }: ExtensionInfoPageProps) {
   if (!extension) return <EmptyView />;
 
-  const { copied, copySlug } = useExtensionActions(extension);
+  const { copied, copySlug, editMode, startEdit, closeEdit } = useExtensionActions(extension);
+  const canEdit = !!onStartChatWithSubmission;
 
   return (
     <div className="flex h-full flex-col">
@@ -41,11 +43,27 @@ export function ExtensionInfoPage({
             onStartChatWithSubmission={onStartChatWithSubmission}
           />
 
-          <GuideSection extension={extension} onOpenFile={onOpenFile} />
+          <GuideSection
+            extension={extension}
+            onOpenFile={onOpenFile}
+            onEdit={canEdit ? () => startEdit('guide') : undefined}
+          />
 
-          <ConfigSection extension={extension} />
+          <ConfigSection
+            extension={extension}
+            onEdit={canEdit ? () => startEdit('config') : undefined}
+          />
         </div>
       </div>
+
+      {editMode && (
+        <EditExtensionDialog
+          mode={editMode}
+          extension={extension}
+          onClose={closeEdit}
+          onSubmit={(submit) => onStartChatWithSubmission?.(submit)}
+        />
+      )}
     </div>
   );
 }

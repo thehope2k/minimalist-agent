@@ -94,28 +94,28 @@ export function createAssetsApi(): Pick<
       validate: (dirPath: string, slug: string): Promise<{ ok: boolean; report: string }> =>
         ipcRenderer.invoke('extensions:validate', dirPath, slug),
 
-      /* setup */
-      setupStatus: (slug: string): Promise<ExtensionSetupSnapshot | null> =>
-        ipcRenderer.invoke('extensions:setup.status', slug),
-      setSecret: (slug: string, keyName: string, value: string): Promise<void> =>
-        ipcRenderer.invoke('extensions:secrets.set', slug, keyName, value),
-      deleteSecret: (slug: string, keyName: string): Promise<void> =>
-        ipcRenderer.invoke('extensions:secrets.delete', slug, keyName),
-      setInput: (slug: string, key: string, value: string): Promise<void> =>
-        ipcRenderer.invoke('extensions:inputs.set', slug, key, value),
-      deleteInput: (slug: string, key: string): Promise<void> =>
-        ipcRenderer.invoke('extensions:inputs.delete', slug, key),
+      /* setup — all take the extension's folder path so either tier resolves */
+      setupStatus: (extensionPath: string): Promise<ExtensionSetupSnapshot | null> =>
+        ipcRenderer.invoke('extensions:setup.status', extensionPath),
+      setSecret: (extensionPath: string, keyName: string, value: string): Promise<void> =>
+        ipcRenderer.invoke('extensions:secrets.set', extensionPath, keyName, value),
+      deleteSecret: (extensionPath: string, keyName: string): Promise<void> =>
+        ipcRenderer.invoke('extensions:secrets.delete', extensionPath, keyName),
+      setInput: (extensionPath: string, key: string, value: string): Promise<void> =>
+        ipcRenderer.invoke('extensions:inputs.set', extensionPath, key, value),
+      deleteInput: (extensionPath: string, key: string): Promise<void> =>
+        ipcRenderer.invoke('extensions:inputs.delete', extensionPath, key),
 
       /* consent */
-      grantConsent: (slug: string): Promise<boolean> =>
-        ipcRenderer.invoke('extensions:consent.grant', slug),
-      revokeConsent: (slug: string): Promise<boolean> =>
-        ipcRenderer.invoke('extensions:consent.revoke', slug),
+      grantConsent: (extensionPath: string): Promise<void> =>
+        ipcRenderer.invoke('extensions:consent.grant', extensionPath),
+      revokeConsent: (extensionPath: string): Promise<void> =>
+        ipcRenderer.invoke('extensions:consent.revoke', extensionPath),
 
       /* mcp diagnostics */
       mcpStatus: (): Promise<McpExtensionStatus[]> => ipcRenderer.invoke('extensions:mcp.status'),
-      testMcp: (slug: string): Promise<McpTestResult> =>
-        ipcRenderer.invoke('extensions:mcp.test', slug),
+      testMcp: (extensionPath: string): Promise<McpTestResult> =>
+        ipcRenderer.invoke('extensions:mcp.test', extensionPath),
       /** Runtime MCP connection outcomes, pushed when a session connects its
        *  servers. Fires a refresh hint; callers re-read `mcpStatus()`. */
       onMcpStatus: (cb: () => void): (() => void) => {

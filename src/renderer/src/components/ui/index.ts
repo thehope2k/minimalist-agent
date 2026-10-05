@@ -15,6 +15,7 @@ export { FileRefMenu } from './FileRefMenu';
 export { Select } from './Select';
 export { Field } from './Field';
 export { Toggle } from './Toggle';
+export { EditButton } from './EditButton';
 export { SortableList, type DragHandleProps } from './SortableList';
 export { DragHandle } from './DragHandle';
 export { ResizablePanelGroup, ResizablePanel, ResizableHandle } from './resizable';

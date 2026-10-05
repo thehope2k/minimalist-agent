@@ -4,11 +4,11 @@ import { Button } from '@/components/ui';
 import type { McpTestResult } from '@/lib/electron';
 
 export function ConnectionCheck({
-  slug,
+  extensionPath,
   testable,
   onStartChat,
 }: {
-  slug: string;
+  extensionPath: string;
   testable: boolean;
   onStartChat?: () => void;
 }) {
@@ -19,7 +19,7 @@ export function ConnectionCheck({
     setTesting(true);
     setResult(null);
     try {
-      setResult(await window.api.extensions.testMcp(slug));
+      setResult(await window.api.extensions.testMcp(extensionPath));
     } finally {
       setTesting(false);
     }
