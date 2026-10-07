@@ -20,6 +20,8 @@ type Props = {
 
 const LOCKED_TOOLTIP =
   'Working directory is fixed once the conversation starts. Click "New" to start a fresh session in a different folder.';
+const NO_FOLDER_TOOLTIP =
+  'No project folder selected. Temporary files stay in this session’s scratch area. Click to choose a folder.';
 
 export function FolderPicker({ value, onChange, locked }: Props) {
   const [open, setOpen] = useState(false);
@@ -58,16 +60,12 @@ export function FolderPicker({ value, onChange, locked }: Props) {
     if (path === value) onChange(undefined);
   };
 
-  // No explicit pick → fall back to the user's home directory. Shown
-  // with a `~` so users can tell it's the default and not their choice.
-  const home = homedir();
-  const effective = value ?? home;
   const isDefault = !value;
-  const label = isDefault ? '~' : basename(effective);
+  const label = value ? basename(value) : 'No folder';
 
   if (locked) {
     return (
-      <Tooltip content={LOCKED_TOOLTIP + (isDefault ? ` (using ${home})` : '')}>
+      <Tooltip content={isDefault ? NO_FOLDER_TOOLTIP : LOCKED_TOOLTIP}>
         <span className="inline-block">
           <Button
             variant="outline"
@@ -95,7 +93,7 @@ export function FolderPicker({ value, onChange, locked }: Props) {
             open && 'text-fg',
             isDefault && 'italic',
           )}
-          title={isDefault ? `Default working directory: ${home}. Click to change.` : effective}
+          title={isDefault ? NO_FOLDER_TOOLTIP : value}
         >
           {label}
         </Button>

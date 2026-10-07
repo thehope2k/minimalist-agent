@@ -52,6 +52,8 @@ import { Paths } from '../storage/paths';
 /** Skills, agents, extensions (files/validation), and the context-panel
  *  asset listing/pinning surface. */
 export function registerAssetsIpc(): void {
+  ipcMain.handle('authoring:getGlobalWorkspace', (): string => Paths.globalAssetsDir());
+
   // ---- Skills -----------------------------------------------------------
 
   ipcMain.handle('skills:getDir', (): string => getSkillsDir());

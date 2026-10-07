@@ -15,6 +15,7 @@ import type { PermissionMode } from '../permissions';
 import { resolvePiServerPath } from './spawn-utils';
 import { EventQueue, send, type SubprocessHandle } from './subprocess-handle';
 import { dispatchOutbound } from './outbound';
+import { ensureSessionScratchDir, resolveChatWorkingDirectory } from './chat-workspace';
 import type { ChatRequest } from './agent';
 import type {
   MsgInit,
@@ -152,6 +153,8 @@ export function ensureSubprocess(req: ChatRequest, systemPrompt: string): Subpro
 /** Spawns a subprocess without registering it in the shared `handles` map — use for calls that must not touch a session's live connection. */
 export function spawnSubprocess(req: ChatRequest, systemPrompt: string): SubprocessHandle {
   const key = req.chatSessionPath;
+  ensureSessionScratchDir(req.chatSessionPath);
+  const cwd = resolveChatWorkingDirectory(req.cwd, req.chatSessionPath);
   const modelProvider = req.auth.type === 'api' ? 'openai' : req.auth.provider;
   const serverPath = resolvePiServerPath(app.getAppPath());
   const child = spawn(process.execPath, [serverPath], {
@@ -160,7 +163,7 @@ export function spawnSubprocess(req: ChatRequest, systemPrompt: string): Subproc
       ...process.env,
       // Cli-bound extension env (resolved against the secret store).
       // Inherited by every Bash invocation inside pi-server via process.env.
-      ...resolveExtensionEnv(req.cwd),
+      ...resolveExtensionEnv(cwd),
       ELECTRON_RUN_AS_NODE: '1',
       MINIMALIST_AGENT_VERSION: app.getVersion(),
       // Verbosity for the subprocess sub-logger (writes to stderr; the parent
@@ -308,7 +311,7 @@ export function spawnSubprocess(req: ChatRequest, systemPrompt: string): Subproc
     type: 'init',
     sessionId: req.chatSessionId,
     sessionPath: req.chatSessionPath,
-    cwd: req.cwd ?? app.getPath('home'),
+    cwd,
     model: req.model,
     visionSupported: resolveVisionSupported(req.connectionSlug, req.model),
     thinkingLevel: req.thinkingLevel ?? 'medium',
@@ -324,7 +327,7 @@ export function spawnSubprocess(req: ChatRequest, systemPrompt: string): Subproc
       path: a.path,
       iconPath: a.iconPath,
     })),
-    mcpServers: buildResolvedMcpServers(req.cwd),
+    mcpServers: buildResolvedMcpServers(cwd),
     compactionSettings,
   };
   send(handle, init);

@@ -9,6 +9,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowUp, Bot, X } from 'lucide-react';
 import { getAgentsDir } from '@/lib/agents';
+import { getGlobalAuthoringWorkspace } from '@/lib/authoring-workspace';
 import { cn } from '@/lib/utils';
 import type { SeedSubmit } from '@/App';
 
@@ -37,6 +38,7 @@ export function AddAgentDialog({
   const [description, setDescription] = useState('');
   const [slug, setSlug] = useState('');
   const [agentsDir, setAgentsDir] = useState<string | null>(null);
+  const [authoringWorkspace, setAuthoringWorkspace] = useState<string | null>(null);
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const [placeholder, setPlaceholder] = useState(PLACEHOLDERS[0]);
 
@@ -46,6 +48,7 @@ export function AddAgentDialog({
     setSlug('');
     setPlaceholder(PLACEHOLDERS[Math.floor(Math.random() * PLACEHOLDERS.length)]);
     void (projectDir ? Promise.resolve(projectDir) : getAgentsDir()).then(setAgentsDir);
+    if (!projectDir) void getGlobalAuthoringWorkspace().then(setAuthoringWorkspace);
     requestAnimationFrame(() => taRef.current?.focus());
   }, [open]);
 
@@ -56,7 +59,10 @@ export function AddAgentDialog({
       ? 'Lowercase, hyphenated, ≤30 chars (e.g. `code-reviewer`).'
       : null;
   const canSubmit =
-    description.trim().length > 0 && (slug.length === 0 || SLUG_RE.test(slug)) && !!agentsDir;
+    description.trim().length > 0 &&
+    (slug.length === 0 || SLUG_RE.test(slug)) &&
+    !!agentsDir &&
+    (!!projectDir || !!authoringWorkspace);
 
   const handleSubmit = () => {
     if (!canSubmit || !agentsDir) return;
@@ -66,6 +72,7 @@ export function AddAgentDialog({
       agentText: buildAgentScaffoldPrompt(desc, slug, agentsDir),
       intentTag: 'add-agent',
       permissionMode: 'auto',
+      ...(!projectDir ? { workingDirectory: authoringWorkspace ?? undefined } : {}),
     });
     onClose();
   };

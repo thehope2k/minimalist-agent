@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowUp, Plug, X } from 'lucide-react';
 import { getExtensionsDir, getExtensionsReferenceDocPath } from '@/lib/extensions';
+import { getGlobalAuthoringWorkspace } from '@/lib/authoring-workspace';
 import { useExtensions } from '@/hooks/useExtensions';
 
 // Kick off path resolution at module load — the IPC round-trips are slow
@@ -43,6 +44,7 @@ export function AddExtensionDialog({
   const [description, setDescription] = useState('');
   const [slug, setSlug] = useState('');
   const [extDir, setExtDir] = useState<string | null>(null);
+  const [authoringWorkspace, setAuthoringWorkspace] = useState<string | null>(null);
   const [refDocPath, setRefDocPath] = useState<string | null>(null);
   // Pick a placeholder once when the dialog opens; do NOT recompute on
   // re-renders or the text reshuffles whenever the user moves the mouse.
@@ -55,6 +57,7 @@ export function AddExtensionDialog({
     setSlug('');
     setPlaceholder(PLACEHOLDERS[Math.floor(Math.random() * PLACEHOLDERS.length)]);
     void (projectDir ? Promise.resolve(projectDir) : getExtensionsDir()).then(setExtDir);
+    if (!projectDir) void getGlobalAuthoringWorkspace().then(setAuthoringWorkspace);
     void getExtensionsReferenceDocPath().then(setRefDocPath);
     requestAnimationFrame(() => taRef.current?.focus());
   }, [open]);
@@ -72,6 +75,7 @@ export function AddExtensionDialog({
     description.trim().length > 0 &&
     (slug.length === 0 || (SLUG_RE.test(slug) && !slugTaken)) &&
     !!extDir &&
+    (!!projectDir || !!authoringWorkspace) &&
     !!refDocPath;
 
   const handleSubmit = () => {
@@ -82,6 +86,7 @@ export function AddExtensionDialog({
       agentText: buildScaffoldPrompt(desc, slug, extDir, refDocPath),
       intentTag: 'add-extension',
       permissionMode: 'auto',
+      ...(!projectDir ? { workingDirectory: authoringWorkspace ?? undefined } : {}),
     });
     onClose();
   };

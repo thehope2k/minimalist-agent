@@ -16,9 +16,12 @@ import type {
 
 export function createAssetsApi(): Pick<
   AppApi,
-  'skills' | 'agents' | 'context' | 'extensions' | 'attachments'
+  'authoring' | 'skills' | 'agents' | 'context' | 'extensions' | 'attachments'
 > {
   return {
+    authoring: {
+      getGlobalWorkspace: (): Promise<string> => ipcRenderer.invoke('authoring:getGlobalWorkspace'),
+    },
     skills: {
       getDir: (): Promise<string> => ipcRenderer.invoke('skills:getDir'),
       getProjectDir: (cwd: string): Promise<string> =>

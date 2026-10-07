@@ -8,6 +8,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { ArrowUp, Pencil, X } from 'lucide-react';
+import { getGlobalAuthoringWorkspace } from '@/lib/authoring-workspace';
 import { cn } from '@/lib/utils';
 import type { LoadedAgent } from '@/lib/electron';
 import type { SeedSubmit } from '@/App';
@@ -56,18 +57,21 @@ export function EditAgentDialog({
   onSubmit: (submit: SeedSubmit) => void;
 }) {
   const [description, setDescription] = useState('');
+  const [authoringWorkspace, setAuthoringWorkspace] = useState<string | null>(null);
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const copy = COPY[mode];
 
   useEffect(() => {
     if (!open) return;
     setDescription('');
+    if (agent.source === 'user') void getGlobalAuthoringWorkspace().then(setAuthoringWorkspace);
     requestAnimationFrame(() => taRef.current?.focus());
   }, [open]);
 
   if (!open) return null;
 
-  const canSubmit = description.trim().length > 0;
+  const canSubmit =
+    description.trim().length > 0 && (agent.source === 'project' || !!authoringWorkspace);
   const handleSubmit = () => {
     if (!canSubmit) return;
     const desc = description.trim();
@@ -76,7 +80,9 @@ export function EditAgentDialog({
       agentText: buildEditPrompt(mode, desc, agent),
       intentTag: copy.intentTag,
       permissionMode: 'auto',
-      ...(agent.source === 'project' ? { workingDirectory: projectRootFor(agent.path) } : {}),
+      ...(agent.source === 'project'
+        ? { workingDirectory: projectRootFor(agent.path) }
+        : { workingDirectory: authoringWorkspace ?? undefined }),
     });
     onClose();
   };

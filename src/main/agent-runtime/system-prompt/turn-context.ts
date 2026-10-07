@@ -20,7 +20,7 @@ export function getWorkingDirectoryContext(workingDirectory?: string): string {
   const parts: string[] = [];
   parts.push(`<working_directory>${workingDirectory}</working_directory>`);
   parts.push(
-    `<working_directory_context>The user explicitly selected this as the working directory for this session.</working_directory_context>`,
+    '<working_directory_context>This session is rooted at this working directory.</working_directory_context>',
   );
   return parts.join('\n\n');
 }

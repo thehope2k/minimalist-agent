@@ -7,6 +7,7 @@ import { extractSkillPaths, formatSkillDirective } from '../../skills/directive'
 import { formatAttachmentsDirective } from '../attachments-directive';
 import { EventQueue, send, type SubprocessHandle } from './subprocess-handle';
 import { ensureSubprocess, handles } from './chat-subprocess';
+import { ensureSessionScratchDir, resolveChatWorkingDirectory } from './chat-workspace';
 import type { ChatRequest } from './agent';
 import type { MsgManualCompact, MsgPrompt } from './protocol';
 
@@ -15,24 +16,30 @@ import type { MsgManualCompact, MsgPrompt } from './protocol';
 /* ============================================================ */
 
 export async function* runChat(req: ChatRequest): AsyncGenerator<AgentChatEvent> {
+  ensureSessionScratchDir(req.chatSessionPath);
+  const request = {
+    ...req,
+    cwd: resolveChatWorkingDirectory(req.cwd, req.chatSessionPath),
+  };
+
   // Compute append for subprocess init. May be empty on the very first turn
   // of a new session if initSessionState hasn't completed yet (race with the
   // React useEffect that fires after the send handler). Re-computed after
   // handle.ready to capture any state that settled during the spawn window.
   const initAppend = buildSystemPromptAppend({
-    cwd: req.cwd,
-    sessionId: req.chatSessionId,
-    userMessage: req.prompt,
-    authType: req.auth.type,
-    provider: req.auth.provider,
-    model: req.model,
-    autonomyLevel: req.autonomyLevel,
+    cwd: request.cwd,
+    sessionId: request.chatSessionId,
+    userMessage: request.prompt,
+    authType: request.auth.type,
+    provider: request.auth.provider,
+    model: request.model,
+    autonomyLevel: request.autonomyLevel,
   });
   const prefix = buildPromptPrefix({
-    cwd: req.cwd,
-    scratchDir: join(req.chatSessionPath, 'scratch'),
-    sessionId: req.chatSessionId,
-    pinnedAssets: req.pinnedAssets,
+    cwd: request.cwd,
+    scratchDir: join(request.chatSessionPath, 'scratch'),
+    sessionId: request.chatSessionId,
+    pinnedAssets: request.pinnedAssets,
   });
 
   // Resolve `@slug` / `@path` mentions.
@@ -44,7 +51,7 @@ export async function* runChat(req: ChatRequest): AsyncGenerator<AgentChatEvent>
     cleanMessage,
     missingSkills,
     missingFiles,
-  } = extractSkillPaths(req.prompt, req.cwd);
+  } = extractSkillPaths(request.prompt, request.cwd);
   if (missingSkills.length > 0) {
     yield {
       type: 'error',
@@ -75,7 +82,7 @@ export async function* runChat(req: ChatRequest): AsyncGenerator<AgentChatEvent>
 
   let handle: SubprocessHandle;
   try {
-    handle = ensureSubprocess(req, initAppend);
+    handle = ensureSubprocess(request, initAppend);
     await handle.ready;
   } catch (e) {
     yield { type: 'error', error: parseError(e) };
@@ -84,46 +91,46 @@ export async function* runChat(req: ChatRequest): AsyncGenerator<AgentChatEvent>
 
   // Re-compute after ready: initSessionState may have completed during spawn.
   const append = buildSystemPromptAppend({
-    cwd: req.cwd,
-    sessionId: req.chatSessionId,
-    userMessage: req.prompt,
-    authType: req.auth.type,
-    provider: req.auth.provider,
-    model: req.model,
-    autonomyLevel: req.autonomyLevel,
+    cwd: request.cwd,
+    sessionId: request.chatSessionId,
+    userMessage: request.prompt,
+    authType: request.auth.type,
+    provider: request.auth.provider,
+    model: request.model,
+    autonomyLevel: request.autonomyLevel,
   });
 
   // Update mode in case the user changed it between turns.
-  send(handle, { type: 'set_permission_mode', mode: req.permissionMode ?? 'auto' });
+  send(handle, { type: 'set_permission_mode', mode: request.permissionMode ?? 'auto' });
 
   // Register permission context for this turn.
-  handle.permissionContext.set(req.turnId, {
-    mode: req.permissionMode ?? 'auto',
-    sessionId: req.chatSessionId,
-    cwd: req.cwd,
+  handle.permissionContext.set(request.turnId, {
+    mode: request.permissionMode ?? 'auto',
+    sessionId: request.chatSessionId,
+    cwd: request.cwd,
   });
-  if (req.signal) handle.turnSignals.set(req.turnId, req.signal);
+  if (request.signal) handle.turnSignals.set(request.turnId, request.signal);
 
   const queue = new EventQueue();
-  handle.queues.set(req.turnId, queue);
+  handle.queues.set(request.turnId, queue);
 
   const finalPrompt = [prefix, directive, attachmentsDirective, cleanMessage]
     .filter(Boolean)
     .join('\n\n');
   const promptMsg: MsgPrompt = {
     type: 'prompt',
-    turnId: req.turnId,
+    turnId: request.turnId,
     message: finalPrompt,
     systemPromptAppend: append,
   };
   send(handle, promptMsg);
 
   const onAbort = () => {
-    send(handle, { type: 'abort', turnId: req.turnId });
+    send(handle, { type: 'abort', turnId: request.turnId });
   };
-  if (req.signal) {
-    if (req.signal.aborted) onAbort();
-    else req.signal.addEventListener('abort', onAbort, { once: true });
+  if (request.signal) {
+    if (request.signal.aborted) onAbort();
+    else request.signal.addEventListener('abort', onAbort, { once: true });
   }
 
   try {
@@ -137,9 +144,9 @@ export async function* runChat(req: ChatRequest): AsyncGenerator<AgentChatEvent>
       if (ev.type === 'turn_done' || ev.type === 'error') return;
     }
   } finally {
-    if (req.signal) req.signal.removeEventListener('abort', onAbort);
-    handle.permissionContext.delete(req.turnId);
-    handle.turnSignals.delete(req.turnId);
+    if (request.signal) request.signal.removeEventListener('abort', onAbort);
+    handle.permissionContext.delete(request.turnId);
+    handle.turnSignals.delete(request.turnId);
   }
 }
 

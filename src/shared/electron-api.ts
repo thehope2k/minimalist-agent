@@ -1214,6 +1214,9 @@ export interface AppApi {
     /** Existence/type probe confined to allowed roots — used to decide how a clicked reference opens. */
     stat: (absolutePath: string) => Promise<FileStatResult>;
   };
+  authoring: {
+    getGlobalWorkspace: () => Promise<string>;
+  };
   skills: {
     /** Absolute path of the on-disk skills directory (under userData). */
     getDir: () => Promise<string>;

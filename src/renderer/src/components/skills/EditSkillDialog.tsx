@@ -11,6 +11,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowUp, Pencil, X } from 'lucide-react';
 import { getSkillsReferenceDocPath } from '@/lib/skills';
+import { getGlobalAuthoringWorkspace } from '@/lib/authoring-workspace';
 import { cn } from '@/lib/utils';
 import type { LoadedSkill } from '@/lib/electron';
 import type { SeedSubmit } from '@/App';
@@ -59,6 +60,7 @@ export function EditSkillDialog({
   onSubmit: (submit: SeedSubmit) => void;
 }) {
   const [description, setDescription] = useState('');
+  const [authoringWorkspace, setAuthoringWorkspace] = useState<string | null>(null);
   const [refDocPath, setRefDocPath] = useState<string | null>(null);
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const copy = COPY[mode];
@@ -67,12 +69,16 @@ export function EditSkillDialog({
     if (!open) return;
     setDescription('');
     void getSkillsReferenceDocPath().then(setRefDocPath);
+    if (skill.source === 'user') void getGlobalAuthoringWorkspace().then(setAuthoringWorkspace);
     requestAnimationFrame(() => taRef.current?.focus());
   }, [open]);
 
   if (!open) return null;
 
-  const canSubmit = description.trim().length > 0 && !!refDocPath;
+  const canSubmit =
+    description.trim().length > 0 &&
+    !!refDocPath &&
+    (skill.source === 'project' || !!authoringWorkspace);
   const handleSubmit = () => {
     if (!canSubmit || !refDocPath) return;
     const desc = description.trim();
@@ -81,7 +87,9 @@ export function EditSkillDialog({
       agentText: buildEditPrompt(mode, desc, skill, refDocPath),
       intentTag: copy.intentTag,
       permissionMode: 'auto',
-      ...(skill.source === 'project' ? { workingDirectory: projectRootFor(skill.path) } : {}),
+      ...(skill.source === 'project'
+        ? { workingDirectory: projectRootFor(skill.path) }
+        : { workingDirectory: authoringWorkspace ?? undefined }),
     });
     onClose();
   };

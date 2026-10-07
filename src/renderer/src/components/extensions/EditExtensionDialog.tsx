@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { ArrowUp, Pencil, X } from 'lucide-react';
 import { Button, Textarea } from '@/components/ui';
 import { displayName, getExtensionsReferenceDocPath } from '@/lib/extensions';
+import { getGlobalAuthoringWorkspace } from '@/lib/authoring-workspace';
 import type { LoadedExtension } from '@/lib/electron';
 import type { SeedSubmit } from '@/App';
 
@@ -45,14 +46,19 @@ export function EditExtensionDialog({
   onSubmit: (submit: SeedSubmit) => void;
 }) {
   const [description, setDescription] = useState('');
+  const [authoringWorkspace, setAuthoringWorkspace] = useState<string | null>(null);
   const [refDocPath, setRefDocPath] = useState<string | null>(null);
   const copy = COPY[mode];
 
   useEffect(() => {
     void getExtensionsReferenceDocPath().then(setRefDocPath);
-  }, []);
+    if (extension.scope === 'user') void getGlobalAuthoringWorkspace().then(setAuthoringWorkspace);
+  }, [extension.scope]);
 
-  const canSubmit = description.trim().length > 0 && !!refDocPath;
+  const canSubmit =
+    description.trim().length > 0 &&
+    !!refDocPath &&
+    (extension.scope === 'project' || !!authoringWorkspace);
 
   const handleSubmit = () => {
     if (!canSubmit || !refDocPath) return;
@@ -64,7 +70,7 @@ export function EditExtensionDialog({
       permissionMode: 'auto',
       ...(extension.scope === 'project'
         ? { workingDirectory: extension.path.replace(PROJECT_EXTENSION_DIR, '') }
-        : {}),
+        : { workingDirectory: authoringWorkspace ?? undefined }),
     });
     onClose();
   };

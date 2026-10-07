@@ -175,6 +175,7 @@ Three storage tiers. Priority (highest wins): **project > user > machine**.
       session.json              ← Metadata (title, model, timestamps, pinnedAssets, ...)
       messages.jsonl            ← Message + parts log (append-only)
       attachments/
+      scratch/                  ← session-scoped workspace for project-less turns
       .pi-sessions/             ← Pi subprocess session state
 
 ~/.minimalist-agent/            ← user-owned portable config (versionable, dotfile-syncable)
@@ -207,6 +208,11 @@ Three storage tiers. Priority (highest wins): **project > user > machine**.
 `<userData>/agents|skills|extensions` → `~/.minimalist-agent/` (idempotent, guarded by a marker file, only written on
 full success). Source dirs in
 `<userData>` are removed after the marker is written — they are never scanned post-migration.
+
+Global Skill, Agent, and Extension authoring sessions run from `~/.minimalist-agent/`.
+Project-local authoring sessions run from their project root. A session without a selected folder runs
+from its own `scratch/` directory; persistent user files still require an explicit destination.
+Extension consent and macOS privacy access remain independent of the selected workspace.
 
 ## File Explorer
 

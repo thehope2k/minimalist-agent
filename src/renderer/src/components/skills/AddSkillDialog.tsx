@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowUp, Sparkles, X } from 'lucide-react';
 import { getSkillsDir, getSkillsReferenceDocPath } from '@/lib/skills';
+import { getGlobalAuthoringWorkspace } from '@/lib/authoring-workspace';
 import { cn } from '@/lib/utils';
 import type { SeedSubmit } from '@/App';
 
@@ -37,6 +38,7 @@ export function AddSkillDialog({
   const [description, setDescription] = useState('');
   const [slug, setSlug] = useState('');
   const [skillsDir, setSkillsDir] = useState<string | null>(null);
+  const [authoringWorkspace, setAuthoringWorkspace] = useState<string | null>(null);
   const [refDocPath, setRefDocPath] = useState<string | null>(null);
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   // Pick a placeholder once when the dialog opens; recomputing on every
@@ -49,6 +51,7 @@ export function AddSkillDialog({
     setSlug('');
     setPlaceholder(PLACEHOLDERS[Math.floor(Math.random() * PLACEHOLDERS.length)]);
     void (projectDir ? Promise.resolve(projectDir) : getSkillsDir()).then(setSkillsDir);
+    if (!projectDir) void getGlobalAuthoringWorkspace().then(setAuthoringWorkspace);
     void getSkillsReferenceDocPath().then(setRefDocPath);
     requestAnimationFrame(() => taRef.current?.focus());
   }, [open]);
@@ -63,6 +66,7 @@ export function AddSkillDialog({
     description.trim().length > 0 &&
     (slug.length === 0 || SLUG_RE.test(slug)) &&
     !!skillsDir &&
+    (!!projectDir || !!authoringWorkspace) &&
     !!refDocPath;
 
   const handleSubmit = () => {
@@ -75,6 +79,7 @@ export function AddSkillDialog({
       agentText: buildScaffoldPrompt(desc, slug, skillsDir, refDocPath),
       intentTag: 'add-skill',
       permissionMode: 'auto',
+      ...(!projectDir ? { workingDirectory: authoringWorkspace ?? undefined } : {}),
     });
     onClose();
   };
