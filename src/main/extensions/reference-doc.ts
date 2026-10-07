@@ -4,7 +4,7 @@
  * content changes; the install pass overwrites stale copies.
  */
 
-export const EXTENSIONS_REFERENCE_VERSION = '0.5.1';
+export const EXTENSIONS_REFERENCE_VERSION = '0.5.2';
 
 export const EXTENSIONS_REFERENCE_MD = `# Extensions
 
@@ -38,7 +38,7 @@ Each extension folder requires two files:
 \`\`\`
 <slug>/
   extension.json     # config (this is the source of truth)
-  guide.md           # how the agent should use it
+  guide.md           # operational playbook for the agent
   icon.{png|svg|…}   # optional
 \`\`\`
 
@@ -109,9 +109,17 @@ Each extension folder requires two files:
 
 ## guide.md
 
-Markdown with optional YAML frontmatter (overrides display fields). Body should
-explain how the agent should use the extension — preferred commands, naming
-conventions, things to avoid.
+Markdown with optional YAML frontmatter (overrides display fields). Its body is
+an **operational playbook for the agent**, not a human-facing README or setup
+tutorial. The agent reads it immediately before using the extension, so write
+direct, imperative instructions that tell the agent which capability to use,
+how to select or scope resources, and what safety constraints apply.
+
+Keep user setup in \`extension.json\`'s \`setup.fields\`; do not tell the user
+to edit files, export variables, or run installation commands in the guide.
+Use concrete resource and action names where they are known. Prefer sections
+such as **Workflow**, **Resource selection**, and **Safety constraints** over
+generic prose like “How to use.”
 
 \`\`\`markdown
 ---
@@ -120,14 +128,16 @@ description: Issue tracking
 icon: 🟣
 ---
 
-## How to use
+## Workflow
 
-- Use the \`linear\` CLI for issue read/write.
-- Always pass \`--team eng\` unless told otherwise.
+- Use the \`linear\` CLI for issue reads and writes.
+- Resolve the target team before listing, creating, or changing issues.
+- Default to the \`eng\` team only when the user has not named a team.
 
-## Don't
+## Safety constraints
 
-- Never use \`linear delete\` without explicit user confirmation.
+- Confirm the target issue before changing its state, labels, or assignee.
+- Never run \`linear delete\` without explicit user confirmation.
 \`\`\`
 
 ## When the agent uses an extension

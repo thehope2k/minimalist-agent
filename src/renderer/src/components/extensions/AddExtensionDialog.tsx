@@ -217,13 +217,19 @@ Then:
    - **Does it need a running server?** Add \`mcp\` if the service ships a real MCP server, or has no good CLI and structured tool calls would help (Linear, Notion); otherwise skip \`mcp\` and just document the CLI (\`gh\`, \`aws\`, \`vercel\`, etc.) in the guide.
    Don't bias toward simplicity for its own sake — pick what fits, and it's fine for both to apply at once.
 3. **If the running-server question is genuinely unclear or the trade-off is non-trivial** (e.g. an official MCP server exists *and* the CLI works fine, or the user's intent is ambiguous), pause and ask the user before writing files. Frame it as a short choice with a one-line reason for each.
-4. ${slugInstructions}
-5. After writing, validate by reading both files back.
-6. The user must never have to edit files by hand, and extension.json must contain no placeholders:
+4. Write \`guide.md\` as an **operational playbook for the future agent**, not a human-facing README or setup tutorial. Address the agent directly with imperative instructions:
+   - Name the preferred capability (MCP tools, CLI, or both) and when to use it.
+   - Explain how to identify or scope the target resource before acting.
+   - State any sequencing, defaults, and confirmation requirements for mutations.
+   - Keep it concise and service-specific. Use headings such as \`## Workflow\`, \`## Resource selection\`, and \`## Safety constraints\`.
+   - Do not ask users to edit files, export environment variables, install dependencies, or follow UI setup steps; that belongs in \`extension.json\` and its Setup form.
+5. ${slugInstructions}
+6. After writing, validate by reading both files back.
+7. The user must never have to edit files by hand, and extension.json must contain no placeholders:
    - Credentials → \`{ "secret": "<service>.<purpose>" }\`.
    - Per-user values you don't know (email, workspace URL, account id) → \`{ "input": "<service>.<name>" }\`. Ask the user for a value only if you need it to decide the design.
    - Give every secret/input a label and hint under \`setup.fields\`.
-7. Finish with a short summary and a "Next steps" list that maps 1:1 to the fields the user will see in the extension's Setup section (plus "Allow" for MCP). Don't say the tools work yet — they only appear in new chats, and the Setup section offers "Test connection" and "Start a chat with it" once setup is complete.
+8. Finish with a short summary and a "Next steps" list that maps 1:1 to the fields the user will see in the extension's Setup section (plus "Allow" for MCP). Don't say the tools work yet — they only appear in new chats, and the Setup section offers "Test connection" and "Start a chat with it" once setup is complete.
 
 User wants an extension that will: ${description}`;
 }
