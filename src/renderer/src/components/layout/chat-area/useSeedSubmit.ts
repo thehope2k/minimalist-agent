@@ -8,6 +8,13 @@ import type { SeedSubmit } from './types';
  * Auto-send seeded submissions (e.g. from "+ New Skill"). Waits until
  * AI data has loaded, no in-flight stream, and fresh chat before firing.
  */
+export function resolveSeedPermissionMode(
+  seedSubmit: SeedSubmit,
+  sessionPermissionMode: PermissionMode,
+): PermissionMode {
+  return seedSubmit.permissionMode ?? sessionPermissionMode;
+}
+
 export function useSeedSubmit(
   seedSubmit: SeedSubmit | null | undefined,
   onSeedSubmitConsumed: (() => void) | undefined,
@@ -46,8 +53,9 @@ export function useSeedSubmit(
       connection,
       model,
       cwd: cwd ?? (homedir() || undefined),
-      permissionMode,
-      turnPermissionMode: seedSubmit.permissionMode,
+      // A seed always creates a fresh session. Its requested mode must become
+      // that session's persisted mode, not merely override its first turn.
+      permissionMode: resolveSeedPermissionMode(seedSubmit, permissionMode),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seedSubmit, aiData, isStreaming, messages.length]);

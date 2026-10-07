@@ -8,7 +8,7 @@ export interface SeedSubmit {
   agentText: string;
   /** Origin tag for the contextual chip above the user bubble. */
   intentTag: string;
-  /** Applies to this submission's turn only; the session's own mode is left untouched. */
+  /** Applied to the fresh session created for this submission and its first turn. */
   permissionMode?: PermissionMode;
   /** Optional working directory for the new session. When set, the session opens rooted here. */
   workingDirectory?: string;

@@ -68,6 +68,14 @@ export function useChatSend(deps: ChatSendDeps) {
       if (!trimmed && draftsList.length === 0) return;
       const promptForAgent = (agentText ?? trimmed).trim();
       const requestPermissionMode = turnPermissionMode ?? permissionMode;
+      const sessionMetaPatch = {
+        permissionMode,
+        ...(autonomyLevel !== undefined ? { autonomyLevel } : {}),
+        ...(thinkingLevel !== undefined ? { thinkingLevel } : {}),
+        connectionSlug: connection.slug,
+        model,
+        ...(cwd ? { workingDirectory: cwd } : {}),
+      };
 
       let sid = activeSessionIdRef.current;
       const isFreshSession = !sid;
@@ -80,6 +88,10 @@ export function useChatSend(deps: ChatSendDeps) {
           ...(explicitProjectId ? { projectId: explicitProjectId } : {}),
         });
         sid = created.id;
+        // Persist the effective mode before exposing the new id. This keeps
+        // the session loader from rendering the default mode while a seeded
+        // authoring task is already running with a different one.
+        await updateSessionMeta(sid, sessionMetaPatch);
         // Seed the bucket BEFORE flipping activeSessionId so the
         // session-switch effect (and any prop-driven re-run from App)
         // sees a populated bucket and skips the disk reload.
@@ -87,14 +99,7 @@ export function useChatSend(deps: ChatSendDeps) {
         activeSessionIdRef.current = sid;
         setActiveSessionId(sid);
       }
-      await updateSessionMeta(sid, {
-        permissionMode,
-        ...(autonomyLevel !== undefined ? { autonomyLevel } : {}),
-        ...(thinkingLevel !== undefined ? { thinkingLevel } : {}),
-        connectionSlug: connection.slug,
-        model,
-        ...(cwd ? { workingDirectory: cwd } : {}),
-      });
+      if (!isFreshSession) await updateSessionMeta(sid, sessionMetaPatch);
 
       // Attachments — failures abort the send with an inline error bubble.
       const stored: StoredAttachment[] = [];
