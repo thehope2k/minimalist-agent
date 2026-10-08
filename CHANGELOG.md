@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [2.6.0] — 2026-10-08
+
+Folderless-chat workspaces and extension-authoring improvements.
+
+### Added
+
+**Folderless chats**
+
+- Chats without a selected folder now use an isolated, session-scoped scratch workspace for temporary files, keeping your home directory clean.
+
+**Extension authoring**
+
+- Extension guides now provide agents with a clear operational playbook when creating or configuring an integration.
+
+---
+
 ## [2.5.0] — 2026-10-05
 
 Extension setup improvements and project-tier reliability fixes.
