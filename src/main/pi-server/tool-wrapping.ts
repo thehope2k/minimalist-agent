@@ -1,36 +1,11 @@
-// Wraps every builtin/web/agent/MCP tool so its execution round-trips a
-// permission decision through main (in plan/ask mode) and is instrumented as
-// a GenAI `execute_tool` span. Collaboration/planning tools are NOT wrapped
-// here — they ARE the engagement/workflow mechanism, not a side effect to gate.
+// Instruments our own tools as GenAI `execute_tool` spans and bridges
+// browser_tool to main. Permission gating lives in tool-governance.ts.
 import type { ToolDefinition } from '@earendil-works/pi-coding-agent';
 import { withOperation } from './operation-tracker';
 import { captureContent, safeAttr, setAttrs, SpanStatusCode, withSpan } from '../../shared/otel';
-import { describeCatastrophicRm } from './catastrophic-rm-guard';
 import { state } from './state';
 import { send } from './transport';
-import { recordApprovalWait } from './tool-duration';
-import type {
-  MsgBrowserToolRequest,
-  MsgBrowserToolResult,
-  MsgPreToolUseRequest,
-  MsgPreToolUseResponse,
-} from '../agent-runtime/pi/protocol';
-
-export const READ_ONLY_TOOL_NAMES = new Set([
-  'read',
-  'grep',
-  'find',
-  'ls',
-  'web_fetch',
-  'web_search',
-]);
-
-// browser_tool is deliberately excluded from the set above: click/fill/select/
-// type/key/evaluate can submit forms, trigger destructive buttons, or run
-// arbitrary JS against any real site the agent navigates to — treating the
-// whole tool as read-only would let plan/ask mode's safety boundary be
-// bypassed for remote side effects. It goes through the normal
-// requestPermission() round-trip in plan/ask mode, same as Bash/Edit.
+import type { MsgBrowserToolRequest, MsgBrowserToolResult } from '../agent-runtime/pi/protocol';
 
 export function requestBrowserTool(
   sessionId: string,
@@ -62,112 +37,6 @@ export function requestBrowserTool(
       }
     });
   });
-}
-
-function requestPermission(
-  toolCallId: string,
-  toolName: string,
-  input: unknown,
-): Promise<MsgPreToolUseResponse> {
-  return new Promise((resolve) => {
-    const requestId = `browser_${Date.now().toString(36)}_${Math.random()
-      .toString(36)
-      .slice(2, 8)}`;
-    state.pendingPermission.set(requestId, { resolve });
-
-    const turnId = state.currentTurnId ?? '';
-    const req: MsgPreToolUseRequest = {
-      type: 'pre_tool_use_request',
-      requestId,
-      turnId,
-      toolCallId,
-      toolName,
-      input,
-    };
-    send(req);
-
-    // If the turn is aborted before main responds, auto-block so the
-    // tool throws instead of hanging.
-    state.turnAbort?.signal.addEventListener('abort', () => {
-      const pending = state.pendingPermission.get(requestId);
-      if (pending) {
-        state.pendingPermission.delete(requestId);
-        pending.resolve({
-          type: 'pre_tool_use_response',
-          requestId,
-          action: 'block',
-          reason: 'Turn aborted',
-        });
-      }
-    });
-  });
-}
-
-/**
- * Wrap a Pi tool definition so its `execute` first asks main for
- * permission via `pre_tool_use_request`. Read-only tools are exempt
- * from the round-trip in `auto` mode (the gate adds latency for nothing).
- *
- * `options.catastrophicRmCwd` opts a specific call site (the Bash tool) into
- * the catastrophic-delete circuit breaker — pass it explicitly rather than
- * having this generic wrapper guess by tool name.
- */
-export function wrapWithPermissionGate(
-  base: ToolDefinition<any, any>,
-  options?: { catastrophicRmCwd?: string },
-): ToolDefinition<any, any> {
-  const originalExecute = base.execute.bind(base);
-  const catastrophicRmCwd = options?.catastrophicRmCwd;
-  return {
-    ...base,
-    execute: async (toolCallId, params, signal, onUpdate, ctx) => {
-      // Catastrophic-delete circuit breaker: a hard block, not an approval
-      // request. It applies in EVERY permission mode, including auto, which is
-      // exactly why it can't route through requestPermission()/main — that
-      // path has no human-facing dialog and auto mode resolves every request
-      // as 'allow' by default (see agent.ts's pre_tool_use_request handler).
-      // A "circuit breaker" that could be silently auto-approved isn't one.
-      //
-      // Opted into by the Bash call site via `catastrophicRmCwd`, not by
-      // matching `base.name` — the tool's name string is a third-party
-      // library detail with no compiler link to this check, so a rename
-      // upstream would silently disable a name-based match.
-      if (catastrophicRmCwd) {
-        const command = (params as { command?: unknown } | undefined)?.command;
-        if (typeof command === 'string') {
-          const reason = describeCatastrophicRm(command, catastrophicRmCwd);
-          if (reason) {
-            throw new Error(`Blocked: catastrophic delete detected — ${reason}`);
-          }
-        }
-      }
-
-      // Auto + readonly = fast path. Auto + write = also auto-allow but
-      // still emit the request so main can record what happened. We
-      // skip the round-trip entirely for a pure latency win.
-      if (state.permissionMode === 'auto') {
-        return originalExecute(toolCallId, params, signal, onUpdate, ctx);
-      }
-
-      // Read-only tools always pass even in plan/ask.
-      if (READ_ONLY_TOOL_NAMES.has(base.name.toLowerCase())) {
-        return originalExecute(toolCallId, params, signal, onUpdate, ctx);
-      }
-
-      // Inside execute(), so pi's durationMs includes it; recorded for subtraction.
-      const approvalStartedAt = performance.now();
-      const decision = await requestPermission(toolCallId, base.name, params);
-      recordApprovalWait(toolCallId, performance.now() - approvalStartedAt);
-
-      if (decision.action === 'block') {
-        // Pi only marks tool_result isError when execute() throws — returning isError:true is silently ignored.
-        throw new Error(decision.reason ?? 'Tool execution denied.');
-      }
-
-      const finalParams = decision.action === 'modify' ? decision.input : params;
-      return originalExecute(toolCallId, finalParams, signal, onUpdate, ctx);
-    },
-  };
 }
 
 /**

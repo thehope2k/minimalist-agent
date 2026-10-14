@@ -113,8 +113,9 @@ on file-system events. See [SYSTEM-PROMPT.md](SYSTEM-PROMPT.md) for the full inv
 - **MCP-backed** — spawns an MCP server (stdio or HTTP/SSE) and exposes its tools as `mcp__<slug>__<tool>`. The Pi
   backend resolves serializable configs with `buildResolvedMcpServers(cwd?)`; the subprocess registers them with
   pi's native `createMcpExtension()` (`pi-server/mcp-native-config.ts` adapts them to its `LoadedMcpConfig` shape).
-  Permission gating and OTel instrumentation for MCP tool calls come from `pi-server/mcp-governance.ts` (pi's
-  `tool_call`/`tool_result` hooks, since native MCP tools bypass the `customTools` wrappers everything else uses).
+  Permission gating for every gated tool (built-ins, web, browser, Agent, and native MCP) comes from
+  `pi-server/tool-governance.ts` (pi's `tool_call` hook); it also traces MCP calls, which bypass the `customTools`
+  span wrapper (`instrumentTool`) everything else uses.
   A separate, diagnostics-only probe (`pi-server/mcp-diagnostics.ts`) reports per-server connect status to the UI,
   since pi exposes no live connection-status hook.
 - **CLI-bound** — injects env vars into the Pi subprocess via

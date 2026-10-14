@@ -7,7 +7,12 @@
 //   - `web_search`: DuckDuckGo HTML scrape (no API key required)
 
 import { Type } from 'typebox';
-import { defineTool, type ToolDefinition } from '@earendil-works/pi-coding-agent';
+import {
+  defineTool,
+  formatSize,
+  truncateHead,
+  type ToolDefinition,
+} from '@earendil-works/pi-coding-agent';
 import { safeHttpGet, SsrfError, type SafeResponse } from './ssrf-guard';
 
 // Pi-server runs as a Node-mode subprocess (ELECTRON_RUN_AS_NODE=1), so
@@ -18,7 +23,7 @@ const APP_VERSION = process.env.MINIMALIST_AGENT_VERSION ?? '0.0.0';
 
 const FETCH_TIMEOUT_MS = 20_000;
 const MAX_BYTES = 1_500_000;
-const MAX_RESULT_CHARS = 60_000;
+const MAX_RESULT_BYTES = 60_000;
 
 const FETCH_HEADERS = {
   // Identify as a friendly browser to coax HTML out of paranoid sites.
@@ -58,12 +63,17 @@ function stripHtml(html: string): string {
   return s.trim();
 }
 
-function clamp(text: string, max: number): { text: string; truncated: boolean } {
-  if (text.length <= max) return { text, truncated: false };
-  return {
-    text: text.slice(0, max) + `\n\n[... truncated; ${text.length - max} more chars]`,
-    truncated: true,
-  };
+export function clampResult(text: string): string {
+  // maxLines = maxBytes disables the line cap: minified or pretty-printed JSON
+  // would otherwise hit pi's 2000-line default long before the byte budget.
+  const head = truncateHead(text, { maxBytes: MAX_RESULT_BYTES, maxLines: MAX_RESULT_BYTES });
+  if (!head.truncated) return text;
+  // truncateHead never splits a line and returns '' when line 1 alone is over
+  // budget — exactly what a single-line minified JSON/HTML body looks like.
+  const kept = head.firstLineExceedsLimit
+    ? Buffer.from(text, 'utf-8').subarray(0, MAX_RESULT_BYTES).toString('utf-8')
+    : head.content;
+  return `${kept}\n\n[... truncated; showing first ${formatSize(Buffer.byteLength(kept, 'utf-8'))} of ${formatSize(head.totalBytes)}]`;
 }
 
 async function fetchSafe(url: string, signal?: AbortSignal): Promise<SafeResponse> {
@@ -87,7 +97,7 @@ export function createWebFetchTool(): ToolDefinition<typeof webFetchSchema, unkn
     label: 'Fetch web page',
     description:
       'Fetch a web page or document by URL and return its readable text. ' +
-      'HTML is stripped to plain prose; JSON/text are returned as-is. Output is truncated to roughly 60k chars.',
+      'HTML is stripped to plain prose; JSON/text are returned as-is. Output is truncated to roughly 60 KB.',
     promptSnippet: 'web_fetch: GET a URL and return readable text. Use for docs/articles/specs.',
     parameters: webFetchSchema,
     execute: async (_toolCallId, params, signal) => {
@@ -138,8 +148,8 @@ export function createWebFetchTool(): ToolDefinition<typeof webFetchSchema, unkn
           } as never;
         }
 
-        const { text, truncated } = clamp(body, MAX_RESULT_CHARS);
-        const header = `URL: ${res.finalUrl}\nStatus: ${res.status}\nContent-Type: ${ct || 'unknown'}\n${truncatedBytes ? `Note: response body exceeded ${MAX_BYTES} bytes; truncated.\n` : ''}${truncated ? '' : ''}\n---\n`;
+        const text = clampResult(body);
+        const header = `URL: ${res.finalUrl}\nStatus: ${res.status}\nContent-Type: ${ct || 'unknown'}\n${truncatedBytes ? `Note: response body exceeded ${MAX_BYTES} bytes; truncated.\n` : ''}\n---\n`;
         return {
           isError: false,
           content: [{ type: 'text', text: header + text }],

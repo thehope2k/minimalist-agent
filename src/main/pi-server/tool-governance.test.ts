@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { InlineExtension } from '@earendil-works/pi-coding-agent';
 import { state } from './state';
-import { mcpGovernanceExtension } from './mcp-governance';
+import { toolGovernanceExtension } from './tool-governance';
 
 vi.mock('./transport', () => ({ send: vi.fn() }));
 import { send } from './transport';
@@ -27,7 +27,12 @@ vi.mock('../../shared/otel', () => ({
 
 type Handler = (event: any) => any;
 
-function registerHandlers(): Record<string, Handler> {
+function registerHandlers(
+  options: Parameters<typeof toolGovernanceExtension>[0] = {
+    gatedToolNames: ['bash', 'edit', 'read', 'web_fetch'],
+    catastrophicRm: { toolName: 'bash', cwd: '/work/project' },
+  },
+): Record<string, Handler> {
   const handlers: Record<string, Handler> = {};
   const fakePi = {
     on: (name: string, handler: Handler) => {
@@ -35,7 +40,7 @@ function registerHandlers(): Record<string, Handler> {
       return () => {};
     },
   };
-  const ext = mcpGovernanceExtension() as Extract<InlineExtension, { factory: unknown }>;
+  const ext = toolGovernanceExtension(options) as Extract<InlineExtension, { factory: unknown }>;
   ext.factory(fakePi as never);
   return handlers;
 }
@@ -61,10 +66,14 @@ beforeEach(() => {
   createdSpans.length = 0;
 });
 
-describe('mcpGovernanceExtension — tool_call', () => {
-  it('ignores non-mcp tool names entirely', async () => {
+describe('toolGovernanceExtension — MCP tool_call', () => {
+  it('ignores tools that are neither mcp nor gated', async () => {
     const handlers = registerHandlers();
-    const result = await handlers.tool_call({ toolCallId: 'a', toolName: 'read', input: {} });
+    const result = await handlers.tool_call({
+      toolCallId: 'a',
+      toolName: 'RequestDecision',
+      input: {},
+    });
     expect(result).toBeUndefined();
     expect(send).not.toHaveBeenCalled();
   });
@@ -163,7 +172,7 @@ describe('mcpGovernanceExtension — tool_call', () => {
   });
 });
 
-describe('mcpGovernanceExtension — tool_result', () => {
+describe('toolGovernanceExtension — tool_result', () => {
   it('ignores non-mcp tool results without throwing', () => {
     const handlers = registerHandlers();
     expect(() =>
@@ -181,5 +190,74 @@ describe('mcpGovernanceExtension — tool_result', () => {
         content: [],
       }),
     ).not.toThrow();
+  });
+});
+
+describe('toolGovernanceExtension — built-in tool_call', () => {
+  it('round-trips a gated write tool in plan mode and blocks on denial', async () => {
+    const handlers = registerHandlers();
+    const callPromise = handlers.tool_call({ toolCallId: 'w1', toolName: 'edit', input: {} });
+    expect(send).toHaveBeenCalledTimes(1);
+    resolvePendingPermission({ action: 'block', reason: 'nope' });
+    expect(await callPromise).toEqual({ block: true, reason: 'nope' });
+  });
+
+  it('lets read-only built-ins through without a round trip', async () => {
+    const handlers = registerHandlers();
+    for (const toolName of ['read', 'web_fetch']) {
+      expect(
+        await handlers.tool_call({ toolCallId: toolName, toolName, input: {} }),
+      ).toBeUndefined();
+    }
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('does not open an MCP span for built-ins', async () => {
+    state.permissionMode = 'auto';
+    const handlers = registerHandlers();
+    await handlers.tool_call({ toolCallId: 'x', toolName: 'edit', input: {} });
+    expect(createdSpans).toHaveLength(0);
+  });
+
+  it('replaces the whole input on a modify decision', async () => {
+    const handlers = registerHandlers();
+    const input: Record<string, unknown> = { path: 'a', extra: 1 };
+    const callPromise = handlers.tool_call({ toolCallId: 'm', toolName: 'edit', input });
+    resolvePendingPermission({ action: 'modify', input: { path: 'b' } });
+    await callPromise;
+    expect(input).toEqual({ path: 'b' });
+  });
+
+  it('hard-blocks catastrophic deletes even in auto mode, without a round trip', async () => {
+    state.permissionMode = 'auto';
+    const handlers = registerHandlers();
+    const result = await handlers.tool_call({
+      toolCallId: 'rm',
+      toolName: 'bash',
+      input: { command: 'rm -rf /' },
+    });
+    expect(result).toMatchObject({ block: true });
+    expect(result.reason).toContain('catastrophic delete');
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('lets harmless bash through in auto mode', async () => {
+    state.permissionMode = 'auto';
+    const handlers = registerHandlers();
+    const result = await handlers.tool_call({
+      toolCallId: 'ls',
+      toolName: 'bash',
+      input: { command: 'ls -la' },
+    });
+    expect(result).toBeUndefined();
+  });
+
+  it('auto-blocks if the turn aborts before main responds', async () => {
+    const controller = new AbortController();
+    state.turnAbort = controller;
+    const handlers = registerHandlers();
+    const callPromise = handlers.tool_call({ toolCallId: 'ab', toolName: 'bash', input: {} });
+    controller.abort();
+    expect(await callPromise).toEqual({ block: true, reason: 'Turn aborted' });
   });
 });

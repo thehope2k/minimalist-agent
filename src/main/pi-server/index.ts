@@ -70,7 +70,7 @@ import {
   withResolvedBaseUrl,
   isLocalhostUrl,
 } from './model-utils';
-import { wrapWithPermissionGate, instrumentTool, requestBrowserTool } from './tool-wrapping';
+import { instrumentTool, requestBrowserTool } from './tool-wrapping';
 import { createCollaborationTools, promoteToAutoAfterApproval } from './collaboration-tools';
 import { createPlanningTools } from './planning-tools';
 import {
@@ -91,7 +91,7 @@ import { createWebFetchTool, createWebSearchTool } from './web-tools';
 import { createBrowserTool } from './browser-tool';
 import { probeMcpServers } from './mcp-diagnostics';
 import { buildLoadedMcpConfig } from './mcp-native-config';
-import { mcpGovernanceExtension } from './mcp-governance';
+import { toolGovernanceExtension } from './tool-governance';
 import { createAgentTool } from '../agent-runtime/pi/agent-tool';
 import type {
   MsgAuthRequired,
@@ -179,12 +179,11 @@ function endInflightSpans(reason: string): void {
 
 /**
  * Assembles every tool the pi-server session exposes: the built-in file/bash
- * tools (wrapped with the permission gate + span instrumentation), the Agent
- * delegation tool (if agentContext is provided), the collaboration + planning
- * tool sets, and any MCP-backed extension tools already connected in
- * handleInit.
+ * tools (span-instrumented), the Agent delegation tool (if agentContext is
+ * provided), and the collaboration + planning tool sets. `gatedToolNames` lists
+ * the ones tool-governance.ts must put behind the permission round trip.
  */
-function buildWrappedTools(
+function buildTools(
   cwd: string,
   agentContext?: {
     sessionId: string;
@@ -204,7 +203,7 @@ function buildWrappedTools(
       thinkingFormat?: 'qwen';
     };
   },
-): ToolDefinition<any, any>[] {
+): { tools: ToolDefinition<any, any>[]; gatedToolNames: string[]; bashToolName: string } {
   const bashTool = createBashToolDefinition(cwd);
   bashTool.promptGuidelines = [
     ...(bashTool.promptGuidelines ?? []),
@@ -213,46 +212,40 @@ function buildWrappedTools(
       `still "cd <subdir> && ..." when you actually need to run something in a different directory.)`,
   ];
 
-  const tools: ToolDefinition<any, any>[] = [
-    wrapWithPermissionGate(createReadToolDefinition(cwd)),
-    wrapWithPermissionGate(bashTool, { catastrophicRmCwd: cwd }),
-    wrapWithPermissionGate(createEditToolDefinition(cwd)),
-    wrapWithPermissionGate(createWriteToolDefinition(cwd)),
-    wrapWithPermissionGate(createGrepToolDefinition(cwd)),
-    wrapWithPermissionGate(createFindToolDefinition(cwd)),
-    wrapWithPermissionGate(createLsToolDefinition(cwd)),
-    // Web tools — read-only, but still routed through the permission
-    // gate so plan/auto modes stay in control.
-    wrapWithPermissionGate(createWebFetchTool()),
-    wrapWithPermissionGate(createWebSearchTool()),
-    wrapWithPermissionGate(
-      createBrowserTool(() => state.init?.sessionId ?? '', requestBrowserTool),
-    ),
+  const gated: ToolDefinition<any, any>[] = [
+    createReadToolDefinition(cwd),
+    bashTool,
+    createEditToolDefinition(cwd),
+    createWriteToolDefinition(cwd),
+    createGrepToolDefinition(cwd),
+    createFindToolDefinition(cwd),
+    createLsToolDefinition(cwd),
+    createWebFetchTool(),
+    createWebSearchTool(),
+    createBrowserTool(() => state.init?.sessionId ?? '', requestBrowserTool),
   ];
 
   // Add Agent tool if we have the necessary context
   if (agentContext) {
-    tools.push(
-      wrapWithPermissionGate(
-        createAgentTool({
-          ...agentContext,
-          cwd,
-        }),
-      ),
-    );
+    gated.push(createAgentTool({ ...agentContext, cwd }));
   }
 
-  // Add collaboration tools (not wrapped with permission gate - they ARE the engagement)
+  const tools = [...gated];
+
+  // Collaboration tools are not gated - they ARE the engagement
   tools.push(...createCollaborationTools(agentContext?.sessionId || ''));
 
-  // Add planning tools (not wrapped with permission gate - they manage the workflow)
+  // Planning tools are not gated - they manage the workflow
   tools.push(...createPlanningTools(agentContext?.sessionId || ''));
 
-  // MCP tools are registered natively by createMcpExtension below, with
-  // permission gating/OTel from mcpGovernanceExtension (mcp-governance.ts) —
-  // not part of this customTools array.
+  // MCP tools are registered natively by createMcpExtension below and gated/
+  // traced by toolGovernanceExtension — not part of this customTools array.
 
-  return tools.map(instrumentTool);
+  return {
+    tools: tools.map(instrumentTool),
+    gatedToolNames: gated.map((t) => t.name),
+    bashToolName: bashTool.name,
+  };
 }
 
 /* ============================================================ */
@@ -457,7 +450,7 @@ async function handleInit(msg: MsgInit): Promise<void> {
     mcpServersWithExposure = applyAutoExposure(mcpServers, diagnostics);
   }
 
-  const tools = buildWrappedTools(msg.cwd, agentContext);
+  const { tools, gatedToolNames, bashToolName } = buildTools(msg.cwd, agentContext);
 
   const settingsManager = SettingsManager.inMemory({ compaction: resolvedCompaction });
   const resourceLoader = createIsolatedResourceLoader({
@@ -472,7 +465,10 @@ async function handleInit(msg: MsgInit): Promise<void> {
         startupWaitMs: MCP_CONNECT_CEILING_MS,
       }),
       mcpActivationExtension(),
-      mcpGovernanceExtension(),
+      toolGovernanceExtension({
+        gatedToolNames,
+        catastrophicRm: { toolName: bashToolName, cwd: msg.cwd },
+      }),
     ],
   });
   await resourceLoader.reload();

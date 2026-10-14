@@ -17,7 +17,7 @@ import {
 } from '@earendil-works/pi-ai';
 import { InMemoryCredentialStore } from './credential-store';
 import { buildLoadedMcpConfig } from './mcp-native-config';
-import { mcpGovernanceExtension } from './mcp-governance';
+import { toolGovernanceExtension } from './tool-governance';
 import { createIsolatedResourceLoader } from './resource-loader';
 import { state } from './state';
 import type { MsgPreToolUseRequest, PermissionMode } from '../agent-runtime/pi/protocol';
@@ -115,7 +115,7 @@ async function startSession(permissionMode: PermissionMode): Promise<void> {
           ]),
         startupWaitMs: MCP_STARTUP_WAIT_MS,
       }),
-      mcpGovernanceExtension(),
+      toolGovernanceExtension({ gatedToolNames: [] }),
     ],
   });
   await resourceLoader.reload();

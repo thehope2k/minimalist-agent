@@ -13,17 +13,17 @@ credential storage (Electron `safeStorage`), session persistence, and everything
 
 ## What is used
 
-| Area            | Pi surface                                                                                                                                                                                                                                                                                                               | Where                                                                 |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------- |
-| Agent loop      | `createAgentSession`, `session.prompt` / `abort` / `setModel` / `setThinkingLevel` / `subscribe`; mid-stream steering via `prompt(..., { streamingBehavior: 'steer' })`                                                                                                                                                  | `pi-server/index.ts`, `state.ts`                                      |
-| Events          | Full `AgentSessionEvent` stream (`message_update`, `tool_execution_*` including `durationMs`, `turn_*`, `agent_*`, `compaction_*`, `auto_retry_*`) adapted to `AgentChatEvent` and OTel GenAI spans                                                                                                                      | `event-adapter.ts`, `tool-duration.ts`                                |
-| Built-in tools  | `create{Bash,Edit,Find,Grep,Ls,Read,Write}ToolDefinition` registered with `noTools: 'builtin'` + `customTools`, each wrapped for permission gating and tracing                                                                                                                                                           | `pi-server/index.ts`, `tool-wrapping.ts`                              |
-| Custom tools    | `defineTool` for `Agent` (sub-agents), `web_fetch`, `web_search`, `browser_tool`; collaboration and planning tools                                                                                                                                                                                                       | `agent-tool.ts`, `web-tools.ts`, `browser-tool.ts`, `planning-tools/` |
-| MCP             | `createMcpExtension` fed by `loadConfig` (`mcp-native-config.ts`) plus `createToolSearchExtension` for deferred servers (`mcp-exposure.ts`); `tool_call` / `tool_result` hooks for governance and tracing (`mcp-governance.ts`); a separate probe for status and tool counts (`mcp-diagnostics.ts`). No `sse` transport. | `pi-server/`                                                          |
-| Models and auth | `ModelRuntime` with a custom in-memory `CredentialStore` fed by `token_update`; `ModelRegistry.registerProvider('custom-endpoint')`; `getBuiltinModel` / `builtinModels`; `githubCopilotProvider` and `openaiCodexProvider` for OAuth and the tier-filtered Copilot catalog                                              | `credential-store.ts`, `copilot/models.ts`, `oauth/`                  |
-| Compaction      | `SettingsManager.inMemory({ compaction })` driven by the settings UI (`CompactionSection`); `session_before_compact` extension for span attribution; manual `session.compact(instructions)` that preserves plan state                                                                                                    | `pi-server/index.ts`; see `COMPACTION.md`                             |
-| Session forking | `SessionManager.open` / `getEntries` / `createBranchedSession` / `branchWithSummary` with `collectEntriesForBranchSummary` and `generateBranchSummary`; summaries are generated only for Copilot connections                                                                                                             | `storage/session-fork.ts`, `session-branch.ts`                        |
-| Session storage | `SessionManager.continueRecent` per chat; `SessionManager.inMemory` for one-shot completions                                                                                                                                                                                                                             | `pi-server/index.ts`                                                  |
+| Area            | Pi surface                                                                                                                                                                                                                                                                                                                | Where                                                                 |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Agent loop      | `createAgentSession`, `session.prompt` / `abort` / `setModel` / `setThinkingLevel` / `subscribe`; mid-stream steering via `prompt(..., { streamingBehavior: 'steer' })`                                                                                                                                                   | `pi-server/index.ts`, `state.ts`                                      |
+| Events          | Full `AgentSessionEvent` stream (`message_update`, `tool_execution_*` including `durationMs`, `turn_*`, `agent_*`, `compaction_*`, `auto_retry_*`) adapted to `AgentChatEvent` and OTel GenAI spans                                                                                                                       | `event-adapter.ts`, `tool-duration.ts`                                |
+| Built-in tools  | `create{Bash,Edit,Find,Grep,Ls,Read,Write}ToolDefinition` registered with `noTools: 'builtin'` + `customTools`, each wrapped for permission gating and tracing                                                                                                                                                            | `pi-server/index.ts`, `tool-wrapping.ts`                              |
+| Custom tools    | `defineTool` for `Agent` (sub-agents), `web_fetch`, `web_search`, `browser_tool`; collaboration and planning tools                                                                                                                                                                                                        | `agent-tool.ts`, `web-tools.ts`, `browser-tool.ts`, `planning-tools/` |
+| MCP             | `createMcpExtension` fed by `loadConfig` (`mcp-native-config.ts`) plus `createToolSearchExtension` for deferred servers (`mcp-exposure.ts`); `tool_call` / `tool_result` hooks for governance and tracing (`tool-governance.ts`); a separate probe for status and tool counts (`mcp-diagnostics.ts`). No `sse` transport. | `pi-server/`                                                          |
+| Models and auth | `ModelRuntime` with a custom in-memory `CredentialStore` fed by `token_update`; `ModelRegistry.registerProvider('custom-endpoint')`; `getBuiltinModel` / `builtinModels`; `githubCopilotProvider` and `openaiCodexProvider` for OAuth and the tier-filtered Copilot catalog                                               | `credential-store.ts`, `copilot/models.ts`, `oauth/`                  |
+| Compaction      | `SettingsManager.inMemory({ compaction })` driven by the settings UI (`CompactionSection`); `session_before_compact` extension for span attribution; manual `session.compact(instructions)` that preserves plan state                                                                                                     | `pi-server/index.ts`; see `COMPACTION.md`                             |
+| Session forking | `SessionManager.open` / `getEntries` / `createBranchedSession` / `branchWithSummary` with `collectEntriesForBranchSummary` and `generateBranchSummary`; summaries are generated only for Copilot connections                                                                                                              | `storage/session-fork.ts`, `session-branch.ts`                        |
+| Session storage | `SessionManager.continueRecent` per chat; `SessionManager.inMemory` for one-shot completions                                                                                                                                                                                                                              | `pi-server/index.ts`                                                  |
 
 Sub-agents are MA-built: each `Agent` call spawns another `pi-server` process (`agent-tool.ts`, `subagent/spawn.ts`),
 not a pi feature.
@@ -35,17 +35,17 @@ not a pi feature.
    uses none of it; pi's own discovery is disabled (see [Resource isolation](#resource-isolation)).
 2. **Extensions.** MCP-backed extensions run on pi's native MCP extension. CLI-bound and guide-only extensions have no
    pi counterpart in use (`registerTool`, `registerCommand`, `registerShortcut` are all unused).
-3. **Permission gating.** For built-in, web, and agent tools the gate is a cross-process round trip
-   (`pre_tool_use_request` / `pre_tool_use_response`) awaited inside a wrapper around `execute()` (`tool-wrapping.ts`).
-   Native MCP calls use the `tool_call` hook instead and replay the same round trip from inside it. The UI lives in a
-   different Electron process, so the round trip is defensible, but the wrapper has a cost: pi's `durationMs` includes
-   the approval wait, which `tool-duration.ts` has to subtract. A `tool_call` hook runs before `execute()`, so pi
-   would exclude that wait on its own.
-4. **Tool output truncation.** `web-tools.ts` has its own `clamp()` instead of pi's `truncateHead` / `truncateTail` /
-   `formatSize`.
+3. **Permission gating.** One `tool_call` hook (`tool-governance.ts`) gates built-in, web, browser, Agent, and native MCP
+   tools through a cross-process round trip (`pre_tool_use_request` / `pre_tool_use_response`); the UI lives in a
+   different Electron process, so the round trip stays. Because the hook runs before `execute()`, pi's `durationMs`
+   excludes the approval wait. The catastrophic-delete breaker lives in the same hook. Collaboration and planning tools
+   are deliberately ungated.
+4. **Tool output truncation.** `web-tools.ts` uses pi's `truncateHead` / `formatSize` (`clampResult`). It is not a pure
+   drop-in: `truncateHead` returns empty content when the first line alone exceeds the budget (minified JSON), so a byte
+   slice covers that case.
 5. **One-shot completions.** Title and other mini completions (`runEphemeralPrompt`) build a full in-memory
    `AgentSession` plus a resource loader for each call. Tools are disabled (`noTools: 'all'`), since the permission gate
-   only wraps the main session's tools.
+   only covers the main session's tools.
 
 ## Resource isolation
 
@@ -113,7 +113,7 @@ About 77% smaller. Installed extensions such as Postman (~140 tools), Canva, and
 had no loader tool registered, so the figure omits the `tool_search` declaration. It has not been re-measured with it.
 
 **Governance holds.** `tool_search` activates the matching tools, and the model then calls them by their real
-`mcp__<server>__<tool>` names. The `tool_call` hook in `mcp-governance.ts` therefore sees the same event it does for a
+`mcp__<server>__<tool>` names. The `tool_call` hook in `tool-governance.ts` therefore sees the same event it does for a
 `direct` tool, and the main-process `blockedTools` check keys on that name too. `mcp-deferred.integration.test.ts`
 runs a real pi session against a stdio MCP fixture and a scripted faux model, and asserts that deferred tools are
 absent from the first request, are declared after a search, reach the permission round trip, and do not execute when
@@ -132,9 +132,6 @@ the gate blocks them. Codemode would need a separate answer, since its nested ca
 
 ## Priorities
 
-1. **Move built-in permission gating into a `tool_call` hook.** Halves the custom `pre_tool_use_*` layer, lets pi report
-   `durationMs` without the approval wait (deleting the wait accounting in `tool-duration.ts`), and opens up the
-   `context` hook for message pruning.
-2. **Decide the skills story.** Fold MA's skills into pi's native loader, or document why they stay separate.
-3. **Smaller items.** Replace `clamp()` with pi's truncation helpers, expose retry settings, and use a lighter path
+1. **Decide the skills story.** Fold MA's skills into pi's native loader, or document why they stay separate.
+2. **Smaller items.** Expose retry settings, and use a lighter path
    than a full `AgentSession` for one-shot completions.
