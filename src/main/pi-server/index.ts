@@ -22,7 +22,6 @@
 import { createInterface } from 'node:readline';
 import {
   createAgentSession,
-  DefaultResourceLoader,
   SessionManager,
   SettingsManager,
   ModelRegistry,
@@ -39,7 +38,6 @@ import {
   type ToolDefinition,
   type InlineExtension,
 } from '@earendil-works/pi-coding-agent';
-import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { getBuiltinModel, builtinModels } from '@earendil-works/pi-ai/providers/all';
 import type { Api, Model, OAuthCredential } from '@earendil-works/pi-ai';
@@ -53,6 +51,7 @@ import {
 } from '../../shared/timeouts';
 import { withTimeout } from '../../shared/with-timeout';
 import { send } from './transport';
+import { createIsolatedResourceLoader } from './resource-loader';
 import { state } from './state';
 import {
   errMessage,
@@ -454,10 +453,10 @@ async function handleInit(msg: MsgInit): Promise<void> {
 
   const tools = buildWrappedTools(msg.cwd, agentContext);
 
-  const agentDir = join(homedir(), '.pi', 'agent');
-  const resourceLoader = new DefaultResourceLoader({
+  const settingsManager = SettingsManager.inMemory({ compaction: resolvedCompaction });
+  const resourceLoader = createIsolatedResourceLoader({
     cwd: msg.cwd,
-    agentDir,
+    settingsManager,
     appendSystemPrompt: state.appendArr,
     extensionFactories: [
       compactionObservabilityExtension(),
@@ -479,9 +478,7 @@ async function handleInit(msg: MsgInit): Promise<void> {
     thinkingLevel: hasCustomEndpoint ? 'minimal' : mapThinkingLevel(msg.thinkingLevel),
     modelRuntime: state.modelRuntime,
     sessionManager,
-    settingsManager: SettingsManager.inMemory({
-      compaction: resolvedCompaction,
-    }),
+    settingsManager,
     resourceLoader,
     noTools: 'builtin',
     customTools: tools as never,
@@ -985,22 +982,19 @@ async function handleManualCompact(msg: MsgManualCompact): Promise<void> {
 /*  mini_completion + llm_query                                   */
 /* ============================================================ */
 
-/**
- * Runs one hidden agent turn in an in-memory session (never touches disk,
- * never visible in chat history) with a task-specific system prompt in
- * place of Pi's own agent identity. Returns the assistant's final text.
- */
+// Hidden turn: in-memory so it never lands in chat history, and tool-less because
+// the permission gate only wraps the main session's tools.
 async function runEphemeralPrompt(args: {
   model: Model<Api>;
   systemPrompt: string;
   userPrompt: string;
   cwd: string;
 }): Promise<string> {
-  const agentDir = join(homedir(), '.pi', 'agent');
-  const resourceLoader = new DefaultResourceLoader({
+  const settingsManager = SettingsManager.inMemory();
+  const resourceLoader = createIsolatedResourceLoader({
     cwd: args.cwd,
-    agentDir,
-    systemPromptOverride: () => args.systemPrompt,
+    settingsManager,
+    systemPrompt: args.systemPrompt,
   });
   await resourceLoader.reload();
 
@@ -1009,7 +1003,9 @@ async function runEphemeralPrompt(args: {
     model: args.model,
     modelRuntime: state.modelRuntime,
     sessionManager: SessionManager.inMemory(),
+    settingsManager,
     resourceLoader,
+    noTools: 'all',
   });
 
   let finalText = '';

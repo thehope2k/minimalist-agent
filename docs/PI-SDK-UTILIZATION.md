@@ -32,7 +32,7 @@ not a pi feature.
 
 1. **Skills.** MA has its own tier (`~/.minimalist-agent/skills`, project tier, `@slug` invocation, `skills/*`). Pi has a
    native Agent Skills implementation (discovery, system-prompt injection, `/skill:name`, progressive disclosure). MA
-   uses none of it deliberately, but see [Unintended native discovery](#unintended-native-resource-discovery) below.
+   uses none of it; pi's own discovery is disabled (see [Resource isolation](#resource-isolation)).
 2. **Extensions.** MCP-backed extensions run on pi's native MCP extension. CLI-bound and guide-only extensions have no
    pi counterpart in use (`registerTool`, `registerCommand`, `registerShortcut` are all unused).
 3. **Permission gating.** For built-in, web, and agent tools the gate is a cross-process round trip
@@ -44,36 +44,27 @@ not a pi feature.
 4. **Tool output truncation.** `web-tools.ts` has its own `clamp()` instead of pi's `truncateHead` / `truncateTail` /
    `formatSize`.
 5. **One-shot completions.** Title and other mini completions (`runEphemeralPrompt`) build a full in-memory
-   `AgentSession` plus a `DefaultResourceLoader` for each call.
+   `AgentSession` plus a resource loader for each call. Tools are disabled (`noTools: 'all'`), since the permission gate
+   only wraps the main session's tools.
 
-## Unintended native resource discovery
+## Resource isolation
 
-`DefaultResourceLoader` is created with `agentDir = ~/.pi/agent` and no `no*` switches, so pi's own discovery is
-active in every session, including the one-shot completions. Verified by placing marker files and reading the
-system prompt pi-server sends:
+Pi's `DefaultResourceLoader` would auto-discover `AGENTS.md`, skills, extensions, prompt templates, themes,
+`SYSTEM.md` / `APPEND_SYSTEM.md`, and `settings.json` package lists from `~/.pi/agent` and `<cwd>/.pi`. MA turns all of
+that off, because it owns context, skills, and extensions itself (its own tiers, consent flow, and prompt injection).
+Left on, discovery would duplicate `<project_context>` in every request, leak the pi CLI's content into MA sessions,
+and execute extensions outside MA's consent flow.
 
-| Placed in                            | Result                       |
-| ------------------------------------ | ---------------------------- |
-| `~/.pi/agent/AGENTS.md`              | injected into the prompt     |
-| `~/.pi/agent/skills/<name>/SKILL.md` | listed as an available skill |
-| `<cwd>/AGENTS.md`                    | injected into the prompt     |
-| `<cwd>/.pi/skills/<name>/SKILL.md`   | listed as an available skill |
+Every loader comes from `createIsolatedResourceLoader` (`pi-server/resource-loader.ts`), for both the chat session and
+`runEphemeralPrompt`:
 
-Pi uses the same mechanism for extensions, prompt templates, and themes in those directories. That was not tested, but
-extensions would execute inside the subprocess.
+- All `no*` switches are set.
+- An in-memory `SettingsManager` is passed in and shared with the session, so `settings.json` is never read.
+- `appendSystemPrompt` is the caller's array, mutated in place and applied with `reload()`.
+- The system prompt is overridden, so `SYSTEM.md` is never picked up.
+- Inline extension factories (MCP, governance, compaction) still load.
 
-Consequences:
-
-- **Duplicate project context.** MA injects its own `<project_context>` from `AGENTS.md` / `CLAUDE.md`, and pi injects
-  the same file again. The block appears twice in the prompt, costing tokens on every request.
-- **Leakage from the pi CLI.** Anything a user keeps in `~/.pi/agent` shows up in MA sessions.
-- **Unreviewed code.** A pi extension in `~/.pi/agent/extensions` or `<cwd>/.pi/extensions` would load without MA's
-  extension consent flow.
-
-`DefaultResourceLoader` has the switches to settle this: `noContextFiles`, `noSkills`, `noExtensions`,
-`noPromptTemplates`, `noThemes`, plus `skillsOverride`, `agentsFilesOverride`, and `additional*Paths` for feeding it MA's
-own content. The decision is either to disable discovery and keep MA's injection, or to hand context and skills to pi
-and delete MA's injection.
+`resource-loader.test.ts` places marker files in both locations and asserts none surface.
 
 ## Not used
 
@@ -133,12 +124,10 @@ session.
 
 ## Priorities
 
-1. **Resolve native resource discovery.** Cheap, removes duplicate prompt tokens, and closes the unreviewed-extension
-   path.
-2. **Deferred MCP exposure spike.** The largest token saving available, gated on the governance question.
-3. **Move built-in permission gating into a `tool_call` hook.** Halves the custom `pre_tool_use_*` layer, lets pi report
+1. **Deferred MCP exposure spike.** The largest token saving available, gated on the governance question.
+2. **Move built-in permission gating into a `tool_call` hook.** Halves the custom `pre_tool_use_*` layer, lets pi report
    `durationMs` without the approval wait (deleting the wait accounting in `tool-duration.ts`), and opens up the
    `context` hook for message pruning.
-4. **Decide the skills story.** Fold MA's skills into pi's native loader, or document why they stay separate.
-5. **Smaller items.** Replace `clamp()` with pi's truncation helpers, expose retry settings, and use a lighter path
+3. **Decide the skills story.** Fold MA's skills into pi's native loader, or document why they stay separate.
+4. **Smaller items.** Replace `clamp()` with pi's truncation helpers, expose retry settings, and use a lighter path
    than a full `AgentSession` for one-shot completions.
