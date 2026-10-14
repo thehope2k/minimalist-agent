@@ -137,7 +137,7 @@ Extensions add capabilities beyond built-in tools. Each is a directory with:
 - \`guide.md\` — usage instructions
 
 **Storage — two scopes:**
-- **Global:** \`~/.minimalist-agent/extensions/{slug}/\` — personal, available across all projects
+- **Global:** \`~/.minimalist-agent/extensions/{slug}/\` — personal, available across all projects; MCP tools load only after the user mentions \`@slug\`
 - **Project:** \`<cwd>/.minimalist-agent/extensions/{slug}/\` — always active and auto-consented; env vars use \`\${VAR}\` syntax resolved from \`process.env\`
 
 **Three types:** MCP-backed (exposes tools), CLI-bound (wraps CLI), guide-only (docs).

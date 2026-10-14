@@ -2,7 +2,10 @@ import { getExtensionRegistry } from './registry';
 import { loadAllExtensions } from './storage';
 import { listMcpExtensionsStatus } from './mcp-config';
 
-export function formatExtensionsAwareness(cwd?: string): string {
+export function formatExtensionsAwareness(
+  cwd: string | undefined,
+  activatedSlugs: ReadonlySet<string>,
+): string {
   const all = cwd ? loadAllExtensions(cwd) : getExtensionRegistry().list();
 
   if (all.length === 0) return '';
@@ -11,9 +14,21 @@ export function formatExtensionsAwareness(cwd?: string): string {
   lines.push(
     'Installed extension capabilities (CLIs / MCP servers / usage guides). Before using one for the first time this session, read its guide at the exact path below. Mentioning `@slug` also auto-surfaces its guide.',
   );
+  const isDormant = (e: (typeof all)[number]): boolean =>
+    Boolean(e.config.mcp) && e.scope === 'user' && !activatedSlugs.has(e.slug);
   lines.push('Enabled:');
-  for (const e of all) {
+  for (const e of all.filter((ext) => !isDormant(ext))) {
     lines.push(`- ${e.slug} (${e.scope}): ${e.guidePath}`);
+  }
+
+  const dormant = all.filter(isDormant);
+  if (dormant.length > 0) {
+    lines.push(
+      'Available but NOT loaded (their `mcp__<slug>__*` tools do not exist this session). Do not guess at them; if the task needs one, tell the user to mention `@slug` in a message to activate it:',
+    );
+    for (const e of dormant) {
+      lines.push(`- ${e.slug}: ${e.config.mcp?.description ?? e.config.description}`);
+    }
   }
 
   const blockedMcp = listMcpExtensionsStatus(cwd).filter((s) => !s.ok);

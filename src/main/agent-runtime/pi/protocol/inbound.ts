@@ -138,6 +138,11 @@ export interface MsgSetThinkingLevel {
   level: ThinkingLevel;
 }
 
+export interface MsgActivateMcp {
+  type: 'activate_mcp';
+  servers: McpServerConfig[];
+}
+
 export interface MsgSetPermissionMode {
   type: 'set_permission_mode';
   mode: PermissionMode;
@@ -214,6 +219,7 @@ export type SubprocessInbound =
   | MsgManualCompact
   | MsgSetModel
   | MsgSetThinkingLevel
+  | MsgActivateMcp
   | MsgSetPermissionMode
   | MsgMiniCompletion
   | MsgLlmQuery

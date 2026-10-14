@@ -86,5 +86,6 @@ export interface SessionMeta {
   model?: string;
   autonomyLevel?: number;
   pinnedAssets?: string[];
+  activatedExtensions?: string[];
   thinkingLevel?: ThinkingLevel;
 }

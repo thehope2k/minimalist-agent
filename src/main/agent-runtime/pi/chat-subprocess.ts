@@ -18,6 +18,7 @@ import { dispatchOutbound } from './outbound';
 import { ensureSessionScratchDir, resolveChatWorkingDirectory } from './chat-workspace';
 import type { ChatRequest } from './agent';
 import type {
+  MsgActivateMcp,
   MsgInit,
   MsgLlmQueryResult,
   MsgMiniCompletionResult,
@@ -142,12 +143,25 @@ export function ensureSubprocess(req: ChatRequest, systemPrompt: string): Subpro
       send(existing, upd);
       existing.currentThinkingLevel = nextThinkingLevel;
     }
+    activateNewMcpServers(existing, req);
     return existing;
   }
 
   const handle = spawnSubprocess(req, systemPrompt);
   handles.set(key, handle);
   return handle;
+}
+
+function activateNewMcpServers(handle: SubprocessHandle, req: ChatRequest): void {
+  if (!req.activatedExtensions) return;
+  const cwd = resolveChatWorkingDirectory(req.cwd, req.chatSessionPath);
+  const servers = buildResolvedMcpServers(cwd, new Set(req.activatedExtensions)).filter(
+    (server) => !handle.loadedMcpSlugs.has(server.slug),
+  );
+  if (servers.length === 0) return;
+  const msg: MsgActivateMcp = { type: 'activate_mcp', servers };
+  send(handle, msg);
+  for (const server of servers) handle.loadedMcpSlugs.add(server.slug);
 }
 
 /** Spawns a subprocess without registering it in the shared `handles` map — use for calls that must not touch a session's live connection. */
@@ -205,6 +219,8 @@ export function spawnSubprocess(req: ChatRequest, systemPrompt: string): Subproc
     rejectReady = rej;
   });
 
+  const mcpServers = buildResolvedMcpServers(cwd, new Set(req.activatedExtensions));
+
   const handle: SubprocessHandle = {
     child,
     rl,
@@ -220,6 +236,7 @@ export function spawnSubprocess(req: ChatRequest, systemPrompt: string): Subproc
     provider: modelProvider,
     currentModel: req.model,
     currentThinkingLevel: req.thinkingLevel ?? 'medium',
+    loadedMcpSlugs: new Set(mcpServers.map((server) => server.slug)),
     askCollaboration: req.askCollaboration,
     pendingCollaborationRequests: 0,
     lastActivityAt: Date.now(),
@@ -327,7 +344,7 @@ export function spawnSubprocess(req: ChatRequest, systemPrompt: string): Subproc
       path: a.path,
       iconPath: a.iconPath,
     })),
-    mcpServers: buildResolvedMcpServers(cwd),
+    mcpServers,
     compactionSettings,
   };
   send(handle, init);

@@ -4,6 +4,7 @@ import type { AgentChatEvent } from '../events';
 import { parseError } from '../errors';
 import { buildPromptPrefix, buildSystemPromptAppend } from '../system-prompt';
 import { extractSkillPaths, formatSkillDirective } from '../../skills/directive';
+import { activateExtensions, loadSession } from '../../storage/sessions';
 import { formatAttachmentsDirective } from '../attachments-directive';
 import { EventQueue, send, type SubprocessHandle } from './subprocess-handle';
 import { ensureSubprocess, handles } from './chat-subprocess';
@@ -34,12 +35,6 @@ export async function* runChat(req: ChatRequest): AsyncGenerator<AgentChatEvent>
     provider: request.auth.provider,
     model: request.model,
     autonomyLevel: request.autonomyLevel,
-  });
-  const prefix = buildPromptPrefix({
-    cwd: request.cwd,
-    scratchDir: join(request.chatSessionPath, 'scratch'),
-    sessionId: request.chatSessionId,
-    pinnedAssets: request.pinnedAssets,
   });
 
   // Resolve `@slug` / `@path` mentions.
@@ -77,6 +72,22 @@ export async function* runChat(req: ChatRequest): AsyncGenerator<AgentChatEvent>
     };
     return;
   }
+  const mentionedExtensions = [...extensionGuidePaths.keys()];
+  activateExtensions(request.chatSessionId, mentionedExtensions);
+  request.activatedExtensions = [
+    ...new Set([
+      ...(loadSession(request.chatSessionId)?.meta.activatedExtensions ?? []),
+      ...mentionedExtensions,
+    ]),
+  ];
+  const prefix = buildPromptPrefix({
+    cwd: request.cwd,
+    scratchDir: join(request.chatSessionPath, 'scratch'),
+    sessionId: request.chatSessionId,
+    pinnedAssets: request.pinnedAssets,
+    activatedExtensions: request.activatedExtensions,
+  });
+
   const directive = formatSkillDirective(skillPaths, extensionGuidePaths, filePaths, folderPaths);
   const attachmentsDirective = formatAttachmentsDirective(req.attachments);
 

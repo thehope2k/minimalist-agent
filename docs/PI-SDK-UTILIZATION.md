@@ -78,6 +78,14 @@ Every loader comes from `createIsolatedResourceLoader` (`pi-server/resource-load
   cutoff plus a summary), and the **packages system** (`pi install`).
 - **Themes, TUI, and RPC/JSON modes.** Intentionally unused (own Electron UI).
 
+## MCP activation by tier
+
+Project-tier MCP extensions connect at `init`. User-tier ones stay unloaded until the user mentions `@slug`; the slug is
+stored in `SessionMeta.activatedExtensions` so it survives a respawn. On a live subprocess, main sends `activate_mcp`
+(`chat-subprocess.ts`), and pi-server calls `pi.registerMcpServer()` (`mcp-activation.ts`), which connects right away.
+The first-loaded `pi` instance is the bound one, since the per-turn `resourceLoader.reload()` re-runs factories.
+Hot-added servers skip the probe, so they default to `deferred`. Covered by `mcp-activation.integration.test.ts`.
+
 ## Deferred MCP tool exposure
 
 Every `direct` MCP tool declaration is sent on every request. Pi can keep them out and load them on demand through

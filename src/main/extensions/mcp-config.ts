@@ -170,15 +170,28 @@ export function toResolvedConfig(ext: LoadedExtension): ResolvedMcpServerConfig 
 }
 
 /**
- * Resolved MCP server configs for the agent runtime. Gated on enabled +
- * consented + secrets satisfied. Output is a flat, JSON-serializable array
- * with secrets already decrypted — ready to cross into the agent subprocess
- * via `MsgInit`.
+ * Project-tier extensions are always active; user-tier ones only once the
+ * session has activated them (mentioned `@slug`), to keep their tool
+ * declarations and server processes out of sessions that never use them.
  */
-export function buildResolvedMcpServers(cwd?: string): ResolvedMcpServerConfig[] {
+function isActiveInSession(ext: LoadedExtension, activatedSlugs: ReadonlySet<string>): boolean {
+  return ext.scope === 'project' || activatedSlugs.has(ext.slug);
+}
+
+/**
+ * Resolved MCP server configs for the agent runtime. Gated on enabled +
+ * consented + secrets satisfied + active in this session. Output is a flat,
+ * JSON-serializable array with secrets already decrypted — ready to cross
+ * into the agent subprocess via `MsgInit` or `MsgActivateMcp`.
+ */
+export function buildResolvedMcpServers(
+  cwd: string | undefined,
+  activatedSlugs: ReadonlySet<string>,
+): ResolvedMcpServerConfig[] {
   const out: ResolvedMcpServerConfig[] = [];
   for (const ext of loadAllExtensions(cwd)) {
     if (!ext.config.mcp) continue;
+    if (!isActiveInSession(ext, activatedSlugs)) continue;
     if (!hasConsent(ext)) continue;
     if (listMissingSetup(ext).length > 0) continue;
     const cfg = toResolvedConfig(ext);

@@ -143,6 +143,7 @@ export function buildPromptPrefix(input: {
   scratchDir?: string;
   sessionId?: string;
   pinnedAssets?: string[];
+  activatedExtensions?: string[];
 }): string {
   const blocks: string[] = [];
   blocks.push(getDateTimeContext());
@@ -150,7 +151,7 @@ export function buildPromptPrefix(input: {
   if (wd) blocks.push(wd);
   const scratch = getScratchDirContext(input.scratchDir, input.sessionId);
   if (scratch) blocks.push(scratch);
-  const ext = formatExtensionsAwareness(input.cwd);
+  const ext = formatExtensionsAwareness(input.cwd, new Set(input.activatedExtensions));
   if (ext) blocks.push(ext);
   const pinned = buildPinnedContextBlock(input.pinnedAssets, input.cwd);
   if (pinned) blocks.push(pinned);

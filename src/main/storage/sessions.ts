@@ -252,6 +252,18 @@ export function unpinAsset(sessionId: string, scopedSlug: string): SessionMeta {
   return meta;
 }
 
+export function activateExtensions(sessionId: string, slugs: string[]): void {
+  if (slugs.length === 0 || !existsSync(join(Paths.sessionsDir(), sessionId, 'session.json')))
+    return;
+  const meta = load(metaSchema(sessionId));
+  meta.id = sessionId;
+  const activated = meta.activatedExtensions ?? [];
+  const added = slugs.filter((slug) => !activated.includes(slug));
+  if (added.length === 0) return;
+  meta.activatedExtensions = [...activated, ...added];
+  save(metaSchema(sessionId), meta);
+}
+
 /**
  * Create a new session that branches off `parentId` at the given message.
  * All messages *before* `upToMessageId` are copied into the new session,

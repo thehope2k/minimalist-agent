@@ -78,6 +78,8 @@ export interface SubprocessHandle {
   currentModel?: string;
   /** Thinking level currently active in the subprocess. */
   currentThinkingLevel?: ThinkingLevel;
+  /** Slugs of every MCP server already sent to the subprocess (init or `activate_mcp`). */
+  loadedMcpSlugs: Set<string>;
   /** Collaboration callback to show engagement dialogs. */
   askCollaboration?: CollaborationAsk;
   /** Count of in-flight collaboration_request calls awaiting a human response

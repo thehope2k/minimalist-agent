@@ -58,6 +58,8 @@ export interface ChatRequest {
   autonomyLevel?: number;
   /** Scoped pinned asset slugs for this session ('user:<slug>' | 'project:<slug>'). */
   pinnedAssets?: string[];
+  /** User-tier extension slugs the session has activated; undefined means "leave as is". */
+  activatedExtensions?: string[];
   signal?: AbortSignal;
 }
 

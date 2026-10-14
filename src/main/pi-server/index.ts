@@ -54,6 +54,7 @@ import { withTimeout } from '../../shared/with-timeout';
 import { send } from './transport';
 import { createIsolatedResourceLoader } from './resource-loader';
 import { applyAutoExposure } from './mcp-exposure';
+import { activateMcpServers, mcpActivationExtension } from './mcp-activation';
 import { state } from './state';
 import {
   errMessage,
@@ -470,6 +471,7 @@ async function handleInit(msg: MsgInit): Promise<void> {
         loadConfig: () => buildLoadedMcpConfig(mcpServersWithExposure),
         startupWaitMs: MCP_CONNECT_CEILING_MS,
       }),
+      mcpActivationExtension(),
       mcpGovernanceExtension(),
     ],
   });
@@ -1253,6 +1255,10 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
           }
         }
       }
+      return;
+
+    case 'activate_mcp':
+      activateMcpServers(msg.servers);
       return;
 
     case 'set_permission_mode':
