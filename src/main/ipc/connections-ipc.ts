@@ -18,6 +18,7 @@ import { type Credential, isEncryptionAvailable } from '../storage/credentials';
 import { type AiSettings, getSettings, saveSettings } from '../storage/settings';
 import { invalidateContextFileCache } from '../agent-runtime/system-prompt';
 import { createLogger } from '../logger';
+import { normalizeBase } from '../openai-compatible/models';
 import {
   fetchCodeMieBudget,
   fetchCodeMieIntegrations,
@@ -86,7 +87,10 @@ export function registerConnectionsIpc(): void {
           (meta.providerType === 'openai-compatible' || meta.providerType === 'codemie-sso') &&
           auth.type === 'api'
         ) {
-          const base = auth.baseUrl.replace(/\/+$/, '');
+          const base =
+            meta.providerType === 'openai-compatible'
+              ? normalizeBase(auth.baseUrl)
+              : auth.baseUrl.replace(/\/+$/, '');
           const ctrl = new AbortController();
           const timeout = setTimeout(() => ctrl.abort(), 15_000);
           try {

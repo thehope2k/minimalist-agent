@@ -10,7 +10,7 @@ export interface RemoteModelsResult {
 }
 
 /** Ensure the base ends in a version path, mirroring the chat client. */
-function normalizeBase(baseUrl: string): string {
+export function normalizeBase(baseUrl: string): string {
   const base = baseUrl.trim().replace(/\/+$/, '');
   return /\/v\d+$/.test(base) ? base : `${base}/v1`;
 }
