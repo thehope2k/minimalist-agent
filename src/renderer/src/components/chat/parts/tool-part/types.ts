@@ -6,6 +6,7 @@ export interface ToolPartProps {
   partialInputJson?: string;
   result?: { content: string; isError?: boolean };
   status: 'running' | 'done' | 'error';
+  durationMs?: number;
   subagent?: SubagentTranscript;
   contextDelta?: number;
   contextDeltaGroupSize?: number;

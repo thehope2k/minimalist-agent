@@ -10,7 +10,6 @@ import { createLogger } from '../logger';
 
 const log = createLogger('title');
 
-const DEFAULT_TITLE_MODEL = 'claude-haiku-4.5';
 const TITLE_MAX_TOKENS = 256;
 const TITLE_MAX_WORDS = 7;
 
@@ -90,9 +89,7 @@ export async function generateTitle(args: GenerateTitleArgs): Promise<string | n
   // model — the session model. The title must reuse that exact id, so we
   // fall back to the connection's default model when none is supplied.
   const model =
-    args.model ??
-    listConnections().find((c) => c.slug === args.connectionSlug)?.defaultModel ??
-    (args.auth.type === 'oauth' ? DEFAULT_TITLE_MODEL : undefined);
+    args.model ?? listConnections().find((c) => c.slug === args.connectionSlug)?.defaultModel;
   if (!model) return null;
 
   try {

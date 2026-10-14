@@ -43,6 +43,7 @@ export function ToolPart(props: ToolPartProps) {
           input={props.input}
           result={props.result}
           status={props.status}
+          durationMs={props.durationMs}
           contextDelta={props.contextDelta}
           contextDeltaGroupSize={props.contextDeltaGroupSize}
         />

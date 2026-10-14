@@ -62,6 +62,7 @@ export function SubagentTranscriptView({ subagent }: Props) {
               partialInputJson={part.partialInputJson}
               result={part.result}
               status={part.status}
+              durationMs={part.durationMs}
               subagent={part.subagent}
               contextDelta={part.contextDelta}
               contextDeltaGroupSize={part.contextDeltaGroupSize}

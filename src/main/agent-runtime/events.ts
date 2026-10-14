@@ -31,6 +31,7 @@ export type NestedAgentChatEvent =
       toolUseId: string;
       content: string;
       isError?: boolean;
+      durationMs?: number;
     }
   | {
       type: 'turn_done';
@@ -73,6 +74,7 @@ export type AgentChatEvent =
       toolUseId: string;
       content: string;
       isError?: boolean;
+      durationMs?: number;
     }
   | {
       type: 'tool_progress';

@@ -22,7 +22,8 @@ tracks what's _left to do_, not what's done. Add a one-line note only if it'll s
 
 ## Features / Improvements
 
-_(Nothing pending)_
+- [ ] Spike deferred MCP tool exposure (pi's `tool_search`) for large MCP servers — ~77% smaller requests measured;
+      governance on deferred calls is the open risk. Details in `docs/PI-SDK-UTILIZATION.md`.
 
 ---
 

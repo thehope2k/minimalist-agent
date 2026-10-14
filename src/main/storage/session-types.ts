@@ -13,6 +13,7 @@ export type StoredMessagePart =
       partialInputJson?: string;
       result?: { content: string; isError?: boolean };
       status: 'running' | 'done' | 'error';
+      durationMs?: number;
       contextDelta?: number;
       contextDeltaGroupSize?: number;
     };

@@ -47,6 +47,7 @@ export type MessagePart =
       partialInputJson?: string;
       result?: { content: string; isError?: boolean };
       status: 'running' | 'done' | 'error';
+      durationMs?: number;
       /** Full nested transcript when this tool spawns a sub-agent. */
       subagent?: SubagentTranscript;
       contextDelta?: number;

@@ -18,6 +18,7 @@ import {
   stringifyToolResult,
 } from './event-adapter/message-helpers';
 import { normalizeArgs } from './event-adapter/tool-arguments';
+import { clearApprovalWait, getApprovalWait, resolveToolDurationMs } from './tool-duration';
 import {
   hasAnyUsage,
   sumRunUsage,
@@ -224,12 +225,20 @@ export function adaptAgentEvent(event: AgentSessionEvent): AgentChatEvent[] {
         toolName: string;
         result: unknown;
         isError: boolean;
+        durationMs?: number;
       };
+      const durationMs = resolveToolDurationMs({
+        toolName: e.toolName,
+        reportedMs: e.durationMs,
+        approvalWaitMs: getApprovalWait(e.toolCallId),
+      });
+      clearApprovalWait(e.toolCallId);
       out.push({
         type: 'tool_result',
         toolUseId: e.toolCallId,
         content: stringifyToolResult(e.result),
         isError: e.isError,
+        ...(durationMs === undefined ? {} : { durationMs }),
       });
       state.toolNameByCallId.delete(e.toolCallId);
       return out;

@@ -8,6 +8,7 @@ import { captureContent, safeAttr, setAttrs, SpanStatusCode, withSpan } from '..
 import { describeCatastrophicRm } from './catastrophic-rm-guard';
 import { state } from './state';
 import { send } from './transport';
+import { recordApprovalWait } from './tool-duration';
 import type {
   MsgBrowserToolRequest,
   MsgBrowserToolResult,
@@ -153,7 +154,10 @@ export function wrapWithPermissionGate(
         return originalExecute(toolCallId, params, signal, onUpdate, ctx);
       }
 
+      // Inside execute(), so pi's durationMs includes it; recorded for subtraction.
+      const approvalStartedAt = performance.now();
       const decision = await requestPermission(toolCallId, base.name, params);
+      recordApprovalWait(toolCallId, performance.now() - approvalStartedAt);
 
       if (decision.action === 'block') {
         // Pi only marks tool_result isError when execute() throws — returning isError:true is silently ignored.

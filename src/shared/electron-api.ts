@@ -185,6 +185,7 @@ export type NestedChatStreamEvent =
       toolUseId: string;
       content: string;
       isError?: boolean;
+      durationMs?: number;
     }
   | {
       type: 'turn_done';
@@ -232,6 +233,7 @@ export type ChatStreamEvent =
       toolUseId: string;
       content: string;
       isError?: boolean;
+      durationMs?: number;
     }
   | {
       id: string;
@@ -441,6 +443,7 @@ export type StoredMessagePart =
       partialInputJson?: string;
       result?: { content: string; isError?: boolean };
       status: 'running' | 'done' | 'error';
+      durationMs?: number;
       subagent?: StoredSubagentTranscript;
       contextDelta?: number;
       contextDeltaGroupSize?: number;

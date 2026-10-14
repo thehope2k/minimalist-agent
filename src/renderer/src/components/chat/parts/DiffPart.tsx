@@ -33,12 +33,14 @@ import {
 import { DiffExpandModal, LazyDiffViewer } from './DiffExpandModal';
 import { WrittenView } from './WrittenView';
 import { ContextDeltaBadge } from './tool-part/ContextDeltaBadge';
+import { ToolDurationBadge } from './tool-part/ToolDurationBadge';
 
 interface DiffPartProps {
   name: string;
   input?: unknown;
   result?: { content: string; isError?: boolean };
   status: 'running' | 'done' | 'error';
+  durationMs?: number;
   contextDelta?: number;
   contextDeltaGroupSize?: number;
 }
@@ -48,6 +50,7 @@ export function DiffPart({
   input,
   result,
   status,
+  durationMs,
   contextDelta,
   contextDeltaGroupSize,
 }: DiffPartProps) {
@@ -137,6 +140,7 @@ export function DiffPart({
           </button>
           <span className="flex shrink-0 items-center gap-1.5 text-fg-muted">
             <CopyButton text={parsed.newValue} className="opacity-100" />
+            <ToolDurationBadge durationMs={durationMs} status={status} />
             <ContextDeltaBadge
               contextDelta={contextDelta}
               contextDeltaGroupSize={contextDeltaGroupSize}

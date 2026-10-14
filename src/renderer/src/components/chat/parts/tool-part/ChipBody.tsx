@@ -17,6 +17,7 @@ import { ResultBlock } from './ResultBlock';
 import { StatusIcon } from './StatusIcon';
 import { formatInput } from './tool-helpers';
 import { ContextDeltaBadge } from './ContextDeltaBadge';
+import { ToolDurationBadge } from './ToolDurationBadge';
 import type { ToolPartProps } from './types';
 
 function CodeFrame({ label, text }: { label: string; text: string }) {
@@ -39,6 +40,7 @@ export function ChipBody({
   partialInputJson,
   result,
   status,
+  durationMs,
   subagent,
   contextDelta,
   contextDeltaGroupSize,
@@ -99,6 +101,7 @@ export function ChipBody({
           {resultSummary && !open && (
             <span className="text-xs text-fg-subtle">{resultSummary}</span>
           )}
+          <ToolDurationBadge durationMs={durationMs} status={status} />
           <ContextDeltaBadge
             contextDelta={contextDelta}
             contextDeltaGroupSize={contextDeltaGroupSize}

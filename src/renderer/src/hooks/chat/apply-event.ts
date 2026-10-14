@@ -93,6 +93,7 @@ export function applyNestedEvent(
         ...tool,
         result: { content: evt.content, isError: evt.isError },
         status: evt.isError ? 'error' : 'done',
+        durationMs: evt.durationMs,
       };
       return { parts: [...parts.slice(0, idx), next, ...parts.slice(idx + 1)] };
     }
@@ -209,6 +210,7 @@ export function applyEvent(msg: ChatMessage, evt: ChatStreamEvent): ChatMessage 
         ...tool,
         result: { content: evt.content, isError: evt.isError },
         status: evt.isError ? 'error' : 'done',
+        durationMs: evt.durationMs,
         subagent: tool.subagent
           ? {
               ...tool.subagent,

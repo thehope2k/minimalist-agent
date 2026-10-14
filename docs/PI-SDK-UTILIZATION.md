@@ -1,7 +1,8 @@
 # Pi SDK Utilization Audit
 
 Date: 2026-07-22 · updated 2026-07-23 (compaction redesign — see
-[`COMPACTION.md`](COMPACTION.md)) · updated 2026-10-01 (native MCP integration)
+[`COMPACTION.md`](COMPACTION.md)) · updated 2026-10-01 (native MCP integration) · updated 2026-10-14 (pi 1.2.0, deferred MCP
+exposure — see below)
 
 This document inventories what the `@earendil-works/pi-coding-agent` SDK offers versus what minimalist-agent actually
 uses, based on reading the SDK's bundled docs (`node_modules/@earendil-works/pi-coding-agent/docs/`) against every
@@ -31,7 +32,7 @@ src/main/ipc/chat-ipc.ts
 | Feature                                                                                                              | Where                                                                            | Notes                                                                                                                                                                                                           |
 | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `createAgentSession()` core loop                                                                                     | `pi-server/index.ts`                                                             | Direct SDK embedding in a custom subprocess (not pi's `--mode rpc`). Pi's own `docs/rpc.md` explicitly recommends this for Node.js hosts — validated architecture, not a gap.                                   |
-| Full event stream                                                                                                    | `event-adapter.ts`                                                               | Consumes `message_update`, `tool_execution_*`, `turn_start/end`, `agent_start/end`, `compaction_start/end`, `auto_retry_*` — mapped to `AgentChatEvent` / OTel GenAI shape.                                     |
+| Full event stream                                                                                                    | `event-adapter.ts`                                                               | Consumes `message_update`, `tool_execution_*` (incl. `durationMs`, shown on tool chips), `turn_start/end`, `agent_start/end`, `compaction_start/end`, `auto_retry_*` — mapped to `AgentChatEvent` / OTel shape. |
 | `defineTool()` custom tools                                                                                          | `agent-tool.ts`, `web-tools.ts`                                                  | Sub-agent spawning, web fetch/search. MCP tools are now registered by pi's own `createMcpExtension()`, not `defineTool()` — see the native-MCP row below.                                                       |
 | `createMcpExtension()` + `tool_call`/`tool_result` hooks                                                             | `mcp-native-config.ts`, `mcp-governance.ts`                                      | MCP execution, permission gating, and OTel instrumentation now go through pi's native MCP integration and global tool hooks instead of a hand-rolled `customTools` bridge. Graduated from the 🟡 finding below. |
 | `SessionManager` tree API                                                                                            | `storage/session-fork.ts`                                                        | `SessionManager.open()`, `getEntries()`, `createBranchedSession()` for the chat-session-fork feature.                                                                                                           |
@@ -79,9 +80,8 @@ src/main/ipc/chat-ipc.ts
 - **`before_provider_headers` / `before_provider_request` /
   `after_provider_response`** — would give free request/response-level tracing/debugging hooks without touching provider
   code.
-- **Dynamic tool loading (`search_tools` pattern)** — since MCP tool definitions likely accumulate per session, this
-  native "keep a loader tool active, lazily activate matches" mechanism could shrink prompt size / cache invalidation
-  for MCP-heavy sessions. Currently all MCP tools load flat and always-active.
+- **Deferred MCP tool exposure** — pi already ships this; MA forces `direct`. See
+  [Deferred MCP tool exposure](#deferred-mcp-tool-exposure-pi-already-has-it).
 - **Prompt templates (`PromptTemplate`, `/command` `.md` files)** — no user-facing reusable slash-command system
   distinct from skills/agents.
 - **`SettingsManager`** — compaction/retry policy knobs are invisible to the settings UI.
@@ -90,6 +90,52 @@ src/main/ipc/chat-ipc.ts
 - **Packages system (`pi install npm:` / `git:`)** — no plugin ecosystem story; every capability is hand-built rather
   than pulled from the pi package gallery.
 - **Themes, TUI, RPC/JSON modes** — correctly and intentionally unused (own Electron/React UI).
+
+## Deferred MCP tool exposure (pi already has it)
+
+Every MCP tool declaration is sent on every request. Pi can keep them out of the request and load them on demand, and
+MA already carries the setting end to end (`McpExposure` in `extensions/types.ts` → `protocol/shared.ts` →
+`mcp-native-config.ts`) but pins the default to `'direct'`.
+
+**What pi provides** (`@earendil-works/pi-coding-agent` 1.2.0)
+
+- Per-server and per-tool `exposure`: `direct` | `deferred` | `codemode` | `hidden`.
+- `createToolSearchExtension()` and `createCodemodeExtension()` — the loader tools the model uses to reach deferred
+  tools. 1.2.0 adds `reachesTools` so these declare which tools they reach, and `createMcpExtension` waits for the
+  servers a call needs.
+- 1.0.1: tools added mid-conversation are defined inline for Anthropic, so activating a tool no longer resends the
+  whole tool list and breaks the prompt cache.
+
+**Measured 2026-10-14** — pi-server driven over its real JSONL protocol against a mock OpenAI endpoint, one stdio MCP
+server with 100 realistically described tools, first request of a turn:
+
+| Exposure              | Tool declarations | Request body | ≈ Tokens (bytes/4) |
+| --------------------- | ----------------- | ------------ | ------------------ |
+| `direct` (MA today)   | 80 KB             | 84 KB        | 21k                |
+| `deferred`/`codemode` | 15 KB             | 19 KB        | 4.8k               |
+
+~77% smaller, identical on pi 0.99.2 and 1.2.0 (the upgrade doesn't change it). Installed extensions such as Postman
+(~140 tools), Canva and Strava put real sessions in this range.
+
+**Not turn-key.** In the same measurement the `deferred`/`codemode` requests contained **no `tool_search` or `codemode`
+tool**: MA creates the session with `createMcpExtension()` only, so flipping the default would silently remove those
+tools from the model (the reason `mcp-native-config.ts` pins `direct`). The loader extension must be registered too.
+
+**Open questions before adopting**
+
+1. **Governance.** `mcp-governance.ts` gates and traces MCP calls via the `tool_call`/`tool_result` hooks. Confirm
+   `blockedTools` and the permission round-trip still fire for calls reached through `tool_search` and, especially,
+   for nested calls made inside a codemode script (pi's `nested-tool-calls`). A bypass here is a security regression.
+2. **UI.** The renderer has no rendering for `tool_search` / `codemode` calls or their nested tool calls.
+3. **Runtime.** Codemode runs in a QuickJS WASM sandbox (`quickjs-wasi`); untested under `ELECTRON_RUN_AS_NODE` and in
+   the packaged app. `deferred` via `tool_search` avoids this.
+4. **Model behavior.** Deferral costs an extra round trip on first use and relies on the model searching well; weaker or
+   local models may handle it worse. Small servers are cheaper left `direct`, so a per-server tool-count threshold is
+   likely better than a global default.
+
+**Suggested spike:** register `createToolSearchExtension()` (not codemode), default servers above ~20 tools to
+`deferred`, extend `mcp-governance.test.ts` to cover calls reached through `tool_search`, and re-measure on a real
+Postman/Canva session.
 
 ## Biggest opportunity
 
