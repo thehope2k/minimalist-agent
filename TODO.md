@@ -35,7 +35,10 @@ _(Nothing pending)_
 
 ## Bugs / Issues
 
-_(Nothing pending)_
+- [ ] Pi's native resource discovery is active in every session: `~/.pi/agent` and `<cwd>/AGENTS.md` / `.pi/skills` are
+      injected on top of MA's own project context (duplicate `AGENTS.md` tokens on every request; pi extensions would
+      load unreviewed). Fix is a `DefaultResourceLoader` option (`noContextFiles` / `noSkills` / `noExtensions`).
+      Details in `docs/PI-SDK-UTILIZATION.md`.
 
 ---
 

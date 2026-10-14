@@ -36,11 +36,9 @@ function createUndiciOriginDispatcher(
  *
  * This protects `@earendil-works/pi-ai`'s calls (LLM completions, OAuth
  * refresh) because that package always uses the unqualified global `fetch`,
- * never its own `undici` import. It does NOT protect code that imports
- * `undici` directly and calls `request()`/`Client` — npm installs a separate,
- * non-deduped `undici` copy nested under `@earendil-works/pi-coding-agent`
- * (confirmed via `npm ls undici`), which has its own unconfigured dispatcher
- * unreachable from here.
+ * never its own `undici` import. `undici` is a single deduped copy (`npm ls
+ * undici`), so code in `@earendil-works/pi-coding-agent` that imports it
+ * directly shares this dispatcher too; a re-nested copy would silently escape it.
  */
 export function configureHttpIdleTimeout(timeoutMs: number): void {
   if (!Number.isFinite(timeoutMs) || timeoutMs < 0) {
