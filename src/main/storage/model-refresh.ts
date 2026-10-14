@@ -84,7 +84,7 @@ function minimalModel(id: string): ModelDef {
     id,
     name: id,
     shortName: id.split('/').pop() ?? id,
-    description: 'Discovered · OpenAI-compatible',
+    description: '',
     contextWindow: 128_000,
     supportsToolCalls: true,
     supportsStreaming: true,

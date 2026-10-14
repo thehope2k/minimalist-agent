@@ -9,12 +9,12 @@ import {
 } from '@/lib/openai-compatible-presets';
 import type { FlowProps } from '../types';
 
-function minimalModel(id: string, source = 'Discovered'): ModelDef {
+function minimalModel(id: string): ModelDef {
   return {
     id,
     name: id,
     shortName: id.split('/').pop() ?? id,
-    description: `${source} · OpenAI-compatible`,
+    description: '',
     contextWindow: 128_000,
     supportsToolCalls: true,
     supportsStreaming: true,
@@ -27,7 +27,7 @@ function parseCustomModels(raw: string): ModelDef[] {
     .split(/[\n,]+/)
     .map((id) => id.trim())
     .filter(Boolean)
-    .map((id) => minimalModel(id, 'Custom'));
+    .map(minimalModel);
 }
 
 export function useOpenAICompatibleForm({
@@ -164,6 +164,7 @@ export function useOpenAICompatibleForm({
     apiKey,
     customModels,
     models,
+    hasFetchedModels: fetchedIds.length > 0,
     effectiveModel,
     fetching,
     fetchNote,
@@ -171,7 +172,11 @@ export function useOpenAICompatibleForm({
     saving,
     tested,
     setName,
-    setBaseUrl,
+    setBaseUrl: (value: string) => {
+      setBaseUrl(value);
+      setFetchedIds([]);
+      setFetchNote(null);
+    },
     setApiKey: (value: string) => {
       setApiKey(value);
       setTested(false);

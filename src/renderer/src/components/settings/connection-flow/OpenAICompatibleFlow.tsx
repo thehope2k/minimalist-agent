@@ -53,18 +53,6 @@ export function OpenAICompatibleFlow(props: FlowProps) {
         </Field>
       )}
 
-      {form.isCustom && !form.editing && (
-        <Field label="Model ids" hint="One per line. These are passed verbatim to the API.">
-          <Textarea
-            value={form.customModels}
-            onChange={(event) => form.setCustomModels(event.target.value)}
-            placeholder={'step-3.7-flash\nstep-3.5-flash'}
-            rows={3}
-            mono
-          />
-        </Field>
-      )}
-
       <Field label="API key" hint={form.preset?.keyHint ?? 'Stored encrypted via the OS keychain.'}>
         <PasswordInput
           value={form.apiKey}
@@ -99,6 +87,21 @@ export function OpenAICompatibleFlow(props: FlowProps) {
           </Button>
           {form.fetchNote && <span className="text-xs text-fg-subtle">{form.fetchNote}</span>}
         </div>
+      )}
+
+      {form.isCustom && !form.editing && !form.hasFetchedModels && (
+        <Field
+          label="Model ids"
+          hint="One per line, passed verbatim to the API. Skip this if Fetch models works."
+        >
+          <Textarea
+            value={form.customModels}
+            onChange={(event) => form.setCustomModels(event.target.value)}
+            placeholder={'step-3.7-flash\nstep-3.5-flash'}
+            rows={3}
+            mono
+          />
+        </Field>
       )}
 
       {form.models.length > 0 && (
