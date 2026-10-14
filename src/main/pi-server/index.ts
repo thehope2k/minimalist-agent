@@ -13,7 +13,7 @@
 //   - Surface auth failures as `auth_required` so main can refresh the
 //     OAuth token and push it back via `token_update` without restart
 //   - Handle one-shot `mini_completion` (title gen / cheap completions)
-//     and `llm_query` (call_llm tool backend) without the agent loop
+//     without the agent loop
 //
 // State is centralized in `./state.ts` (one AgentSession per subprocess, one
 // subprocess per chat session) so every module here can read/write it without
@@ -40,7 +40,7 @@ import {
   type InlineExtension,
 } from '@earendil-works/pi-coding-agent';
 import { join } from 'node:path';
-import { getBuiltinModel, builtinModels } from '@earendil-works/pi-ai/providers/all';
+import { getBuiltinModel } from '@earendil-works/pi-ai/providers/all';
 import type { Api, Model, OAuthCredential } from '@earendil-works/pi-ai';
 import { configureHttpIdleTimeout } from './http-idle-timeout';
 import { initOperationTracker, reportOperation, withOperation } from './operation-tracker';
@@ -83,9 +83,6 @@ import {
 
 configureHttpIdleTimeout(HTTP_IDLE_TIMEOUT_MS);
 
-/** Shared models instance for `completeSimple` calls (title gen, llm_query).
- *  Built-in provider catalog; auth is passed inline via `StreamOptions.apiKey`. */
-const modelCatalog = builtinModels();
 import { adaptAgentEvent } from './event-adapter';
 import { createWebFetchTool, createWebSearchTool } from './web-tools';
 import { createBrowserTool } from './browser-tool';
@@ -98,8 +95,6 @@ import type {
   MsgEvent,
   MsgFatalError,
   MsgInit,
-  MsgLlmQuery,
-  MsgLlmQueryResult,
   MsgManualCompact,
   MsgMiniCompletion,
   MsgMiniCompletionResult,
@@ -983,7 +978,7 @@ async function handleManualCompact(msg: MsgManualCompact): Promise<void> {
 }
 
 /* ============================================================ */
-/*  mini_completion + llm_query                                   */
+/*  mini_completion                                               */
 /* ============================================================ */
 
 // Hidden turn: in-memory so it never lands in chat history, and tool-less because
@@ -1092,86 +1087,6 @@ function sendMiniError(requestId: string, error: string): void {
     error,
   };
   send(out);
-}
-
-async function handleLlmQuery(msg: MsgLlmQuery): Promise<void> {
-  // Pass-through: caller serialises a Pi-shaped Context request, we run
-  // it via completeSimple, return the AssistantMessage. Wraps the
-  // call_llm tool's main-side handler.
-  if (!state.init || !state.model) {
-    const out: MsgLlmQueryResult = {
-      type: 'llm_query_result',
-      requestId: msg.requestId,
-      error: 'Subprocess not initialized.',
-    };
-    send(out);
-    return;
-  }
-  try {
-    const req = msg.request as {
-      systemPrompt?: string;
-      userPrompt: string;
-      model?: string;
-      tools?: never[];
-    };
-    const model =
-      !req.model || req.model === state.model.id
-        ? state.model
-        : getBuiltinModel(state.init.auth.provider as 'github-copilot', req.model as never);
-
-    // Validate model resolved successfully
-    if (req.model && !model) {
-      const out: MsgLlmQueryResult = {
-        type: 'llm_query_result',
-        requestId: msg.requestId,
-        error: `Failed to resolve model "${req.model}" for provider "${state.init.auth.provider}".`,
-      };
-      send(out);
-      return;
-    }
-    const resolvedModel = state.modelRuntime
-      ? await withResolvedBaseUrl(model, state.modelRuntime)
-      : model;
-
-    const result = await withOperation('llm_query', () =>
-      tracedCompletion(
-        {
-          model: (resolvedModel as { id?: string }).id ?? req.model ?? state.model?.id ?? '',
-          callKind: 'llm_query',
-          inputMessages: [{ role: 'user', content: req.userPrompt }],
-          systemInstructions: req.systemPrompt,
-        },
-        () =>
-          withTimeout(
-            modelCatalog.completeSimple(resolvedModel, {
-              systemPrompt: req.systemPrompt,
-              messages: [
-                {
-                  role: 'user',
-                  content: [{ type: 'text', text: req.userPrompt }],
-                },
-              ],
-              tools: req.tools ?? [],
-            } as never) as Promise<AssistantMsg>,
-            MINI_COMPLETION_CEILING_MS,
-            'llm_query',
-          ),
-      ),
-    );
-    const out: MsgLlmQueryResult = {
-      type: 'llm_query_result',
-      requestId: msg.requestId,
-      result: { text: pickTextFromMessage(result) },
-    };
-    send(out);
-  } catch (e) {
-    const out: MsgLlmQueryResult = {
-      type: 'llm_query_result',
-      requestId: msg.requestId,
-      error: e instanceof Error ? e.message : String(e),
-    };
-    send(out);
-  }
 }
 
 /* ============================================================ */
@@ -1390,10 +1305,6 @@ async function dispatch(msg: SubprocessInbound): Promise<void> {
 
     case 'mini_completion':
       await handleMiniCompletion(msg);
-      return;
-
-    case 'llm_query':
-      await handleLlmQuery(msg);
       return;
 
     case 'shutdown':

@@ -53,13 +53,6 @@ export interface MsgMiniCompletionResult {
   error?: string;
 }
 
-export interface MsgLlmQueryResult {
-  type: 'llm_query_result';
-  requestId: string;
-  result?: unknown;
-  error?: string;
-}
-
 export interface MsgSessionIdUpdate {
   type: 'session_id_update';
   runtimeSessionId: string;
@@ -194,7 +187,6 @@ export type SubprocessOutbound =
   | MsgPermissionModeChanged
   | MsgMcpStatus
   | MsgMiniCompletionResult
-  | MsgLlmQueryResult
   | MsgSessionIdUpdate
   | MsgAuthRequired
   | MsgFatalError;

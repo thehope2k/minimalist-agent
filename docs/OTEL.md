@@ -56,7 +56,7 @@ invoke_agent minimalist-agent      one user message → assistant turn
 │            gen_ai.response.{model,id}, gen_ai.response.finish_reasons[],
 │            gen_ai.usage.{input,output,cache_read_input,cache_creation_input}_tokens,
 │            gen_ai.server.time_to_first_token, server.address, error.type,
-│            minimalist_agent.call_kind (mini_completion|llm_query standalone calls)
+│            minimalist_agent.call_kind (mini_completion standalone calls)
 └── execute_tool <name>             one tool invocation
       attrs: gen_ai.operation.name=execute_tool, gen_ai.tool.{name,type,call.id,
              description}, gen_ai.conversation.id, error.type

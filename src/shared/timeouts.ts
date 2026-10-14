@@ -17,7 +17,7 @@ export const AUTH_REFRESH_CEILING_MS = envMs('MA_AUTH_REFRESH_TIMEOUT_MS', 20_00
  *  so main's attempt can finish or time out first. */
 export const AUTH_REFRESH_MAIN_ROUNDTRIP_MS = AUTH_REFRESH_CEILING_MS + 5_000;
 
-/** Ceiling for a single mini_completion / llm_query one-shot call. */
+/** Ceiling for a single mini_completion one-shot call. */
 export const MINI_COMPLETION_CEILING_MS = envMs('MA_MINI_COMPLETION_TIMEOUT_MS', 45_000);
 
 /** Ceiling for a single MCP server's connect + listTools handshake (used by

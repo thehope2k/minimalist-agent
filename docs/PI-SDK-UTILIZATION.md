@@ -17,10 +17,10 @@ credential storage (Electron `safeStorage`), session persistence, and everything
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
 | Agent loop      | `createAgentSession`, `session.prompt` / `abort` / `setModel` / `setThinkingLevel` / `subscribe`; mid-stream steering via `prompt(..., { streamingBehavior: 'steer' })`                                                                                                                                                   | `pi-server/index.ts`, `state.ts`                                      |
 | Events          | Full `AgentSessionEvent` stream (`message_update`, `tool_execution_*` including `durationMs`, `turn_*`, `agent_*`, `compaction_*`, `auto_retry_*`) adapted to `AgentChatEvent` and OTel GenAI spans                                                                                                                       | `event-adapter.ts`, `tool-duration.ts`                                |
-| Built-in tools  | `create{Bash,Edit,Find,Grep,Ls,Read,Write}ToolDefinition` registered with `noTools: 'builtin'` + `customTools`, each wrapped for permission gating and tracing                                                                                                                                                            | `pi-server/index.ts`, `tool-wrapping.ts`                              |
+| Built-in tools  | `create{Bash,Edit,Find,Grep,Ls,Read,Write}ToolDefinition` registered with `noTools: 'builtin'` + `customTools`, each wrapped for tracing; permission gating is the `tool_call` hook in `tool-governance.ts`                                                                                                               | `pi-server/index.ts`, `tool-wrapping.ts`                              |
 | Custom tools    | `defineTool` for `Agent` (sub-agents), `web_fetch`, `web_search`, `browser_tool`; collaboration and planning tools                                                                                                                                                                                                        | `agent-tool.ts`, `web-tools.ts`, `browser-tool.ts`, `planning-tools/` |
 | MCP             | `createMcpExtension` fed by `loadConfig` (`mcp-native-config.ts`) plus `createToolSearchExtension` for deferred servers (`mcp-exposure.ts`); `tool_call` / `tool_result` hooks for governance and tracing (`tool-governance.ts`); a separate probe for status and tool counts (`mcp-diagnostics.ts`). No `sse` transport. | `pi-server/`                                                          |
-| Models and auth | `ModelRuntime` with a custom in-memory `CredentialStore` fed by `token_update`; `ModelRegistry.registerProvider('custom-endpoint')`; `getBuiltinModel` / `builtinModels`; `githubCopilotProvider` and `openaiCodexProvider` for OAuth and the tier-filtered Copilot catalog                                               | `credential-store.ts`, `copilot/models.ts`, `oauth/`                  |
+| Models and auth | `ModelRuntime` with a custom in-memory `CredentialStore` fed by `token_update`; `ModelRegistry.registerProvider('custom-endpoint')`; `getBuiltinModel`; `githubCopilotProvider` and `openaiCodexProvider` for OAuth and the tier-filtered Copilot catalog                                                                 | `credential-store.ts`, `copilot/models.ts`, `oauth/`                  |
 | Compaction      | `SettingsManager.inMemory({ compaction })` driven by the settings UI (`CompactionSection`); `session_before_compact` extension for span attribution; manual `session.compact(instructions)` that preserves plan state                                                                                                     | `pi-server/index.ts`; see `COMPACTION.md`                             |
 | Session forking | `SessionManager.open` / `getEntries` / `createBranchedSession` / `branchWithSummary` with `collectEntriesForBranchSummary` and `generateBranchSummary`; summaries are generated only for Copilot connections                                                                                                              | `storage/session-fork.ts`, `session-branch.ts`                        |
 | Session storage | `SessionManager.continueRecent` per chat; `SessionManager.inMemory` for one-shot completions                                                                                                                                                                                                                              | `pi-server/index.ts`                                                  |
@@ -44,8 +44,10 @@ not a pi feature.
    drop-in: `truncateHead` returns empty content when the first line alone exceeds the budget (minified JSON), so a byte
    slice covers that case.
 5. **One-shot completions.** Title and other mini completions (`runEphemeralPrompt`) build a full in-memory
-   `AgentSession` plus a resource loader for each call. Tools are disabled (`noTools: 'all'`), since the permission gate
-   only covers the main session's tools.
+   `AgentSession` plus a resource loader for each call. This is deliberate, not a gap: a bare `completeSimple` call was
+   unreliable under HTTP/2 421 misdirected requests and had no credential refresh, and the session path fixed both (see
+   commit `e7d18ea`). Tools are disabled (`noTools: 'all'`), so nothing needs gating. The unauthenticated `llm_query`
+   `completeSimple` path was dead code and has been removed.
 
 ## Resource isolation
 
@@ -117,7 +119,7 @@ had no loader tool registered, so the figure omits the `tool_search` declaration
 `direct` tool, and the main-process `blockedTools` check keys on that name too. `mcp-deferred.integration.test.ts`
 runs a real pi session against a stdio MCP fixture and a scripted faux model, and asserts that deferred tools are
 absent from the first request, are declared after a search, reach the permission round trip, and do not execute when
-the gate blocks them. Codemode would need a separate answer, since its nested calls do not go through `tool_call`.
+the gate blocks them. Codemode is a separate question: pi's docs say nested `ctx.executeTool()` calls pass through `tool_call`, which would cover them, but MA has not verified it.
 
 **UI.** `tool_search` renders as an ordinary tool chip; `tool-summary.ts` already shows its `query`.
 
@@ -126,12 +128,11 @@ the gate blocks them. Codemode would need a separate answer, since its nested ca
 1. **Model behavior.** Deferral costs an extra round trip on first use and depends on the model searching well, which
    weaker or local models may do poorly. The threshold is per server, so many mid-sized servers still add up to a
    large direct set.
-2. **Codemode.** Untested under `ELECTRON_RUN_AS_NODE` and in the packaged app (QuickJS WASM), with the governance gap
-   above. Not needed for the saving.
+2. **Codemode.** Untested under `ELECTRON_RUN_AS_NODE` and in the packaged app (QuickJS WASM), and nested-call
+   governance is unverified (see above). Not needed for the saving.
 3. **Re-measure** on a real Postman or Canva session.
 
 ## Priorities
 
 1. **Decide the skills story.** Fold MA's skills into pi's native loader, or document why they stay separate.
-2. **Smaller items.** Expose retry settings, and use a lighter path
-   than a full `AgentSession` for one-shot completions.
+2. **Smaller item.** Expose retry settings.

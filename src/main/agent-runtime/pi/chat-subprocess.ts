@@ -20,7 +20,6 @@ import type { ChatRequest } from './agent';
 import type {
   MsgActivateMcp,
   MsgInit,
-  MsgLlmQueryResult,
   MsgMiniCompletionResult,
   MsgSetModel,
   MsgSetThinkingLevel,
@@ -208,7 +207,6 @@ export function spawnSubprocess(req: ChatRequest, systemPrompt: string): Subproc
   >();
   const turnSignals = new Map<string, AbortSignal>();
   const pendingMini = new Map<string, { resolve: (r: MsgMiniCompletionResult) => void }>();
-  const pendingLlm = new Map<string, { resolve: (r: MsgLlmQueryResult) => void }>();
 
   const rl = createInterface({ input: child.stdout! });
 
@@ -229,7 +227,6 @@ export function spawnSubprocess(req: ChatRequest, systemPrompt: string): Subproc
     permissionContext,
     turnSignals,
     pendingMini,
-    pendingLlm,
     stderrBuffer,
     chatSessionId: req.chatSessionId,
     connectionSlug: req.connectionSlug,
@@ -267,14 +264,6 @@ export function spawnSubprocess(req: ChatRequest, systemPrompt: string): Subproc
       });
     }
     pendingMini.clear();
-    for (const p of pendingLlm.values()) {
-      p.resolve({
-        type: 'llm_query_result',
-        requestId: '',
-        error: 'subprocess exited',
-      });
-    }
-    pendingLlm.clear();
     // Only clear the registry entry if it still points at this handle —
     // an unregistered isolated handle must never delete a live session's entry.
     if (handles.get(key) === handle) {

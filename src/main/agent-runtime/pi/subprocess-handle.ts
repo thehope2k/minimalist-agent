@@ -9,7 +9,6 @@ import type { AgentChatEvent } from '../events';
 import type { PermissionMode } from '../permissions';
 import type { CollaborationAsk } from '../../../shared/collaboration-types';
 import type {
-  MsgLlmQueryResult,
   MsgMiniCompletionResult,
   ThinkingLevel,
   ModelProvider,
@@ -62,9 +61,8 @@ export interface SubprocessHandle {
    *  (e.g. an auth_refresh_request triggered by the subprocess) can be
    *  cancelled the moment the user hits Stop, not just bounded by a ceiling. */
   turnSignals: Map<string, AbortSignal>;
-  /** RequestId → resolver for mini_completion / llm_query. */
+  /** RequestId → resolver for mini_completion. */
   pendingMini: Map<string, { resolve: (r: MsgMiniCompletionResult) => void }>;
-  pendingLlm: Map<string, { resolve: (r: MsgLlmQueryResult) => void }>;
   stderrBuffer: string[];
   /** The chat session this subprocess serves. */
   chatSessionId: string;

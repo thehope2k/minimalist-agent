@@ -10,7 +10,6 @@ import type {
   MsgBrowserToolRequest,
   MsgCollaborationRequest,
   MsgEvent,
-  MsgLlmQueryResult,
   MsgMcpStatus,
   MsgMiniCompletionResult,
   MsgPreToolUseRequest,
@@ -37,7 +36,7 @@ import {
 import { handleAuthRefreshRequest, handleAuthRequired, handleSessionIdUpdate } from './auth';
 import { handleBrowserToolRequest } from './browser';
 import { handleMcpStatus } from './mcp';
-import { handleLlmQueryResult, handleMiniCompletionResult } from './mini-llm';
+import { handleMiniCompletionResult } from './mini-llm';
 
 export async function dispatchOutbound(
   msg: SubprocessOutbound,
@@ -99,9 +98,6 @@ export async function dispatchOutbound(
 
     case 'mini_completion_result':
       return handleMiniCompletionResult(msg as MsgMiniCompletionResult, handle);
-
-    case 'llm_query_result':
-      return handleLlmQueryResult(msg as MsgLlmQueryResult, handle);
 
     case 'auth_required':
       return handleAuthRequired(msg as MsgAuthRequired, handle);

@@ -25,8 +25,6 @@ export interface MsgInit {
    * text placeholder instead of the provider rejecting the request.
    */
   visionSupported?: boolean;
-  /** Mini model used for title gen / call_llm defaults. */
-  miniModel?: string;
   thinkingLevel: ThinkingLevel;
   /** Initial credential — refreshed mid-flight via `token_update`. */
   auth: RuntimeAuth;
@@ -159,13 +157,6 @@ export interface MsgMiniCompletion {
   maxTokens?: number;
 }
 
-export interface MsgLlmQuery {
-  type: 'llm_query';
-  requestId: string;
-  /** Opaque from main's POV — passed verbatim to the in-subprocess handler. */
-  request: unknown;
-}
-
 export interface MsgSteer {
   type: 'steer';
   /** Turn id we're injecting into. */
@@ -222,7 +213,6 @@ export type SubprocessInbound =
   | MsgActivateMcp
   | MsgSetPermissionMode
   | MsgMiniCompletion
-  | MsgLlmQuery
   | MsgSteer
   | MsgPlanApprovalResponse
   | MsgPlanCancelRequest

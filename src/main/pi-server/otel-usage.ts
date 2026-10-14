@@ -1,6 +1,5 @@
 // GenAI `chat` span helpers shared by the agent-loop model spans
-// (index.ts's forwardEvent) and the standalone completeSimple paths
-// (mini_completion / llm_query).
+// (index.ts's forwardEvent) and the standalone mini_completion path.
 import {
   captureContent,
   safeAttr,
@@ -78,7 +77,7 @@ export interface AssistantMsg {
 /**
  * Map a finished provider response (usage, response ids, finish reason, status)
  * onto a `chat` span. Shared by the agent-loop model span and the standalone
- * `completeSimple` paths (mini_completion / llm_query). Does NOT end the span or
+ * mini_completion path. Does NOT end the span or
  * touch turn-level state — callers own those.
  */
 export function applyChatResultAttrs(span: Span, m?: AssistantMsg): void {
@@ -130,7 +129,7 @@ export function finishModelSpan(m?: AssistantMsg): void {
 }
 
 /**
- * Wrap a standalone `completeSimple` call (mini_completion / llm_query) in a
+ * Wrap a standalone one-shot call (mini_completion) in a
  * GenAI `chat` span so its token usage is counted like an agent-loop model call.
  * Without this these LLM calls would consume tokens invisibly to cost/usage
  * dashboards. Runs as a root span (these paths have no turn span); errors set
@@ -139,7 +138,7 @@ export function finishModelSpan(m?: AssistantMsg): void {
 export async function tracedCompletion<T extends AssistantMsg>(
   opts: {
     model: string;
-    callKind: 'mini_completion' | 'llm_query';
+    callKind: 'mini_completion';
     maxTokens?: number;
     inputMessages?: unknown;
     systemInstructions?: string;
