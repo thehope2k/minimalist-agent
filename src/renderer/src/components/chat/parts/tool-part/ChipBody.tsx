@@ -3,12 +3,7 @@ import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CopyButton } from '@/components/ui';
 import { useCwd } from '@/contexts/CwdContext';
-import {
-  canonicalToolName,
-  iconForTool,
-  summarizeToolCall,
-  summarizeToolResult,
-} from '@/lib/tool-summary';
+import { canonicalToolName, iconForTool, summarizeToolCall } from '@/lib/tool-summary';
 import { InputView } from './InputView';
 import { TaskInputSection } from './TaskInputSection';
 import { SubagentSummaryLine, SubagentTranscriptView } from './SubagentTranscript';
@@ -27,7 +22,7 @@ function CodeFrame({ label, text }: { label: string; text: string }) {
         <span>{label}</span>
         <CopyButton text={text} className="opacity-100" />
       </div>
-      <pre className="scroll-thin overflow-x-auto whitespace-pre-wrap break-words rounded bg-panel px-2 py-1.5 font-mono text-xs leading-relaxed text-fg">
+      <pre className="scroll-thin overflow-x-auto whitespace-pre-wrap wrap-break-word rounded bg-panel px-2 py-1.5 font-mono text-xs leading-relaxed text-fg">
         {text}
       </pre>
     </div>
@@ -49,7 +44,6 @@ export function ChipBody({
   const cwd = useCwd();
   const inputText = formatInput(input, partialInputJson);
   const summary = summarizeToolCall(name, input, cwd);
-  const resultSummary = summarizeToolResult(name, result);
   const toolName = canonicalToolName(name);
   const isAgentTool = toolName === 'Agent';
   const erroredOrFailed = status === 'error' || result?.isError;
@@ -72,7 +66,7 @@ export function ChipBody({
         className={cn(
           'flex w-full items-center gap-2 px-2.5 py-1.5 text-left',
           isAgentTool
-            ? 'bg-accent/10 hover:bg-accent/15 focus-visible:bg-accent/15'
+            ? 'bg-accent/10 hover:bg-accent/15'
             : 'hover:bg-elevated focus-visible:bg-elevated',
           'focus-visible:outline-none',
         )}
@@ -98,9 +92,6 @@ export function ChipBody({
           </>
         )}
         <span className="ml-auto flex shrink-0 items-center gap-1.5 text-fg-muted">
-          {resultSummary && !open && (
-            <span className="text-xs text-fg-subtle">{resultSummary}</span>
-          )}
           <ToolDurationBadge durationMs={durationMs} status={status} />
           <ContextDeltaBadge
             contextDelta={contextDelta}
