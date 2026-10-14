@@ -81,7 +81,7 @@ Each extension folder requires two files:
     "args": ["-y", "@linear/mcp-server"],
     "envFromBinding": true,
 
-    // optional, all default to the agent declaring every tool directly:
+    // optional (exposure defaults to "deferred" above 20 tools, else "direct"):
     "description": "Issue tracking and project management",
     "exposure": "direct",                     // "direct" | "deferred" | "codemode" | "hidden"
     "toolExposure": { "delete_issue": "hidden" } // per-tool override, by the server's own tool name
@@ -180,10 +180,13 @@ and you'd benefit from typed tool calls — Linear, Notion, etc. Always
 requires the user's one-time approval before it can be spawned/connected.
 
 \`exposure\` controls whether the server's tools are declared to the model
-directly (\`direct\`, the default this app applies), deferred until searched
+directly (\`direct\`), deferred until the agent finds them with \`tool_search\`
 (\`deferred\`), only reachable from codemode scripts (\`codemode\` — not used
-by this app today), or unreachable (\`hidden\`). \`toolExposure\` overrides it
-per tool, keyed by the server's own (unsanitized) tool name.
+by this app today), or unreachable (\`hidden\`). When unset, this app picks per
+session: \`deferred\` for a server with more than 20 tools, \`direct\` otherwise
+(and whenever the tool count can't be determined). Set it explicitly to opt out
+either way. \`toolExposure\` overrides it per tool, keyed by the server's own
+(unsanitized) tool name.
 
 HTTP/SSE servers that require authentication should use \`auth: { provider:
 "<name>" }\` to forward an already-signed-in pi provider's token — **not**

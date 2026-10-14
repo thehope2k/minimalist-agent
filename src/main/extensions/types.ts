@@ -55,9 +55,9 @@ export function isPlaceholderValue(value: string): boolean {
 
 /**
  * How pi's native MCP integration exposes a server's tools to the model
- * (`direct`/`deferred`/`codemode`/`hidden`). This app defaults unset servers
- * to `direct` rather than pi's own `codemode` default, since it doesn't use
- * codemode.
+ * (`direct`/`deferred`/`codemode`/`hidden`). Unset servers resolve per session
+ * (`mcp-exposure.ts`): `deferred` above a tool-count threshold, else `direct`
+ * — never pi's own `codemode` default, since this app doesn't use codemode.
  */
 export type McpExposure = 'codemode' | 'deferred' | 'direct' | 'hidden';
 

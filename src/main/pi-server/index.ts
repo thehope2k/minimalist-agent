@@ -34,6 +34,7 @@ import {
   createReadToolDefinition,
   createWriteToolDefinition,
   createMcpExtension,
+  createToolSearchExtension,
   type AgentSessionEvent,
   type ToolDefinition,
   type InlineExtension,
@@ -52,6 +53,7 @@ import {
 import { withTimeout } from '../../shared/with-timeout';
 import { send } from './transport';
 import { createIsolatedResourceLoader } from './resource-loader';
+import { applyAutoExposure } from './mcp-exposure';
 import { state } from './state';
 import {
   errMessage,
@@ -444,11 +446,14 @@ async function handleInit(msg: MsgInit): Promise<void> {
       : {}),
   };
 
-  // Status-only probe for the MCP badge (mcp-diagnostics.ts) — the real
-  // connection is createMcpExtension below. Never blocks boot (bounded).
-  if (msg.mcpServers && msg.mcpServers.length > 0) {
-    const diagnostics = await probeMcpServers(msg.mcpServers);
+  // The probe feeds the MCP status badge and per-server tool counts (for auto
+  // exposure); the real connection is createMcpExtension below. Never blocks boot (bounded).
+  const mcpServers = msg.mcpServers ?? [];
+  let mcpServersWithExposure = mcpServers;
+  if (mcpServers.length > 0) {
+    const diagnostics = await probeMcpServers(mcpServers);
     send({ type: 'mcp_status', sessionId: msg.sessionId, servers: diagnostics });
+    mcpServersWithExposure = applyAutoExposure(mcpServers, diagnostics);
   }
 
   const tools = buildWrappedTools(msg.cwd, agentContext);
@@ -460,8 +465,9 @@ async function handleInit(msg: MsgInit): Promise<void> {
     appendSystemPrompt: state.appendArr,
     extensionFactories: [
       compactionObservabilityExtension(),
+      createToolSearchExtension(),
       createMcpExtension({
-        loadConfig: () => buildLoadedMcpConfig(msg.mcpServers),
+        loadConfig: () => buildLoadedMcpConfig(mcpServersWithExposure),
         startupWaitMs: MCP_CONNECT_CEILING_MS,
       }),
       mcpGovernanceExtension(),
