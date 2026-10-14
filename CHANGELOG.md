@@ -3,6 +3,27 @@
 All notable changes are documented here.  
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.7.0] — 2026-10-14
+
+MCP improvements, faster prompts, and session isolation fixes.
+
+### Added
+
+**MCP extensions**
+
+- Mentioning `@slug` of a user-level MCP extension now activates it for that chat.
+- Large MCP servers are automatically deferred behind `tool_search`, so they no longer flood the model's context.
+
+### Changed
+
+- Trimmed the built-in prompt blocks by roughly 49%, reducing token usage per turn.
+- Tool result chips no longer show a summary line in their body.
+- Upgraded the underlying agent SDK to 1.2.0.
+
+### Fixed
+
+- Sessions are now isolated from the agent SDK's native resource discovery, preventing unrelated skills and resources from leaking in.
+
 ---
 
 ## [2.6.0] — 2026-10-08
