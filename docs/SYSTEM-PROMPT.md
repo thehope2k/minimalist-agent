@@ -21,8 +21,11 @@ The prompt the model sees is **two concatenated pieces**, deliberately split so 
 | **Static system prompt** | `getSystemPrompt()` → `buildSystemPromptAppend()` | Stable across a session    | **Provider-dependent**¹ | Keeps the cache-eligible prefix stable; per-turn churn would defeat it    |
 | **Per-turn prefix**      | `buildPromptPrefix()`                             | Rebuilt every user message | No                      | Holds values that change each turn (clock, cwd, scratch path, extensions) |
 
-The assembly entry points live in [`src/main/agent-runtime/system-prompt.ts`](../src/main/agent-runtime/system-prompt.ts); focused builders live alongside it in [`src/main/agent-runtime/system-prompt/`](../src/main/agent-runtime/system-prompt/). The static piece
-is appended to the per-turn prefix and passed to the agent runtime; the per-turn prefix is prepended to the user message.
+The assembly entry points live in [
+`src/main/agent-runtime/system-prompt.ts`](../src/main/agent-runtime/system-prompt.ts); focused builders live alongside
+it in [`src/main/agent-runtime/system-prompt/`](../src/main/agent-runtime/system-prompt/). The static piece
+is appended to the per-turn prefix and passed to the agent runtime; the per-turn prefix is prepended to the user
+message.
 
 > ¹ **Prompt caching is the provider's, not ours** — there is no `cache_control`
 > in this codebase. Caching depends on the upstream model behind Pi: OpenAI /
@@ -60,8 +63,8 @@ graph TD
 ## 2. Full inventory
 
 Token figures use the measured ratio **≈ 0.38 tokens per character** (≈ 2.6 chars/token), not the usual `chars ÷ 4`:
-this prompt is dense with markdown, tables and symbols, and real first-request usage from Copilot sessions
-(prompt-only session: 22.5K tokens for 16 KB of tool schemas + 42 KB of prompt text) lands there. Treat them as ±15%.
+this prompt is dense with markdown, tables and symbols, and real first-request usage from Copilot sessions (prompt-only
+session: 22.5K tokens for 16 KB of tool schemas + 42 KB of prompt text) lands there. Treat them as ±15%.
 Rendered character counts are pinned by `system-prompt-budget.test.ts`. "Gating" = when the block is present.
 
 ### Static system prompt — `getSystemPrompt()`
@@ -85,13 +88,13 @@ detailed one 4K+ (this repo's own is ~11.6 KB ≈ 4.4K).
 
 ### Per-turn prefix — `buildPromptPrefix()`
 
-| Block                                                                                                                                                                                                                                                                                                                                    | Source                                                        | Gating                                   |                                    ~tokens |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------- | -----------------------------------------: |
-| Date/time                                                                                                                                                                                                                                                                                                                                | `getDateTimeContext()`                                        | always                                   |                                        ~50 |
-| Working directory (selected or session-scoped)                                                                                                                                                                                                                                                                                           | `getWorkingDirectoryContext()`                                | when cwd set                             |                                        ~60 |
-| **Scratch directory** (path + `ma-asset://` base for inline images + inline reminder not to fall back to `/tmp`)                                                                                                                                                                                                                         | `getScratchDirContext()`                                      | when session path known                  |                                        ~55 |
-| Extensions awareness (one line per enabled extension with its slug, scope, and **resolved absolute `guidePath`**; plus an "Available but NOT loaded" list of user-tier MCP extensions the session hasn't activated, plus a gated "MCP not active" line when an enabled mcp-backed extension is blocked by consent/setup/connect failure) | `formatExtensionsAwareness()` (`extensions/directive.ts`)     | when extensions installed                |                   ~20–25 tok per extension |
-| **Pinned context** (skills the user has pinned to the session — same pattern as `@mention`/`formatSkillDirective`, but persistent every turn)                                                                                                                                                                                            | `buildPinnedContextBlock()` (`system-prompt/turn-context.ts`) | when `session.pinnedAssets` is non-empty | ~25 tok per item (flat, path + label only) |
+| Block                                                                                                                                                                                                                                                                                                                                                                                                      | Source                                                        | Gating                                   |                                    ~tokens |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------- | -----------------------------------------: |
+| Date/time                                                                                                                                                                                                                                                                                                                                                                                                  | `getDateTimeContext()`                                        | always                                   |                                        ~50 |
+| Working directory (selected or session-scoped)                                                                                                                                                                                                                                                                                                                                                             | `getWorkingDirectoryContext()`                                | when cwd set                             |                                        ~60 |
+| **Scratch directory** (path + `ma-asset://` base for inline images + inline reminder not to fall back to `/tmp`)                                                                                                                                                                                                                                                                                           | `getScratchDirContext()`                                      | when session path known                  |                                        ~55 |
+| Extensions awareness (one line per enabled extension with its slug, scope, and **resolved absolute `guidePath`**; plus an "Available but NOT loaded" list of user-tier MCP extensions the session hasn't activated, plus a `tool_search` usage hint when any MCP extension is active, plus a gated "MCP not active" line when an enabled mcp-backed extension is blocked by consent/setup/connect failure) | `formatExtensionsAwareness()` (`extensions/directive.ts`)     | when extensions installed                |                   ~20–25 tok per extension |
+| **Pinned context** (skills the user has pinned to the session — same pattern as `@mention`/`formatSkillDirective`, but persistent every turn)                                                                                                                                                                                                                                                              | `buildPinnedContextBlock()` (`system-prompt/turn-context.ts`) | when `session.pinnedAssets` is non-empty | ~25 tok per item (flat, path + label only) |
 
 The extensions block grows with state (one line per enabled extension), each carrying the extension's resolved absolute
 `guidePath` rather than a `<slug>`
@@ -171,7 +174,8 @@ Three costs, in priority order:
 2. **Maintenance.** Each block is one more thing to keep true as the app changes. Stale prompt text is worse than no
    text (it actively misleads the model).
 3. **Tokens / $.** Mitigated _where the upstream model behind Pi caches prompts_ (OpenAI/Codex automatically) — you
-   then pay for the stable prefix roughly once per cache window. With providers that do not offer prompt caching (GitHub Copilot, local
+   then pay for the stable prefix roughly once per cache window. With providers that do not offer prompt caching (GitHub
+   Copilot, local
    servers) you pay per turn. The static prompt alone is small next to a 200K window, but it is not the largest
    fixed cost: **tool declarations are** (see [Where the first request goes](#where-the-first-request-goes)).
 

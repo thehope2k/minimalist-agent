@@ -21,6 +21,14 @@ export function formatExtensionsAwareness(
     lines.push(`- ${e.slug} (${e.scope}): ${e.guidePath}`);
   }
 
+  // Deferred MCP tools are not declared up front, and one weak `tool_search` result
+  // made the model declare the capability missing. Say how to search and not to give up early.
+  if (all.some((e) => e.config.mcp && !isDormant(e))) {
+    lines.push(
+      'Enabled MCP extensions may defer their tools: if `tool_search` is available, load them with it. Search by the likely tool name or verb + resource (e.g. "getCollection"), raise `limit` (~30), and retry with different keywords before concluding a capability is missing.',
+    );
+  }
+
   const dormant = all.filter(isDormant);
   if (dormant.length > 0) {
     lines.push(
