@@ -3,6 +3,29 @@
 All notable changes are documented here.  
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.8.0] — 2026-10-14
+
+Gateway support for custom connections, plus quality of life improvements and bug fixes.
+
+### Added
+
+**Custom connections**
+
+- New "model name in URL path" option for OpenAI-compatible connections, so gateways that route by deployment (such as EPAM DIAL, using `/deployments/<model>`) can be used.
+- Non-chat deployments (embeddings, image, TTS) are filtered out of fetched model lists.
+
+### Changed
+
+- Once **Fetch models** returns results, the manual "Model ids" field is hidden, and discovered models are no longer labeled "OpenAI-compatible".
+
+### Fixed
+
+- Base URLs for OpenAI-compatible connections are now normalized consistently with model discovery.
+- Claude/Gemini models behind custom gateways no longer fail with a 400 error.
+- The model is now nudged to use `tool_search` before concluding that a deferred MCP tool doesn't exist.
+
+---
+
 ## [2.7.0] — 2026-10-14
 
 MCP improvements, faster prompts, and session isolation fixes.
