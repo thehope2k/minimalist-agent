@@ -327,7 +327,7 @@ For contributors:
 **Integration:**
 
 - 3 custom tools in Pi SDK: CreatePlan, ReportPhaseProgress, RevisePlan
-- ~1,800 token system prompt injection teaches planning workflow
+- ~810 token system prompt injection teaches when to plan and the tracking/approval rules (tool schemas and results carry the rest)
 - IPC bridge for plan state queries (cache-based for performance)
 - Plans tied to session lifecycle
 

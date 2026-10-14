@@ -59,26 +59,29 @@ graph TD
 
 ## 2. Full inventory
 
-Sizes are **rough estimates** (`chars ÷ 4`), for relative weighting only — they are not measured at runtime. "Gating" =
-when the block is present.
+Token figures use the measured ratio **≈ 0.38 tokens per character** (≈ 2.6 chars/token), not the usual `chars ÷ 4`:
+this prompt is dense with markdown, tables and symbols, and real first-request usage from Copilot sessions
+(prompt-only session: 22.5K tokens for 16 KB of tool schemas + 42 KB of prompt text) lands there. Treat them as ±15%.
+Rendered character counts are pinned by `system-prompt-budget.test.ts`. "Gating" = when the block is present.
 
 ### Static system prompt — `getSystemPrompt()`
 
 | Block                                                                                                                                                                                                                                                                                                                | Source (function / file)                                                            | Gating                         |                                           ~tokens |
 | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------ | ------------------------------------------------: |
 | Environment marker                                                                                                                                                                                                                                                                                                   | `getEnvironmentMarker()` (`system-prompt/assistant-body.ts`)                        | always                         |                                               ~30 |
-| Assistant body (identity, capabilities, read-first, **skills with global+project scope + reference-doc pointer**, **extensions with correct paths + reference-doc pointer**, images (http(s)-only caveat), mermaid, math (latex/math alias), tables, rich blocks, interaction guidelines, git co-author, web search) | `getAssistantPrompt()` (`system-prompt/assistant-body.ts`)                          | always                         |                                            ~1,900 |
+| Assistant body (identity, capabilities, read-first, **skills with global+project scope + reference-doc pointer**, **extensions with correct paths + reference-doc pointer**, images (http(s)-only caveat), mermaid, math (latex/math alias), tables, rich blocks, interaction guidelines, git co-author, web search) | `getAssistantPrompt()` (`system-prompt/assistant-body.ts`)                          | always                         |                                            ~2,350 |
 | User preferences                                                                                                                                                                                                                                                                                                     | `formatPreferencesForPrompt()` (`storage/preferences.ts`)                           | when prefs set                 |                                          ~150–400 |
 | **Project context** — root file content injected eagerly; sub-package files listed as read-on-demand pointers (monorepo). Walk depth capped at 4.                                                                                                                                                                    | `getProjectContextFilesPrompt()` (`system-prompt/project-context.ts`)               | when AGENTS.md/CLAUDE.md found | ~200–2000 (root content) + ~30–150 (sub pointers) |
-| **Artifact policy** (where to write files; explicitly excludes `/tmp`/ad-hoc paths, not just the working dir — see checklist entry below)                                                                                                                                                                            | `getArtifactPolicy()`                                                               | always                         |                                              ~200 |
-| Collaboration guidance                                                                                                                                                                                                                                                                                               | `getCollaborationGuidance(autonomy)` (`collaboration-prompt.ts`)                    | always                         |                                            ~1,350 |
-| Planning guidance                                                                                                                                                                                                                                                                                                    | `getPlanningGuidance()` (`planning-prompt.ts`)                                      | always                         |                                            ~2,450 |
+| **Artifact policy** (where to write files; explicitly excludes `/tmp`/ad-hoc paths, not just the working dir — see checklist entry below)                                                                                                                                                                            | `getArtifactPolicy()`                                                               | always                         |                                              ~340 |
+| Collaboration guidance                                                                                                                                                                                                                                                                                               | `getCollaborationGuidance(autonomy)` (`collaboration-prompt.ts`)                    | always                         |                                            ~1,170 |
+| Planning guidance                                                                                                                                                                                                                                                                                                    | `getPlanningGuidance()` (`planning-prompt.ts`)                                      | always                         |                                              ~810 |
 | Active plan context                                                                                                                                                                                                                                                                                                  | `formatActivePlanContext()` (`system-prompt/plan-context.ts`) via `getActivePlan()` | only when a plan is active     |                                          ~100–400 |
 | Agents awareness (terse: slug + tools + description, one prose line)                                                                                                                                                                                                                                                 | `getAgentsAwarenessBlock()` (`system-prompt/agent-awareness.ts`, cached)            | when AGENT.md agents exist     |                                          ~120–400 |
 
-**Static subtotal: ~6–9K tokens** when collaboration + planning + agents are all present (the common case).
-Collaboration + planning alone are **~60%** of the baseline. The project context block now varies more widely — a terse
-AGENTS.md adds ~200 tokens; a detailed one can add ~2K.
+**Static subtotal (without project context, preferences, agents): ~4.7K tokens** (12.3K chars: body 6.2K + artifact
+0.9K + collaboration 3.1K + planning 2.1K). It was ~9.2K before the trim below (24.2K chars: planning 10.5K, body 7.7K,
+collaboration 5.2K). Project context is additive and now the largest variable: a terse AGENTS.md adds ~0.5K tokens, a
+detailed one 4K+ (this repo's own is ~11.6 KB ≈ 4.4K).
 
 ### Per-turn prefix — `buildPromptPrefix()`
 
@@ -169,10 +172,46 @@ Three costs, in priority order:
    text (it actively misleads the model).
 3. **Tokens / $.** Mitigated _where the upstream model behind Pi caches prompts_ (OpenAI/Codex automatically) — you
    then pay for the stable prefix roughly once per cache window. With providers that do not offer prompt caching (GitHub Copilot, local
-   servers) you pay per turn — but the whole prompt is still <2% of a 200K context, so context-window pressure is
-   negligible either way.
+   servers) you pay per turn. The static prompt alone is small next to a 200K window, but it is not the largest
+   fixed cost: **tool declarations are** (see [Where the first request goes](#where-the-first-request-goes)).
 
 Consequence: **optimize for fewer, sharper instructions, not for token count.**
+
+### Where the first request goes
+
+Measured from real first requests (a bare "hey"), so you can see what a session costs before it does any work:
+
+| Session                                       | Tool declarations                      | Prompt text | First request |
+| --------------------------------------------- | -------------------------------------- | ----------- | ------------: |
+| 8 user extensions, all MCP tools direct (old) | 323 tools, 544 KB                      | 55 KB       |         ~211K |
+| png project, user MCP off, Jira direct        | 85 tools, 72 KB (Jira 55, built-in 17) | 50 KB       |          ~49K |
+| minimalist-agent repo, no MCP loaded          | 20 tools, 16 KB                        | 42 KB       |          ~22K |
+
+Rules of thumb: MCP schemas cost ≈ 0.4 tokens/char (Postman alone ≈ 111K, Canva ≈ 29K, Jira ≈ 22K), so extension
+exposure (`direct` / `deferred`, user-tier opt-in by `@slug`) matters far more than any single prompt line. Large
+servers are deferred automatically above 20 tools (`mcp-exposure.ts`) unless the extension authors `exposure`.
+
+### 2026-10 trim — what changed and where the information lives now
+
+The collaboration, planning and assistant-body blocks were cut by ~49% (24.2K → 12.3K chars) without dropping a rule.
+Each removal was either duplicated elsewhere the model already sees, or taught nothing the model doesn't know:
+
+| Removed                                                                                                              | Why it is safe                                                                                                                                                                                         |
+| -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 4 of 5 collaboration examples (Preference, Approval, Guidance, Feedback)                                             | Parameter shapes are in each tool's JSON schema; the risk-vs-autonomy rule is stated in "Autonomy contract". One example kept to show the reasoning pattern.                                           |
+| Collaboration "Remember", ✅ list, repeated anti-patterns                                                            | Restated "Autonomy-Specific Behavior" and the table's "When NOT to use" column. Kept as one sentence.                                                                                                  |
+| Planning tool table, CreatePlan "Structure", 3 long examples, workflow example, best-practices list, common patterns | Duplicate the tool descriptions/schemas (fields, enums, types). Behavior rules were kept: when to plan, risk bands, running→complete reporting, absolute indices on revise, approval/denial semantics. |
+| Planning "Automatic Phase Context" `<active_plan>` sample and "Automatic Guidance" list                              | The block is shown when a plan is active; next-phase/warning/approval text is returned in the tool results (`report-progress.ts`).                                                                     |
+| Diagrams example + tips, "Expand button", math section repeated 3×, interaction guideline #6/#7                      | Merged into one **Rendering** section; Mermaid/markdown/KaTeX syntax is known to the model. App-specific rules kept: `ma-asset://`, `data:` silently stripped, `$$` delimiters, single `$` avoided.    |
+| "Disabled extensions appear in awareness"                                                                            | **Untrue** — the awareness block lists only enabled extensions. Stale prompt text misleads; removed.                                                                                                   |
+| Stray `\\\`` escapes in code fences                                                                                  | Rendered as literal backslashes to the model.                                                                                                                                                          |
+
+**Not verified by an eval.** Behavior is protected two ways: `system-prompt-budget.test.ts` asserts every
+behavior-critical phrase is still present (and the size budget), and the following should be spot-checked after any
+further trim — (1) a complex request still triggers `CreatePlan`, with `running` reported before and `complete` after
+each phase; (2) a destructive request at autonomy ≥ risk asks for approval only at ≥ threshold; (3) `RequestDecision`
+is still used for a real architecture fork and not for trivia; (4) a skill/extension `@mention` still reads its
+file first.
 
 ---
 
@@ -181,9 +220,9 @@ Consequence: **optimize for fewer, sharper instructions, not for token count.**
 Soft ceilings — crossing them should force a conscious trade, not an automatic
 "no":
 
-- **Static prompt: ~8K tokens** (baseline without project context). Root context file content is additive on top — a
-  typical AGENTS.md adds 200–500 tokens, a large one up to ~2K. Adding a new always-on block
-  > 300 tokens should replace or shrink an existing one.
+- **Static prompt: ~5K tokens / 14K rendered chars** (baseline without project context; enforced by
+  `system-prompt-budget.test.ts`). Root context file content is additive on top. Adding a new always-on block
+  > 300 tokens should replace or shrink an existing one — raise the test budget only as a deliberate trade.
 - **Per-turn prefix: ~300 tokens** excluding the extensions block (which scales with user-enabled extensions and is the
   user's choice) and the pinned context block (which is also user-controlled and warned above ~2 000 tokens in the UI).
 - **New always-on blocks: default NO.** Prefer per-feature gating (like plan context / agents) so cost is paid only when

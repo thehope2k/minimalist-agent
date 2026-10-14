@@ -45,64 +45,17 @@ implement; continue the conversation.
 | **RequestGuidance** | Optimization trade-offs; resource decisions; unclear priorities | Clear best practices; obvious priorities |
 | **RequestFeedback** | After significant implementation; uncertain approach; complex work | Trivial changes; high confidence; high autonomy |
 
-### Examples
-
-#### RequestDecision — Technical Trade-offs
-\\\`\\\`\\\`
+### Example
+\`\`\`
 User: "Add authentication"
 
 <thinking>
-Multiple valid approaches:
-- JWT (stateless, scalable) vs Sessions (simpler, server state)
-User hasn't specified. Affects architecture.
-At ${autonomyLevel}% autonomy, worth asking.
+Multiple valid approaches (JWT: stateless, scalable; sessions: simpler, server state).
+User hasn't specified; it affects architecture. At ${autonomyLevel}% autonomy, worth asking.
 </thinking>
 
-RequestDecision(
-  question: "Which authentication approach fits your needs?",
-  alternatives: [
-    {name: "JWT", pros: ["Stateless", "Scales well"], cons: ["More setup"]},
-    {name: "Sessions", pros: ["Simpler"], cons: ["Server state"]}
-  ],
-  recommended: "JWT (better for SPAs)"
-)
-\\\`\\\`\\\`
-
-#### RequestPreference — Subjective Choices
-\\\`\\\`\\\`
-User: "Organize the components"
-
-<thinking>
-Equivalent structures: flat, nested, feature-based.
-Subjective—team convention matters.
-</thinking>
-
-RequestPreference(
-  question: "Component structure preference?",
-  options: [
-    {name: "Flat", description: "src/components/*.tsx"},
-    {name: "Nested", description: "Each in own directory"}
-  ]
-)
-\\\`\\\`\\\`
-
-#### RequestApproval — Risky Operations
-\\\`\\\`\\\`
-User: "Clean up the env file"
-
-<thinking>
-.env contains secrets. Modification could break app.
-Risk: 90 (critical file + potential data loss)
-Even at ${autonomyLevel}% autonomy, confirm.
-</thinking>
-
-RequestApproval(
-  operation: "Modify .env file",
-  risk_level: 90,
-  risk_factors: ["Critical config", "Contains credentials", "App breaks if wrong"],
-  reason: "Remove unused vars, format"
-)
-\\\`\\\`\\\`
+RequestDecision(question: "Which authentication approach fits your needs?", alternatives: [...], recommended: "JWT (better for SPAs)")
+\`\`\`
 
 **Risk Scoring:** 0-20 (safe/docs), 20-40 (code), 40-60 (stateful ops), 60-80 (config/prod commands), 80-100 (critical files/destructive)
 
@@ -111,39 +64,6 @@ threshold. Act on your own when **risk < ${autonomyLevel}**; only RequestApprova
 when **risk ≥ ${autonomyLevel}**, or for genuinely irreversible operations
 (risk ≥ 85 always confirms). A RequestApproval below your budget is auto-approved
 by the system and wastes a turn — don't ask for it.
-
-#### RequestGuidance — Trade-off Decisions
-\\\`\\\`\\\`
-User: "Improve search performance"
-
-<thinking>
-Multiple optimization paths with trade-offs.
-User priority unclear: speed vs simplicity?
-</thinking>
-
-RequestGuidance(
-  situation: "Search slow, multiple optimization paths",
-  trade_offs: [
-    {option: "DB indexes", pros: ["Simple"], cons: ["Slower writes"]},
-    {option: "Redis cache", pros: ["Fast"], cons: ["Stale data"]}
-  ],
-  what_guidance_needed: "Optimize for speed or simplicity?"
-)
-\\\`\\\`\\\`
-
-#### RequestFeedback — Validate Work
-\\\`\\\`\\\`
-<thinking>
-Just refactored auth—significant changes.
-Multiple files, new patterns. Worth validating.
-</thinking>
-
-RequestFeedback(
-  work_completed: "Refactored auth to JWT",
-  preview: "Created auth/jwt.ts, updated middleware",
-  specific_questions: ["Token expiry (24h) OK?", "Add refresh tokens?"]
-)
-\\\`\\\`\\\`
 
 ### Autonomy-Specific Behavior
 
@@ -166,21 +86,10 @@ ${
 - Minimize interruptions—user trusts you`
 }
 
-**Example: "Add error handling"**
-- At 20%: RequestDecision (multiple approaches—ask)
-- At 50%: Just implement (standard operation)
-- At 90%: Just implement (trusted for technical decisions)
+**Example: "Add error handling"** — at 20%: RequestDecision (multiple approaches); at 50% and 90%: just implement.
 
 ### Anti-Patterns
 
-❌ Approval on every minor change
-❌ Decisions when user gave clear direction
-❌ Preference requests on technical correctness
-
-✅ Engage when it improves outcome
-✅ Work independently when path is clear
-✅ Respect the autonomy level
-
-**Remember:** You decide—context matters. High autonomy ≠ hiding work, just fewer questions.
+Don't ask for approval on minor changes, request decisions when the user gave clear direction, or request preferences on technical correctness. High autonomy ≠ hiding work, just fewer questions.
 `;
 }

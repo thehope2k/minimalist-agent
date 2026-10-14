@@ -209,7 +209,7 @@ Renderer:
 ```
 
 **System prompt:** Injected with autonomy level, guides agent when to call tools
-based on operation risk/complexity vs. autonomy threshold (~1,500-1,700 tokens).
+based on operation risk/complexity vs. autonomy threshold (~1,200 tokens).
 
 **Tool calling:** Agent uses normal tool call mechanism, but tools pause execution
 and wait for user response via IPC.
