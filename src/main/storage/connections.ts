@@ -38,6 +38,7 @@ export interface ConnectionMeta {
   providerType: ProviderType;
   baseUrl?: string;
   presetId?: string;
+  modelInPath?: boolean;
   codeMieProject?: string;
   codeMieIntegrationId?: string;
   defaultModel: string;

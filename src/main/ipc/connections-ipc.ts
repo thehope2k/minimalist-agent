@@ -89,7 +89,7 @@ export function registerConnectionsIpc(): void {
         ) {
           const base =
             meta.providerType === 'openai-compatible'
-              ? normalizeBase(auth.baseUrl)
+              ? normalizeBase(auth.baseUrl, auth.modelInPath)
               : auth.baseUrl.replace(/\/+$/, '');
           const ctrl = new AbortController();
           const timeout = setTimeout(() => ctrl.abort(), 15_000);
@@ -184,9 +184,9 @@ export function registerConnectionsIpc(): void {
 
   ipcMain.handle(
     'connections:listRemoteModels',
-    async (_e, args: { baseUrl: string; apiKey?: string }) => {
+    async (_e, args: { baseUrl: string; apiKey?: string; modelInPath?: boolean }) => {
       const { fetchOpenAICompatibleModelIds } = await import('../openai-compatible/models');
-      return fetchOpenAICompatibleModelIds(args.baseUrl, args.apiKey);
+      return fetchOpenAICompatibleModelIds(args.baseUrl, args.apiKey, args.modelInPath);
     },
   );
 

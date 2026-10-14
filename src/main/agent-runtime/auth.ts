@@ -18,6 +18,7 @@ export interface ResolvedApiAuth {
   baseUrl: string;
   /** Bearer key for remote endpoints; undefined for local Ollama/LM Studio. */
   apiKey?: string;
+  modelInPath?: boolean;
 }
 
 export type ResolvedAuth = ResolvedOAuthAuth | ResolvedApiAuth;

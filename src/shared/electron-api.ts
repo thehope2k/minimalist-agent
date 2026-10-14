@@ -343,6 +343,7 @@ export interface ConnectionMeta {
   baseUrl?: string;
   /** Preset id for 'openai-compatible' connections (e.g. 'stepfun'); 'custom' for hand-entered. */
   presetId?: string;
+  modelInPath?: boolean;
   codeMieProject?: string;
   codeMieIntegrationId?: string;
   defaultModel: string;
@@ -1111,6 +1112,7 @@ export interface AppApi {
     listRemoteModels: (args: {
       baseUrl: string;
       apiKey?: string;
+      modelInPath?: boolean;
     }) => Promise<{ ids: string[] } | { error: string }>;
     /** Force-refresh a connection's model catalog. */
     refreshModels: (

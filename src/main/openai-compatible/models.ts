@@ -9,22 +9,28 @@ export interface RemoteModelsResult {
   ids: string[];
 }
 
-/** Ensure the base ends in a version path, mirroring the chat client. */
-export function normalizeBase(baseUrl: string): string {
+interface ModelRow {
+  id?: unknown;
+  capabilities?: { chat_completion?: boolean };
+}
+
+/** Ensure the base ends in a version path, mirroring the chat client. `modelInPath` bases have none. */
+export function normalizeBase(baseUrl: string, modelInPath = false): string {
   const base = baseUrl.trim().replace(/\/+$/, '');
-  return /\/v\d+$/.test(base) ? base : `${base}/v1`;
+  return modelInPath || /\/v\d+$/.test(base) ? base : `${base}/v1`;
 }
 
 export async function fetchOpenAICompatibleModelIds(
   baseUrl: string,
   apiKey?: string,
+  modelInPath = false,
 ): Promise<RemoteModelsResult | { error: string }> {
   if (!baseUrl.trim()) return { error: 'Base URL is required.' };
 
   const ctrl = new AbortController();
   const timeout = setTimeout(() => ctrl.abort(), 15_000);
   try {
-    const res = await fetch(`${normalizeBase(baseUrl)}/models`, {
+    const res = await fetch(`${normalizeBase(baseUrl, modelInPath)}/models`, {
       headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
       signal: ctrl.signal,
     });
@@ -34,9 +40,11 @@ export async function fetchOpenAICompatibleModelIds(
       }
       return { error: `Provider returned HTTP ${res.status}.` };
     }
-    const json = (await res.json()) as { data?: Array<{ id?: unknown }> } | Array<{ id?: unknown }>;
+    const json = (await res.json()) as { data?: ModelRow[] } | ModelRow[];
     const rows = Array.isArray(json) ? json : (json.data ?? []);
     const ids = rows
+      // Gateways also list embedding/image/TTS deployments.
+      .filter((r) => r?.capabilities?.chat_completion !== false)
       .map((r) => r?.id)
       .filter((id): id is string => typeof id === 'string' && id.length > 0);
     if (ids.length === 0) return { error: 'Provider exposed no models.' };

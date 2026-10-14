@@ -52,6 +52,7 @@ export interface MsgInit {
      * handle reasoning natively (StepFun, DeepSeek, …).
      */
     thinkingFormat?: 'qwen';
+    modelInPath?: boolean;
   };
   /** Available agents (serialized from main process) — used by Agent tool. */
   availableAgents?: Array<{

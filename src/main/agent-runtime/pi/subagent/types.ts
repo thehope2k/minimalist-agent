@@ -37,6 +37,7 @@ export interface AgentToolContext {
     maxTokens?: number;
     reasoning?: boolean;
     thinkingFormat?: 'qwen';
+    modelInPath?: boolean;
   };
   /** Parent session's model (for resolving session-default). */
   sessionModel: string;

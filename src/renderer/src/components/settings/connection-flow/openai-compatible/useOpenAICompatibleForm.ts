@@ -36,6 +36,7 @@ export function useOpenAICompatibleForm({
   onClose,
 }: Pick<FlowProps, 'editingMeta' | 'onSaved' | 'onClose'>) {
   const editing = !!editingMeta;
+  const [modelInPath, setModelInPath] = useState(editingMeta?.modelInPath ?? false);
   const [presetId, setPresetId] = useState(
     editingMeta?.presetId ?? OPENAI_COMPATIBLE_PRESETS[0].id,
   );
@@ -66,12 +67,17 @@ export function useOpenAICompatibleForm({
   }, [customModels, editing, editingMeta, fetchedIds, isCustom, preset]);
   const effectiveModel = model || models[0]?.id || '';
 
-  const pickPreset = (id: string) => {
-    setPresetId(id);
-    setTested(false);
-    setError(null);
+  const clearFetched = () => {
     setFetchedIds([]);
     setFetchNote(null);
+  };
+
+  const pickPreset = (id: string) => {
+    setPresetId(id);
+    setModelInPath(false);
+    setTested(false);
+    setError(null);
+    clearFetched();
     const nextPreset = getPreset(id);
     if (nextPreset && id !== CUSTOM_PRESET_ID) {
       setName(nextPreset.name);
@@ -96,6 +102,7 @@ export function useOpenAICompatibleForm({
       const result = await window.api.connections.listRemoteModels({
         baseUrl: url,
         apiKey: apiKey.trim() || undefined,
+        modelInPath,
       });
       if ('error' in result) {
         setFetchNote(result.error);
@@ -133,6 +140,7 @@ export function useOpenAICompatibleForm({
             providerType: 'openai-compatible',
             baseUrl: url,
             presetId,
+            ...(modelInPath ? { modelInPath } : {}),
             defaultModel: effectiveModel,
             models,
             createdAt: Date.now(),
@@ -172,10 +180,14 @@ export function useOpenAICompatibleForm({
     saving,
     tested,
     setName,
+    modelInPath,
+    setModelInPath: (value: boolean) => {
+      setModelInPath(value);
+      clearFetched();
+    },
     setBaseUrl: (value: string) => {
       setBaseUrl(value);
-      setFetchedIds([]);
-      setFetchNote(null);
+      clearFetched();
     },
     setApiKey: (value: string) => {
       setApiKey(value);

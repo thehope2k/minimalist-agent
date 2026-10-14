@@ -120,6 +120,20 @@ export function ensureSubprocess(req: ChatRequest, systemPrompt: string): Subpro
     handles.set(key, fresh);
     return fresh;
   }
+  const modelChanged = !!req.model && req.model !== existing?.currentModel;
+  if (
+    existing &&
+    !existing.child.killed &&
+    modelChanged &&
+    req.auth.type === 'api' &&
+    req.auth.modelInPath
+  ) {
+    // The model is baked into the endpoint URL at init and set_model can't rebuild it, so restart.
+    killSubprocess(existing);
+    const fresh = spawnSubprocess(req, systemPrompt);
+    handles.set(key, fresh);
+    return fresh;
+  }
   if (existing && !existing.child.killed) {
     // If the model changed, notify the running subprocess.
     if (req.model && req.model !== existing.currentModel) {
@@ -293,6 +307,7 @@ export function spawnSubprocess(req: ChatRequest, systemPrompt: string): Subproc
       maxTokens: modelDef?.maxOutputTokens,
       reasoning: modelDef?.supportsReasoning ?? false,
       ...(isOpenAICompat ? {} : { thinkingFormat: 'qwen' as const }),
+      modelInPath: apiAuth?.modelInPath,
     };
   }
 

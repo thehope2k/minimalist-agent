@@ -332,8 +332,9 @@ async function handleInit(msg: MsgInit): Promise<void> {
     // The openai-completions provider passes baseUrl directly to the OpenAI
     // SDK client which appends /chat/completions — so the URL must include
     // /v1. Append it automatically so users can type http://localhost:11434.
-    const apiBase =
-      msg.customEndpoint!.api === 'openai-completions' && !rawBase.endsWith('/v1')
+    const apiBase = msg.customEndpoint!.modelInPath
+      ? `${rawBase.replace(/\/+$/, '')}/deployments/${encodeURIComponent(modelId)}`
+      : msg.customEndpoint!.api === 'openai-completions' && !rawBase.endsWith('/v1')
         ? `${rawBase}/v1`
         : rawBase;
     // Localhost endpoints (Ollama, LM Studio) don’t need auth.
@@ -356,7 +357,11 @@ async function handleInit(msg: MsgInit): Promise<void> {
           // 'qwen' forces enable_thinking:false so local Ollama Qwen3 models
           // don't stall ~30s before the first token. Remote OpenAI-compatible
           // providers (StepFun, DeepSeek, …) omit this and reason natively.
-          ...(ce.thinkingFormat ? { compat: { thinkingFormat: ce.thinkingFormat } } : {}),
+          compat: {
+            ...(ce.thinkingFormat ? { thinkingFormat: ce.thinkingFormat } : {}),
+            // `store` is OpenAI-only; Claude/Gemini behind a gateway reject it with a 400.
+            supportsStore: false,
+          },
           input: ce.supportsImages ? ['text', 'image'] : ['text'],
           cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
           contextWindow: ce.contextWindow ?? 131_072,

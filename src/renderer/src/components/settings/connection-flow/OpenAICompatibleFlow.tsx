@@ -1,5 +1,5 @@
 import { CheckCircle2, ExternalLink } from 'lucide-react';
-import { Button, Field, Input, PasswordInput, Select, Textarea } from '@/components/ui';
+import { Button, Field, Input, PasswordInput, Select, Textarea, Toggle } from '@/components/ui';
 import { OPENAI_COMPATIBLE_PRESETS } from '@/lib/openai-compatible-presets';
 import { Actions, ErrorBox, FormShell } from './shared';
 import type { FlowProps } from './types';
@@ -51,6 +51,23 @@ export function OpenAICompatibleFlow(props: FlowProps) {
             disabled={form.editing}
           />
         </Field>
+      )}
+
+      {form.isCustom && !form.editing && (
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="text-sm text-fg">Model name in URL path</div>
+            <p className="text-xs text-fg-subtle">
+              For gateways (e.g. EPAM DIAL) that route by <code>/deployments/&lt;model&gt;</code>{' '}
+              and have no <code>/v1</code>.
+            </p>
+          </div>
+          <Toggle
+            value={form.modelInPath}
+            onChange={form.setModelInPath}
+            label="Model name in URL path"
+          />
+        </div>
       )}
 
       <Field label="API key" hint={form.preset?.keyHint ?? 'Stored encrypted via the OS keychain.'}>

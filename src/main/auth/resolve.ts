@@ -131,6 +131,7 @@ export async function resolveAuthForSlug(
         conn.providerType === 'openai-compatible' && cred.type === 'api_key'
           ? cred.apiKey
           : undefined,
+      modelInPath: conn.modelInPath,
     };
   }
 

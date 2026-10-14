@@ -62,6 +62,7 @@ export function createConfigurationApi(): Pick<
       listRemoteModels: (args: {
         baseUrl: string;
         apiKey?: string;
+        modelInPath?: boolean;
       }): Promise<{ ids: string[] } | { error: string }> =>
         ipcRenderer.invoke('connections:listRemoteModels', args),
       refreshModels: (

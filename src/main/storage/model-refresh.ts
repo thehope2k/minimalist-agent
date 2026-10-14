@@ -117,7 +117,7 @@ async function fetchForProvider(meta: ConnectionMeta): Promise<ModelDef[] | { er
     if (!meta.baseUrl) return { error: 'Connection has no base URL.' };
     const apiKey = cred?.type === 'api_key' ? cred.apiKey : undefined;
     const { fetchOpenAICompatibleModelIds } = await import('../openai-compatible/models');
-    const res = await fetchOpenAICompatibleModelIds(meta.baseUrl, apiKey);
+    const res = await fetchOpenAICompatibleModelIds(meta.baseUrl, apiKey, meta.modelInPath);
     if ('error' in res) return { error: res.error };
     // The /models endpoint only carries ids — and may be incomplete or gated —
     // so we *union* rather than replace: existing rich metadata is preserved,
