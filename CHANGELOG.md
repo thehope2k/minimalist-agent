@@ -3,6 +3,27 @@
 All notable changes are documented here.  
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.9.0] — 2026-10-16
+
+Quality of life improvements to session branching and bug fixes for retry and @ mentions.
+
+### Added
+
+**Branching**
+
+- Branched sessions are now self-contained: scratch files and attachments are copied into the branch (with a size cap), and file paths are rewritten so the branch no longer points at the parent session.
+- Branches carry over autonomy, thinking level, pinned assets and extensions.
+- The branch's transcript is cut precisely at the message you branched from, instead of occasionally keeping the message being dropped.
+- If part of a branch can't be fully reproduced (fork, summary, clone or retarget problems), you now see a warning instead of a silent degradation.
+- A failed branch is cleaned up instead of leaving a partial session behind.
+
+### Fixed
+
+- **Continue** and **Retry** (and manual compact) now use the connection and model currently selected in the picker, instead of the ones from the last send.
+- Unresolved `@` tokens such as `@types/node`, `@param` or `@joe` no longer block a prompt with a "not found" error; they are sent as literal text.
+
+---
+
 ## [2.8.0] — 2026-10-14
 
 Gateway support for custom connections, plus quality of life improvements and bug fixes.
