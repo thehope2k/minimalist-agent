@@ -311,7 +311,7 @@ export function spawnSubprocess(req: ChatRequest, systemPrompt: string): Subproc
     };
   }
 
-  const compactionSettings = getSettings().compactionSettings;
+  const { compactionSettings, retrySettings } = getSettings();
   const runtimeAuth: MsgInit['auth'] =
     req.auth.type === 'api'
       ? {
@@ -350,6 +350,7 @@ export function spawnSubprocess(req: ChatRequest, systemPrompt: string): Subproc
     })),
     mcpServers,
     compactionSettings,
+    retrySettings,
   };
   send(handle, init);
 

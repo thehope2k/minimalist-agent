@@ -22,6 +22,7 @@ credential storage (Electron `safeStorage`), session persistence, and everything
 | MCP             | `createMcpExtension` fed by `loadConfig` (`mcp-native-config.ts`) plus `createToolSearchExtension` for deferred servers (`mcp-exposure.ts`); `tool_call` / `tool_result` hooks for governance and tracing (`tool-governance.ts`); a separate probe for status and tool counts (`mcp-diagnostics.ts`). No `sse` transport. | `pi-server/`                                                          |
 | Models and auth | `ModelRuntime` with a custom in-memory `CredentialStore` fed by `token_update`; `ModelRegistry.registerProvider('custom-endpoint')`; `getBuiltinModel`; `githubCopilotProvider` and `openaiCodexProvider` for OAuth and the tier-filtered Copilot catalog                                                                 | `credential-store.ts`, `copilot/models.ts`, `oauth/`                  |
 | Compaction      | `SettingsManager.inMemory({ compaction })` driven by the settings UI (`CompactionSection`); `session_before_compact` extension for span attribution; manual `session.compact(instructions)` that preserves plan state                                                                                                     | `pi-server/index.ts`; see `COMPACTION.md`                             |
+| Retry           | `SettingsManager.inMemory({ retry })` with `enabled` and `maxRetries` from the settings UI (`RetrySection`, clamped by `shared/retry.ts`); main sends `retrySettings` in `init`. Sub-agents keep pi's defaults.                                                                                                           | `pi-server/index.ts`, `chat-subprocess.ts`                            |
 | Session forking | `SessionManager.open` / `getEntries` / `createBranchedSession` / `branchWithSummary` with `collectEntriesForBranchSummary` and `generateBranchSummary`; summaries are generated only for Copilot connections                                                                                                              | `storage/session-fork.ts`, `session-branch.ts`                        |
 | Session storage | `SessionManager.continueRecent` per chat; `SessionManager.inMemory` for one-shot completions                                                                                                                                                                                                                              | `pi-server/index.ts`                                                  |
 
@@ -30,24 +31,50 @@ not a pi feature.
 
 ## Reimplemented instead of using pi's native mechanism
 
+Audited against pi 1.2.0 (`skills.js`, `resource-loader.d.ts`, `model-runtime.d.ts`, `sdk.js`). Only two items are
+genuine reimplementation, and neither is a drop-in swap. The rest of what looks like duplication is MA building on pi
+(next section).
+
 1. **Skills.** MA has its own tier (`~/.minimalist-agent/skills`, project tier, `@slug` invocation, `skills/*`). Pi has a
    native Agent Skills implementation (discovery, system-prompt injection, `/skill:name`, progressive disclosure). MA
    uses none of it; pi's own discovery is disabled (see [Resource isolation](#resource-isolation)).
-2. **Extensions.** MCP-backed extensions run on pi's native MCP extension. CLI-bound and guide-only extensions have no
-   pi counterpart in use (`registerTool`, `registerCommand`, `registerShortcut` are all unused).
-3. **Permission gating.** One `tool_call` hook (`tool-governance.ts`) gates built-in, web, browser, Agent, and native MCP
-   tools through a cross-process round trip (`pre_tool_use_request` / `pre_tool_use_response`); the UI lives in a
-   different Electron process, so the round trip stays. Because the hook runs before `execute()`, pi's `durationMs`
-   excludes the approval wait. The catastrophic-delete breaker lives in the same hook. Collaboration and planning tools
-   are deliberately ungated.
-4. **Tool output truncation.** `web-tools.ts` uses pi's `truncateHead` / `formatSize` (`clampResult`). It is not a pure
-   drop-in: `truncateHead` returns empty content when the first line alone exceeds the budget (minified JSON), so a byte
-   slice covers that case.
-5. **One-shot completions.** Title and other mini completions (`runEphemeralPrompt`) build a full in-memory
-   `AgentSession` plus a resource loader for each call. This is deliberate, not a gap: a bare `completeSimple` call was
-   unreliable under HTTP/2 421 misdirected requests and had no credential refresh, and the session path fixed both (see
-   commit `e7d18ea`). Tools are disabled (`noTools: 'all'`), so nothing needs gating. The unauthenticated `llm_query`
+   - **Real overlap is small.** Only the `SKILL.md` frontmatter parser (`skills/parse.ts`) and the directory scan
+     (`skills/storage.ts`), about 200 of the 777 lines in `src/main/skills/`.
+   - **Replacing it would lose capability.** MA uses `name` as a display title (`name: "Code Review"`); pi treats it as
+     a lowercase-hyphen identifier (≤64 chars) and validates it. Pi's `Skill` has no `icon`, `globs`, `alwaysAllow`, or
+     body, so MA would still read the file for the UI. `@slug` mentions, pinning, the two-tier merge cache, the editor
+     and validate UI, and the reference doc have no pi counterpart.
+   - **What pi adds that MA lacks.** Pi lists every skill's name, description, and path in the system prompt
+     (`<available_skills>`) so the model can pick one unprompted. MA exposes a skill only when mentioned or pinned. This
+     is new capability rather than a maintenance saving, and it costs prompt tokens on every request. If wanted, wire
+     MA's loaded skills in through `skillsOverride` / `additionalSkillPaths` instead of replacing MA's code.
+2. **One-shot completions.** Title and other mini completions (`runEphemeralPrompt`) build a full in-memory
+   `AgentSession` plus a resource loader for each call. This is deliberate: a bare `completeSimple` call was unreliable
+   under HTTP/2 421 misdirected requests, and the session path fixed it (commit `e7d18ea`, which states only the 421
+   reason). Tools are disabled (`noTools: 'all'`), so nothing needs gating. The unauthenticated `llm_query`
    `completeSimple` path was dead code and has been removed.
+   - **Possible simplification, unverified.** `ModelRuntime.completeSimple(model, context, options)` is a different call
+     from the one `e7d18ea` removed: the session itself requests through `modelRuntime.streamSimple` (`sdk.js`), so
+     it should share credential handling. It would drop roughly 40-60 lines.
+   - **Why it is not done.** Pi's `core` and `pi-ai` contain no 421 handling, and `retry.js` has no 421 entry that we
+     found, so it is unknown why the session path avoids the error. Reproduce the 421 first and test
+     `modelRuntime.completeSimple` against it; swap only if it passes.
+
+## Built on pi, not reimplemented
+
+These were once listed as reimplementations. They are not duplication.
+
+- **Extensions.** MCP-backed extensions run on pi's native MCP extension. CLI-bound and guide-only extensions are
+  an MA concept; pi's "extension" is an in-process code plugin, so there is nothing to swap in. `registerTool`,
+  `registerCommand`, and `registerShortcut` are unused because nothing needs them.
+- **Permission gating.** One `pi.on('tool_call')` hook (`tool-governance.ts`) gates built-in, web, browser, Agent, and
+  native MCP tools through a cross-process round trip (`pre_tool_use_request` / `pre_tool_use_response`); the UI lives in
+  a different Electron process, so the round trip stays. Because the hook runs before `execute()`, pi's `durationMs`
+  excludes the approval wait. The catastrophic-delete breaker lives in the same hook. Collaboration and planning tools
+  are deliberately ungated.
+- **Tool output truncation.** `web-tools.ts` uses pi's `truncateHead` / `formatSize` (`clampResult`). The only custom
+  code is a byte-slice fallback: `truncateHead` returns empty content when the first line alone exceeds the budget
+  (minified JSON).
 
 ## Resource isolation
 
@@ -74,8 +101,9 @@ Every loader comes from `createIsolatedResourceLoader` (`pi-server/resource-load
   prompt injection (MA does the latter by mutating `appendArr` and reloading the loader).
 - **`before_provider_request` / `before_provider_headers` / `after_provider_response`.** Request-level tracing and
   debugging without touching provider code.
-- **Retry settings.** `SettingsManager` receives only `compaction`; auto-retry runs on pi's defaults and its events are
-  displayed but not configurable.
+- **Retry timing and provider-level retry.** Only `retry.enabled` and `retry.maxRetries` are exposed (Settings → AI →
+  Error Recovery). `baseDelayMs`, `maxAgentDelayMs`, and `retry.provider.*` stay on pi's defaults; pi advises leaving
+  provider retries at 0 so it can handle quota errors itself.
 - **Prompt templates** (`/command` files), **session tree navigation** (`navigateTree`, labels; forking is linear
   cutoff plus a summary), and the **packages system** (`pi install`).
 - **Themes, TUI, and RPC/JSON modes.** Intentionally unused (own Electron UI).
@@ -134,5 +162,7 @@ the gate blocks them. Codemode is a separate question: pi's docs say nested `ctx
 
 ## Priorities
 
-1. **Decide the skills story.** Fold MA's skills into pi's native loader, or document why they stay separate.
-2. **Smaller item.** Expose retry settings.
+1. **Skills: keep MA's tier.** Decision from the audit: the overlap is parser and scan only, and swapping them loses
+   `icon`, `globs`, `alwaysAllow`, display names, and the mention/pin flow. Optional follow-up: expose MA's skills to
+   pi's `<available_skills>` listing via `skillsOverride`, if model-initiated skill use is wanted.
+2. **One-shot completions.** Reproduce the 421, then try `modelRuntime.completeSimple` in place of `runEphemeralPrompt`.

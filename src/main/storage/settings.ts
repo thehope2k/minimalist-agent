@@ -3,7 +3,8 @@
 import { Paths } from './paths';
 import { type FileSchema, load, save } from './json-store';
 import type { CompactionTuning } from '../../shared/compaction';
-export type { CompactionTuning };
+import type { RetryTuning } from '../../shared/retry';
+export type { CompactionTuning, RetryTuning };
 
 export type ThinkingLevel = 'off' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
@@ -37,6 +38,7 @@ export interface AiSettings {
   /** Context compaction tuning — fractions of the active model's contextWindow,
    *  resolved per session by the agent runtime. */
   compactionSettings?: CompactionTuning;
+  retrySettings?: RetryTuning;
 }
 
 export const DEFAULT_CONTEXT_FILE_NAMES: readonly string[] = [

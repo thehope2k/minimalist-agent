@@ -113,6 +113,7 @@ import {
   capModelOutputToCompactionReserve,
   resolveCompactionSettings,
 } from '../../shared/compaction';
+import { resolveRetrySettings } from '../../shared/retry';
 import {
   initOtel,
   shutdownOtel,
@@ -452,7 +453,10 @@ async function handleInit(msg: MsgInit): Promise<void> {
 
   const { tools, gatedToolNames, bashToolName } = buildTools(msg.cwd, agentContext);
 
-  const settingsManager = SettingsManager.inMemory({ compaction: resolvedCompaction });
+  const settingsManager = SettingsManager.inMemory({
+    compaction: resolvedCompaction,
+    retry: resolveRetrySettings(msg.retrySettings),
+  });
   const resourceLoader = createIsolatedResourceLoader({
     cwd: msg.cwd,
     settingsManager,

@@ -1,4 +1,5 @@
 import type { CompactionTuning } from '../../../../shared/compaction';
+import type { RetryTuning } from '../../../../shared/retry';
 import type { MsgAuthRefreshResult } from './outbound';
 import type {
   McpServerConfig,
@@ -78,6 +79,8 @@ export interface MsgInit {
    *  into absolute reserveTokens/keepRecentTokens against the active model's
    *  contextWindow inside pi-server, not here. */
   compactionSettings?: CompactionTuning;
+  /** App-level auto-retry tuning (see AiSettings.retrySettings). */
+  retrySettings?: RetryTuning;
 }
 
 export interface MsgPrompt {

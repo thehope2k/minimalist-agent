@@ -73,6 +73,7 @@ import type {
 } from './planning-types';
 
 import type { CompactionTuning } from './compaction';
+import type { RetryTuning } from './retry';
 
 export type {
   EngagementType,
@@ -382,6 +383,7 @@ export interface AiSettings {
   /** Days after which archived sessions are auto-deleted. `null` disables. */
   sessionRetentionDays?: number | null;
   compactionSettings?: CompactionTuning;
+  retrySettings?: RetryTuning;
 }
 
 export type OtelExporterType = 'file' | 'otlp' | 'console';

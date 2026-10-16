@@ -12,6 +12,13 @@ export {
   type CompactionTuning,
   type CompactionModelInfo,
 } from '../../../shared/compaction';
+export {
+  DEFAULT_RETRY_ENABLED,
+  DEFAULT_RETRY_MAX_RETRIES,
+  MAX_RETRY_ATTEMPTS,
+  resolveRetrySettings,
+  type RetryTuning,
+} from '../../../shared/retry';
 //
 // All persistence lives in `app.getPath('userData')`, accessed via the IPC
 // bridge in window.api. We cache loaded values per-process so consumers can
@@ -210,6 +217,17 @@ export async function setCompactionSettings(
   const next = {
     ...snapshot().settings,
     compactionSettings: { ...snapshot().settings.compactionSettings, ...value },
+  };
+  await window.api.settings.save(next);
+  await reload();
+}
+
+export async function setRetrySettings(
+  value: NonNullable<AiSettings['retrySettings']>,
+): Promise<void> {
+  const next = {
+    ...snapshot().settings,
+    retrySettings: { ...snapshot().settings.retrySettings, ...value },
   };
   await window.api.settings.save(next);
   await reload();

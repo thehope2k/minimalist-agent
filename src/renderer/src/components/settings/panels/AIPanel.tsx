@@ -13,6 +13,7 @@ import { SettingsCard, SettingsDivider, SettingsRow, SettingsSection } from '../
 import { ConnectionsSection } from '../ai-panel/ConnectionsSection';
 import { ContextFileNamesRow } from '../ai-panel/ContextFileNamesRow';
 import { CompactionSection } from '../ai-panel/CompactionSection';
+import { RetrySection } from '../ai-panel/RetrySection';
 
 const THINKING_LEVELS: ThinkingLevel[] = ['off', 'low', 'medium', 'high', 'xhigh', 'max'];
 
@@ -162,6 +163,13 @@ export function AIPanel() {
         subtitle="Tune automatic conversation summarization. Percentages are resolved against whichever model is active."
       >
         <CompactionSection settings={settings} />
+      </SettingsSection>
+
+      <SettingsSection
+        title="Error Recovery"
+        subtitle="Control how a turn recovers from transient provider errors."
+      >
+        <RetrySection settings={settings} />
       </SettingsSection>
 
       <AddConnectionDialog
