@@ -177,24 +177,28 @@ export function useSessionSync(
     });
   }, [sessionId, permissionMode]);
 
-  // Keep title in sync with the shared sessions store. updateSessionMeta()
-  // (e.g. the Info panel's title editor) reloads the store's cache but has
-  // no direct handle on this hook's local `title` state, so without this
-  // the popover would keep showing the stale title after being reopened.
+  // Keep title and model pick in sync with the shared sessions store.
+  // updateSessionMeta() (the Info panel's title editor, the model picker)
+  // reloads the store's cache but has no direct handle on this hook's local
+  // state, so without this the stored pick stays stale and Continue/Retry
+  // would run on the previous connection.
   useEffect(() => {
     if (!sessionId) return;
 
-    const syncTitleFromCache = () => {
+    const syncMetaFromCache = () => {
       try {
         const match = snapshot().find((s) => s.id === sessionId);
-        if (match) setTitle(match.title);
+        if (!match) return;
+        setTitle(match.title);
+        setSessionConnectionSlug(match.connectionSlug ?? '');
+        setSessionModel(match.model ?? '');
       } catch {
         // Store not bootstrapped yet — loadFullSession() above will set the
         // initial title once it resolves.
       }
     };
 
-    return subscribe(syncTitleFromCache);
+    return subscribe(syncMetaFromCache);
   }, [sessionId]);
 
   // For fresh chats, track project/global default changes

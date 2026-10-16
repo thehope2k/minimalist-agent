@@ -34,6 +34,13 @@ interface ChatRetryDeps extends Pick<
   send: (args: SendArgs) => Promise<void>;
 }
 
+export function withCurrentPick(
+  args: SendArgs,
+  current?: Pick<RetryFallback, 'connection' | 'model'>,
+): SendArgs {
+  return current ? { ...args, connection: current.connection, model: current.model } : args;
+}
+
 export function useChatRetry(deps: ChatRetryDeps) {
   const {
     messagesBySession,
@@ -52,6 +59,7 @@ export function useChatRetry(deps: ChatRetryDeps) {
     async (sid: string, fallback?: RetryFallback) => {
       const last = lastSendBySession.current.get(sid);
       if (last) {
+        const resendArgs = withCurrentPick(last.args, fallback);
         // Hot path: retry within the same app run.
         const failedAssistantId = last.assistantId;
         const current = messagesBySession.current.get(sid) ?? [];
@@ -86,7 +94,7 @@ export function useChatRetry(deps: ChatRetryDeps) {
           if (!stored.content) stored.content = partsToContent(finalized.parts);
           await replaceLastMessage(sid, stored);
 
-          await send({ ...last.args, text: 'continue' });
+          await send({ ...resendArgs, text: 'continue' });
           return;
         }
 
@@ -101,7 +109,7 @@ export function useChatRetry(deps: ChatRetryDeps) {
         messagesBySession.current.set(sid, withoutFailed);
         const dropFromId = userBeforeId ?? failedAssistantId;
         await truncateSessionMessages(sid, dropFromId);
-        await send(last.args);
+        await send(resendArgs);
         return;
       }
 

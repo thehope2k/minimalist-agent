@@ -63,7 +63,7 @@ export function MessageInput({
   }, [sessionId]);
 
   // Model picker — resolves connection/model from overrides, defaults
-  const { data, connection, model, pickerOverride, setPickerOverride } = useModelPicker(
+  const { data, connection, model, pickerOverride, selectPick } = useModelPicker(
     sessionId,
     projectDefaultConnectionSlug,
     projectDefaultModel,
@@ -382,7 +382,7 @@ export function MessageInput({
               hasUnsendableImages={hasUnsendableImages}
               onPickFiles={handlePickFiles}
               onTriggerMention={triggerMentionFromButton}
-              onPickerChange={(slug, modelId) => setPickerOverride({ slug, modelId })}
+              onPickerChange={selectPick}
               onSend={handleSend}
               onAbort={onAbort}
               onSteer={() => void handleSteer()}

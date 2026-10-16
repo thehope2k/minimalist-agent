@@ -1,8 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { getNewSessionStateDraft } from '@/lib/new-session-draft';
+import { updateSessionMeta } from '@/lib/sessions';
+import { createLogger } from '@/lib/logger';
 import { useAiData } from '@/hooks/useAiData';
 import type { ConnectionMeta } from '@/lib/electron';
 import type { ModelPick } from './types';
+
+const log = createLogger('useModelPicker');
 
 /**
  * Model picker state and connection/model resolution logic. Handles
@@ -48,6 +52,16 @@ export function useModelPicker(
     }
   }, [sessionId, loadedSessionPickId, sessionConnectionSlug, sessionModel]);
 
+  // Continue, retry and manual compact read the stored pick, so an existing
+  // session must persist it the moment the user changes it.
+  const selectPick = (slug: string, modelId: string) => {
+    setPickerOverride({ slug, modelId });
+    if (!sessionId) return;
+    updateSessionMeta(sessionId, { connectionSlug: slug, model: modelId }).catch((err) =>
+      log.error(`Failed to persist model pick for ${sessionId}`, err),
+    );
+  };
+
   // Resolve final connection and model from cascade:
   // picker override → project default → global default → first connection
   const connection: ConnectionMeta | null = data
@@ -74,6 +88,6 @@ export function useModelPicker(
     connection,
     model,
     pickerOverride,
-    setPickerOverride,
+    selectPick,
   };
 }
