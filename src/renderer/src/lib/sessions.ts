@@ -2,7 +2,13 @@
 // store. Mirrors the pattern in `connections.ts`: snapshot reads are sync
 // after a one-time bootstrap; mutations are async and refresh the cache.
 
-import type { PermissionMode, SessionMeta, StoredMessage, ThinkingLevel } from './electron';
+import type {
+  BranchSessionResult,
+  PermissionMode,
+  SessionMeta,
+  StoredMessage,
+  ThinkingLevel,
+} from './electron';
 import { snapshot as connectionsSnapshot } from './connections';
 import { buildTitleSample } from './title';
 import { chatFromStored } from './chat';
@@ -134,10 +140,10 @@ export async function branchSession(
   parentId: string,
   upToMessageId: string,
   options?: { withContext?: boolean },
-): Promise<SessionMeta | null> {
-  const meta = await window.api.sessions.branch(parentId, upToMessageId, options);
-  if (meta) await reload();
-  return meta;
+): Promise<BranchSessionResult | null> {
+  const result = await window.api.sessions.branch(parentId, upToMessageId, options);
+  if (result) await reload();
+  return result;
 }
 
 /**

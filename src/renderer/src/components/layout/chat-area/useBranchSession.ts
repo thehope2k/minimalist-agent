@@ -18,6 +18,10 @@ export function useBranchSession(
   onSessionCreated: (id: string) => void,
 ) {
   const [pendingMessage, setPendingMessage] = useState<string | undefined>(undefined);
+  const [branchNotice, setBranchNotice] = useState<{
+    sessionId: string;
+    warnings: string[];
+  } | null>(null);
   const pendingBranchDraftRef = useRef<{ sessionId: string; text: string } | null>(null);
 
   useEffect(() => {
@@ -42,8 +46,10 @@ export function useBranchSession(
         await Promise.all((msg.attachments ?? []).map((a) => storedToDraft(a)))
       ).filter((d): d is NonNullable<typeof d> => d !== null);
 
-      const meta = await branchSession(sessionId, messageId, { withContext });
-      if (!meta) return;
+      const result = await branchSession(sessionId, messageId, { withContext });
+      if (!result) return;
+      const { meta, warnings } = result;
+      setBranchNotice(warnings.length > 0 ? { sessionId: meta.id, warnings } : null);
       // Store the draft + attachments BEFORE navigation
       setAttachmentDraft(meta.id, drafts);
       pendingBranchDraftRef.current = { sessionId: meta.id, text };
@@ -52,9 +58,14 @@ export function useBranchSession(
     [sessionId, messages, onSessionCreated],
   );
 
+  const dismissBranchWarnings = useCallback(() => setBranchNotice(null), []);
+  const branchWarnings = branchNotice?.sessionId === sessionId ? branchNotice.warnings : [];
+
   return {
     pendingMessage,
     setPendingMessage,
     handleBranch,
+    branchWarnings,
+    dismissBranchWarnings,
   };
 }

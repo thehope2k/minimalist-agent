@@ -9,6 +9,7 @@ import {
 } from '@/lib/sessions';
 import { homedir } from '@/lib/path';
 import { ChatHeader } from './chat-area/ChatHeader';
+import { BranchWarnings } from './chat-area/BranchWarnings';
 import { ChatContent } from './chat-area/ChatContent';
 import { ChatModals } from './chat-area/ChatModals';
 import { PlanningDialogs } from './chat-area/PlanningDialogs';
@@ -87,11 +88,8 @@ export function ChatArea({
   } = useSessionSync(sessionId, newSessionDefaultProjectId, aiData, onCwdChange);
 
   // Branch session logic
-  const { pendingMessage, setPendingMessage, handleBranch } = useBranchSession(
-    sessionId,
-    messages,
-    onSessionCreated,
-  );
+  const { pendingMessage, setPendingMessage, handleBranch, branchWarnings, dismissBranchWarnings } =
+    useBranchSession(sessionId, messages, onSessionCreated);
 
   // Keyboard shortcuts (Git, Search, Recent Files, Find in Chat)
   const activeSession = activeSessionId ?? sessionId;
@@ -181,6 +179,8 @@ export function ChatArea({
         onToggleContextPanel={onToggleContextPanel}
         cwd={cwd}
       />
+
+      <BranchWarnings warnings={branchWarnings} onDismiss={dismissBranchWarnings} />
 
       <div className="flex-1 min-h-0">
         <ChatContent

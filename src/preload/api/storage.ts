@@ -1,6 +1,7 @@
 import { ipcRenderer } from 'electron';
 import type {
   AppApi,
+  BranchSessionResult,
   ContentMatchEntry,
   FileSearchEntry,
   FileStatResult,
@@ -42,7 +43,7 @@ export function createStorageApi(): Pick<AppApi, 'sessions' | 'projects' | 'fs' 
         parentId: string,
         upToMessageId: string,
         options?: { withContext?: boolean },
-      ): Promise<SessionMeta | null> =>
+      ): Promise<BranchSessionResult | null> =>
         ipcRenderer.invoke('sessions:branch', parentId, upToMessageId, options),
       revealInFolder: (id: string): Promise<void> =>
         ipcRenderer.invoke('sessions:revealInFolder', id),

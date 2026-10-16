@@ -536,6 +536,12 @@ export interface SessionMeta {
   thinkingLevel?: ThinkingLevel;
 }
 
+export interface BranchSessionResult {
+  meta: SessionMeta;
+  /** Non-fatal problems the user should know about (e.g. files not copied). */
+  warnings: string[];
+}
+
 export interface SharedExportResult {
   /** Public short URL (anyone with the link can read it). */
   url: string;
@@ -1161,7 +1167,7 @@ export interface AppApi {
       parentId: string,
       upToMessageId: string,
       options?: { withContext?: boolean },
-    ) => Promise<SessionMeta | null>;
+    ) => Promise<BranchSessionResult | null>;
     revealInFolder: (id: string) => Promise<void>;
     listFiles: (id: string) => Promise<SessionFileNode[]>;
     revealFile: (absPath: string) => Promise<void>;

@@ -32,7 +32,7 @@ export type {
 import { invalidateContextFileCache } from '../agent-runtime/system-prompt';
 import { findProjectForPath } from './projects';
 import { createLogger } from '../logger';
-import { persistSessionBranch } from './session-branch';
+import { persistSessionBranch, type BranchResult } from './session-branch';
 
 const log = createLogger('sessions');
 
@@ -271,14 +271,14 @@ export function activateExtensions(sessionId: string, slugs: string[]): void {
  * (the caller pre-fills that text in the renderer input so the user can
  * edit and re-send it as the first message of the new thread).
  *
- * Returns the new `SessionMeta`, or `null` when the parent or message id
- * can't be resolved.
+ * Returns the new session plus any non-fatal `warnings`, or `null` when the
+ * parent or message id can't be resolved.
  */
 export async function branchSession(
   parentId: string,
   upToMessageId: string,
   options?: { withContext?: boolean },
-): Promise<SessionMeta | null> {
+): Promise<BranchResult | null> {
   const parent = loadSession(parentId);
   if (!parent) return null;
 
