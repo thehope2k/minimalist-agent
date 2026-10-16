@@ -2,16 +2,16 @@
 // `@slug` for skills, `@relative/path/file.ts` for files, and
 // `@relative/path/dir/` (trailing slash) for folders. Plain text containing
 // an `@` that doesn't resolve to a known skill / existing path is left
-// untouched, so prose like "ping me @joe" stays as prose.
+// untouched, so prose like "ping me @joe", "@types/node" or "@param" stays
+// as prose. Unresolved tokens are never an error: `@` is too common in code
+// and chat to treat a miss as a typo.
 //
 // Resolution rules (priority order):
 //   1. token matches a known skill slug          → skill marker
 //   2. token matches a known extension slug      → extension marker
 //   3. token resolves to an existing directory   → folder marker
 //   4. token resolves to an existing file        → file  marker
-//   5. token looks like a file path but no match → invalidFiles (error)
-//   6. token looks like a skill slug but no match→ invalidSkills (error)
-//   7. otherwise                                  → leave as literal text
+//   5. otherwise                                  → leave as literal text
 //
 // We resolve at the main-process level (filesystem access), so this file
 // is not safe to import from the renderer.
@@ -33,19 +33,10 @@ export interface ParsedMentions {
   skills: string[];
   /** Extension slugs that are present in `availableExtensionSlugs`. */
   extensions: string[];
-  /** `@…` tokens that look like a slug mention but didn't match anything. */
-  invalidSkills: string[];
   /** File paths (relative or absolute) that exist on disk under `cwd`. */
   files: string[];
   /** Folder paths that exist on disk under `cwd`. */
   folders: string[];
-  /**
-   * `@…` tokens that look like file paths (contain `/` or a dot-extension)
-   * but didn't resolve to anything on disk. Surfaced so the backend can
-   * emit a clear "file not found" error rather than silently passing the
-   * raw `@token` to the model.
-   */
-  invalidFiles: string[];
 }
 
 /**
@@ -64,10 +55,8 @@ export function parseMentions(
   const result: ParsedMentions = {
     skills: [],
     extensions: [],
-    invalidSkills: [],
     files: [],
     folders: [],
-    invalidFiles: [],
   };
 
   for (const match of text.matchAll(MENTION_RE)) {
@@ -88,19 +77,9 @@ export function parseMentions(
         if (isDir) {
           if (!result.folders.includes(token)) result.folders.push(token);
         } else if (!result.files.includes(token)) result.files.push(token);
-        continue;
       } catch {
         /* fall through */
       }
-    }
-
-    // File-path-shaped token that didn't resolve → flag for a clear error.
-    // Slug-shaped token that didn't resolve → flag as a possible typo.
-    // Plain prose (@joe) → leave untouched (not a typo, not a path).
-    if (looksLikeFilePath(token) && !result.invalidFiles.includes(token)) {
-      result.invalidFiles.push(token);
-    } else if (looksLikeSkillSlug(token) && !result.invalidSkills.includes(token)) {
-      result.invalidSkills.push(token);
     }
   }
 
@@ -157,22 +136,6 @@ export function resolveMentions(
 /** Return the bare path from a token, removing backtick quoting if present. */
 function stripBackticks(token: string): string {
   return token.startsWith('`') && token.endsWith('`') ? token.slice(1, -1) : token;
-}
-
-const SKILL_SLUG_RE = /^[a-z0-9][a-z0-9-]{0,29}$/;
-
-function looksLikeSkillSlug(token: string): boolean {
-  return SKILL_SLUG_RE.test(token);
-}
-
-/**
- * Returns true when a token looks like the user intended a file reference
- * (contains a path separator or a dotted extension) rather than prose.
- * Used to distinguish "@docs/ROADMAP.md" (unresolved file path → error)
- * from "@joe" (prose mention → ignore).
- */
-function looksLikeFilePath(token: string): boolean {
-  return token.includes('/') || /\.[a-zA-Z0-9]{1,10}$/.test(token);
 }
 
 function baseName(p: string): string {

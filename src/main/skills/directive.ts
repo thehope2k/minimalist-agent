@@ -16,10 +16,6 @@ export interface SkillExtraction {
   folderPaths: string[];
   /** Message text with mentions replaced by semantic markers. */
   cleanMessage: string;
-  /** Slugs that the user mentioned but aren't installed. */
-  missingSkills: string[];
-  /** File-path-shaped mentions that didn't resolve to anything on disk. */
-  missingFiles: string[];
 }
 
 /**
@@ -85,8 +81,6 @@ export function extractSkillPaths(message: string, cwd?: string): SkillExtractio
     filePaths,
     folderPaths,
     cleanMessage,
-    missingSkills: parsed.invalidSkills,
-    missingFiles: parsed.invalidFiles,
   };
 }
 

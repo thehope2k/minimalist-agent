@@ -38,40 +38,8 @@ export async function* runChat(req: ChatRequest): AsyncGenerator<AgentChatEvent>
   });
 
   // Resolve `@slug` / `@path` mentions.
-  const {
-    skillPaths,
-    extensionGuidePaths,
-    filePaths,
-    folderPaths,
-    cleanMessage,
-    missingSkills,
-    missingFiles,
-  } = extractSkillPaths(request.prompt, request.cwd);
-  if (missingSkills.length > 0) {
-    yield {
-      type: 'error',
-      error: parseError(
-        new Error(
-          `Mention(s) not found: ${missingSkills.join(', ')}. ` +
-            `Skills live under ~/.agents/skills/<slug>/ or <cwd>/.agents/skills/<slug>/. ` +
-            `Extensions must be installed and enabled.`,
-        ),
-      ),
-    };
-    return;
-  }
-  if (missingFiles.length > 0) {
-    yield {
-      type: 'error',
-      error: parseError(
-        new Error(
-          `File mention(s) not found: ${missingFiles.join(', ')}. ` +
-            `Paths must be relative to the working directory (e.g. @docs/ROADMAP.md).`,
-        ),
-      ),
-    };
-    return;
-  }
+  const { skillPaths, extensionGuidePaths, filePaths, folderPaths, cleanMessage } =
+    extractSkillPaths(request.prompt, request.cwd);
   const mentionedExtensions = [...extensionGuidePaths.keys()];
   activateExtensions(request.chatSessionId, mentionedExtensions);
   request.activatedExtensions = [

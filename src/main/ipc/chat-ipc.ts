@@ -200,27 +200,8 @@ export function registerChatIpc(): void {
       if (!args.message.trim() && !args.attachments?.length)
         return { ok: false, reason: 'empty_message' };
 
-      const {
-        skillPaths,
-        extensionGuidePaths,
-        filePaths,
-        folderPaths,
-        cleanMessage,
-        missingSkills,
-        missingFiles,
-      } = extractSkillPaths(args.message, info.cwd);
-      if (missingSkills.length > 0) {
-        return {
-          ok: false,
-          reason: `Mention(s) not found: ${missingSkills.join(', ')}`,
-        };
-      }
-      if (missingFiles.length > 0) {
-        return {
-          ok: false,
-          reason: `File mention(s) not found: ${missingFiles.join(', ')}`,
-        };
-      }
+      const { skillPaths, extensionGuidePaths, filePaths, folderPaths, cleanMessage } =
+        extractSkillPaths(args.message, info.cwd);
       const directive = formatSkillDirective(
         skillPaths,
         extensionGuidePaths,
