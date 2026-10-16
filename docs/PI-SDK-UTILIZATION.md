@@ -1,6 +1,6 @@
 # Pi SDK Utilization
 
-What `@earendil-works/pi-coding-agent` and `@earendil-works/pi-ai` (1.2.x) offer versus what minimalist-agent
+What `@earendil-works/pi-coding-agent` and `@earendil-works/pi-ai` (1.3.x) offer versus what minimalist-agent
 uses. The reference is the SDK's own docs (`node_modules/@earendil-works/pi-coding-agent/docs/`) read against every
 `@earendil-works/pi-*` import in `src/`. Update this file when a pi surface is adopted, replaced, or dropped.
 

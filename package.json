@@ -41,8 +41,8 @@
     "dompurify": "^3.4.13"
   },
   "dependencies": {
-    "@earendil-works/pi-ai": "^1.2.0",
-    "@earendil-works/pi-coding-agent": "^1.2.0",
+    "@earendil-works/pi-ai": "^1.3.0",
+    "@earendil-works/pi-coding-agent": "^1.3.0",
     "@modelcontextprotocol/sdk": "^1.32.1",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/context-async-hooks": "^2.12.0",
@@ -79,7 +79,7 @@
     "@radix-ui/react-popover": "^1.3.1",
     "@radix-ui/react-tooltip": "^1.4.1",
     "@tailwindcss/vite": "^4.3.3",
-    "@tanstack/react-virtual": "^3.14.19",
+    "@tanstack/react-virtual": "^3.14.20",
     "@types/mark.js": "^8.11.12",
     "@types/node": "^26.6.5",
     "@types/react": "^19.2.17",
@@ -94,19 +94,19 @@
     "@xterm/addon-web-links": "^0.12.0",
     "@xterm/xterm": "^6.0.0",
     "clsx": "^2.1.1",
-    "electron": "^44.7.2",
+    "electron": "^44.8.0",
     "electron-builder": "^26.15.6",
     "electron-vite": "^5.0.0",
     "husky": "^9.1.7",
     "katex": "^0.19.0",
-    "lucide-react": "^1.56.0",
+    "lucide-react": "^1.58.0",
     "mark.js": "^8.11.1",
     "mermaid": "^12.2.0",
     "monaco-editor": "^0.57.0",
     "prettier": "^3.9.10",
-    "react": "^19.2.7",
+    "react": "^19.3.1",
     "react-diff-viewer-continued": "^4.4.0",
-    "react-dom": "^19.2.7",
+    "react-dom": "^19.3.1",
     "react-markdown": "^10.1.0",
     "react-resizable-panels": "^4.14.5",
     "rehype-katex": "^7.0.1",
@@ -120,6 +120,6 @@
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
     "vite": "^7.3.7",
-    "vitest": "^5.0.4"
+    "vitest": "^5.0.5"
   }
 }
