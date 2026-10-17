@@ -88,6 +88,8 @@ export interface ChatMessage {
    * Set to skip exactly one comparison; never persisted.
    */
   contextResetPending?: boolean;
+  /** Provider failure pi is backing off from before its next attempt. Never persisted. */
+  retry?: RetryNotice;
   /**
    * `parts` index where the last context-delta diff left off. Advances on
    * every `assistant_usage` — stamped or skipped — so a round whose usage
@@ -119,6 +121,13 @@ export interface ChatMessage {
    * to Date.now() and causing the session to jump in the sorted list.
    */
   createdAt?: number;
+}
+
+export interface RetryNotice {
+  attempt: number;
+  maxAttempts: number;
+  retryAt: number;
+  reason: string;
 }
 
 export function newId(): string {

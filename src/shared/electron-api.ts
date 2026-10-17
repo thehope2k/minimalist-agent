@@ -267,6 +267,15 @@ export type ChatStreamEvent =
       phase: 'started' | 'retrying';
       trigger?: 'manual' | 'threshold' | 'overflow';
     }
+  | {
+      id: string;
+      type: 'retry_progress';
+      phase: 'waiting' | 'done';
+      attempt?: number;
+      maxAttempts?: number;
+      delayMs?: number;
+      reason?: string;
+    }
   | { id: string; type: 'error'; error: AgentError; sessionId?: string };
 
 export interface CopilotQuota {

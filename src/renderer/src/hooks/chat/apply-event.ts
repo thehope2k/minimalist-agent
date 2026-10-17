@@ -314,6 +314,7 @@ export function applyEvent(msg: ChatMessage, evt: ChatStreamEvent): ChatMessage 
       return {
         ...msg,
         isStreaming: false,
+        retry: undefined,
         // Defensive fallback: pi-server's agent_end historically emitted turn_done
         // without a stopReason field. Guard here so a missing stopReason never
         // leaves the message in a zombie state that the interrupt detector fires on.
@@ -343,10 +344,23 @@ export function applyEvent(msg: ChatMessage, evt: ChatStreamEvent): ChatMessage 
         pendingRoundOutputTokens: evt.usage.outputTokens ?? 0,
       };
     }
+    case 'retry_progress': {
+      if (evt.phase === 'done') return msg.retry ? { ...msg, retry: undefined } : msg;
+      return {
+        ...msg,
+        retry: {
+          attempt: evt.attempt ?? 1,
+          maxAttempts: evt.maxAttempts ?? 1,
+          retryAt: Date.now() + (evt.delayMs ?? 0),
+          reason: evt.reason ?? 'Provider error',
+        },
+      };
+    }
     case 'error': {
       return {
         ...msg,
         isStreaming: false,
+        retry: undefined,
         errorInfo: evt.error,
         // Keep `error` populated for legacy renderers / external readers.
         error: evt.error.message,

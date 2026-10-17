@@ -109,4 +109,12 @@ export type AgentChatEvent =
       phase: 'started' | 'retrying';
       trigger?: 'manual' | 'threshold' | 'overflow';
     }
+  | {
+      type: 'retry_progress';
+      phase: 'waiting' | 'done';
+      attempt?: number;
+      maxAttempts?: number;
+      delayMs?: number;
+      reason?: string;
+    }
   | { type: 'error'; error: AgentError; sessionId?: string };

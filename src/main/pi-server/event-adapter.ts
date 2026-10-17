@@ -7,6 +7,7 @@
 
 import type { AgentSessionEvent } from '@earendil-works/pi-coding-agent';
 import type { AgentChatEvent } from '../agent-runtime/events';
+import type { AgentError } from '../agent-runtime/errors';
 import { parseError } from '../agent-runtime/errors';
 
 import { debug } from './event-adapter/debug';
@@ -33,12 +34,18 @@ interface AdapterState {
   emittedAnyDelta: boolean;
   /** Tool name resolved at start, used to enrich tool_result. */
   toolNameByCallId: Map<string, string>;
+  /** Provider failure held back until the run settles: pi may still recover
+   *  (auto-retry, overflow compaction), and a later good message clears it. */
+  failure?: AgentError;
+  /** True between `auto_retry_start` and the retry's first event. */
+  retryWaiting: boolean;
 }
 
 const state: AdapterState = {
   pendingText: '',
   emittedAnyDelta: false,
   toolNameByCallId: new Map(),
+  retryWaiting: false,
 };
 
 function reset(): void {
@@ -46,6 +53,13 @@ function reset(): void {
   state.emittedAnyDelta = false;
   // Don't clear toolNameByCallId — tool_execution_end may arrive after the
   // turn boundary in some Pi event orderings.
+}
+
+function endRetryWait(out: AgentChatEvent[]): AgentChatEvent[] {
+  if (!state.retryWaiting) return out;
+  state.retryWaiting = false;
+  out.push({ type: 'retry_progress', phase: 'done' });
+  return out;
 }
 
 /**
@@ -69,7 +83,7 @@ export function adaptAgentEvent(event: AgentSessionEvent): AgentChatEvent[] {
   switch (t) {
     case 'agent_start':
       reset();
-      return out;
+      return endRetryWait(out);
 
     case 'message_start': {
       const msg = (event as { message: unknown }).message;
@@ -152,10 +166,11 @@ export function adaptAgentEvent(event: AgentSessionEvent): AgentChatEvent[] {
         // start with "Anthropic ..." but the connection is Copilot — replace
         // the prefix so the raw diagnostics string isn't misleading.
         const sanitized = m.errorMessage.replace(/^Anthropic\s+/i, 'API ');
-        out.push({ type: 'error', error: parseError(new Error(sanitized)) });
+        state.failure = parseError(new Error(sanitized));
         reset();
         return out;
       }
+      state.failure = undefined;
       // pi-ai reports token usage as input/output/cacheRead/cacheWrite;
       // AgentUsage names them *InputTokens. Map across so the renderer can
       // size the context. A turn has one message_end per assistant round;
@@ -248,6 +263,7 @@ export function adaptAgentEvent(event: AgentSessionEvent): AgentChatEvent[] {
     }
 
     case 'agent_end': {
+      if (state.failure) return out;
       // Normalize successful completion to the stop reason expected by the
       // renderer so it does not show an amber badge for ordinary Pi turns.
       //
@@ -312,12 +328,39 @@ export function adaptAgentEvent(event: AgentSessionEvent): AgentChatEvent[] {
       return out;
     }
 
-    case 'auto_retry_start':
+    case 'agent_settled': {
+      const failure = state.failure;
+      state.failure = undefined;
+      if (!failure) return out;
+      if ((event as { aborted?: boolean }).aborted) {
+        out.push({ type: 'turn_done', stopReason: 'end_turn' });
+      } else {
+        out.push({ type: 'error', error: failure });
+      }
+      return out;
+    }
+
+    case 'auto_retry_start': {
+      const e = event as {
+        attempt: number;
+        maxAttempts: number;
+        delayMs: number;
+        errorMessage: string;
+      };
+      state.retryWaiting = true;
       out.push({
-        type: 'text_delta',
-        text: '\n_…retrying after a transient error…_\n',
+        type: 'retry_progress',
+        phase: 'waiting',
+        attempt: e.attempt,
+        maxAttempts: e.maxAttempts,
+        delayMs: e.delayMs,
+        reason: parseError(new Error(e.errorMessage)).title,
       });
       return out;
+    }
+
+    case 'auto_retry_end':
+      return endRetryWait(out);
 
     case 'summarization_retry_scheduled':
       out.push({ type: 'compaction_progress', phase: 'retrying' });

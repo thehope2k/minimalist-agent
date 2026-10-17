@@ -39,7 +39,7 @@ export function AssistantMessage({
         })}
         {!message.isStreaming && <TurnSummaryCard parts={message.parts} />}
         {message.isStreaming && (
-          <StreamStatus parts={message.parts} startedAt={message.createdAt} />
+          <StreamStatus parts={message.parts} startedAt={message.createdAt} retry={message.retry} />
         )}
         {plan && sessionId && (
           <div className="mt-3 border-t border-border/30 pt-3">

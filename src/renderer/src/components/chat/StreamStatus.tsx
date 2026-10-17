@@ -11,14 +11,22 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import type { MessagePart } from '@/lib/chat';
+import type { MessagePart, RetryNotice } from '@/lib/chat';
 
-export function StreamStatus({ parts, startedAt }: { parts: MessagePart[]; startedAt?: number }) {
+export function StreamStatus({
+  parts,
+  startedAt,
+  retry,
+}: {
+  parts: MessagePart[];
+  startedAt?: number;
+  retry?: RetryNotice;
+}) {
   const elapsed = useElapsed(startedAt);
-  const label = deriveLabel(parts);
+  const label = retry ? retryLabel(retry) : deriveLabel(parts);
   // Show a subtle warning after 5m — at this point the turn is taking
-  // longer than any normal response and is likely retrying a transient
-  // network error internally (the Pi/Copilot SDK auto-retries silently).
+  // longer than any normal response — a stalled connection that pi's
+  // retry loop has not yet surfaced (retries themselves show via `retry`).
   const isStalled = elapsed > 300_000;
 
   return (
@@ -32,7 +40,7 @@ export function StreamStatus({ parts, startedAt }: { parts: MessagePart[]; start
         {isStalled && (
           <span
             className="text-amber-400/80"
-            title="Turn is taking longer than usual — may be retrying a connection error"
+            title="Turn is taking longer than usual — the connection may be stalled"
           >
             ⚠️
           </span>
@@ -97,6 +105,12 @@ function verbFor(
     default:
       return `Using ${name}`;
   }
+}
+
+function retryLabel({ attempt, maxAttempts, retryAt, reason }: RetryNotice): string {
+  const seconds = Math.max(0, Math.ceil((retryAt - Date.now()) / 1000));
+  const when = seconds > 0 ? `in ${seconds}s` : 'now';
+  return `${reason} — retry ${attempt}/${maxAttempts} ${when}`;
 }
 
 function deriveLabel(parts: MessagePart[]): string {
