@@ -3,6 +3,20 @@
 All notable changes are documented here.  
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.10.0] — 2026-10-17
+
+Quality of life improvements to error recovery and retry feedback.
+
+### Added
+
+**Auto-retry**
+
+- New **Error Recovery** section in AI settings with an auto-retry toggle and a maximum-attempts input, so you control how a turn recovers from transient provider errors such as overloaded or unavailable services.
+- While a retry is pending, the stream status now shows a countdown with the attempt number and reason, instead of an inline "retrying" text or an immediate error.
+- Provider failures are only reported if the turn still fails after auto-retry or overflow compaction has had a chance to recover.
+
+---
+
 ## [2.9.0] — 2026-10-16
 
 Quality of life improvements to session branching and bug fixes for retry and @ mentions.
