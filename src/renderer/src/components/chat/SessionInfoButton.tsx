@@ -4,17 +4,16 @@ import { Info } from 'lucide-react';
 import { Button } from '../ui';
 import { TitleEditor } from './session-info/TitleEditor';
 import { SessionIdRow } from './session-info/SessionIdRow';
-import { UsageSection } from './session-info/UsageSection';
 import { FileTree } from './session-info/FileTree';
 import { useSessionFiles } from './session-info/useSessionFiles';
 import { useTitleEditor } from './session-info/useTitleEditor';
 import type { SessionInfoButtonProps } from './session-info/types';
 
 /**
- * Session info popover — title editor, token usage, file tree.
+ * Session info popover — title editor, session id, file tree.
  * Orchestrates title editing and session file loading.
  */
-export function SessionInfoButton({ sessionId, title, messages }: SessionInfoButtonProps) {
+export function SessionInfoButton({ sessionId, title }: SessionInfoButtonProps) {
   const [open, setOpen] = useState(false);
   const disabled = !sessionId;
 
@@ -54,8 +53,6 @@ export function SessionInfoButton({ sessionId, title, messages }: SessionInfoBut
           />
 
           {sessionId && <SessionIdRow sessionId={sessionId} />}
-
-          <UsageSection messages={messages} />
 
           <div className="mt-4 mb-1 flex items-center justify-between">
             <span className="text-[11px] font-medium uppercase tracking-wider text-fg-subtle">

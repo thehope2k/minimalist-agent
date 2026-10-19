@@ -86,6 +86,7 @@ configureHttpIdleTimeout(HTTP_IDLE_TIMEOUT_MS);
 import { adaptAgentEvent } from './event-adapter';
 import { createWebFetchTool, createWebSearchTool } from './web-tools';
 import { withBashDescription } from './bash-description';
+import { computeContextBreakdown } from './context-breakdown';
 import { createBrowserTool } from './browser-tool';
 import { probeMcpServers } from './mcp-diagnostics';
 import { buildLoadedMcpConfig } from './mcp-native-config';
@@ -765,6 +766,18 @@ async function handlePrompt(msg: MsgPrompt): Promise<void> {
 
   state.currentTurnId = msg.turnId;
   state.turnAbort = new AbortController();
+
+  try {
+    const breakdown = computeContextBreakdown(state.session!);
+    const out: MsgEvent = {
+      type: 'event',
+      turnId: msg.turnId,
+      event: { type: 'context_breakdown', breakdown },
+    };
+    send(out);
+  } catch (e) {
+    log.warn('context breakdown failed:', errMessage(e));
+  }
 
   // Open the GenAI `invoke_agent` span. Child spans (chat, execute_tool) nest
   // under its context; it stays open until session.prompt() settles below.

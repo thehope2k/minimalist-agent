@@ -1,3 +1,4 @@
+import type { ContextBreakdown } from '../../shared/electron-api';
 import type { PermissionMode, ThinkingLevel } from './settings';
 
 export type ChatRole = 'user' | 'assistant';
@@ -49,6 +50,7 @@ export interface StoredMessage {
   stopReason?: string;
   usage?: MessageUsage;
   latestCallUsage?: MessageUsage;
+  contextBreakdown?: ContextBreakdown;
   durationMs?: number;
   createdAt: number;
   attachments?: StoredAttachment[];

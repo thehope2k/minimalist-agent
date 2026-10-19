@@ -267,6 +267,7 @@ export type ChatStreamEvent =
       phase: 'started' | 'retrying';
       trigger?: 'manual' | 'threshold' | 'overflow';
     }
+  | { id: string; type: 'context_breakdown'; breakdown: ContextBreakdown }
   | {
       id: string;
       type: 'retry_progress';
@@ -277,6 +278,26 @@ export type ChatStreamEvent =
       reason?: string;
     }
   | { id: string; type: 'error'; error: AgentError; sessionId?: string };
+
+/**
+ * Estimated size (≈ chars / 4) of the fixed part every request carries.
+ * The conversation share is derived in the renderer as the real context
+ * total minus these, so only the split is estimated, never the total.
+ */
+export interface ContextBreakdown {
+  systemPrompt: number;
+  /** AGENTS.md / CLAUDE.md content and file listing inside the system prompt. */
+  projectInstructions: number;
+  builtinTools: { tokens: number; count: number };
+  mcpServers: Array<{
+    name: string;
+    tokens: number;
+    count: number;
+    /** Tools registered but not sent to the model (deferred exposure). */
+    deferredTokens: number;
+    deferredCount: number;
+  }>;
+}
 
 export interface CopilotQuota {
   /** Percentage of usage allowance *remaining* this month (0–100). */
@@ -485,6 +506,8 @@ export interface StoredMessage {
    * context right now" should prefer this field over `usage`.
    */
   latestCallUsage?: AgentUsage;
+  /** Fixed-context breakdown captured at the start of this turn. */
+  contextBreakdown?: ContextBreakdown;
   /** Total wall-clock duration of the turn in milliseconds. */
   durationMs?: number;
   /**

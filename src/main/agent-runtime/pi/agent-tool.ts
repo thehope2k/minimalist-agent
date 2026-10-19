@@ -133,7 +133,8 @@ export function createAgentTool(
             event.type === 'tool_progress' ||
             event.type === 'compaction' ||
             event.type === 'compaction_progress' ||
-            event.type === 'retry_progress'
+            event.type === 'retry_progress' ||
+            event.type === 'context_breakdown'
           )
             return;
           emitSubagentUpdate(onUpdate, {

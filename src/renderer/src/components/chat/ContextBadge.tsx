@@ -1,6 +1,14 @@
+import * as Popover from '@radix-ui/react-popover';
 import { cn } from '@/lib/utils';
 import type { ChatMessage } from '@/lib/chat';
-import { Tooltip } from '../ui';
+import { ContextPopover } from './context-badge/ContextPopover';
+import {
+  buildSegments,
+  compact,
+  countCompactions,
+  lastTurnUsage,
+  latestBreakdown,
+} from './context-badge/usage';
 
 type Props = {
   messages: ChatMessage[];
@@ -11,148 +19,78 @@ type Props = {
 };
 
 /**
- * Compact "context used" chip — shows the model's CURRENT total context
- * occupancy (input + output + cache_read + cache_create of the most recent
- * completed round) vs its context window.
- *
- * This deliberately mirrors the Pi SDK's own compaction trigger
- * (`calculateContextTokens` in @earendil-works/pi-coding-agent) token for
- * token: input+output+cacheRead+cacheWrite from the last round is exactly
- * what the SDK compares against `contextWindow - reserveTokens` to decide
- * whether to auto-compact. Showing the same number here means the badge's
- * percentage and "auto-compacts near ~X%" line are a reliable preview of
- * the SDK's own decision, not a separate approximation — including staying
- * in sync when compaction actually shrinks the last-round usage.
- *
- * cache_read tokens ARE counted (unlike an earlier version of this badge):
- * they are still real tokens the model had to hold in context for this
- * request, they just weren't billed as fresh input. The instantaneous
- * "how much was new this round" pressure signal lives in the tooltip
- * instead of the headline number.
+ * Compact "context used" chip — the model's current context occupancy vs its
+ * window, matching pi's own compaction trigger token for token (see
+ * `lastTurnUsage`). Click for what that context is spent on.
  */
 export function ContextBadge({ messages, contextWindow, reserveTokens, className }: Props) {
   const usage = lastTurnUsage(messages);
   if (!usage || contextWindow <= 0) return null;
 
-  // Same formula as the SDK's calculateContextTokens(): the full size of
-  // what the next request will carry, as of the last completed round.
-  const contextTokens = usage.total;
-  const live = usage.input + usage.cacheCreate;
-  const pct = Math.min(100, Math.round((contextTokens / contextWindow) * 100));
-
+  const pct = Math.min(100, Math.round((usage.total / contextWindow) * 100));
   const compactAt = Math.max(0, contextWindow - reserveTokens);
-  const compactPct = Math.round((compactAt / contextWindow) * 100);
-  const willCompactSoon = contextTokens >= compactAt;
-
   const compactionCount = countCompactions(messages);
+  const breakdown = latestBreakdown(messages);
+  const segments = buildSegments({ used: usage.total, contextWindow, reserveTokens, breakdown });
 
   const tone =
     pct >= 95
       ? 'border-red-500/40 bg-red-500/10 text-red-300'
       : pct >= 80
         ? 'border-amber-500/40 bg-amber-500/10 text-amber-300'
-        : 'border-border bg-elevated/40 text-fg-subtle';
-
-  const tooltipContent = (
-    <div className="space-y-1.5 font-mono text-[11px]">
-      <div className="font-semibold">
-        Context: {contextTokens.toLocaleString()} / {contextWindow.toLocaleString()} tokens
-        {usage.estimated && (
-          <span className="ml-1 font-normal text-fg-subtle">(post-compaction estimate)</span>
-        )}
-      </div>
-      {!usage.estimated && (
-        <div className="text-fg-muted whitespace-nowrap">
-          Added this round: {live.toLocaleString()} tokens
-        </div>
-      )}
-      <div className="border-t border-border pt-1.5">
-        {compactionCount > 0 ? (
-          <div className="text-fg-muted">
-            Compacted {compactionCount}× — older history summarised
-          </div>
-        ) : (
-          <div className="text-fg-subtle">Not yet compacted</div>
-        )}
-      </div>
-      <div className="text-fg-subtle text-[10px] whitespace-nowrap">
-        {willCompactSoon
-          ? '⚠ Auto-compaction imminent — older history compresses next turn.'
-          : `Auto-compacts near the limit (~${compactPct}%, ${compactAt.toLocaleString()} tokens).`}
-      </div>
-    </div>
-  );
+        : 'border-border bg-elevated/40 text-fg-subtle hover:text-fg-muted';
+  const fill = pct >= 95 ? 'bg-red-500/25' : pct >= 80 ? 'bg-amber-500/25' : 'bg-accent/25';
 
   return (
-    <Tooltip content={tooltipContent} side="top" className="max-w-none">
-      <span
-        className={cn(
-          'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 font-mono text-[10px]',
-          tone,
-          className,
-        )}
-      >
-        <span>{pct}%</span>
-        <span className="opacity-60">·</span>
-        <span>
-          {compact(contextTokens)} / {compact(contextWindow)}
-        </span>
-        {compactionCount > 0 && (
-          <>
-            <span className="opacity-40">·</span>
-            <span className="opacity-70">{compactionCount}×</span>
-          </>
-        )}
-      </span>
-    </Tooltip>
+    <Popover.Root>
+      <Popover.Trigger asChild>
+        <button
+          type="button"
+          aria-label="Context usage"
+          className={cn(
+            'relative inline-flex overflow-hidden rounded-md border px-2 py-0.5 font-mono text-[10px] transition-colors',
+            tone,
+            className,
+          )}
+        >
+          <span
+            aria-hidden
+            className={cn('absolute inset-y-0 left-0 transition-[width] duration-300', fill)}
+            style={{ width: `${pct}%` }}
+          />
+          <span className="relative inline-flex items-center gap-1.5">
+            <span>{pct}%</span>
+            <span className="opacity-60">·</span>
+            <span>
+              {compact(usage.total)} / {compact(contextWindow)}
+            </span>
+            {compactionCount > 0 && (
+              <>
+                <span className="opacity-40">·</span>
+                <span className="opacity-70">{compactionCount}×</span>
+              </>
+            )}
+          </span>
+        </button>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content
+          side="top"
+          align="end"
+          sideOffset={6}
+          collisionPadding={8}
+          className="z-50 w-[300px] rounded-lg border border-border bg-panel p-3 shadow-2xl"
+        >
+          <ContextPopover
+            usage={usage}
+            contextWindow={contextWindow}
+            segments={segments}
+            breakdown={breakdown}
+            compactAt={compactAt}
+            compactionCount={compactionCount}
+          />
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
   );
-}
-
-interface TurnUsage {
-  input: number;
-  output: number;
-  cacheRead: number;
-  cacheCreate: number;
-  total: number;
-  /** True when derived from a compaction's postTokens estimate rather than
-   *  a real API usage report — the input/output/cache split isn't real. */
-  estimated: boolean;
-}
-
-function lastTurnUsage(messages: ChatMessage[]): TurnUsage | null {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const m = messages[i];
-    if (m.role !== 'assistant') continue;
-    if (m.markerKind === 'compaction') {
-      const post = m.compactionMeta?.status === 'success' ? m.compactionMeta.postTokens : undefined;
-      if (post == null) continue;
-      return { input: 0, output: 0, cacheRead: 0, cacheCreate: 0, total: post, estimated: true };
-    }
-    const u = m.latestCallUsage ?? m.usage;
-    if (!u) continue;
-    const input = u.inputTokens ?? 0;
-    const output = u.outputTokens ?? 0;
-    const cacheRead = u.cacheReadInputTokens ?? 0;
-    const cacheCreate = u.cacheCreationInputTokens ?? 0;
-    const total = input + output + cacheRead + cacheCreate;
-    if (total > 0) {
-      return { input, output, cacheRead, cacheCreate, total, estimated: false };
-    }
-  }
-  return null;
-}
-
-function countCompactions(messages: ChatMessage[]): number {
-  return messages.filter(
-    (m) =>
-      m.role === 'assistant' &&
-      m.markerKind === 'compaction' &&
-      m.compactionMeta?.status !== 'failed',
-  ).length;
-}
-
-function compact(n: number): string {
-  if (n < 1000) return String(n);
-  if (n < 1_000_000) return `${(n / 1000).toFixed(n < 10_000 ? 1 : 0).replace(/\.0$/, '')}k`;
-  return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, '')}m`;
 }

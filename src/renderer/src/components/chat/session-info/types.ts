@@ -1,11 +1,7 @@
-import type { ChatMessage } from '@/lib/chat';
-
 export interface SessionInfoButtonProps {
   sessionId: string | null;
   /** Current title (read from session meta upstream). */
   title: string;
-  /** Current conversation — used for the session-usage row. */
-  messages: ChatMessage[];
 }
 
 /** Per-level horizontal indent. */

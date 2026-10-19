@@ -2,6 +2,7 @@ import type {
   AgentError,
   ChatRole,
   CompactionMeta,
+  ContextBreakdown,
   StoredAttachment,
   StoredMessage,
   StoredMessagePart,
@@ -81,6 +82,8 @@ export interface ChatMessage {
    * session reload — see `usage` for the round-trip counterpart.
    */
   latestCallUsage?: AgentUsage;
+  /** Fixed-context breakdown captured at the start of this turn. Persisted. */
+  contextBreakdown?: ContextBreakdown;
   /**
    * A mid-turn compaction shrinks context out from under a still-streaming
    * message, so the next `assistant_usage` can't be diffed against a
@@ -225,6 +228,7 @@ export function chatFromStored(stored: StoredMessage): ChatMessage {
     stopReason: stored.stopReason,
     usage: stored.usage,
     latestCallUsage: stored.latestCallUsage,
+    contextBreakdown: stored.contextBreakdown,
     durationMs: stored.durationMs,
     intentTag: stored.intentTag,
     attachments: stored.attachments,
@@ -259,6 +263,7 @@ export function chatToStored(msg: ChatMessage): StoredMessage {
     stopReason: msg.stopReason,
     usage: msg.usage,
     latestCallUsage: msg.latestCallUsage,
+    contextBreakdown: msg.contextBreakdown,
     durationMs: msg.durationMs,
     intentTag: msg.intentTag,
     attachments: msg.attachments,

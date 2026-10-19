@@ -1,6 +1,9 @@
 import { compactNumber } from '../../message-list/utils';
 import { Tooltip } from '@/components/ui';
 
+// Small deltas are routine; only a call that blew up the context is worth a badge.
+const MIN_VISIBLE_DELTA = 5_000;
+
 interface Props {
   contextDelta?: number;
   contextDeltaGroupSize?: number;
@@ -8,7 +11,7 @@ interface Props {
 
 /** Shared by ChipBody and DiffPart so both chip families render this consistently. */
 export function ContextDeltaBadge({ contextDelta, contextDeltaGroupSize }: Props) {
-  if (contextDelta == null || contextDelta <= 0) return null;
+  if (contextDelta == null || contextDelta < MIN_VISIBLE_DELTA) return null;
 
   const label = `+${compactNumber(contextDelta)}`;
   const tooltip =

@@ -5,6 +5,7 @@
 // AgentChatEvent translation lives in `pi-server/event-adapter.ts`.
 
 import type { AgentError } from './errors';
+import type { ContextBreakdown } from '../../shared/electron-api';
 
 export type { AgentError };
 
@@ -109,6 +110,7 @@ export type AgentChatEvent =
       phase: 'started' | 'retrying';
       trigger?: 'manual' | 'threshold' | 'overflow';
     }
+  | { type: 'context_breakdown'; breakdown: ContextBreakdown }
   | {
       type: 'retry_progress';
       phase: 'waiting' | 'done';

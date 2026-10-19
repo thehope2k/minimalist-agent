@@ -95,7 +95,7 @@ export function MessageToolbar({
           }
         />
       )}
-      <SessionInfoButton sessionId={sessionId} title={title} messages={messages} />
+      <SessionInfoButton sessionId={sessionId} title={title} />
       {onMinimize && (
         // Disabled while streaming so abort/steer stay reachable.
         <IconButton

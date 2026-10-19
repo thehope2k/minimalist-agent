@@ -344,6 +344,8 @@ export function applyEvent(msg: ChatMessage, evt: ChatStreamEvent): ChatMessage 
         pendingRoundOutputTokens: evt.usage.outputTokens ?? 0,
       };
     }
+    case 'context_breakdown':
+      return { ...msg, contextBreakdown: evt.breakdown };
     case 'retry_progress': {
       if (evt.phase === 'done') return msg.retry ? { ...msg, retry: undefined } : msg;
       return {

@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Brain, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Markdown } from './markdown/Markdown';
-import { RoundOutputBadge } from './RoundOutputBadge';
 import { useChipChrome } from './chip-chrome';
 
 export function ThinkingPart({ text, outputTokens }: { text: string; outputTokens?: number }) {
@@ -30,13 +29,15 @@ export function ThinkingPart({ text, outputTokens }: { text: string; outputToken
             </span>
           </>
         )}
-        <span className="ml-auto shrink-0">
-          <RoundOutputBadge outputTokens={outputTokens} />
-        </span>
       </button>
       {open && (
         <div className="border-t border-border px-3 py-2 text-sm italic text-fg-subtle">
           <Markdown text={text} />
+          {outputTokens ? (
+            <div className="mt-2 font-mono text-[11px] not-italic text-fg-subtle">
+              {outputTokens.toLocaleString()} tokens generated this round
+            </div>
+          ) : null}
         </div>
       )}
     </div>
