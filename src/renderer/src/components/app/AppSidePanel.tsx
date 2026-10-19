@@ -1,6 +1,6 @@
 import type { ComponentProps } from 'react';
 import { ContextPanel } from '../context/ContextPanel';
-import { FileExplorerPanel } from '../files';
+import { FileExplorerPanel, FileViewPanel } from '../files';
 import { BrowserPanel } from '../browser/BrowserPanel';
 import type { ActiveSidePanel } from './usePanelStates';
 import { reload as reloadSessions, type SessionMeta } from '@/lib/sessions';
@@ -11,7 +11,11 @@ interface AppSidePanelProps {
   activeSessionId: string | null;
   fileExplorerOpen: boolean;
   sessions: SessionMeta[] | null;
+  viewFile: { absolutePath: string; lineNumber: number } | null;
+  fileOrigin: ActiveSidePanel;
   onOpenFile: (absolutePath: string, lineNumber: number) => void;
+  onCloseFile: () => void;
+  onHideFile: () => void;
   onToggleFileExplorer: () => void;
   onToggleContextPanel: () => void;
   onToggleBrowserPanel: () => void;
@@ -24,7 +28,11 @@ export function AppSidePanel({
   activeSessionId,
   fileExplorerOpen,
   sessions,
+  viewFile,
+  fileOrigin,
   onOpenFile,
+  onCloseFile,
+  onHideFile,
   onToggleFileExplorer,
   onToggleContextPanel,
   onToggleBrowserPanel,
@@ -32,6 +40,18 @@ export function AppSidePanel({
 }: AppSidePanelProps) {
   if (activeSidePanel === 'browser') {
     return <BrowserPanel sessionId={activeSessionId} onHidePanel={onToggleBrowserPanel} />;
+  }
+
+  if (activeSidePanel === 'file') {
+    return viewFile ? (
+      <FileViewPanel
+        absolutePath={viewFile.absolutePath}
+        lineNumber={viewFile.lineNumber}
+        onClose={onHideFile}
+        onBack={fileOrigin ? onCloseFile : undefined}
+        onOpenFile={onOpenFile}
+      />
+    ) : null;
   }
 
   if (activeSidePanel === 'explorer') {

@@ -1,8 +1,11 @@
-export interface FileViewModalProps {
+export interface FileViewPanelProps {
   absolutePath: string;
   /** 1-based line to scroll to (grep results). 1 = top. */
   lineNumber: number;
+  /** Hides the side panel entirely. */
   onClose: () => void;
+  /** Returns to the panel that was showing before the file opened; absent when there was none. */
+  onBack?: () => void;
   onOpenFile: (absolutePath: string, lineNumber: number) => void;
 }
 

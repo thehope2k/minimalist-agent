@@ -27,10 +27,15 @@ export default function App() {
   const [viewFile, setViewFile] = useState<{ absolutePath: string; lineNumber: number } | null>(
     null,
   );
-  const handleOpenFile = useCallback((absolutePath: string, lineNumber: number) => {
-    pushRecentFile(absolutePath, lineNumber);
-    setViewFile({ absolutePath, lineNumber });
-  }, []);
+  const { openFilePanel } = panels;
+  const handleOpenFile = useCallback(
+    (absolutePath: string, lineNumber: number) => {
+      pushRecentFile(absolutePath, lineNumber);
+      setViewFile({ absolutePath, lineNumber });
+      openFilePanel();
+    },
+    [openFilePanel],
+  );
 
   useKeyboardShortcuts(
     navigation.view,
@@ -64,7 +69,6 @@ export default function App() {
       activeCwd={activeCwd}
       setActiveCwd={setActiveCwd}
       viewFile={viewFile}
-      setViewFile={setViewFile}
       onOpenFile={handleOpenFile}
       mainPanels={mainPanels}
       terminalPanels={terminalPanels}

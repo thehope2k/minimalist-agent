@@ -2,7 +2,6 @@ import type { Dispatch, SetStateAction } from 'react';
 import { TopBar } from '../layout/TopBar';
 import { UpdateBanner } from '../UpdateBanner';
 import { TerminalPanel } from '../terminal/TerminalPanel';
-import { FileViewModal } from '../search/FileViewModal';
 import { DesktopPetGate } from '../pet/DesktopPetGate';
 import { TooltipProvider, ResizablePanelGroup, ResizablePanel, ResizableHandle } from '../ui';
 import { MainContent } from './MainContent';
@@ -25,7 +24,6 @@ interface AppLayoutProps {
   activeCwd: string | undefined;
   setActiveCwd: Dispatch<SetStateAction<string | undefined>>;
   viewFile: { absolutePath: string; lineNumber: number } | null;
-  setViewFile: Dispatch<SetStateAction<{ absolutePath: string; lineNumber: number } | null>>;
   onOpenFile: (absolutePath: string, lineNumber: number) => void;
   mainPanels: ReturnType<typeof useResizablePanels>;
   terminalPanels: ReturnType<typeof useResizablePanels>;
@@ -40,7 +38,6 @@ export function AppLayout({
   activeCwd,
   setActiveCwd,
   viewFile,
-  setViewFile,
   onOpenFile,
   mainPanels,
   terminalPanels,
@@ -75,6 +72,9 @@ export function AppLayout({
     toggleBrowserPanel,
     openBrowserPanel,
     browserPanelOpen,
+    toggleFilePanel,
+    closeFilePanel,
+    fileOrigin,
   } = panels;
   const {
     activeSessionId,
@@ -196,7 +196,11 @@ export function AppLayout({
                             activeSessionId={activeSessionId}
                             fileExplorerOpen={fileExplorerOpen}
                             sessions={sessions}
+                            viewFile={viewFile}
+                            fileOrigin={fileOrigin}
                             onOpenFile={onOpenFile}
+                            onCloseFile={closeFilePanel}
+                            onHideFile={toggleFilePanel}
                             onToggleFileExplorer={toggleFileExplorer}
                             onToggleContextPanel={toggleContextPanel}
                             onToggleBrowserPanel={toggleBrowserPanel}
@@ -230,14 +234,6 @@ export function AppLayout({
               </ResizablePanel>
             </ResizablePanelGroup>
           </div>
-          {viewFile && (
-            <FileViewModal
-              absolutePath={viewFile.absolutePath}
-              lineNumber={viewFile.lineNumber}
-              onClose={() => setViewFile(null)}
-              onOpenFile={onOpenFile}
-            />
-          )}
           <DesktopPetGate isStreaming={streamingSessionIds.size > 0} />
         </div>
       </TooltipProvider>

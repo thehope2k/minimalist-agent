@@ -18,7 +18,7 @@ The File Explorer is a read-only sidebar (Cmd+B) that displays the current sessi
 
 - **Collapsible panel** — Hidden by default, appears on right side when opened
 - **Tree navigation** — Expand/collapse folders, arrow key navigation
-- **File opening** — Double-click or Enter opens files in FileViewModal
+- **File opening** — Double-click or Enter opens files in FileViewPanel
 - **Gitignore filtering** — Automatically hides node_modules, .git, build artifacts
 - **Inline search** — Filter tree by filename with live results
 - **Context menu** — Right-click to copy paths or reveal in Finder
@@ -86,7 +86,7 @@ The File Explorer is a read-only sidebar (Cmd+B) that displays the current sessi
 | **↓**     | Move selection down                         |
 | **→**     | Expand folder                               |
 | **←**     | Collapse folder                             |
-| **Enter** | Open file in FileViewModal                  |
+| **Enter** | Open file in FileViewPanel                  |
 | **Esc**   | Close panel                                 |
 | **Cmd+F** | Focus filter input (if not already focused) |
 
@@ -318,7 +318,7 @@ No files match filter
 
 - Copy paths to clipboard
 - Reveal in Finder
-- Open files in FileViewModal
+- Open files in FileViewPanel
 - Attach files via @-mention picker
 
 ### Why Right Sidebar?
@@ -367,9 +367,10 @@ No files match filter
 
 ## Integration with Other Features
 
-### FileViewModal
+### FileViewPanel
 
-- Explorer opens files in the same viewer as Search Everywhere and Recent Files
+- Explorer opens files in the same viewer as Search Everywhere and Recent Files: the `file` kind of the right side panel (`components/files/FileViewPanel.tsx`), not a modal
+- Header has Back (to the panel it replaced), Full screen (re-hosts the view in `ExpandModal`), and Close
 - Shared `handleOpenFile` callback lifted to App.tsx
 - Files open with line number 1 (no line highlighting from tree)
 

@@ -2,29 +2,30 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { usePanelRef } from 'react-resizable-panels';
 import type { PanelImperativeHandle } from 'react-resizable-panels';
 
-export type SidePanelKind = 'explorer' | 'context' | 'browser';
+export type SidePanelKind = 'explorer' | 'context' | 'browser' | 'file';
 export type ActiveSidePanel = SidePanelKind | null;
 
 // Opening width per kind; afterwards each kind remembers the user's width.
-// The browser needs room for a real page layout.
+// The browser and file viewer need room for real content.
 const DEFAULT_SIDE_WIDTH: Record<SidePanelKind, number> = {
   explorer: 30,
   context: 30,
   browser: 45,
+  file: 60,
 };
 // Below this the stored width is a drag-to-collapse remnant, not a choice.
 const MIN_REMEMBERED_WIDTH = 15;
 
 /** Max width of the right side panel; the browser gets more room. */
 export function sidePanelMaxSize(kind: ActiveSidePanel): string {
-  return kind === 'browser' ? '70%' : '40%';
+  return kind === 'browser' || kind === 'file' ? '70%' : '40%';
 }
 
 /**
  * Manages state for collapsible panels (sidebar, terminal, side panel).
  *
- * The right side panel is a single slot — 'explorer', 'context', and
- * 'browser' are mutually exclusive content rendered inside it. This avoids
+ * The right side panel is a single slot — 'explorer', 'context',
+ * 'browser', and 'file' are mutually exclusive content rendered inside it. This avoids
  * having several panel refs fighting over the same layout region.
  */
 export function usePanelStates() {
@@ -38,6 +39,9 @@ export function usePanelStates() {
 
   const terminalOpenRef = useRef(terminalOpen);
   terminalOpenRef.current = terminalOpen;
+
+  // The panel a file was opened from, so the viewer's Back button can return to it.
+  const [fileOrigin, setFileOrigin] = useState<SidePanelKind | null>(null);
 
   const sideWidths = useRef({ ...DEFAULT_SIDE_WIDTH });
   // Resizing must wait until the new kind's maxSize prop has rendered, or a
@@ -102,6 +106,7 @@ export function usePanelStates() {
   const toggleFileExplorer = useCallback(() => toggleSidePanel('explorer'), [toggleSidePanel]);
   const toggleContextPanel = useCallback(() => toggleSidePanel('context'), [toggleSidePanel]);
   const toggleBrowserPanel = useCallback(() => toggleSidePanel('browser'), [toggleSidePanel]);
+  const toggleFilePanel = useCallback(() => toggleSidePanel('file'), [toggleSidePanel]);
 
   /** Opens the browser panel without toggling it closed if it's already showing. */
   const openBrowserPanel = useCallback(() => {
@@ -109,6 +114,27 @@ export function usePanelStates() {
     if (activeSidePanel === 'browser' && p && !p.isCollapsed()) return;
     toggleSidePanel('browser');
   }, [activeSidePanel, sidePanelRef, toggleSidePanel]);
+
+  /** Shows the file viewer, remembering the panel it replaced; re-opening just swaps the file. */
+  const openFilePanel = useCallback(() => {
+    const p = sidePanelRef.current;
+    if (activeSidePanel === 'file' && p && !p.isCollapsed()) return;
+    setFileOrigin(activeSidePanel !== null && activeSidePanel !== 'file' ? activeSidePanel : null);
+    toggleSidePanel('file');
+  }, [activeSidePanel, sidePanelRef, toggleSidePanel]);
+
+  /** Leaves the file viewer for the panel it was opened from, or closes the side panel. */
+  const closeFilePanel = useCallback(() => {
+    if (activeSidePanel !== 'file') return;
+    if (fileOrigin) {
+      rememberWidth('file');
+      pendingSideWidth.current = sideWidths.current[fileOrigin];
+      setActiveSidePanel(fileOrigin);
+    } else {
+      toggleSidePanel('file');
+    }
+    setFileOrigin(null);
+  }, [activeSidePanel, fileOrigin, rememberWidth, toggleSidePanel]);
 
   // Ensure terminal and side panel start collapsed on mount
   useEffect(() => {
@@ -143,5 +169,9 @@ export function usePanelStates() {
     toggleContextPanel,
     toggleBrowserPanel,
     openBrowserPanel,
+    toggleFilePanel,
+    openFilePanel,
+    closeFilePanel,
+    fileOrigin,
   };
 }
