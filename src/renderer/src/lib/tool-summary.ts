@@ -177,6 +177,13 @@ export function summarizeToolCall(name: string, input: unknown, cwd?: string): s
       return clip(sub ? `${sub}: ${desc}` : desc);
     }
 
+    case 'browser_tool': {
+      if (Array.isArray(o.commands)) {
+        return clip(o.commands.filter((c) => typeof c === 'string').join(' → '));
+      }
+      return typeof o.command === 'string' ? clip(o.command) : '';
+    }
+
     case 'ExitPlanMode': {
       const plan = typeof o.plan === 'string' ? o.plan.split('\n')[0] : '';
       return clip(plan);
@@ -224,6 +231,8 @@ export function iconForTool(name: string): LucideIcon {
       return Bot;
     case 'ExitPlanMode':
       return FolderTree;
+    case 'browser_tool':
+      return Globe;
     default:
       return Hammer;
   }

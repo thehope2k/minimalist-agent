@@ -12,8 +12,14 @@ import {
   BrowserCDP,
   MAX_Z_INDEX,
   type AccessibilitySnapshot,
+  type ColorScheme,
   type ConsoleLogEntry,
+  type Screenshot,
+  type ScreenshotOptions,
+  type SnapshotOptions,
+  type ViewportOverride,
 } from './browser-cdp';
+import { NetworkLog, type NetworkEntry, type NetworkQuery } from './browser-network-log';
 
 const log = createLogger('browser-pane');
 
@@ -40,7 +46,10 @@ export type BrowserPaneStateListener = (state: BrowserPaneState) => void;
 interface PaneEntry {
   window: BrowserWindow;
   cdp: BrowserCDP;
+  network: NetworkLog;
   agentControl: boolean;
+  /** Settles once the initial about:blank load has finished (or been aborted). */
+  ready: Promise<unknown>;
 }
 
 function isReleaseShortcut(input: Electron.Input): boolean {
@@ -168,8 +177,13 @@ class BrowserPaneManager {
     const entry: PaneEntry = {
       window,
       cdp: new BrowserCDP(window.webContents),
+      network: new NetworkLog(window.webContents.session),
       agentControl: true,
+      // Gives the window a renderer target before any CDP command or
+      // loadURL races it — see BrowserCDP.setReady.
+      ready: window.loadURL('about:blank').catch(() => undefined),
     };
+    entry.cdp.setReady(entry.ready);
     this.panes.set(sessionId, entry);
 
     // `navigate` validates its own argument, but a redirect, link, or
@@ -228,13 +242,20 @@ class BrowserPaneManager {
       );
     }
 
-    const existing = this.panes.get(sessionId);
-    const entry =
-      existing && !existing.window.isDestroyed()
-        ? this.requireControlledPane(sessionId)
-        : this.open(sessionId);
+    const entry = this.controlledOrOpen(sessionId);
+    // A loadURL issued while the initial about:blank is still loading can
+    // lose the race and leave the window on about:blank.
+    await entry.ready;
     await entry.window.loadURL(url);
     return { url: entry.window.webContents.getURL(), title: entry.window.webContents.getTitle() };
+  }
+
+  /** Commands that set the window up (navigate, emulation) open it on demand. */
+  private controlledOrOpen(sessionId: string): PaneEntry {
+    const existing = this.panes.get(sessionId);
+    return existing && !existing.window.isDestroyed()
+      ? this.requireControlledPane(sessionId)
+      : this.open(sessionId);
   }
 
   ensureOpen(sessionId: string): BrowserPaneState {
@@ -250,8 +271,24 @@ class BrowserPaneManager {
     this.requireControlledPane(sessionId).window.webContents.navigationHistory.goForward();
   }
 
-  snapshot(sessionId: string): Promise<AccessibilitySnapshot> {
-    return this.requirePane(sessionId).cdp.getAccessibilitySnapshot();
+  snapshot(sessionId: string, options?: SnapshotOptions): Promise<AccessibilitySnapshot> {
+    return this.requirePane(sessionId).cdp.getAccessibilitySnapshot(options);
+  }
+
+  pageText(sessionId: string): Promise<string> {
+    return this.requirePane(sessionId).cdp.getPageText();
+  }
+
+  network(sessionId: string, query: NetworkQuery): NetworkEntry[] {
+    return this.requirePane(sessionId).network.query(query);
+  }
+
+  setViewport(sessionId: string, viewport: ViewportOverride | null): Promise<void> {
+    return this.controlledOrOpen(sessionId).cdp.setViewport(viewport);
+  }
+
+  setColorScheme(sessionId: string, scheme: ColorScheme | null): Promise<void> {
+    return this.controlledOrOpen(sessionId).cdp.setColorScheme(scheme);
   }
 
   click(sessionId: string, ref: string): Promise<void> {
@@ -294,7 +331,7 @@ class BrowserPaneManager {
     return cdp.scrollBy(dx, dy);
   }
 
-  screenshot(sessionId: string, options: { annotated?: boolean }): Promise<Buffer> {
+  screenshot(sessionId: string, options: ScreenshotOptions): Promise<Screenshot> {
     return this.requirePane(sessionId).cdp.captureScreenshot(options);
   }
 

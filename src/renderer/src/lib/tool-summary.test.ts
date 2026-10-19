@@ -23,3 +23,11 @@ describe('toolIntentLabel', () => {
     ).toBe('npm test');
   });
 });
+
+describe('browser_tool summary', () => {
+  it('joins batched commands', () => {
+    expect(
+      summarizeToolCall('browser_tool', { commands: ['navigate http://x', 'find Login'] }),
+    ).toBe('navigate http://x → find Login');
+  });
+});

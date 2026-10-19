@@ -4,7 +4,7 @@
 // use) so element interaction is ref-based and deterministic instead of
 // blind coordinate guessing. Trimmed to the commands `browser_tool` actually
 // exposes — see docs/BROWSER-TOOL.md for the full command list and the
-// deferred commands (drag/click-at, clipboard, upload, wait, network log).
+// deferred commands (drag/click-at, clipboard, upload, wait).
 
 import type { WebContents } from 'electron';
 import { createLogger } from '../logger';
@@ -13,7 +13,14 @@ const log = createLogger('browser-cdp');
 
 const CDP_PROTOCOL_VERSION = '1.3';
 export const MAX_SNAPSHOT_NODES = 300;
+const MAX_FIND_RESULTS = 20;
+// Retina panes would otherwise return ~2560px-wide PNGs — a large, mostly
+// wasted image-token cost per screenshot.
+const MAX_SCREENSHOT_WIDTH_PX = 1280;
 const IDLE_DETACH_MS = 5_000;
+// A CDP command against a hung or page-less target never settles; fail the
+// tool call instead of hanging the turn.
+const COMMAND_TIMEOUT_MS = 15_000;
 const MAX_CONSOLE_ENTRIES = 200;
 const OVERLAY_ELEMENT_ID = '__minimalist_agent_browser_overlay__';
 export const MAX_Z_INDEX = 2_147_483_647;
@@ -68,6 +75,39 @@ export interface AccessibilityNode {
   disabled?: boolean;
 }
 
+export interface SnapshotOptions {
+  /** Only interactive roles (buttons, links, inputs, …) — the cheap default for acting. */
+  interactiveOnly?: boolean;
+  /** Restrict to the subtree of this ref (from an earlier snapshot/find). */
+  within?: string;
+  maxNodes?: number;
+  /** Case-insensitive match on name/value — powers `find`. */
+  query?: string;
+}
+
+export interface ScreenshotOptions {
+  annotated?: boolean;
+  /** 0.1–1, relative to the default (width-capped) size. */
+  scale?: number;
+  /** Viewport CSS-pixel rectangle to capture instead of the whole viewport. */
+  region?: { x0: number; y0: number; x1: number; y1: number };
+}
+
+export interface Screenshot {
+  buffer: Buffer;
+  /** Viewport size in CSS pixels — the coordinate space `region` uses. */
+  viewport: { width: number; height: number };
+  scale: number;
+}
+
+export interface ViewportOverride {
+  width: number;
+  height: number;
+  mobile: boolean;
+}
+
+export type ColorScheme = 'light' | 'dark';
+
 export interface AccessibilitySnapshot {
   url: string;
   title: string;
@@ -109,6 +149,13 @@ export class BrowserCDP {
   private backendNodeIdToRef = new Map<number, string>();
   private nextRefId = 0;
   private consoleLog: ConsoleLogEntry[] = [];
+  // CDP Emulation overrides vanish when the debugger detaches, so while any
+  // is active the idle detach is suspended and they're re-applied on attach.
+  private viewport: ViewportOverride | null = null;
+  private colorScheme: ColorScheme | null = null;
+  // A window that never loaded a page has no renderer target: the first CDP
+  // command hangs and the next crashes Electron. Attach waits on this.
+  private ready: Promise<unknown> = Promise.resolve();
 
   constructor(webContents: WebContents) {
     this.webContents = webContents;
@@ -134,7 +181,13 @@ export class BrowserCDP {
     });
   }
 
+  setReady(ready: Promise<unknown>): void {
+    this.ready = ready;
+  }
+
   private async ensureAttached(): Promise<void> {
+    if (this.attached) return;
+    await this.ready;
     if (this.attached) return;
     try {
       this.webContents.debugger.attach(CDP_PROTOCOL_VERSION);
@@ -143,6 +196,47 @@ export class BrowserCDP {
     }
     this.attached = true;
     await this.send('Runtime.enable');
+    await this.applyOverrides();
+  }
+
+  private hasOverrides(): boolean {
+    return this.viewport !== null || this.colorScheme !== null;
+  }
+
+  private async applyOverrides(): Promise<void> {
+    if (this.viewport) {
+      await this.send('Emulation.setDeviceMetricsOverride', {
+        width: this.viewport.width,
+        height: this.viewport.height,
+        deviceScaleFactor: 0,
+        mobile: this.viewport.mobile,
+      });
+      await this.send('Emulation.setTouchEmulationEnabled', { enabled: this.viewport.mobile });
+    }
+    if (this.colorScheme) {
+      await this.send('Emulation.setEmulatedMedia', {
+        features: [{ name: 'prefers-color-scheme', value: this.colorScheme }],
+      });
+    }
+  }
+
+  async setViewport(viewport: ViewportOverride | null): Promise<void> {
+    this.viewport = viewport;
+    if (viewport) {
+      await this.applyOverrides();
+      return;
+    }
+    await this.send('Emulation.clearDeviceMetricsOverride');
+    await this.send('Emulation.setTouchEmulationEnabled', { enabled: false });
+  }
+
+  async setColorScheme(scheme: ColorScheme | null): Promise<void> {
+    this.colorScheme = scheme;
+    if (scheme) {
+      await this.applyOverrides();
+      return;
+    }
+    await this.send('Emulation.setEmulatedMedia', { features: [] });
   }
 
   private recordConsoleMessage(params: {
@@ -164,6 +258,8 @@ export class BrowserCDP {
 
   private resetIdleTimer(): void {
     if (this.idleTimer) clearTimeout(this.idleTimer);
+    this.idleTimer = null;
+    if (this.hasOverrides()) return;
     this.idleTimer = setTimeout(() => {
       if (this.attached) this.detach();
     }, IDLE_DETACH_MS);
@@ -185,9 +281,22 @@ export class BrowserCDP {
 
   private async send(method: string, params?: Record<string, unknown>): Promise<any> {
     await this.ensureAttached();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(
+        () =>
+          reject(
+            new Error(
+              `${method} timed out after ${COMMAND_TIMEOUT_MS / 1000}s — the page may be unresponsive.`,
+            ),
+          ),
+        COMMAND_TIMEOUT_MS,
+      );
+    });
     try {
-      return await this.webContents.debugger.sendCommand(method, params);
+      return await Promise.race([this.webContents.debugger.sendCommand(method, params), timeout]);
     } finally {
+      clearTimeout(timer);
       this.resetIdleTimer();
     }
   }
@@ -206,17 +315,29 @@ export class BrowserCDP {
     return ref;
   }
 
-  async getAccessibilitySnapshot(): Promise<AccessibilitySnapshot> {
+  async getAccessibilitySnapshot(options: SnapshotOptions = {}): Promise<AccessibilitySnapshot> {
+    // Resolve before the tree is re-read: a scoped/find pass keeps earlier refs
+    // valid, a plain snapshot starts a fresh ref table.
+    const withinBackendId =
+      options.within !== undefined ? this.resolveBackendNodeId(options.within) : undefined;
     const tree = await this.send('Accessibility.getFullAXTree');
     const rawNodes = Array.isArray(tree?.nodes) ? (tree.nodes as any[]) : [];
+    const scope = withinBackendId !== undefined ? subtreeNodeIds(rawNodes, withinBackendId) : null;
+    const query = options.query?.toLowerCase();
+    const maxNodes = query
+      ? MAX_FIND_RESULTS
+      : Math.min(options.maxNodes ?? MAX_SNAPSHOT_NODES, MAX_SNAPSHOT_NODES);
 
-    this.refToBackendNodeId.clear();
-    this.refDetails.clear();
+    if (!query && withinBackendId === undefined) {
+      this.refToBackendNodeId.clear();
+      this.refDetails.clear();
+    }
     const nodes: AccessibilityNode[] = [];
     const seenBackendNodeIds = new Set<number>();
     let truncatedCount = 0;
 
     for (const rawNode of rawNodes) {
+      if (scope && !scope.has(rawNode.nodeId)) continue;
       const role = normalize(rawNode.role?.value).toLowerCase();
       const name = normalize(rawNode.name?.value);
       const rawValue = rawNode.value?.value;
@@ -226,12 +347,21 @@ export class BrowserCDP {
 
       const isInteractive = INTERACTIVE_ROLES.has(role);
       const isNamedContent = CONTENT_ROLES.has(role) && !!name;
-      const isMeaningful = isInteractive || isNamedContent || value !== undefined;
+      const isMeaningful = options.interactiveOnly
+        ? isInteractive
+        : isInteractive || isNamedContent || value !== undefined;
       if (!isMeaningful || backendNodeId === undefined) continue;
+      if (
+        query &&
+        !name.toLowerCase().includes(query) &&
+        !(value ?? '').toLowerCase().includes(query)
+      ) {
+        continue;
+      }
       if (seenBackendNodeIds.has(backendNodeId)) continue;
       seenBackendNodeIds.add(backendNodeId);
 
-      if (nodes.length >= MAX_SNAPSHOT_NODES) {
+      if (nodes.length >= maxNodes) {
         truncatedCount += 1;
         continue;
       }
@@ -252,6 +382,18 @@ export class BrowserCDP {
       nodes,
       truncatedCount,
     };
+  }
+
+  /** Readable text of the page's main content (or body), like a reader view. */
+  async getPageText(): Promise<string> {
+    const result = await this.send('Runtime.evaluate', {
+      expression: `(() => {
+        const el = document.querySelector('main, article, [role="main"]') || document.body;
+        return el ? el.innerText : '';
+      })()`,
+      returnByValue: true,
+    });
+    return String(result?.result?.value ?? '');
   }
 
   private resolveBackendNodeId(ref: string): number {
@@ -435,16 +577,61 @@ export class BrowserCDP {
     });
   }
 
-  async captureScreenshot(options: { annotated?: boolean }): Promise<Buffer> {
+  async captureScreenshot(options: ScreenshotOptions): Promise<Screenshot> {
     if (options.annotated) {
       const snapshot = await this.getAccessibilitySnapshot();
       await this.renderRefOverlay(snapshot.nodes);
     }
     try {
-      const { data } = await this.send('Page.captureScreenshot', { format: 'png' });
-      return Buffer.from(data as string, 'base64');
+      const metrics = await this.send('Page.getLayoutMetrics');
+      const vp = metrics.cssLayoutViewport as {
+        pageX: number;
+        pageY: number;
+        clientWidth: number;
+        clientHeight: number;
+      };
+      const dprResult = await this.send('Runtime.evaluate', {
+        expression: 'window.devicePixelRatio',
+        returnByValue: true,
+      });
+      const dpr = Number(dprResult?.result?.value) || 1;
+      const region = options.region ?? {
+        x0: 0,
+        y0: 0,
+        x1: vp.clientWidth,
+        y1: vp.clientHeight,
+      };
+      const width = Math.max(1, region.x1 - region.x0);
+      const height = Math.max(1, region.y1 - region.y0);
+      const capScale = Math.min(1, MAX_SCREENSHOT_WIDTH_PX / (width * dpr));
+      const scale = capScale * Math.min(1, Math.max(0.1, options.scale ?? 1));
+      const { data } = await this.send('Page.captureScreenshot', {
+        format: 'png',
+        clip: { x: vp.pageX + region.x0, y: vp.pageY + region.y0, width, height, scale },
+      });
+      return {
+        buffer: Buffer.from(data as string, 'base64'),
+        viewport: { width: vp.clientWidth, height: vp.clientHeight },
+        scale,
+      };
     } finally {
       if (options.annotated) await this.clearOverlay();
     }
   }
+}
+
+/** AX node ids of the subtree rooted at the node backing `backendNodeId`. */
+function subtreeNodeIds(rawNodes: any[], backendNodeId: number): Set<string> {
+  const byId = new Map<string, any>(rawNodes.map((n) => [n.nodeId, n]));
+  const root = rawNodes.find((n) => n.backendDOMNodeId === backendNodeId);
+  const ids = new Set<string>();
+  if (!root) return ids;
+  const stack: string[] = [root.nodeId];
+  while (stack.length > 0) {
+    const id = stack.pop()!;
+    if (ids.has(id)) continue;
+    ids.add(id);
+    for (const child of byId.get(id)?.childIds ?? []) stack.push(child);
+  }
+  return ids;
 }
