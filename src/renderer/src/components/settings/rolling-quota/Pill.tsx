@@ -1,31 +1,40 @@
 import { useEffect, useRef, useState } from 'react';
 import { Tooltip } from '@/components/ui';
-import type { ChatGptQuota } from '@/lib/electron';
-import { useQuota, quotaCache, PLAN_LABELS, formatWindowLabel, formatResetsAt } from './shared';
+import type { RollingQuota } from '@/lib/electron';
+import {
+  useQuota,
+  quotaCache,
+  PLAN_LABELS,
+  formatWindowLabel,
+  formatResetsAt,
+  type QuotaSource,
+} from './shared';
 
-export function ChatGptQuotaPill({
+export function RollingQuotaPill({
+  source,
   connectionSlug,
-  isChatGpt,
+  enabled,
   isStreaming,
 }: {
+  source: QuotaSource;
   connectionSlug: string;
-  isChatGpt: boolean;
+  enabled: boolean;
   isStreaming?: boolean;
 }) {
   const [refreshKey, setRefreshKey] = useState(0);
-  const state = useQuota(connectionSlug, isChatGpt, refreshKey);
+  const state = useQuota(source, connectionSlug, enabled, refreshKey);
 
   const prevStreaming = useRef(isStreaming);
   useEffect(() => {
-    if (prevStreaming.current === true && isStreaming === false && isChatGpt) {
+    if (prevStreaming.current === true && isStreaming === false && enabled) {
       quotaCache.delete(connectionSlug);
       setRefreshKey((k) => k + 1);
     }
     prevStreaming.current = isStreaming;
-  }, [isStreaming, connectionSlug, isChatGpt]);
+  }, [isStreaming, connectionSlug, enabled]);
 
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [lastGoodQuota, setLastGoodQuota] = useState<ChatGptQuota | null>(null);
+  const [lastGoodQuota, setLastGoodQuota] = useState<RollingQuota | null>(null);
   useEffect(() => {
     if (state.status === 'ok') {
       setLastGoodQuota(state.quota);
@@ -42,7 +51,7 @@ export function ChatGptQuotaPill({
     setRefreshKey((k) => k + 1);
   };
 
-  if (!isChatGpt) return null;
+  if (!enabled) return null;
 
   const refreshFailed = state.status === 'error';
   const quota = state.status === 'ok' ? state.quota : lastGoodQuota;
@@ -87,6 +96,9 @@ export function ChatGptQuotaPill({
     tooltipParts.push(
       `${formatWindowLabel(quota.secondary.windowMinutes)} window: ${Math.round(quota.secondary.usedPercent)}% used`,
     );
+  }
+  for (const { label, window } of quota.extraWindows ?? []) {
+    tooltipParts.push(`${label} window: ${Math.round(window.usedPercent)}% used`);
   }
   const resetsAt = formatResetsAt(headline.resetsAt);
   if (resetsAt) tooltipParts.push(`resets ${resetsAt}`);

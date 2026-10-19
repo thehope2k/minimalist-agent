@@ -5,6 +5,7 @@ import { IconButton } from '@/components/ui';
 import { ChooseScreen } from './connection-flow/ChooseScreen';
 import { CopilotFlow } from './connection-flow/CopilotFlow';
 import { ChatGptFlow } from './connection-flow/ChatGptFlow';
+import { ClaudeFlow } from './connection-flow/ClaudeFlow';
 import { LocalModelFlow } from './connection-flow/LocalModelFlow';
 import { OpenAICompatibleFlow } from './connection-flow/OpenAICompatibleFlow';
 import { CodeMieSsoFlow } from './connection-flow/CodeMieSsoFlow';
@@ -27,6 +28,7 @@ type Props = {
 function inferKind(meta: ConnectionMeta): ConnectionKind {
   if (meta.providerType === 'github-copilot') return 'github-copilot';
   if (meta.providerType === 'openai-codex') return 'chatgpt';
+  if (meta.providerType === 'anthropic') return 'claude';
   if (meta.providerType === 'local') return 'local';
   if (meta.providerType === 'openai-compatible') return 'openai-compatible';
   if (meta.providerType === 'codemie-sso') return 'codemie-sso';
@@ -73,6 +75,7 @@ export function AddConnectionDialog({ open, onClose, onSaved, makeDefault, editi
         {activeKind === null && <ChooseScreen onPick={setKind} />}
         {activeKind === 'github-copilot' && <CopilotFlow {...flowProps} />}
         {activeKind === 'chatgpt' && <ChatGptFlow {...flowProps} />}
+        {activeKind === 'claude' && <ClaudeFlow {...flowProps} />}
         {activeKind === 'local' && <LocalModelFlow {...flowProps} />}
         {activeKind === 'openai-compatible' && <OpenAICompatibleFlow {...flowProps} />}
         {activeKind === 'codemie-sso' && <CodeMieSsoFlow {...flowProps} />}

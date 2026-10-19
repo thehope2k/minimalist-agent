@@ -1,7 +1,7 @@
 // Resolve a connection slug into fresh, ready-to-use auth for a backend.
 //
 // Branches on the connection's `providerType`:
-//   github-copilot / openai-codex → returns ResolvedOAuthAuth
+//   github-copilot / openai-codex / anthropic → returns ResolvedOAuthAuth
 //   local / openai-compatible / codemie-sso → returns ResolvedApiAuth
 //
 // OAuth tokens are refreshed if within their 5-minute expiry buffer.
@@ -14,6 +14,8 @@
 
 import { isExpired as isCopilotExpired, refreshCopilotTokens } from '../oauth/copilot-flow';
 import { isExpired as isChatGptExpired, refreshChatGptTokens } from '../oauth/chatgpt-flow';
+import { isExpired as isClaudeExpired, refreshClaudeTokens } from '../oauth/claude-flow';
+import type { PkceTokens } from '../oauth/pkce-browser-login';
 import {
   type Credential,
   type OAuthCred,
@@ -140,11 +142,17 @@ export async function resolveAuthForSlug(
       `Connection "${slug}" is a Pi/Copilot connection but its credential is not OAuth. Re-authenticate from Settings → AI.`,
     );
   }
-  if (conn.providerType === 'openai-codex') {
-    const fresh = await ensureFreshChatGptOAuth(slug, cred, signal, callerTag);
+  if (conn.providerType === 'openai-codex' || conn.providerType === 'anthropic') {
+    const fresh = await ensureFreshPkceOAuth(
+      PKCE_PROVIDERS[conn.providerType],
+      slug,
+      cred,
+      signal,
+      callerTag,
+    );
     return {
       type: 'oauth',
-      provider: 'openai-codex',
+      provider: conn.providerType,
       accessToken: fresh.accessToken,
       refreshToken: fresh.refreshToken,
       expiresAt: fresh.expiresAt,
@@ -217,33 +225,55 @@ async function performCopilotRefresh(slug: string, cred: OAuthCred): Promise<OAu
   }
 }
 
-/* ------------------------------ ChatGPT (Codex) OAuth -------------------- */
+/* ------------------- PKCE browser OAuth (ChatGPT, Claude) ---------------- */
 
-async function ensureFreshChatGptOAuth(
+interface PkceProvider {
+  /** Human name used in logs and user-facing errors. */
+  label: string;
+  isExpired: (expiresAt?: number) => boolean;
+  refresh: (refreshToken: string) => Promise<PkceTokens>;
+}
+
+const PKCE_PROVIDERS: Record<'openai-codex' | 'anthropic', PkceProvider> = {
+  'openai-codex': {
+    label: 'ChatGPT',
+    isExpired: isChatGptExpired,
+    refresh: refreshChatGptTokens,
+  },
+  anthropic: { label: 'Claude', isExpired: isClaudeExpired, refresh: refreshClaudeTokens },
+};
+
+async function ensureFreshPkceOAuth(
+  provider: PkceProvider,
   slug: string,
   cred: OAuthCred,
   signal?: AbortSignal,
   callerTag?: string,
 ): Promise<OAuthCred> {
-  if (!isChatGptExpired(cred.expiresAt)) return cred;
+  if (!provider.isExpired(cred.expiresAt)) return cred;
 
   if (!cred.refreshToken) {
     throw new Error(
-      'ChatGPT session expired and no refresh token is stored. Sign in again from Settings → AI.',
+      `${provider.label} session expired and no refresh token is stored. Sign in again from Settings → AI.`,
     );
   }
 
   return guardedRefresh(
     slug,
-    `ChatGPT token refresh for ${slug}${callerTag ? ` [${callerTag}]` : ''}`,
-    () => performChatGptRefresh(slug, cred),
+    `${provider.label} token refresh for ${slug}${callerTag ? ` [${callerTag}]` : ''}`,
+    () => performPkceRefresh(provider, slug, cred),
     signal,
   );
 }
 
-async function performChatGptRefresh(slug: string, cred: OAuthCred): Promise<OAuthCred> {
+async function performPkceRefresh(
+  provider: PkceProvider,
+  slug: string,
+  cred: OAuthCred,
+): Promise<OAuthCred> {
+  const { label } = provider;
   try {
-    const fresh = await refreshChatGptTokens(cred.refreshToken!);
+    const fresh = await provider.refresh(cred.refreshToken!);
     const next: Credential = {
       type: 'oauth',
       accessToken: fresh.accessToken,
@@ -257,7 +287,7 @@ async function performChatGptRefresh(slug: string, cred: OAuthCred): Promise<OAu
     const msg = e instanceof Error ? e.message : String(e);
     if (/unauthorized|invalid|forbidden|401|403/i.test(msg)) {
       log.warn(
-        `ChatGPT OAuth refresh rejected for ${slug} — clearing credential (forced re-auth):`,
+        `${label} OAuth refresh rejected for ${slug} — clearing credential (forced re-auth):`,
         msg,
       );
       try {
@@ -265,9 +295,9 @@ async function performChatGptRefresh(slug: string, cred: OAuthCred): Promise<OAu
       } catch {
         /* best effort */
       }
-      throw new Error(`ChatGPT session was rejected (${msg}). Sign in again from Settings → AI.`);
+      throw new Error(`${label} session was rejected (${msg}). Sign in again from Settings → AI.`);
     }
-    log.error(`ChatGPT token refresh failed for ${slug}:`, msg);
-    throw new Error(`ChatGPT token refresh failed: ${msg}`);
+    log.error(`${label} token refresh failed for ${slug}:`, msg);
+    throw new Error(`${label} token refresh failed: ${msg}`);
   }
 }

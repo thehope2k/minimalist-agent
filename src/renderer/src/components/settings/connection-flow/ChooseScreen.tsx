@@ -1,7 +1,7 @@
 import { Monitor, Plug, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui';
-import { CodeMieMark, GithubMark, OpenAIMark } from './shared';
+import { ClaudeMark, CodeMieMark, GithubMark, OpenAIMark } from './shared';
 import type { ConnectionKind } from './types';
 
 type ChoiceProps = {
@@ -53,6 +53,12 @@ export function ChooseScreen({ onPick }: { onPick: (k: ConnectionKind) => void }
           title="Codex · ChatGPT"
           desc="Sign in with your ChatGPT account."
           onClick={() => onPick('chatgpt')}
+        />
+        <Choice
+          icon={<ClaudeMark />}
+          title="Claude · Pro/Max"
+          desc="Sign in with your Claude subscription. Unofficial — use at your own risk."
+          onClick={() => onPick('claude')}
         />
         <Choice
           icon={<GithubMark />}

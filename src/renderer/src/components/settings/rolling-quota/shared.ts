@@ -1,15 +1,23 @@
 // Shared quota-fetching hook, cache, and formatting helpers used by both
-// ChatGptQuotaBar (Settings) and ChatGptQuotaPill (chat toolbar).
+// RollingQuotaBar (Settings) and RollingQuotaPill (chat toolbar).
 //
-// Backed by the same wham/usage endpoint Codex CLI itself polls. Unlike
-// Copilot's monthly entitlement, Codex reports rolling usage windows
-// (typically 5h + 7d) with their own reset times.
+// ChatGPT (Codex wham/usage) and Claude subscriptions (oauth/usage) both
+// report rolling usage windows (typically 5h + 7d) with their own reset
+// times, unlike Copilot's monthly entitlement.
 import { useEffect, useRef, useState } from 'react';
-import type { ChatGptQuota } from '@/lib/electron';
+import type { RollingQuota } from '@/lib/electron';
+
+export type QuotaSource = 'chatgpt' | 'claude';
+
+function fetchQuota(source: QuotaSource, connectionSlug: string) {
+  return source === 'claude'
+    ? window.api.claude.fetchQuota({ connectionSlug })
+    : window.api.chatgpt.fetchQuota({ connectionSlug });
+}
 
 export const quotaCache = new Map<
   string,
-  { quota: ChatGptQuota | { error: string }; fetchedAt: number }
+  { quota: RollingQuota | { error: string }; fetchedAt: number }
 >();
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const MINUTES_PER_HOUR = 60;
@@ -18,10 +26,15 @@ const MINUTES_PER_DAY = 24 * MINUTES_PER_HOUR;
 export type QuotaState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'ok'; quota: ChatGptQuota }
+  | { status: 'ok'; quota: RollingQuota }
   | { status: 'error'; message: string };
 
-export function useQuota(connectionSlug: string, enabled: boolean, refreshKey = 0): QuotaState {
+export function useQuota(
+  source: QuotaSource,
+  connectionSlug: string,
+  enabled: boolean,
+  refreshKey = 0,
+): QuotaState {
   const [state, setState] = useState<QuotaState>({ status: 'idle' });
   const slugRef = useRef(connectionSlug);
   slugRef.current = connectionSlug;
@@ -36,8 +49,7 @@ export function useQuota(connectionSlug: string, enabled: boolean, refreshKey = 
     }
 
     setState((prev) => (prev.status === 'ok' ? prev : { status: 'loading' }));
-    void window.api.chatgpt
-      .fetchQuota({ connectionSlug })
+    void fetchQuota(source, connectionSlug)
       .then((result) => {
         if (slugRef.current !== connectionSlug) return;
         quotaCache.set(connectionSlug, { quota: result, fetchedAt: Date.now() });
@@ -48,12 +60,12 @@ export function useQuota(connectionSlug: string, enabled: boolean, refreshKey = 
         setState({ status: 'error', message });
       });
 
-    function applyResult(result: ChatGptQuota | { error: string }) {
+    function applyResult(result: RollingQuota | { error: string }) {
       if ('error' in result) setState({ status: 'error', message: result.error });
       else setState({ status: 'ok', quota: result });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connectionSlug, enabled, refreshKey]);
+  }, [source, connectionSlug, enabled, refreshKey]);
 
   return state;
 }
@@ -66,6 +78,10 @@ export const PLAN_LABELS: Record<string, string> = {
   business: 'Business',
   enterprise: 'Enterprise',
 };
+
+export function windowLabel(window: { windowMinutes: number | null }): string {
+  return `${formatWindowLabel(window.windowMinutes)} window`;
+}
 
 export function formatWindowLabel(windowMinutes: number | null): string {
   if (windowMinutes == null) return 'window';

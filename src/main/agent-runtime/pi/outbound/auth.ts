@@ -16,6 +16,11 @@ import type {
 
 const log = createLogger('chat-runtime');
 
+const SESSION_LABELS: Partial<Record<SubprocessHandle['provider'], string>> = {
+  'openai-codex': 'ChatGPT',
+  anthropic: 'Claude',
+};
+
 export function handleSessionIdUpdate(msg: MsgSessionIdUpdate, handle: SubprocessHandle): void {
   persistRuntimeSessionId(handle.chatSessionId, msg.runtimeSessionId);
 }
@@ -92,15 +97,13 @@ export async function handleAuthRequired(
   if (msg.turnId) {
     const q = handle.queues.get(msg.turnId);
     if (q) {
-      const isChatGpt = handle.provider === 'openai-codex';
+      const label = SESSION_LABELS[handle.provider] ?? 'GitHub Copilot';
       q.push({
         type: 'error',
         error: {
           code: 'expired_oauth_token',
-          title: isChatGpt ? 'ChatGPT session expired' : 'GitHub Copilot session expired',
-          message: isChatGpt
-            ? 'Your ChatGPT token was refreshed. Re-send the message to continue.'
-            : 'Your Copilot token was refreshed. Re-send the message to continue.',
+          title: `${label} session expired`,
+          message: `Your ${label} token was refreshed. Re-send the message to continue.`,
           canRetry: true,
           originalError: msg.message,
         },

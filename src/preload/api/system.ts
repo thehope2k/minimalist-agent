@@ -1,15 +1,23 @@
 import { ipcRenderer } from 'electron';
 import type {
   AppApi,
-  ChatGptQuota,
   CopilotQuota,
   ModelDef,
+  RollingQuota,
   UpdateInfo,
 } from '../../shared/electron-api';
 
 export function createSystemApi(): Pick<
   AppApi,
-  'update' | 'app' | 'logs' | 'copilotOAuth' | 'chatgptOAuth' | 'chatgpt' | 'copilot'
+  | 'update'
+  | 'app'
+  | 'logs'
+  | 'copilotOAuth'
+  | 'chatgptOAuth'
+  | 'chatgpt'
+  | 'claudeOAuth'
+  | 'claude'
+  | 'copilot'
 > {
   return {
     update: {
@@ -71,8 +79,26 @@ export function createSystemApi(): Pick<
     },
     chatgpt: {
       getModels: (): Promise<ModelDef[]> => ipcRenderer.invoke('chatgpt:getModels'),
-      fetchQuota: (args: { connectionSlug: string }): Promise<ChatGptQuota | { error: string }> =>
+      fetchQuota: (args: { connectionSlug: string }): Promise<RollingQuota | { error: string }> =>
         ipcRenderer.invoke('chatgpt:fetchQuota', args),
+    },
+    claudeOAuth: {
+      start: (): Promise<{
+        accessToken: string;
+        refreshToken?: string;
+        expiresAt?: number;
+      }> => ipcRenderer.invoke('claude-oauth:start'),
+      cancel: (): Promise<void> => ipcRenderer.invoke('claude-oauth:cancel'),
+      onBrowserOpen: (cb: (url: string) => void): (() => void) => {
+        const handler = (_e: unknown, url: string) => cb(url);
+        ipcRenderer.on('claude-oauth:browser-open', handler);
+        return () => ipcRenderer.removeListener('claude-oauth:browser-open', handler);
+      },
+    },
+    claude: {
+      getModels: (): Promise<ModelDef[]> => ipcRenderer.invoke('claude:getModels'),
+      fetchQuota: (args: { connectionSlug: string }): Promise<RollingQuota | { error: string }> =>
+        ipcRenderer.invoke('claude:fetchQuota', args),
     },
     copilot: {
       fetchModels: (args: {

@@ -3,7 +3,7 @@ import { IconButton } from '@/components/ui';
 import { FolderPicker } from '../FolderPicker';
 import { ConnectionModelPicker } from '../ConnectionModelPicker';
 import { CopilotQuotaPill } from '@/components/settings/CopilotQuotaBar';
-import { ChatGptQuotaPill } from '@/components/settings/ChatGptQuotaBar';
+import { RollingQuotaPill } from '@/components/settings/RollingQuotaBar';
 import { CodeMieBudgetPill } from '@/components/settings/CodeMieBudgetBar';
 import { MOD as SHORTCUT_MOD_SYMBOL } from '@/lib/shortcuts';
 import type { ConnectionMeta } from '@/lib/electron';
@@ -129,9 +129,16 @@ export function InputActions({
               isCopilot={connection.providerType === 'github-copilot'}
               isStreaming={isStreaming}
             />
-            <ChatGptQuotaPill
+            <RollingQuotaPill
+              source="chatgpt"
               connectionSlug={connection.slug}
-              isChatGpt={connection.providerType === 'openai-codex'}
+              enabled={connection.providerType === 'openai-codex'}
+              isStreaming={isStreaming}
+            />
+            <RollingQuotaPill
+              source="claude"
+              connectionSlug={connection.slug}
+              enabled={connection.providerType === 'anthropic'}
               isStreaming={isStreaming}
             />
             <CodeMieBudgetPill

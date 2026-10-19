@@ -15,7 +15,7 @@ import {
 import { BrandMark } from '../connection-flow/shared';
 import { compactNumber } from '@/components/chat/message-list/utils';
 import { CopilotQuotaBar } from '../CopilotQuotaBar';
-import { ChatGptQuotaBar } from '../ChatGptQuotaBar';
+import { RollingQuotaBar } from '../RollingQuotaBar';
 import { CodeMieBudgetBar } from '../CodeMieBudgetBar';
 import {
   Badge,
@@ -80,6 +80,7 @@ export function ConnectionRow({
   const reconnects =
     conn.providerType === 'github-copilot' ||
     conn.providerType === 'openai-codex' ||
+    conn.providerType === 'anthropic' ||
     conn.providerType === 'codemie-sso';
   const reauthLabel = reconnects ? 'Reconnect' : 'Update API key';
   const reauthIcon = reconnects ? LogIn : KeyRound;
@@ -216,7 +217,12 @@ export function ConnectionRow({
           </Popover.Root>
         </div>
         {conn.providerType === 'github-copilot' && <CopilotQuotaBar connectionSlug={conn.slug} />}
-        {conn.providerType === 'openai-codex' && <ChatGptQuotaBar connectionSlug={conn.slug} />}
+        {conn.providerType === 'openai-codex' && (
+          <RollingQuotaBar source="chatgpt" connectionSlug={conn.slug} />
+        )}
+        {conn.providerType === 'anthropic' && (
+          <RollingQuotaBar source="claude" connectionSlug={conn.slug} />
+        )}
         {conn.providerType === 'codemie-sso' && <CodeMieBudgetBar connectionSlug={conn.slug} />}
       </div>
       <Menu trigger={<IconButton icon={MoreHorizontal} label="More" />} items={items} />

@@ -299,7 +299,8 @@ export interface CopilotQuota {
   fallback: boolean;
 }
 
-export interface ChatGptRateLimitWindow {
+/** One rolling usage window (ChatGPT/Codex, Claude subscription). */
+export interface RateLimitWindow {
   /** Percentage of this window's allowance already used (0–100, can exceed 100). */
   usedPercent: number;
   /** Window length in minutes (e.g. 300 for a 5h window, 10080 for 7d). Null if unknown. */
@@ -315,13 +316,16 @@ export interface CodeMieBudget {
   resetAt?: string;
 }
 
-export interface ChatGptQuota {
+/** Rolling-window usage snapshot shared by ChatGPT (Codex) and Claude subscriptions. */
+export interface RollingQuota {
   /** Normalised plan identifier: 'plus' | 'pro' | 'team' | 'enterprise' etc. */
   planType: string | null;
   /** Short rolling window (typically 5h). Null if the account has no rate limit. */
-  primary: ChatGptRateLimitWindow | null;
+  primary: RateLimitWindow | null;
   /** Longer rolling window (typically 7d). Null if not reported. */
-  secondary: ChatGptRateLimitWindow | null;
+  secondary: RateLimitWindow | null;
+  /** Additional model-scoped windows (Claude's weekly Opus/Sonnet limits). */
+  extraWindows?: Array<{ label: string; window: RateLimitWindow }>;
   /** On-demand credits balance as a decimal string (e.g. "9.99"). Null if not applicable. */
   creditsBalance: string | null;
   /** True when the account has unlimited on-demand credits. */
@@ -1035,7 +1039,28 @@ export interface AppApi {
      * entitlement) for a ChatGPT OAuth connection. Uses a freshly-resolved
      * (auto-refreshed) access token.
      */
-    fetchQuota: (args: { connectionSlug: string }) => Promise<ChatGptQuota | { error: string }>;
+    fetchQuota: (args: { connectionSlug: string }) => Promise<RollingQuota | { error: string }>;
+  };
+  claudeOAuth: {
+    /**
+     * Start the Claude Pro/Max PKCE browser-redirect flow (claude.ai).
+     */
+    start: () => Promise<{
+      accessToken: string;
+      refreshToken?: string;
+      expiresAt?: number;
+    }>;
+    cancel: () => Promise<void>;
+    onBrowserOpen: (cb: (url: string) => void) => () => void;
+  };
+  claude: {
+    /** Pi SDK static model registry for anthropic — no network call. */
+    getModels: () => Promise<ModelDef[]>;
+    /**
+     * Fetch plan usage (5h session + weekly windows) for a Claude
+     * subscription connection, via the endpoint Claude Code's /usage reads.
+     */
+    fetchQuota: (args: { connectionSlug: string }) => Promise<RollingQuota | { error: string }>;
   };
   copilot: {
     /**

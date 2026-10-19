@@ -9,5 +9,6 @@ export function providerLabel(conn: ConnectionMeta): string {
   if (conn.providerType === 'codemie-sso') return 'CodeMie SSO';
   if (conn.providerType === 'github-copilot') return 'GitHub Copilot';
   if (conn.providerType === 'openai-codex') return 'ChatGPT';
+  if (conn.providerType === 'anthropic') return 'Claude (subscription)';
   return 'Unknown';
 }

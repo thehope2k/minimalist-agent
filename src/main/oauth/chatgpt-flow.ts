@@ -10,108 +10,13 @@
 //   refreshToken = standard OAuth refresh token (long-lived)
 
 import { openaiCodexProvider } from '@earendil-works/pi-ai/providers/openai-codex';
-import { createLogger } from '../logger';
-import { AUTH_REFRESH_CEILING_MS } from '../../shared/timeouts';
+import { createPkceBrowserLogin, isExpired, type PkceTokens } from './pkce-browser-login';
 
-const log = createLogger('chatgpt-oauth');
+export type ChatGptTokens = PkceTokens;
 
-export interface ChatGptTokens {
-  accessToken: string;
-  refreshToken?: string;
-  expiresAt?: number;
-}
+const flow = createPkceBrowserLogin('chatgpt-oauth', () => openaiCodexProvider().auth.oauth!);
 
-interface FlowState {
-  abort: AbortController;
-  promise: Promise<ChatGptTokens>;
-}
-
-let inFlight: FlowState | null = null;
-
-function waitForManualCodePrompt(signal?: AbortSignal): Promise<string> {
-  return new Promise((_resolve, reject) => {
-    const onAbort = (): void => reject(new Error('cancelled'));
-    if (signal?.aborted) {
-      onAbort();
-      return;
-    }
-    signal?.addEventListener('abort', onAbort, { once: true });
-  });
-}
-
-function answerLoginPrompt(prompt: { type: string; signal?: AbortSignal }): Promise<string> {
-  if (prompt.type === 'select') return Promise.resolve('browser');
-  return waitForManualCodePrompt(prompt.signal);
-}
-
-/**
- * Start the PKCE browser-redirect flow. Resolves once the user has
- * authenticated on auth.openai.com and the Pi SDK has exchanged the
- * id_token for an OpenAI API key.
- *
- * `onBrowserOpen` is called with the auth URL so the caller can open
- * the browser and show a "waiting…" UI. `cancelLogin()` aborts.
- */
-export function startLogin(onBrowserOpen: (url: string) => void): Promise<ChatGptTokens> {
-  if (inFlight) {
-    inFlight.abort.abort();
-    inFlight = null;
-  }
-
-  const abort = new AbortController();
-  const promise = (async (): Promise<ChatGptTokens> => {
-    const oauth = openaiCodexProvider().auth.oauth!;
-    const creds = await oauth.login({
-      signal: abort.signal,
-      prompt: answerLoginPrompt,
-      notify: (event) => {
-        if (event.type === 'auth_url') {
-          onBrowserOpen(event.url);
-        } else if (event.type === 'progress') {
-          log.debug('', event.message);
-        }
-      },
-    });
-    return {
-      accessToken: creds.access,
-      refreshToken: creds.refresh,
-      expiresAt: creds.expires,
-    };
-  })();
-
-  inFlight = { abort, promise };
-  promise.finally(() => {
-    if (inFlight && inFlight.promise === promise) inFlight = null;
-  });
-  return promise;
-}
-
-export function cancelLogin(): void {
-  if (inFlight) {
-    inFlight.abort.abort();
-    inFlight = null;
-  }
-}
-
-/**
- * Refresh a ChatGPT token. The Pi SDK re-runs the id_token →
- * OpenAI API key exchange, returning fresh credentials.
- */
-export async function refreshChatGptTokens(refreshToken: string): Promise<ChatGptTokens> {
-  const oauth = openaiCodexProvider().auth.oauth!;
-  const creds = await oauth.refresh(
-    { type: 'oauth', access: '', refresh: refreshToken, expires: 0 },
-    AbortSignal.timeout(AUTH_REFRESH_CEILING_MS),
-  );
-  return {
-    accessToken: creds.access,
-    refreshToken: (creds.refresh as string) || refreshToken,
-    expiresAt: creds.expires as number | undefined,
-  };
-}
-
-export function isExpired(expiresAt?: number): boolean {
-  if (!expiresAt) return false;
-  // 5-minute buffer.
-  return Date.now() + 5 * 60 * 1000 >= expiresAt;
-}
+export const startLogin = flow.startLogin;
+export const cancelLogin = flow.cancelLogin;
+export const refreshChatGptTokens = flow.refreshTokens;
+export { isExpired };

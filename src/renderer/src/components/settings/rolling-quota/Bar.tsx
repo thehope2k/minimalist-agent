@@ -1,15 +1,21 @@
-import { useQuota, PLAN_LABELS, formatWindowLabel, formatResetsAt, barColor } from './shared';
-import type { ChatGptRateLimitWindow } from '@/lib/electron';
+import {
+  useQuota,
+  PLAN_LABELS,
+  formatResetsAt,
+  barColor,
+  windowLabel,
+  type QuotaSource,
+} from './shared';
+import type { RateLimitWindow } from '@/lib/electron';
 
-function WindowRow({ window }: { window: ChatGptRateLimitWindow }) {
+function WindowRow({ window, label }: { window: RateLimitWindow; label: string }) {
   const pct = Math.min(100, Math.max(0, Math.round(window.usedPercent)));
-  const label = formatWindowLabel(window.windowMinutes);
   const resetsAt = formatResetsAt(window.resetsAt);
 
   return (
     <div className="space-y-1">
       <div className="flex items-baseline justify-between">
-        <span className="text-xs text-fg-muted">{label} window</span>
+        <span className="text-xs text-fg-muted">{label}</span>
         <span
           className={`text-xs ${window.usedPercent >= 90 ? 'text-red-400' : window.usedPercent >= 75 ? 'text-orange-400' : 'text-fg-subtle'}`}
         >
@@ -27,8 +33,14 @@ function WindowRow({ window }: { window: ChatGptRateLimitWindow }) {
   );
 }
 
-export function ChatGptQuotaBar({ connectionSlug }: { connectionSlug: string }) {
-  const state = useQuota(connectionSlug, true);
+export function RollingQuotaBar({
+  source,
+  connectionSlug,
+}: {
+  source: QuotaSource;
+  connectionSlug: string;
+}) {
+  const state = useQuota(source, connectionSlug, true);
 
   if (state.status === 'idle' || state.status === 'loading') {
     return (
@@ -64,8 +76,13 @@ export function ChatGptQuotaBar({ connectionSlug }: { connectionSlug: string }) 
   return (
     <div className="mt-2 space-y-2">
       {planLabel && <span className="text-xs font-medium text-fg-muted">{planLabel}</span>}
-      {quota.primary && <WindowRow window={quota.primary} />}
-      {quota.secondary && <WindowRow window={quota.secondary} />}
+      {quota.primary && <WindowRow window={quota.primary} label={windowLabel(quota.primary)} />}
+      {quota.secondary && (
+        <WindowRow window={quota.secondary} label={windowLabel(quota.secondary)} />
+      )}
+      {quota.extraWindows?.map(({ label, window }) => (
+        <WindowRow key={label} window={window} label={`${label} window`} />
+      ))}
       {quota.creditsBalance != null && !quota.unlimitedCredits && (
         <p className="text-xs text-fg-subtle">${quota.creditsBalance} on-demand credits</p>
       )}

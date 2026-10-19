@@ -51,6 +51,20 @@ export function OpenAIMark() {
   );
 }
 
+export function ClaudeMark() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4 text-fg-muted" aria-hidden>
+      <path
+        d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export function CodeMieMark() {
   return (
     <svg viewBox="0 0 640 640" className="h-4 w-4 rounded-sm" aria-label="CodeMie">
@@ -93,6 +107,7 @@ export function GithubMark() {
 export function BrandMark({ conn }: { conn: Pick<ConnectionMeta, 'providerType'> }) {
   if (conn.providerType === 'github-copilot') return <GithubMark />;
   if (conn.providerType === 'openai-codex') return <OpenAIMark />;
+  if (conn.providerType === 'anthropic') return <ClaudeMark />;
   if (conn.providerType === 'local') {
     return <Monitor className="h-4 w-4 text-fg-muted" strokeWidth={1.75} />;
   }

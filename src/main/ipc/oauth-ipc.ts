@@ -10,13 +10,18 @@ import {
   type ChatGptTokens,
   startLogin as startChatGptLogin,
 } from '../oauth/chatgpt-flow';
+import {
+  cancelLogin as cancelClaudeLogin,
+  type ClaudeTokens,
+  startLogin as startClaudeLogin,
+} from '../oauth/claude-flow';
 import { resolveAuthForSlug } from '../auth/resolve';
 import { getCredential, listConnections, type ModelDef } from '../storage/connections';
 import { createLogger } from '../logger';
 
 const log = createLogger('ipc:oauth');
 
-/** OAuth login flows (Copilot, ChatGPT), usage/quota lookups, and
+/** OAuth login flows (Copilot, ChatGPT, Claude), usage/quota lookups, and
  *  live model discovery for provider-hosted connections. */
 export function registerOAuthIpc(): void {
   // ---- GitHub Copilot OAuth (device flow via Pi SDK) ---------------------
@@ -52,6 +57,20 @@ export function registerOAuthIpc(): void {
   });
 
   ipcMain.handle('chatgpt-oauth:cancel', () => cancelChatGptLogin());
+
+  // ---- Claude Pro/Max OAuth (PKCE browser-redirect via Pi SDK) -----------
+
+  // Same shape as ChatGPT: browser to claude.ai, redirect caught on a local
+  // server the Pi SDK manages (port 53692, falling back to any free port).
+  ipcMain.handle('claude-oauth:start', async (event): Promise<ClaudeTokens> => {
+    return startClaudeLogin((url: string) => {
+      if (event.sender.isDestroyed()) return;
+      event.sender.send('claude-oauth:browser-open', url);
+      void shell.openExternal(url);
+    });
+  });
+
+  ipcMain.handle('claude-oauth:cancel', () => cancelClaudeLogin());
 
   /**
    * Live Copilot model discovery. Caller passes either a freshly-acquired
@@ -137,6 +156,31 @@ export function registerOAuthIpc(): void {
     }
   });
 
+  /**
+   * Fetch plan usage for a Claude subscription connection. Same endpoint
+   * Claude Code's /usage reads, with a freshly-resolved access token.
+   */
+  ipcMain.handle('claude:fetchQuota', async (_e, args: { connectionSlug: string }) => {
+    try {
+      const meta = listConnections().find((c) => c.slug === args.connectionSlug);
+      if (!meta || meta.providerType !== 'anthropic') {
+        return { error: 'Connection is not a Claude subscription connection.' };
+      }
+      const auth = await resolveAuthForSlug(args.connectionSlug);
+      if (auth.type !== 'oauth') {
+        return { error: 'Resolved auth is not Claude OAuth.' };
+      }
+      const { fetchClaudeQuota } = await import('../claude/quota');
+      const result = await fetchClaudeQuota(auth.accessToken);
+      if ('error' in result) {
+        log.error('claude:fetchQuota:', result.error);
+      }
+      return result;
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
   // ---- ChatGPT (Codex) model discovery ---------------------------
 
   ipcMain.handle('chatgpt:getModels', async (): Promise<ModelDef[]> => {
@@ -157,5 +201,35 @@ export function registerOAuthIpc(): void {
         contextWindow: m.contextWindow ?? 272_000,
         supportsReasoning: m.reasoning,
       }));
+  });
+
+  // ---- Claude model discovery -------------------------------------------
+
+  ipcMain.handle('claude:getModels', async (): Promise<ModelDef[]> => {
+    const { getBuiltinModels } = await import('@earendil-works/pi-ai/providers/all');
+    const raw = getBuiltinModels('anthropic') as Array<{
+      id: string;
+      name: string;
+      contextWindow: number;
+      maxTokens?: number;
+      reasoning?: boolean;
+      input?: string[];
+    }>;
+    return (
+      raw
+        // Dated snapshots (claude-opus-4-5-20251101) duplicate their alias.
+        .filter((m) => !/-\d{8}$/.test(m.id))
+        .sort((a, b) => b.id.localeCompare(a.id))
+        .map((m): ModelDef => ({
+          id: m.id,
+          name: m.name.replace(/\s*\(latest\)$/, ''),
+          shortName: m.name.replace(/^Claude\s+/, '').replace(/\s*\(latest\)$/, ''),
+          description: 'Claude subscription',
+          contextWindow: m.contextWindow ?? 200_000,
+          maxOutputTokens: m.maxTokens,
+          supportsReasoning: m.reasoning,
+          supportsVision: m.input?.includes('image'),
+        }))
+    );
   });
 }

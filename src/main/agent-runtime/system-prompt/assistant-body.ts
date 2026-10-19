@@ -22,6 +22,9 @@ export function resolveProviderDescription(
       if (provider === 'openai-codex') {
         return `ChatGPT / OpenAI${modelSuffix}`;
       }
+      if (provider === 'anthropic') {
+        return `a Claude subscription (Anthropic)${modelSuffix}`;
+      }
       return `GitHub Copilot${modelSuffix}`;
     case 'api':
       if (provider === 'codemie-sso') {
