@@ -4,7 +4,7 @@
 // use) so element interaction is ref-based and deterministic instead of
 // blind coordinate guessing. Trimmed to the commands `browser_tool` actually
 // exposes — see docs/BROWSER-TOOL.md for the full command list and the
-// deferred commands (drag/click-at, clipboard, upload, wait).
+// deferred commands (drag, clipboard, upload).
 
 import type { WebContents } from 'electron';
 import { createLogger } from '../logger';
@@ -426,7 +426,8 @@ export class BrowserCDP {
     };
   }
 
-  async clickElement(ref: string): Promise<void> {
+  /** Scrolls the element into view and returns its center in viewport CSS px. */
+  private async elementCenter(ref: string): Promise<{ x: number; y: number }> {
     const backendNodeId = this.resolveBackendNodeId(ref);
     const { object } = await this.send('DOM.resolveNode', { backendNodeId });
     await this.send('Runtime.callFunctionOn', {
@@ -434,20 +435,40 @@ export class BrowserCDP {
       functionDeclaration: 'function() { this.scrollIntoViewIfNeeded(); }',
     });
     const geometry = await this.getElementGeometry(ref);
-    this.webContents.sendInputEvent({
-      type: 'mouseDown',
-      x: Math.round(geometry.clickX),
-      y: Math.round(geometry.clickY),
-      button: 'left',
-      clickCount: 1,
+    return { x: Math.round(geometry.clickX), y: Math.round(geometry.clickY) };
+  }
+
+  async clickElement(ref: string): Promise<void> {
+    const { x, y } = await this.elementCenter(ref);
+    await this.clickAt(x, y);
+  }
+
+  async hoverElement(ref: string): Promise<void> {
+    const { x, y } = await this.elementCenter(ref);
+    await this.moveMouse(x, y);
+  }
+
+  // CDP mouse input (not webContents.sendInputEvent): it resolves once the
+  // event is dispatched, so the next command sees its effect, and it takes
+  // page CSS pixels, which stay correct under viewport emulation.
+  async moveMouse(x: number, y: number): Promise<void> {
+    await this.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y, button: 'none' });
+  }
+
+  /** For canvas UIs and anything without an accessible ref. */
+  async clickAt(x: number, y: number): Promise<void> {
+    await this.moveMouse(x, y);
+    for (const type of ['mousePressed', 'mouseReleased']) {
+      await this.send('Input.dispatchMouseEvent', { type, x, y, button: 'left', clickCount: 1 });
+    }
+  }
+
+  async pageContainsText(text: string): Promise<boolean> {
+    const result = await this.send('Runtime.evaluate', {
+      expression: `(document.body?.innerText ?? '').toLowerCase().includes(${JSON.stringify(text.toLowerCase())})`,
+      returnByValue: true,
     });
-    this.webContents.sendInputEvent({
-      type: 'mouseUp',
-      x: Math.round(geometry.clickX),
-      y: Math.round(geometry.clickY),
-      button: 'left',
-      clickCount: 1,
-    });
+    return result?.result?.value === true;
   }
 
   async fillElement(ref: string, value: string): Promise<void> {
@@ -462,7 +483,10 @@ export class BrowserCDP {
       }`,
       arguments: [{ value }],
     });
-    await this.typeText(value);
+    // One IME-style commit instead of two key events per character — a long
+    // value used to cost thousands of CDP round trips. Frameworks still see
+    // a native `input` event.
+    if (value) await this.send('Input.insertText', { text: value });
     await this.send('Runtime.callFunctionOn', {
       objectId: object.objectId,
       functionDeclaration: `function() { this.dispatchEvent(new Event('change', { bubbles: true })); }`,

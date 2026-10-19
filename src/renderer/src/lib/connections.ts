@@ -199,6 +199,12 @@ export async function setSessionRetentionDays(days: number | null): Promise<void
   await reload();
 }
 
+export async function setBrowserSharedProfile(enabled: boolean): Promise<void> {
+  const next = { ...snapshot().settings, browserSharedProfile: enabled };
+  await window.api.settings.save(next);
+  await reload();
+}
+
 export async function setContextFileNames(names: string[]): Promise<void> {
   const next = { ...snapshot().settings, contextFileNames: names };
   await window.api.settings.save(next);

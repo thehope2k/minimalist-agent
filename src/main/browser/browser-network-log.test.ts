@@ -20,15 +20,17 @@ function fakeSession() {
 }
 
 function request(id: number, url: string, resourceType = 'xhr') {
-  return { id, url, method: 'GET', resourceType, timestamp: 1000 };
+  return { id, url, method: 'GET', resourceType, timestamp: 1000, webContentsId: 7 };
 }
 
 describe('NetworkLog', () => {
   it('records status, duration, and errors, hiding static assets by default', () => {
     const { session, listeners } = fakeSession();
-    const log = new NetworkLog(session);
+    const log = new NetworkLog(session, 7);
+    const other = new NetworkLog(session, 8);
 
     listeners.send(request(1, 'http://localhost/api/users'));
+    expect(log.inFlight).toBe(1);
     listeners.completed({
       ...request(1, 'http://localhost/api/users'),
       timestamp: 1120,
@@ -57,5 +59,8 @@ describe('NetworkLog', () => {
     expect(log.query({ limit: 50, includeStatic: true })).toHaveLength(3);
     expect(log.query({ limit: 50, failedOnly: true })).toHaveLength(2);
     expect(log.query({ limit: 50, filter: 'FEED' })).toHaveLength(1);
+    expect(log.inFlight).toBe(0);
+    // Requests are routed per window when panes share a session.
+    expect(other.query({ limit: 50, includeStatic: true })).toHaveLength(0);
   });
 });

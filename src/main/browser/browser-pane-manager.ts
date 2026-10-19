@@ -8,6 +8,7 @@
 
 import { BrowserWindow } from 'electron';
 import { createLogger } from '../logger';
+import { getSettings } from '../storage/settings';
 import {
   BrowserCDP,
   MAX_Z_INDEX,
@@ -28,6 +29,15 @@ const WINDOW_HEIGHT = 860;
 const DEFAULT_SCROLL_AMOUNT = 400;
 const CONTROL_BADGE_ID = '__minimalist_agent_control_badge__';
 const CLOSE_TIMEOUT_MS = 3_000;
+const WAIT_POLL_MS = 250;
+// No request in flight and none started/finished for this long = idle.
+const NETWORK_IDLE_MS = 500;
+
+export type WaitCondition =
+  | { kind: 'text'; text: string }
+  | { kind: 'url'; text: string }
+  | { kind: 'idle' }
+  | { kind: 'time'; ms: number };
 // file:/data:/chrome: etc. would let the agent read local files or
 // app-internal state back into its own tool output; about: is just the
 // window's initial blank state.
@@ -168,16 +178,18 @@ class BrowserPaneManager {
       webPreferences: {
         sandbox: true,
         contextIsolation: true,
-        // Per-session partition — without it every pane silently shares
-        // Electron's defaultSession (and the app shell's own cookies) with
-        // every other chat session.
-        partition: `persist:browser-pane-${sessionId}`,
+        // Never Electron's defaultSession (the app shell's own cookies). Per
+        // chat by default; one shared jar when the user opts in so sign-ins
+        // carry across chats.
+        partition: getSettings().browserSharedProfile
+          ? 'persist:browser-pane-shared'
+          : `persist:browser-pane-${sessionId}`,
       },
     });
     const entry: PaneEntry = {
       window,
       cdp: new BrowserCDP(window.webContents),
-      network: new NetworkLog(window.webContents.session),
+      network: new NetworkLog(window.webContents.session, window.webContents.id),
       agentControl: true,
       // Gives the window a renderer target before any CDP command or
       // loadURL races it — see BrowserCDP.setReady.
@@ -218,6 +230,7 @@ class BrowserPaneManager {
     });
     window.on('closed', () => {
       entry.cdp.detach();
+      entry.network.dispose();
       this.panes.delete(sessionId);
       this.emitState(sessionId);
     });
@@ -293,6 +306,53 @@ class BrowserPaneManager {
 
   click(sessionId: string, ref: string): Promise<void> {
     return this.requireControlledPane(sessionId).cdp.clickElement(ref);
+  }
+
+  clickAt(sessionId: string, x: number, y: number): Promise<void> {
+    return this.requireControlledPane(sessionId).cdp.clickAt(x, y);
+  }
+
+  hover(sessionId: string, target: string | { x: number; y: number }): Promise<void> {
+    const cdp = this.requireControlledPane(sessionId).cdp;
+    return typeof target === 'string'
+      ? cdp.hoverElement(target)
+      : cdp.moveMouse(target.x, target.y);
+  }
+
+  /** Polls until `condition` holds; throws once `timeoutMs` passes. */
+  async wait(sessionId: string, condition: WaitCondition, timeoutMs: number): Promise<number> {
+    const startedAt = Date.now();
+    if (condition.kind === 'time') {
+      await new Promise((r) => setTimeout(r, Math.min(condition.ms, timeoutMs)));
+      return Date.now() - startedAt;
+    }
+    const check = async (): Promise<boolean> => {
+      const entry = this.requirePane(sessionId);
+      switch (condition.kind) {
+        case 'url':
+          return entry.window.webContents
+            .getURL()
+            .toLowerCase()
+            .includes(condition.text.toLowerCase());
+        case 'idle':
+          return (
+            entry.network.inFlight === 0 &&
+            Date.now() - entry.network.lastActivity >= NETWORK_IDLE_MS
+          );
+        case 'text':
+          // A page mid-navigation has no execution context yet — not a match.
+          return entry.cdp.pageContainsText(condition.text).catch(() => false);
+      }
+    };
+    while (!(await check())) {
+      if (Date.now() - startedAt >= timeoutMs) {
+        throw new Error(
+          `wait timed out after ${Math.round(timeoutMs / 1000)}s — the condition never held. Check the page with "text" or "screenshot".`,
+        );
+      }
+      await new Promise((r) => setTimeout(r, WAIT_POLL_MS));
+    }
+    return Date.now() - startedAt;
   }
 
   fill(sessionId: string, ref: string, value: string): Promise<void> {

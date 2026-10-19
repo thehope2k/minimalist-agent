@@ -6,7 +6,7 @@ import {
   setPetEnabled,
   setPetSoundEnabled,
 } from '@/lib/app-settings';
-import { setSessionRetentionDays } from '@/lib/connections';
+import { setBrowserSharedProfile, setSessionRetentionDays } from '@/lib/connections';
 import { useAiData } from '@/hooks/useAiData';
 import {
   SettingsCard,
@@ -132,6 +132,17 @@ export function AppPanel() {
                 menuWidth={200}
               />
             }
+          />
+        </SettingsCard>
+      </SettingsSection>
+
+      <SettingsSection title="Browser">
+        <SettingsCard>
+          <SettingsToggle
+            label="Share browser sign-ins across chats"
+            description="The agent's browser keeps one set of cookies for every chat, so you sign in to a site once. Off: each chat starts signed out. Applies to browser windows opened after the change."
+            checked={aiData?.settings.browserSharedProfile ?? false}
+            onCheckedChange={(v) => void setBrowserSharedProfile(v)}
           />
         </SettingsCard>
       </SettingsSection>

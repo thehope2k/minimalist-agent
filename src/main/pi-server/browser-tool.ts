@@ -31,11 +31,11 @@ const BROWSER_TOOL_DESCRIPTION = `Drive a real, visible browser window owned by 
 
 Workflow: navigate <url> → find <text> or snapshot --interactive (get @eN refs) → click/fill/select using those refs → confirm with find/snapshot.
 
-Commands: open, navigate <url>, back, forward, snapshot [--interactive] [--within <ref>] [--max <n>], find <text>, text, click <ref>, fill <ref> <value>, select <ref> <value>, type <text>, key <key> [modifier], scroll <up|down|left|right> [amount], screenshot [--annotated] [--scale 0.1-1] [--region x0,y0,x1,y1], evaluate <js>, console [limit] [level], network [limit] [--failed] [--filter <text>] [--all], viewport <mobile|tablet|desktop|WxH>, color-scheme <light|dark|auto>, release, close.
+Commands: open, navigate <url>, back, forward, snapshot [--interactive] [--within <ref>] [--max <n>], find <text>, text, click <ref>, click-at <x> <y>, hover <ref|x y>, fill <ref> <value>, select <ref> <value>, type <text>, key <key> [modifier], scroll <up|down|left|right> [amount], screenshot [--annotated] [--scale 0.1-1] [--region x0,y0,x1,y1], evaluate <js>, wait <ms|text <t>|url <s>|idle> [--timeout <s>], console [limit] [level], network [limit] [--failed] [--filter <text>] [--all], viewport <mobile|tablet|desktop|WxH>, color-scheme <light|dark|auto>, release, close.
 
 Reading cheaply: prefer "find <text>" or "snapshot --interactive" over a full snapshot, "snapshot --within <ref>" for one region, and "text" to read content. Screenshots are image tokens — take them only when you need to see layout, and use --scale or --region to keep them small.
 
-Batch predictable steps with "commands" instead of one call per step. One window per session — no tabs; anything that would open a new tab navigates this same window. navigate only accepts http:/https:/about: URLs. select only works on native <select> elements — for custom dropdowns, click to open, then click the option. viewport/color-scheme stay in effect until reset (desktop / auto).
+Batch predictable steps with "commands" instead of one call per step. After a click or navigate that loads content, add "wait text <expected>" or "wait idle" rather than re-snapshotting until it appears. Use click-at only when an element has no ref (canvas, charts). One window per session — no tabs; anything that would open a new tab navigates this same window. navigate only accepts http:/https:/about: URLs. select only works on native <select> elements — for custom dropdowns, click to open, then click the option. viewport/color-scheme stay in effect until reset (desktop / auto).
 
 The window is visible to the user while you drive it. Call "release" when you're done interacting but want to leave the page open for the user, or "close" to tear the window down.
 

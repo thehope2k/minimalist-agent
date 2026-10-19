@@ -1,7 +1,11 @@
 // Request log for one browser pane, recorded through Electron's `webRequest`
-// hooks on the pane's own session partition. Unlike CDP Network events this
+// hooks on the pane's session partition. Unlike CDP Network events this
 // keeps recording while the debugger is idle-detached. No response bodies —
 // status, timing, and errors cover "why did my app's API call fail".
+//
+// `webRequest` allows one listener per event per session, and with the shared
+// profile several panes share a session — so each session gets one set of
+// listeners that routes by webContentsId.
 import type { Session } from 'electron';
 
 const MAX_ENTRIES = 300;
@@ -34,30 +38,66 @@ interface RequestDetails {
   method: string;
   resourceType: string;
   timestamp: number;
+  webContentsId?: number;
+}
+
+const routers = new WeakMap<Session, Map<number, NetworkLog>>();
+
+function routerFor(session: Session): Map<number, NetworkLog> {
+  const existing = routers.get(session);
+  if (existing) return existing;
+  const logs = new Map<number, NetworkLog>();
+  routers.set(session, logs);
+  const route = (d: RequestDetails) =>
+    d.webContentsId !== undefined ? logs.get(d.webContentsId) : undefined;
+  session.webRequest.onSendHeaders(URL_FILTER, (d) => route(d)?.start(d));
+  session.webRequest.onCompleted(URL_FILTER, (d) =>
+    route(d)?.record(d, { status: d.statusCode, fromCache: d.fromCache }),
+  );
+  session.webRequest.onErrorOccurred(URL_FILTER, (d) =>
+    route(d)?.record(d, { error: d.error, fromCache: d.fromCache }),
+  );
+  return logs;
 }
 
 export class NetworkLog {
   private entries: NetworkEntry[] = [];
   private startedAt = new Map<number, number>();
+  private lastActivityAt = Date.now();
 
-  constructor(session: Session) {
-    session.webRequest.onSendHeaders(URL_FILTER, (d) => {
-      this.startedAt.set(d.id, d.timestamp);
-    });
-    session.webRequest.onCompleted(URL_FILTER, (d) => {
-      this.record(d, { status: d.statusCode, fromCache: d.fromCache });
-    });
-    session.webRequest.onErrorOccurred(URL_FILTER, (d) => {
-      this.record(d, { error: d.error, fromCache: d.fromCache });
-    });
+  constructor(
+    private readonly session: Session,
+    private readonly webContentsId: number,
+  ) {
+    routerFor(session).set(webContentsId, this);
   }
 
-  private record(
+  dispose(): void {
+    routerFor(this.session).delete(this.webContentsId);
+  }
+
+  /** Requests sent but not yet completed or failed. */
+  get inFlight(): number {
+    return this.startedAt.size;
+  }
+
+  /** Epoch ms of the last request start or finish. */
+  get lastActivity(): number {
+    return this.lastActivityAt;
+  }
+
+  start(d: RequestDetails): void {
+    this.startedAt.set(d.id, d.timestamp);
+    this.lastActivityAt = Date.now();
+  }
+
+  record(
     d: RequestDetails,
     outcome: { status?: number; error?: string; fromCache: boolean },
   ): void {
     const started = this.startedAt.get(d.id);
     this.startedAt.delete(d.id);
+    this.lastActivityAt = Date.now();
     this.entries.push({
       method: d.method,
       url: d.url,

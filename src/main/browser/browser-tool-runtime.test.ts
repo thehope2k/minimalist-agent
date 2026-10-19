@@ -5,7 +5,13 @@ vi.mock('../logger', () => ({
   createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
 }));
 
-import { parseFlags, parseRegion, parseViewport } from './browser-tool-runtime';
+import {
+  parseFlags,
+  parsePoint,
+  parseRegion,
+  parseViewport,
+  parseWait,
+} from './browser-tool-runtime';
 
 describe('parseFlags', () => {
   it('separates positionals, boolean flags, and value flags', () => {
@@ -41,5 +47,29 @@ describe('parseViewport', () => {
 
   it('rejects unknown values', () => {
     expect(() => parseViewport('huge')).toThrow('Unknown viewport');
+  });
+});
+
+describe('parseWait', () => {
+  it('parses each condition', () => {
+    expect(parseWait(['500'])).toEqual({ kind: 'time', ms: 500 });
+    expect(parseWait(['idle'])).toEqual({ kind: 'idle' });
+    expect(parseWait(['text', 'Welcome', 'back'])).toEqual({ kind: 'text', text: 'Welcome back' });
+    expect(parseWait(['url', '/dashboard'])).toEqual({ kind: 'url', text: '/dashboard' });
+  });
+
+  it('rejects missing or unknown conditions', () => {
+    expect(() => parseWait([])).toThrow('Usage');
+    expect(() => parseWait(['text'])).toThrow('needs a value');
+    expect(() => parseWait(['forever'])).toThrow('Unknown wait condition');
+  });
+});
+
+describe('parsePoint', () => {
+  it('accepts "x y" and "x,y"', () => {
+    expect(parsePoint(['10', '20.6'])).toEqual({ x: 10, y: 21 });
+    expect(parsePoint(['10,20'])).toEqual({ x: 10, y: 20 });
+    expect(parsePoint(['10'])).toBeNull();
+    expect(parsePoint(['a', 'b'])).toBeNull();
   });
 });

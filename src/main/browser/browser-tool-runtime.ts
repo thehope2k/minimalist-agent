@@ -2,9 +2,9 @@
 // session's BrowserPaneManager. One text command in, one text (+ optional
 // image) result out — mirrors the shape Craft Agents' `browser_tool` uses,
 // trimmed to the commands this app actually needs (see docs/BROWSER-TOOL.md
-// for the deferred command list: click-at/drag, clipboard, upload, wait).
+// for the deferred command list: drag, clipboard, upload).
 
-import { browserPaneManager } from './browser-pane-manager';
+import { browserPaneManager, type WaitCondition } from './browser-pane-manager';
 import { MAX_SNAPSHOT_NODES, type AccessibilityNode, type ViewportOverride } from './browser-cdp';
 import { formatNetworkEntry } from './browser-network-log';
 
@@ -24,7 +24,9 @@ const VIEWPORT_PRESETS: Record<string, ViewportOverride> = {
   tablet: { width: 768, height: 1024, mobile: true },
 };
 // Flags that take the following token as their value.
-const VALUE_FLAGS = new Set(['within', 'max', 'scale', 'region', 'filter']);
+const VALUE_FLAGS = new Set(['within', 'max', 'scale', 'region', 'filter', 'timeout']);
+const DEFAULT_WAIT_TIMEOUT_S = 10;
+const MAX_WAIT_TIMEOUT_S = 30;
 // Same cap as web_fetch — evaluate is the one output path here with no
 // built-in ceiling (snapshot caps nodes, console caps entries).
 const MAX_EVALUATE_OUTPUT_CHARS = 60_000;
@@ -93,6 +95,28 @@ export function parseViewport(raw: string): ViewportOverride | null {
   return { width: Number(match[1]), height: Number(match[2]), mobile: false };
 }
 
+export function parseWait(positional: string[]): WaitCondition {
+  const [kind, ...rest] = positional;
+  const usage = 'wait <ms> | wait text <text> | wait url <substring> | wait idle';
+  if (kind === undefined) throw new Error(`Missing argument. Usage: ${usage}`);
+  if (/^\d+$/.test(kind)) return { kind: 'time', ms: Number(kind) };
+  if (kind === 'idle') return { kind: 'idle' };
+  if (kind === 'text' || kind === 'url') {
+    const text = rest.join(' ');
+    if (!text) throw new Error(`wait ${kind} needs a value. Usage: ${usage}`);
+    return { kind, text };
+  }
+  throw new Error(`Unknown wait condition "${kind}". Usage: ${usage}`);
+}
+
+/** Accepts "x y" or "x,y" in viewport CSS pixels. */
+export function parsePoint(args: string[]): { x: number; y: number } | null {
+  const parts = args.length === 1 ? args[0].split(',') : args;
+  if (parts.length !== 2) return null;
+  const [x, y] = parts.map(Number);
+  return Number.isFinite(x) && Number.isFinite(y) ? { x: Math.round(x), y: Math.round(y) } : null;
+}
+
 function truncate(text: string): string {
   if (text.length <= MAX_EVALUATE_OUTPUT_CHARS) return text;
   return `${text.slice(0, MAX_EVALUATE_OUTPUT_CHARS)}\n\n[... truncated; ${text.length - MAX_EVALUATE_OUTPUT_CHARS} more chars]`;
@@ -143,6 +167,8 @@ export async function executeBrowserToolCommand(
           '  find <text>                   — elements whose name/value contains <text>',
           "  text                          — readable text of the page's main content",
           '  click <ref>',
+          '  click-at <x> <y>              — viewport CSS px, for canvas / no-ref targets',
+          '  hover <ref> | hover <x> <y>',
           '  fill <ref> <value>',
           '  select <ref> <value>          — <select> elements only',
           '  type <text>                  — types into the focused element',
@@ -150,6 +176,8 @@ export async function executeBrowserToolCommand(
           '  scroll <up|down|left|right> [amount]',
           '  screenshot [--annotated] [--scale 0.1-1] [--region x0,y0,x1,y1]',
           '  evaluate <js>',
+          '  wait <ms> | wait text <text> | wait url <substring> | wait idle [--timeout <s>]',
+          `                                — polls until true; default ${DEFAULT_WAIT_TIMEOUT_S}s, max ${MAX_WAIT_TIMEOUT_S}s`,
           '  console [limit] [level]      — level: log|info|warn|error',
           '  network [limit] [--failed] [--filter <text>] [--all]',
           '                                — request log; --all includes images/fonts/css',
@@ -254,6 +282,33 @@ export async function executeBrowserToolCommand(
       const ref = requireArg(args[0], 'click <ref>');
       await browserPaneManager.click(sessionId, ref);
       return { output: `Clicked ${ref}.` };
+    }
+
+    case 'click-at': {
+      const point = parsePoint(args);
+      if (!point) throw new Error('Usage: click-at <x> <y> (viewport CSS pixels).');
+      await browserPaneManager.clickAt(sessionId, point.x, point.y);
+      return { output: `Clicked at ${point.x},${point.y}.` };
+    }
+
+    case 'hover': {
+      const target = args[0]?.startsWith('@') ? args[0] : parsePoint(args);
+      if (!target) throw new Error('Usage: hover <ref> | hover <x> <y>.');
+      await browserPaneManager.hover(sessionId, target);
+      return {
+        output: `Hovering ${typeof target === 'string' ? target : `${target.x},${target.y}`}.`,
+      };
+    }
+
+    case 'wait': {
+      const { positional, flags } = parseFlags(args);
+      const condition = parseWait(positional);
+      const timeoutS = Math.min(
+        Math.max(numberFlag(flags, 'timeout') ?? DEFAULT_WAIT_TIMEOUT_S, 0.1),
+        MAX_WAIT_TIMEOUT_S,
+      );
+      const elapsed = await browserPaneManager.wait(sessionId, condition, timeoutS * 1000);
+      return { output: `Waited ${elapsed}ms.` };
     }
 
     case 'fill': {

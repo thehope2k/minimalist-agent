@@ -39,6 +39,11 @@ export interface AiSettings {
    *  resolved per session by the agent runtime. */
   compactionSettings?: CompactionTuning;
   retrySettings?: RetryTuning;
+  /**
+   * One browser_tool cookie jar shared by every chat, so a site you sign in
+   * to once stays signed in. Off by default: each chat gets its own.
+   */
+  browserSharedProfile?: boolean;
 }
 
 export const DEFAULT_CONTEXT_FILE_NAMES: readonly string[] = [

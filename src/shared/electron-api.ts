@@ -418,6 +418,11 @@ export interface AiSettings {
   sessionRetentionDays?: number | null;
   compactionSettings?: CompactionTuning;
   retrySettings?: RetryTuning;
+  /**
+   * One browser_tool cookie jar shared by every chat, so a site you sign in
+   * to once stays signed in. Off by default: each chat gets its own.
+   */
+  browserSharedProfile?: boolean;
 }
 
 export type OtelExporterType = 'file' | 'otlp' | 'console';
