@@ -3,7 +3,12 @@ import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CopyButton } from '@/components/ui';
 import { useCwd } from '@/contexts/CwdContext';
-import { canonicalToolName, iconForTool, summarizeToolCall } from '@/lib/tool-summary';
+import {
+  canonicalToolName,
+  iconForTool,
+  summarizeToolCall,
+  toolIntentLabel,
+} from '@/lib/tool-summary';
 import { InputView } from './InputView';
 import { TaskInputSection } from './TaskInputSection';
 import { SubagentSummaryLine, SubagentTranscriptView } from './SubagentTranscript';
@@ -14,6 +19,7 @@ import { formatInput } from './tool-helpers';
 import { ContextDeltaBadge } from './ContextDeltaBadge';
 import { ToolDurationBadge } from './ToolDurationBadge';
 import type { ToolPartProps } from './types';
+import { useChipChrome } from '../chip-chrome';
 
 function CodeFrame({ label, text }: { label: string; text: string }) {
   return (
@@ -22,7 +28,7 @@ function CodeFrame({ label, text }: { label: string; text: string }) {
         <span>{label}</span>
         <CopyButton text={text} className="opacity-100" />
       </div>
-      <pre className="scroll-thin overflow-x-auto whitespace-pre-wrap wrap-break-word rounded bg-panel px-2 py-1.5 font-mono text-xs leading-relaxed text-fg">
+      <pre className="scroll-thin overflow-x-auto whitespace-pre-wrap wrap-break-word rounded bg-panel px-2 py-1.5 font-mono text-[12.5px] leading-relaxed text-fg">
         {text}
       </pre>
     </div>
@@ -44,22 +50,15 @@ export function ChipBody({
   const cwd = useCwd();
   const inputText = formatInput(input, partialInputJson);
   const summary = summarizeToolCall(name, input, cwd);
+  const intent = toolIntentLabel(name, input);
   const toolName = canonicalToolName(name);
   const isAgentTool = toolName === 'Agent';
   const erroredOrFailed = status === 'error' || result?.isError;
   const ToolIcon = iconForTool(name);
+  const chrome = useChipChrome(erroredOrFailed ? 'error' : isAgentTool ? 'agent' : 'default');
 
   return (
-    <div
-      className={cn(
-        'overflow-hidden rounded-md border text-xs transition-colors',
-        erroredOrFailed
-          ? 'border-red-500/30 bg-red-500/5'
-          : isAgentTool
-            ? 'border-accent/40 bg-elevated/40'
-            : 'border-border bg-elevated/40',
-      )}
-    >
+    <div className={cn('overflow-hidden text-[13px] transition-colors', chrome)}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -85,11 +84,22 @@ export function ChipBody({
         <span className={cn('shrink-0 font-medium', erroredOrFailed ? 'text-red-300' : 'text-fg')}>
           {toolName}
         </span>
-        {summary && (
+        {intent ? (
           <>
             <span className="shrink-0 text-fg-subtle">·</span>
-            <span className="min-w-0 flex-1 truncate font-mono text-fg-subtle">{summary}</span>
+            <span className="min-w-0 flex-1 truncate text-fg-muted" title={summary || undefined}>
+              {intent}
+            </span>
           </>
+        ) : (
+          summary && (
+            <>
+              <span className="shrink-0 text-fg-subtle">·</span>
+              <span className="min-w-0 flex-1 truncate font-mono text-[12.5px] text-fg-subtle">
+                {summary}
+              </span>
+            </>
+          )
         )}
         <span className="ml-auto flex shrink-0 items-center gap-1.5 text-fg-muted">
           <ToolDurationBadge durationMs={durationMs} status={status} />

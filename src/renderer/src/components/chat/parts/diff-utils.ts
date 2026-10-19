@@ -246,13 +246,13 @@ export const diffViewerStyles = {
   contentText: {
     fontFamily:
       'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-    fontSize: '11px',
+    fontSize: '12.5px',
     lineHeight: '1.5',
   },
   gutter: {
     minWidth: '2.25rem',
     padding: '0 0.5rem',
-    fontSize: '10px',
+    fontSize: '11px',
   },
   line: {
     wordBreak: 'break-word' as const,

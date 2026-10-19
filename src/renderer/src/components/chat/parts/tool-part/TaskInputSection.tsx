@@ -8,7 +8,7 @@ function CodeFrame({ label, text }: { label: string; text: string }) {
   return (
     <div>
       <div className="mb-1 text-xs uppercase tracking-wide text-fg-subtle">{label}</div>
-      <pre className="scroll-thin overflow-x-auto whitespace-pre-wrap break-words rounded bg-panel px-2 py-1.5 font-mono text-xs leading-relaxed text-fg">
+      <pre className="scroll-thin overflow-x-auto whitespace-pre-wrap break-words rounded bg-panel px-2 py-1.5 font-mono text-[12.5px] leading-relaxed text-fg">
         {text}
       </pre>
     </div>

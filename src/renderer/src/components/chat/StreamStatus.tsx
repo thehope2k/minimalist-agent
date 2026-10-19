@@ -72,6 +72,8 @@ function verbFor(
     case 'Edit':
       return file ? `Editing ${file}` : 'Editing file';
     case 'Bash': {
+      const desc = o && typeof o.description === 'string' ? o.description.trim() : '';
+      if (desc) return desc;
       const cmd = o && typeof o.command === 'string' ? o.command : '';
       const head = cmd.split(/\s+/, 1)[0] ?? '';
       return head ? `Running ${head}` : 'Running command';

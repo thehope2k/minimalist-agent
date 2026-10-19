@@ -71,6 +71,16 @@ export function canonicalToolName(name: string): string {
   }
 }
 
+/**
+ * The model's own plain-language label for a call (bash `description`), or ''
+ * when it gave none. Shown in place of the raw summary, which stays on hover.
+ */
+export function toolIntentLabel(name: string, input: unknown): string {
+  if (canonicalToolName(name) !== 'Bash') return '';
+  const desc = asObj(input)?.description;
+  return typeof desc === 'string' ? clip(desc.trim().replace(/\s+/g, ' ')) : '';
+}
+
 /** Return a one-line summary, or an empty string when none is useful. */
 export function summarizeToolCall(name: string, input: unknown, cwd?: string): string {
   const o = asObj(input) ?? {};

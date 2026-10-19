@@ -3,15 +3,17 @@ import { Brain, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Markdown } from './markdown/Markdown';
 import { RoundOutputBadge } from './RoundOutputBadge';
+import { useChipChrome } from './chip-chrome';
 
 export function ThinkingPart({ text, outputTokens }: { text: string; outputTokens?: number }) {
   const [open, setOpen] = useState(false);
+  const chrome = useChipChrome();
   return (
-    <div className="rounded-md border border-border bg-elevated/40">
+    <div className={chrome}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-elevated"
+        className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[13px] hover:bg-elevated"
       >
         <ChevronRight
           className={cn('h-3 w-3 transition-transform', open && 'rotate-90')}

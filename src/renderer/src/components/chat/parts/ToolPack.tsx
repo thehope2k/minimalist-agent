@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { PartView } from '../message-list/PartView';
 import { partKey } from '../message-list/utils';
 import { summarizePack } from './pack-summary';
+import { ChipGroup } from './chip-chrome';
 import type { MessagePart } from '@/lib/chat';
 
 interface ToolPackProps {
@@ -25,11 +26,11 @@ export function ToolPack({ parts, isLive }: ToolPackProps) {
   const { label, errorCount, hasSubagent } = summarizePack(parts);
 
   return (
-    <div className="rounded-md border border-border/60 bg-elevated/30">
+    <div className="overflow-hidden rounded-md border border-border/60 bg-elevated/30">
       <button
         type="button"
         onClick={() => setManualOpen(!open)}
-        className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs hover:bg-elevated/60"
+        className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[13px] hover:bg-elevated/60"
       >
         <ChevronRight
           className={cn(
@@ -58,13 +59,15 @@ export function ToolPack({ parts, isLive }: ToolPackProps) {
         )}
       </button>
       {open && (
-        <div className="space-y-2 border-t border-border/60 p-2">
-          {parts.map((part, i) => (
-            <PartView
-              key={partKey(part.kind, part.kind === 'tool' ? part.toolUseId : undefined, i)}
-              part={part}
-            />
-          ))}
+        <div className="divide-y divide-border/60 border-t border-border/60">
+          <ChipGroup>
+            {parts.map((part, i) => (
+              <PartView
+                key={partKey(part.kind, part.kind === 'tool' ? part.toolUseId : undefined, i)}
+                part={part}
+              />
+            ))}
+          </ChipGroup>
         </div>
       )}
     </div>

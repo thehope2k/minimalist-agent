@@ -22,6 +22,7 @@ import {
 import { cn } from '@/lib/utils';
 import { CopyButton } from '@/components/ui';
 import { useCwd } from '@/contexts/CwdContext';
+import { useChipChrome } from './chip-chrome';
 import {
   parseDiffInput,
   countDiffLines,
@@ -58,6 +59,7 @@ export function DiffPart({
   const isWrite = name.toLowerCase() === 'write';
   const cwd = useCwd();
   const erroredOrFailed = status === 'error' || result?.isError;
+  const chrome = useChipChrome(erroredOrFailed ? 'error' : 'default');
   // Diff chips stay collapsed by default — even on error. The red border +
   // alert icon already flag failure, and a failed edit didn't actually
   // change the file, so showing the would-be diff is just noise.
@@ -75,7 +77,9 @@ export function DiffPart({
     const isRunning = status === 'running';
     const Icon = isRunning ? Loader2 : isWrite ? FileText : FilePenLine;
     return (
-      <div className="flex items-center gap-2 rounded-md border border-border bg-elevated/40 px-2.5 py-1.5 text-xs text-fg-subtle">
+      <div
+        className={cn('flex items-center gap-2 px-2.5 py-1.5 text-[13px] text-fg-subtle', chrome)}
+      >
         <Icon className={cn('h-3.5 w-3.5', isRunning && 'animate-spin')} strokeWidth={1.75} />
         <span>{isWrite ? 'Writing file…' : 'Editing file…'}</span>
       </div>
@@ -88,12 +92,9 @@ export function DiffPart({
   return (
     <>
       <div
-        className={cn(
-          'overflow-hidden rounded-md border text-xs transition-colors',
-          // Visual weight comes from the +/- pill badges — the chip itself
-          // stays neutral so it lives in the same family as Bash/Read.
-          erroredOrFailed ? 'border-red-500/30 bg-red-500/5' : 'border-border bg-elevated/40',
-        )}
+        // Visual weight comes from the +/- pill badges — the chip itself
+        // stays neutral so it lives in the same family as Bash/Read.
+        className={cn('overflow-hidden text-[13px] transition-colors', chrome)}
       >
         <div className={cn('flex w-full items-center gap-2 px-2.5 py-1.5', 'hover:bg-elevated/40')}>
           <button
@@ -134,7 +135,7 @@ export function DiffPart({
                 )}
               </span>
             )}
-            <span className="min-w-0 flex-1 truncate rounded bg-panel/60 px-1.5 py-0.5 font-mono text-[11px] text-fg-muted">
+            <span className="min-w-0 flex-1 truncate rounded bg-panel/60 px-1.5 py-0.5 font-mono text-[12px] text-fg-muted">
               {shortPath}
             </span>
           </button>
@@ -159,7 +160,7 @@ export function DiffPart({
         </div>
         {erroredOrFailed && !open && result?.content && (
           <div className="border-t border-red-500/20 px-3 py-1.5">
-            <span className="line-clamp-2 wrap-break-word font-mono text-[11px] text-red-300">
+            <span className="line-clamp-2 wrap-break-word font-mono text-[12px] text-red-300">
               {stripErrorWrapper(result.content)}
             </span>
           </div>
@@ -190,7 +191,7 @@ export function DiffPart({
                   <span>Error</span>
                   <CopyButton text={result.content} className="opacity-100" />
                 </div>
-                <pre className="scroll-thin overflow-x-auto whitespace-pre-wrap wrap-break-word rounded bg-panel px-2 py-1.5 font-mono text-[11px] leading-relaxed text-red-300">
+                <pre className="scroll-thin overflow-x-auto whitespace-pre-wrap wrap-break-word rounded bg-panel px-2 py-1.5 font-mono text-[12.5px] leading-relaxed text-red-300">
                   {result.content}
                 </pre>
               </div>

@@ -5,6 +5,7 @@ import { ToolPart } from '../ToolPart';
 import { compactNumber } from '../../message-list/utils';
 import { subagentPhaseLabel } from './tool-helpers';
 import type { SubagentTranscript } from '@/lib/chat';
+import { ChipGroup } from '../chip-chrome';
 
 type Props = {
   subagent: SubagentTranscript;
@@ -38,38 +39,41 @@ export function SubagentSummaryLine({ subagent }: Props) {
 
 export function SubagentTranscriptView({ subagent }: Props) {
   return (
-    <div className="space-y-2 border-l border-border/60 pl-2">
-      {subagent.parts.length === 0 ? (
-        <div className="text-xs text-fg-subtle">No events yet.</div>
-      ) : (
-        subagent.parts.map((part, i) => {
-          const key = part.kind === 'tool' ? `${part.toolUseId}-${i}` : `${part.kind}-${i}`;
-          if (part.kind === 'text') {
+    // A subagent row may itself sit inside a pack; its transcript keeps standalone chips.
+    <ChipGroup grouped={false}>
+      <div className="space-y-2 border-l border-border/60 pl-2">
+        {subagent.parts.length === 0 ? (
+          <div className="text-xs text-fg-subtle">No events yet.</div>
+        ) : (
+          subagent.parts.map((part, i) => {
+            const key = part.kind === 'tool' ? `${part.toolUseId}-${i}` : `${part.kind}-${i}`;
+            if (part.kind === 'text') {
+              return (
+                <div key={key} className="rounded bg-panel px-2 py-1 text-sm text-fg">
+                  <Markdown text={part.text} />
+                </div>
+              );
+            }
+            if (part.kind === 'thinking') {
+              return <ThinkingPart key={key} text={part.text} outputTokens={part.outputTokens} />;
+            }
             return (
-              <div key={key} className="rounded bg-panel px-2 py-1 text-sm text-fg">
-                <Markdown text={part.text} />
-              </div>
+              <ToolPart
+                key={key}
+                name={part.name}
+                input={part.input}
+                partialInputJson={part.partialInputJson}
+                result={part.result}
+                status={part.status}
+                durationMs={part.durationMs}
+                subagent={part.subagent}
+                contextDelta={part.contextDelta}
+                contextDeltaGroupSize={part.contextDeltaGroupSize}
+              />
             );
-          }
-          if (part.kind === 'thinking') {
-            return <ThinkingPart key={key} text={part.text} outputTokens={part.outputTokens} />;
-          }
-          return (
-            <ToolPart
-              key={key}
-              name={part.name}
-              input={part.input}
-              partialInputJson={part.partialInputJson}
-              result={part.result}
-              status={part.status}
-              durationMs={part.durationMs}
-              subagent={part.subagent}
-              contextDelta={part.contextDelta}
-              contextDeltaGroupSize={part.contextDeltaGroupSize}
-            />
-          );
-        })
-      )}
-    </div>
+          })
+        )}
+      </div>
+    </ChipGroup>
   );
 }

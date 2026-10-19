@@ -1,5 +1,6 @@
 import { Circle, CircleDot, CheckCircle2, ListChecks } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useChipChrome } from './chip-chrome';
 
 type TodoStatus = 'pending' | 'in_progress' | 'completed';
 
@@ -11,11 +12,14 @@ interface Todo {
 
 export function TodoListPart({ input }: { input: unknown }) {
   const todos = parseTodos(input);
+  const chrome = useChipChrome();
   if (todos.length === 0) {
     // Nothing parseable — render a quiet placeholder so the chip still
     // tells the user *something* happened.
     return (
-      <div className="flex items-center gap-2 rounded-md border border-border bg-elevated/40 px-2.5 py-1.5 text-xs text-fg-subtle">
+      <div
+        className={cn('flex items-center gap-2 px-2.5 py-1.5 text-[13px] text-fg-subtle', chrome)}
+      >
         <ListChecks className="h-3.5 w-3.5" strokeWidth={1.75} />
         <span>Updated todo list</span>
       </div>
@@ -25,7 +29,7 @@ export function TodoListPart({ input }: { input: unknown }) {
   const done = todos.filter((t) => t.status === 'completed').length;
 
   return (
-    <div className="overflow-hidden rounded-md border border-border bg-elevated/40 text-xs">
+    <div className={cn('overflow-hidden text-[13px]', chrome)}>
       <div className="flex items-center gap-2 border-b border-border/60 px-2.5 py-1.5">
         <ListChecks className="h-3.5 w-3.5 text-fg-muted" strokeWidth={1.75} />
         <span className="font-medium text-fg">Todos</span>

@@ -44,7 +44,7 @@ export function ResultBlock({ toolName, text, isError }: Props) {
         ) : (
           <pre
             className={cn(
-              'scroll-thin overflow-x-auto whitespace-pre-wrap break-words rounded bg-panel px-2 py-1.5 font-mono text-xs leading-relaxed',
+              'scroll-thin overflow-x-auto whitespace-pre-wrap break-words rounded bg-panel px-2 py-1.5 font-mono text-[12.5px] leading-relaxed',
               isError ? 'text-red-300' : 'text-fg',
             )}
           >
@@ -83,7 +83,7 @@ export function ResultBlock({ toolName, text, isError }: Props) {
             ) : (
               <pre
                 className={cn(
-                  'whitespace-pre-wrap break-words font-mono text-xs leading-relaxed',
+                  'whitespace-pre-wrap break-words font-mono text-[12.5px] leading-relaxed',
                   isError ? 'text-red-300' : 'text-fg',
                 )}
               >

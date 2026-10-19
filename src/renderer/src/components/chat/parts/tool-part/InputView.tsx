@@ -23,7 +23,7 @@ function CodeFrame({ label, text }: { label: string; text: string }) {
         <span>{label}</span>
         <CopyButton text={text} className="opacity-100" />
       </div>
-      <pre className="scroll-thin overflow-x-auto whitespace-pre-wrap wrap-break-word rounded bg-panel px-2 py-1.5 font-mono text-xs leading-relaxed text-fg">
+      <pre className="scroll-thin overflow-x-auto whitespace-pre-wrap wrap-break-word rounded bg-panel px-2 py-1.5 font-mono text-[12.5px] leading-relaxed text-fg">
         {text}
       </pre>
     </div>
@@ -45,14 +45,14 @@ function PathField({ field, value }: { field: string; value: string }) {
 
   return (
     <div className="flex items-center gap-2">
-      <dt className="shrink-0 font-mono text-[11px] text-fg-subtle">{field}</dt>
+      <dt className="shrink-0 font-mono text-[12px] text-fg-subtle">{field}</dt>
       <dd className="flex min-w-0 flex-1 items-center gap-1">
         <button
           type="button"
           onClick={handleOpen}
           disabled={!fileOpener}
           title={value}
-          className="min-w-0 flex-1 truncate wrap-break-word text-left font-mono text-xs text-accent underline-offset-2 hover:underline disabled:cursor-text disabled:text-fg disabled:no-underline"
+          className="min-w-0 flex-1 truncate wrap-break-word text-left font-mono text-[12.5px] text-accent underline-offset-2 hover:underline disabled:cursor-text disabled:text-fg disabled:no-underline"
         >
           {value}
         </button>
@@ -79,12 +79,12 @@ function InputField({ field, value }: { field: string; value: unknown }) {
   if (isMultilineString) {
     return (
       <div>
-        <dt className="flex items-center justify-between font-mono text-[11px] text-fg-subtle">
+        <dt className="flex items-center justify-between font-mono text-[12px] text-fg-subtle">
           <span>{field}</span>
           <CopyButton text={value as string} className="opacity-100" />
         </dt>
         <dd className="mt-0.5">
-          <pre className="scroll-thin overflow-x-auto whitespace-pre-wrap wrap-break-word rounded bg-app/40 px-2 py-1.5 font-mono text-xs leading-relaxed text-fg">
+          <pre className="scroll-thin overflow-x-auto whitespace-pre-wrap wrap-break-word rounded bg-app/40 px-2 py-1.5 font-mono text-[12.5px] leading-relaxed text-fg">
             {value as string}
           </pre>
         </dd>
@@ -100,12 +100,12 @@ function InputField({ field, value }: { field: string; value: unknown }) {
     }
     return (
       <div>
-        <dt className="flex items-center justify-between font-mono text-[11px] text-fg-subtle">
+        <dt className="flex items-center justify-between font-mono text-[12px] text-fg-subtle">
           <span>{field}</span>
           <CopyButton text={nested} className="opacity-100" />
         </dt>
         <dd className="mt-0.5">
-          <pre className="scroll-thin overflow-x-auto whitespace-pre-wrap wrap-break-word rounded bg-app/40 px-2 py-1.5 font-mono text-xs leading-relaxed text-fg">
+          <pre className="scroll-thin overflow-x-auto whitespace-pre-wrap wrap-break-word rounded bg-app/40 px-2 py-1.5 font-mono text-[12.5px] leading-relaxed text-fg">
             {nested}
           </pre>
         </dd>
@@ -114,8 +114,8 @@ function InputField({ field, value }: { field: string; value: unknown }) {
   }
   return (
     <div className="flex gap-2">
-      <dt className="shrink-0 font-mono text-[11px] text-fg-subtle">{field}</dt>
-      <dd className="min-w-0 flex-1 wrap-break-word font-mono text-xs text-fg">
+      <dt className="shrink-0 font-mono text-[12px] text-fg-subtle">{field}</dt>
+      <dd className="min-w-0 flex-1 wrap-break-word font-mono text-[12.5px] text-fg">
         {value === null || value === undefined
           ? String(value)
           : typeof value === 'string'

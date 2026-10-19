@@ -85,6 +85,7 @@ configureHttpIdleTimeout(HTTP_IDLE_TIMEOUT_MS);
 
 import { adaptAgentEvent } from './event-adapter';
 import { createWebFetchTool, createWebSearchTool } from './web-tools';
+import { withBashDescription } from './bash-description';
 import { createBrowserTool } from './browser-tool';
 import { probeMcpServers } from './mcp-diagnostics';
 import { buildLoadedMcpConfig } from './mcp-native-config';
@@ -200,7 +201,7 @@ function buildTools(
     };
   },
 ): { tools: ToolDefinition<any, any>[]; gatedToolNames: string[]; bashToolName: string } {
-  const bashTool = createBashToolDefinition(cwd);
+  const bashTool = withBashDescription(createBashToolDefinition(cwd));
   bashTool.promptGuidelines = [
     ...(bashTool.promptGuidelines ?? []),
     `Each command already starts in ${cwd} — don't "cd" there first, it's redundant. ` +
