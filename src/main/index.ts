@@ -1,5 +1,4 @@
 import { app, BrowserWindow, session, shell } from 'electron';
-import { browserPaneManager } from './browser/browser-pane-manager';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, sep } from 'node:path';
 import { registerIpc } from './ipc';
@@ -312,12 +311,7 @@ app.whenReady().then(async () => {
   }
   createWindow(icon);
   app.on('activate', () => {
-    // Browser panes are BrowserWindows too, so "no windows open" can't just
-    // mean count === 0 — that would count a lingering pane as the main window.
-    const hasMainWindow = BrowserWindow.getAllWindows().some(
-      (w) => !browserPaneManager.isPaneWindow(w),
-    );
-    if (!hasMainWindow) createWindow(icon);
+    if (BrowserWindow.getAllWindows().length === 0) createWindow(icon);
   });
   checkOnLaunch();
 });

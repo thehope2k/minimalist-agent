@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react';
 import { ContextPanel } from '../context/ContextPanel';
 import { FileExplorerPanel } from '../files';
+import { BrowserPanel } from '../browser/BrowserPanel';
 import type { ActiveSidePanel } from './usePanelStates';
 import { reload as reloadSessions, type SessionMeta } from '@/lib/sessions';
 
@@ -13,6 +14,7 @@ interface AppSidePanelProps {
   onOpenFile: (absolutePath: string, lineNumber: number) => void;
   onToggleFileExplorer: () => void;
   onToggleContextPanel: () => void;
+  onToggleBrowserPanel: () => void;
   startSessionWithSubmission: ComponentProps<typeof ContextPanel>['onStartChatWithSubmission'];
 }
 
@@ -25,8 +27,13 @@ export function AppSidePanel({
   onOpenFile,
   onToggleFileExplorer,
   onToggleContextPanel,
+  onToggleBrowserPanel,
   startSessionWithSubmission,
 }: AppSidePanelProps) {
+  if (activeSidePanel === 'browser') {
+    return <BrowserPanel sessionId={activeSessionId} onHidePanel={onToggleBrowserPanel} />;
+  }
+
   if (activeSidePanel === 'explorer') {
     return (
       <FileExplorerPanel

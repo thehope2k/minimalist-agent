@@ -8,6 +8,12 @@
 
 import type { WebContents } from 'electron';
 import { createLogger } from '../logger';
+import {
+  DIALOG_BINDING,
+  dialogGuardScript,
+  parseDialogPayload,
+  type PageDialog,
+} from './browser-dialogs';
 
 const log = createLogger('browser-cdp');
 
@@ -17,10 +23,11 @@ const MAX_FIND_RESULTS = 20;
 // Retina panes would otherwise return ~2560px-wide PNGs — a large, mostly
 // wasted image-token cost per screenshot.
 const MAX_SCREENSHOT_WIDTH_PX = 1280;
-const IDLE_DETACH_MS = 5_000;
 // A CDP command against a hung or page-less target never settles; fail the
 // tool call instead of hanging the turn.
 const COMMAND_TIMEOUT_MS = 15_000;
+// A painting page answers a CDP mouseMoved in ~1ms; one that isn't stalls ~5s.
+const MOUSE_PROBE_MS = 300;
 const MAX_CONSOLE_ENTRIES = 200;
 const OVERLAY_ELEMENT_ID = '__minimalist_agent_browser_overlay__';
 export const MAX_Z_INDEX = 2_147_483_647;
@@ -143,34 +150,42 @@ function normalize(value: unknown): string {
 export class BrowserCDP {
   private readonly webContents: WebContents;
   private attached = false;
-  private idleTimer: ReturnType<typeof setTimeout> | null = null;
   private refToBackendNodeId = new Map<string, number>();
   private refDetails = new Map<string, { role: string; name: string }>();
   private backendNodeIdToRef = new Map<number, string>();
   private nextRefId = 0;
   private consoleLog: ConsoleLogEntry[] = [];
-  // CDP Emulation overrides vanish when the debugger detaches, so while any
-  // is active the idle detach is suspended and they're re-applied on attach.
+  // The debugger stays attached for the page's life (the dialog guard needs
+  // it); if something detaches it anyway, these are re-applied on re-attach.
   private viewport: ViewportOverride | null = null;
   private colorScheme: ColorScheme | null = null;
   // A window that never loaded a page has no renderer target: the first CDP
   // command hangs and the next crashes Electron. Attach waits on this.
   private ready: Promise<unknown> = Promise.resolve();
+  private dialogs: PageDialog[] = [];
+  private nativeDialogs = false;
+  private dialogScriptId: string | null = null;
+  // Whether the page is on screen (docked or popped out) and so paints frames.
+  private painting = false;
 
   constructor(webContents: WebContents) {
     this.webContents = webContents;
-    // Bound once: `.detach()` never removes listeners, and the debugger
-    // re-attaches automatically after idle timeouts — binding inside
-    // `ensureAttached()` would duplicate both listeners (and console entries)
-    // on every reattach.
+    // Bound once: `.detach()` never removes listeners, and the debugger can
+    // re-attach — binding inside `ensureAttached()` would duplicate both
+    // listeners (and console entries) on every re-attach.
     this.webContents.debugger.on('detach', () => {
       this.attached = false;
+      this.dialogScriptId = null;
     });
     this.webContents.debugger.on('message', (_event, method, params) => {
-      if (method !== 'Runtime.consoleAPICalled') return;
-      this.recordConsoleMessage(
-        params as { type: string; args: Array<{ value?: unknown; description?: string }> },
-      );
+      if (method === 'Runtime.consoleAPICalled') {
+        this.recordConsoleMessage(
+          params as { type: string; args: Array<{ value?: unknown; description?: string }> },
+        );
+      } else if (method === 'Runtime.bindingCalled' && params?.name === DIALOG_BINDING) {
+        const dialog = parseDialogPayload(String(params.payload ?? ''));
+        if (dialog) this.dialogs.push(dialog);
+      }
     });
     // Backend node IDs die with the document, so this stable-ref table (kept
     // only so @eN doesn't renumber within one page) would otherwise grow
@@ -196,11 +211,43 @@ export class BrowserCDP {
     }
     this.attached = true;
     await this.send('Runtime.enable');
+    await this.send('Runtime.addBinding', { name: DIALOG_BINDING });
+    await this.send('Page.enable');
+    await this.installDialogGuard();
     await this.applyOverrides();
   }
 
-  private hasOverrides(): boolean {
-    return this.viewport !== null || this.colorScheme !== null;
+  /** Attach now rather than on the first command, so the dialog guard is in
+   *  place before the user or agent loads a page. */
+  init(): Promise<void> {
+    return this.ensureAttached();
+  }
+
+  private async installDialogGuard(): Promise<void> {
+    if (this.dialogScriptId) {
+      await this.send('Page.removeScriptToEvaluateOnNewDocument', {
+        identifier: this.dialogScriptId,
+      });
+    }
+    const source = dialogGuardScript(this.nativeDialogs);
+    const { identifier } = await this.send('Page.addScriptToEvaluateOnNewDocument', { source });
+    this.dialogScriptId = identifier as string;
+    // The current document predates the registration.
+    await this.send('Runtime.evaluate', { expression: source }).catch(() => undefined);
+  }
+
+  /** Native dialogs while the user controls the page; non-blocking otherwise. */
+  async setNativeDialogs(native: boolean): Promise<void> {
+    if (this.nativeDialogs === native) return;
+    this.nativeDialogs = native;
+    if (this.attached) await this.installDialogGuard();
+  }
+
+  /** Dialogs the page raised since the last call. */
+  drainDialogs(): PageDialog[] {
+    const drained = this.dialogs;
+    this.dialogs = [];
+    return drained;
   }
 
   private async applyOverrides(): Promise<void> {
@@ -256,20 +303,7 @@ export class BrowserCDP {
     if (this.consoleLog.length > MAX_CONSOLE_ENTRIES) this.consoleLog.shift();
   }
 
-  private resetIdleTimer(): void {
-    if (this.idleTimer) clearTimeout(this.idleTimer);
-    this.idleTimer = null;
-    if (this.hasOverrides()) return;
-    this.idleTimer = setTimeout(() => {
-      if (this.attached) this.detach();
-    }, IDLE_DETACH_MS);
-  }
-
   detach(): void {
-    if (this.idleTimer) {
-      clearTimeout(this.idleTimer);
-      this.idleTimer = null;
-    }
     if (!this.attached) return;
     try {
       this.webContents.debugger.detach();
@@ -297,7 +331,6 @@ export class BrowserCDP {
       return await Promise.race([this.webContents.debugger.sendCommand(method, params), timeout]);
     } finally {
       clearTimeout(timer);
-      this.resetIdleTimer();
     }
   }
 
@@ -396,6 +429,13 @@ export class BrowserCDP {
     return String(result?.result?.value ?? '');
   }
 
+  /** `button "Sign in"` for a known ref — for the pane's activity label. */
+  describeRef(ref: string): string | null {
+    const details = this.refDetails.get(ref);
+    if (!details) return null;
+    return details.name ? `${details.role} ${JSON.stringify(details.name)}` : details.role;
+  }
+
   private resolveBackendNodeId(ref: string): number {
     const backendNodeId = this.refToBackendNodeId.get(ref);
     if (backendNodeId === undefined) {
@@ -448,18 +488,75 @@ export class BrowserCDP {
     await this.moveMouse(x, y);
   }
 
-  // CDP mouse input (not webContents.sendInputEvent): it resolves once the
-  // event is dispatched, so the next command sees its effect, and it takes
-  // page CSS pixels, which stay correct under viewport emulation.
+  setPainting(painting: boolean): void {
+    this.painting = painting;
+  }
+
+  /*
+   * Pointer input needs a page that paints frames: Chromium hit-tests real
+   * input against compositor data, so on a page that isn't drawing — detached
+   * from the panel, or docked while the app is minimized/occluded — a CDP
+   * mouseMoved stalls ~5s and press/release never reach the page (measured).
+   * So: probe with a real move; if the page doesn't answer quickly, dispatch
+   * the events from inside the page instead. Synthetic events drive JS
+   * handlers, links, and form controls, but are `isTrusted: false` and don't
+   * apply CSS :hover.
+   */
+  private async realMouseMove(x: number, y: number): Promise<boolean> {
+    if (!this.painting) return false;
+    const moved = this.send('Input.dispatchMouseEvent', {
+      type: 'mouseMoved',
+      x,
+      y,
+      button: 'none',
+    });
+    const answered = await Promise.race([
+      moved.then(() => true),
+      new Promise<false>((r) => setTimeout(() => r(false), MOUSE_PROBE_MS)),
+    ]);
+    if (!answered) moved.catch(() => undefined);
+    return answered;
+  }
+
   async moveMouse(x: number, y: number): Promise<void> {
-    await this.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y, button: 'none' });
+    if (await this.realMouseMove(x, y)) return;
+    await this.dispatchInPage(x, y, 'hover');
   }
 
   /** For canvas UIs and anything without an accessible ref. */
   async clickAt(x: number, y: number): Promise<void> {
-    await this.moveMouse(x, y);
+    if (!(await this.realMouseMove(x, y))) {
+      await this.dispatchInPage(x, y, 'click');
+      return;
+    }
     for (const type of ['mousePressed', 'mouseReleased']) {
       await this.send('Input.dispatchMouseEvent', { type, x, y, button: 'left', clickCount: 1 });
+    }
+  }
+
+  private async dispatchInPage(x: number, y: number, action: 'hover' | 'click'): Promise<void> {
+    const result = await this.send('Runtime.evaluate', {
+      returnByValue: true,
+      expression: `(() => {
+        const el = document.elementFromPoint(${x}, ${y});
+        if (!el) return false;
+        const init = { bubbles: true, cancelable: true, composed: true, view: window,
+          clientX: ${x}, clientY: ${y}, button: 0, detail: 1 };
+        const fire = (Ctor, type, extra = {}) => el.dispatchEvent(new Ctor(type, { ...init, ...extra }));
+        fire(PointerEvent, 'pointerover'); fire(MouseEvent, 'mouseover');
+        fire(PointerEvent, 'pointermove'); fire(MouseEvent, 'mousemove');
+        el.dispatchEvent(new MouseEvent('mouseenter', { ...init, bubbles: false }));
+        if (${action === 'click'}) {
+          fire(PointerEvent, 'pointerdown', { buttons: 1 }); fire(MouseEvent, 'mousedown', { buttons: 1 });
+          el.closest('input, textarea, select, button, a[href], [tabindex], [contenteditable]')?.focus();
+          fire(PointerEvent, 'pointerup'); fire(MouseEvent, 'mouseup');
+          fire(MouseEvent, 'click');
+        }
+        return true;
+      })()`,
+    });
+    if (result?.result?.value === false) {
+      throw new Error(`Nothing on the page at ${x},${y}.`);
     }
   }
 
@@ -599,6 +696,12 @@ export class BrowserCDP {
     await this.send('Runtime.evaluate', {
       expression: `(() => { const el = document.getElementById(${JSON.stringify(OVERLAY_ELEMENT_ID)}); if (el) el.remove(); })()`,
     });
+  }
+
+  /** Current viewport as a JPEG data URL, for the pane's freeze image. */
+  async captureFrame(quality: number): Promise<string> {
+    const { data } = await this.send('Page.captureScreenshot', { format: 'jpeg', quality });
+    return `data:image/jpeg;base64,${data as string}`;
   }
 
   async captureScreenshot(options: ScreenshotOptions): Promise<Screenshot> {

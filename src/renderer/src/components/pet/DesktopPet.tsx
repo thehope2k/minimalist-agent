@@ -201,6 +201,8 @@ export function DesktopPet({ isStreaming }: DesktopPetProps) {
 
   return (
     <div
+      // Decorative and always on screen — mustn't freeze the browser pane.
+      data-no-browser-freeze
       className="pointer-events-none fixed top-0 left-0 z-50"
       style={{ transform: `translate(${x}px, ${y}px) scaleX(${facing})` }}
     >

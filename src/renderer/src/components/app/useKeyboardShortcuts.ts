@@ -12,6 +12,7 @@ type SessionListEntry = NonNullable<
  * - Cmd+T: Toggle terminal
  * - Cmd+B: Toggle file explorer
  * - Cmd+Shift+B: Toggle context panel
+ * - Cmd+Shift+O: Toggle browser panel
  * - Cmd+N: New session
  * - Cmd+S: Jump to sessions view
  * - Cmd+,: Jump to settings
@@ -24,6 +25,7 @@ export function useKeyboardShortcuts(
   toggleTerminal: () => void,
   toggleFileExplorer: () => void,
   toggleContextPanel: () => void,
+  toggleBrowserPanel: () => void,
   handleNewSession: () => void,
   terminalOpenRef: RefObject<boolean>,
   terminalPanelRef: RefObject<PanelImperativeHandle | null>,
@@ -74,6 +76,15 @@ export function useKeyboardShortcuts(
           return;
         e.preventDefault();
         toggleContextPanel();
+        return;
+      }
+
+      // Cmd+Shift+O — toggle browser panel (sessions/chat view only)
+      if (e.key.toLowerCase() === 'o' && e.shiftKey && !e.altKey) {
+        if (view === 'settings' || view === 'skills' || view === 'agents' || view === 'extensions')
+          return;
+        e.preventDefault();
+        toggleBrowserPanel();
         return;
       }
 
@@ -138,6 +149,7 @@ export function useKeyboardShortcuts(
     toggleTerminal,
     toggleFileExplorer,
     toggleContextPanel,
+    toggleBrowserPanel,
     view,
     setView,
     terminalOpenRef,

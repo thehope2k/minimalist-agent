@@ -1007,6 +1007,31 @@ export interface BrowserPaneState {
   url: string;
   title: string;
   agentControl: boolean;
+  canGoBack: boolean;
+  canGoForward: boolean;
+  loading: boolean;
+  /** What the agent is doing right now, in plain words; null when idle. */
+  activity: string | null;
+  /** The page lives in its own window instead of the side panel. */
+  poppedOut: boolean;
+}
+
+/** A shortcut pressed inside a browser page, to replay in the app. */
+export interface BrowserForwardedKey {
+  key: string;
+  code: string;
+  shift: boolean;
+  alt: boolean;
+  meta: boolean;
+  control: boolean;
+}
+
+/** Where the renderer wants the active chat's browser page drawn (DIPs). */
+export interface BrowserSurface {
+  sessionId: string | null;
+  bounds: { x: number; y: number; width: number; height: number };
+  visible: boolean;
+  frozen: boolean;
 }
 
 export interface AppApi {
@@ -1465,9 +1490,25 @@ export interface AppApi {
   };
   browser: {
     getState: (sessionId: string) => Promise<BrowserPaneState>;
-    focus: (sessionId: string) => Promise<void>;
+    /** Dock/move/detach the active chat's page. Fire-and-forget. */
+    setSurface: (surface: BrowserSurface) => void;
+    /** JPEG data URL of the current page, or null if it has none. */
+    freezeImage: (sessionId: string) => Promise<string | null>;
+    /** User opens this chat's browser (blank page). */
+    open: (sessionId: string) => Promise<BrowserPaneState>;
+    /** Address-field navigation; rejects input that isn't an http(s) address. */
+    navigate: (sessionId: string, input: string) => Promise<BrowserPaneState>;
+    history: (sessionId: string, action: 'back' | 'forward' | 'reload' | 'stop') => Promise<void>;
+    /** User takes over from the agent. */
     release: (sessionId: string) => Promise<BrowserPaneState>;
+    handToAgent: (sessionId: string) => Promise<BrowserPaneState>;
+    /** Move the live page into its own window; closing that window docks it back. */
+    popOut: (sessionId: string) => Promise<BrowserPaneState>;
+    dock: (sessionId: string) => Promise<BrowserPaneState>;
+    openDevTools: (sessionId: string) => Promise<void>;
     close: (sessionId: string) => Promise<BrowserPaneState>;
+    /** App shortcuts pressed while a page had focus. Returns an unsubscribe function. */
+    onForwardedKey: (cb: (key: BrowserForwardedKey) => void) => () => void;
     /** Returns an unsubscribe function. */
     onStateChanged: (cb: (state: BrowserPaneState) => void) => () => void;
   };

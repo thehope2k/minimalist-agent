@@ -1,73 +1,52 @@
-import { useEffect, useState } from 'react';
-import { Bot, Globe, User, Maximize2, XCircle } from 'lucide-react';
+import { Bot, Globe } from 'lucide-react';
 import { IconButton } from '@/components/ui';
 import { cn } from '@/lib/utils';
-import type { BrowserPaneState } from '@/lib/electron';
+import { useBrowserPanel } from '@/components/browser/BrowserPanelContext';
+import { useBrowserState } from '@/components/browser/useBrowserState';
 
 type Props = {
   sessionId: string | null;
 };
 
+/**
+ * The chat header's browser control: a globe toggle when the chat has no
+ * page, and the page title plus who's in control when it does. Either way a
+ * click shows or hides the browser panel.
+ */
 export function BrowserStatusPill({ sessionId }: Props) {
-  const [state, setState] = useState<BrowserPaneState | null>(null);
+  const state = useBrowserState(sessionId);
+  const panel = useBrowserPanel();
+  const label = panel.open ? 'Hide browser (Cmd+Shift+O)' : 'Show browser (Cmd+Shift+O)';
 
-  useEffect(() => {
-    if (!sessionId) {
-      setState(null);
-      return;
-    }
-    // Both the initial fetch and later push events resolve/fire on their own
-    // schedule — if a push arrives before getState()'s promise resolves, the
-    // stale getState() result must not clobber it ("last write wins" would
-    // otherwise pick the wrong one). One effect + a local flag keeps push
-    // events authoritative over the initial fetch once either has landed.
-    let receivedPush = false;
-    window.api.browser.getState(sessionId).then((s) => {
-      if (!receivedPush) setState(s);
-    });
-    return window.api.browser.onStateChanged((next) => {
-      if (next.sessionId !== sessionId) return;
-      receivedPush = true;
-      setState(next);
-    });
-  }, [sessionId]);
-
-  if (!sessionId || !state?.open) return null;
+  if (!sessionId || !state?.open) {
+    return (
+      <IconButton
+        icon={Globe}
+        label={label}
+        onClick={panel.toggle}
+        className={panel.open ? 'bg-accent/15 text-accent' : undefined}
+      />
+    );
+  }
 
   return (
-    <div
+    <button
+      type="button"
+      onClick={panel.toggle}
+      title={[label, state.activity && `Agent is ${state.activity}`, state.url]
+        .filter(Boolean)
+        .join('\n')}
       className={cn(
-        'relative flex items-center gap-1 rounded-md border border-border bg-elevated pl-2 pr-0.5 text-xs text-fg-muted',
-        state.agentControl ? 'browsing-ring' : 'browsing-idle',
+        'relative flex h-7 items-center gap-1.5 rounded-md border px-2 text-xs transition-colors',
+        panel.open
+          ? 'border-accent/40 bg-accent/15 text-accent'
+          : 'border-border bg-elevated text-fg-muted hover:text-fg',
+        state.activity && !panel.open && 'browsing-ring',
       )}
     >
-      <Globe
-        className={cn('h-3.5 w-3.5 shrink-0 text-accent', state.agentControl && 'animate-pulse')}
-      />
-      <span className="max-w-32 truncate" title={state.url}>
-        {state.title || state.url || 'Browser'}
-      </span>
-      <IconButton
-        icon={Maximize2}
-        label="Show browser window"
-        onClick={() => sessionId && window.api.browser.focus(sessionId)}
-      />
-      {state.agentControl ? (
-        <IconButton
-          icon={Bot}
-          label="Agent is in control — click to release"
-          onClick={() => sessionId && window.api.browser.release(sessionId)}
-        />
-      ) : (
-        <span className="grid h-7 w-7 place-items-center" title="You have control">
-          <User className="h-4 w-4 text-fg-subtle" strokeWidth={1.75} />
-        </span>
-      )}
-      <IconButton
-        icon={XCircle}
-        label="Close browser window"
-        onClick={() => sessionId && window.api.browser.close(sessionId)}
-      />
-    </div>
+      <Globe className={cn('h-3.5 w-3.5 shrink-0', !panel.open && 'text-accent')} />
+      <span className="max-w-32 truncate">{state.title || state.url || 'Browser'}</span>
+      {state.agentControl && <Bot className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />}
+    </button>
   );
 }

@@ -196,6 +196,18 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
         label: 'Open / close context panel',
         condition: 'Shows available skills, agents, extensions for this session',
       },
+      {
+        macKeys: ['⌘', '⇧', 'O'],
+        winKeys: ['Ctrl', 'Shift', 'O'],
+        label: 'Open / close browser panel',
+        condition: "Shows this chat's browser page",
+      },
+      {
+        macKeys: ['⌘', 'L'],
+        winKeys: ['Ctrl', 'L'],
+        label: "Focus the browser's address bar",
+        condition: 'When the browser panel is open and the page is not focused',
+      },
       { macKeys: ['⌘', 'T'], winKeys: ['Ctrl', 'T'], label: 'Open / close terminal panel' },
       {
         macKeys: ['↑'],

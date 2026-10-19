@@ -7,6 +7,8 @@
 import { browserPaneManager, type WaitCondition } from './browser-pane-manager';
 import { MAX_SNAPSHOT_NODES, type AccessibilityNode, type ViewportOverride } from './browser-cdp';
 import { formatNetworkEntry } from './browser-network-log';
+import { describeCommand } from './browser-activity';
+import { formatDialogs } from './browser-dialogs';
 
 export interface BrowserToolCommandResult {
   output: string;
@@ -150,7 +152,28 @@ export async function executeBrowserToolCommand(
   rawCommand: string,
 ): Promise<BrowserToolCommandResult> {
   const [verb, ...args] = tokenize(rawCommand.trim());
+  const label = describeCommand(verb, args, (ref) =>
+    browserPaneManager.describeRef(sessionId, ref),
+  );
+  // Marks the window in which page input is the agent's, not the user's,
+  // and drives the pane's activity bar.
+  browserPaneManager.beginAgentCommand(sessionId, label);
+  try {
+    const result = await dispatch(sessionId, verb, args);
+    const dialogs = browserPaneManager.drainDialogs(sessionId);
+    return dialogs.length > 0
+      ? { ...result, output: `${result.output}\n\n${formatDialogs(dialogs)}` }
+      : result;
+  } finally {
+    browserPaneManager.endAgentCommand(sessionId);
+  }
+}
 
+async function dispatch(
+  sessionId: string,
+  verb: string | undefined,
+  args: string[],
+): Promise<BrowserToolCommandResult> {
   switch (verb) {
     case undefined:
     case '':
@@ -159,7 +182,7 @@ export async function executeBrowserToolCommand(
       return {
         output: [
           'browser_tool commands:',
-          "  open                          — create/focus the session's browser window",
+          "  open                          — create the chat's browser page (shown in the side panel)",
           '  navigate <url>',
           '  back / forward',
           '  snapshot [--interactive] [--within <ref>] [--max <n>]',
@@ -183,8 +206,8 @@ export async function executeBrowserToolCommand(
           '                                — request log; --all includes images/fonts/css',
           '  viewport <mobile|tablet|desktop|WxH>',
           '  color-scheme <light|dark|auto>',
-          '  release                      — hand control back to the user, keep window open',
-          '  close                        — destroy the window',
+          '  release                      — hand control back to the user, keep the page open',
+          '  close                        — close the page',
         ].join('\n'),
       };
     }
@@ -192,7 +215,7 @@ export async function executeBrowserToolCommand(
     case 'open': {
       const state = browserPaneManager.ensureOpen(sessionId);
       return {
-        output: `Browser window open. url=${state.url || '(blank)'} title=${JSON.stringify(state.title)}`,
+        output: `Browser open. url=${state.url || '(blank)'} title=${JSON.stringify(state.title)}`,
       };
     }
 
@@ -411,13 +434,13 @@ export async function executeBrowserToolCommand(
     case 'release': {
       const state = browserPaneManager.release(sessionId);
       return {
-        output: `Control released back to the user. window ${state.open ? 'still open' : 'closed'}.`,
+        output: `Control released back to the user. Page ${state.open ? 'still open' : 'closed'}.`,
       };
     }
 
     case 'close': {
       await browserPaneManager.close(sessionId);
-      return { output: 'Browser window closed.' };
+      return { output: 'Browser page closed.' };
     }
 
     default:

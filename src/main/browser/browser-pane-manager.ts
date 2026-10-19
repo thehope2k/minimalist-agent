@@ -1,17 +1,17 @@
-// Session-scoped Electron browser windows the `browser_tool` drives via CDP.
+// Session-scoped browser pages the `browser_tool` drives via CDP, docked in
+// the app's right side panel (see docs/BROWSER-PANE.md).
 //
-// One window per chat session, created lazily on the first `open` command
-// and torn down when the session ends or the user closes the window. The
-// window is a real, visible, app-owned BrowserWindow (not a headless/hidden
-// automation target) — the user watches the agent drive it live, the same
-// way they watch shell output stream in the terminal pane.
+// Each chat owns one WebContentsView. Main owns every page; the renderer only
+// reports where the active chat's page slot is (`setSurface`). The page whose
+// chat is on screen is attached to the main window at those bounds; every
+// other page is detached but keeps running, so the agent can keep working in
+// background chats.
 
-import { BrowserWindow } from 'electron';
+import { BaseWindow, BrowserWindow, WebContentsView, type Session } from 'electron';
 import { createLogger } from '../logger';
 import { getSettings } from '../storage/settings';
 import {
   BrowserCDP,
-  MAX_Z_INDEX,
   type AccessibilitySnapshot,
   type ColorScheme,
   type ConsoleLogEntry,
@@ -21,27 +21,48 @@ import {
   type ViewportOverride,
 } from './browser-cdp';
 import { NetworkLog, type NetworkEntry, type NetworkQuery } from './browser-network-log';
+import type { PageDialog } from './browser-dialogs';
+import {
+  HIDDEN_SURFACE,
+  isAllowedNavigateUrl,
+  normalizeUserUrl,
+  roundBounds,
+  shouldDock,
+  type Surface,
+} from './browser-surface';
 
 const log = createLogger('browser-pane');
 
-const WINDOW_WIDTH = 1280;
-const WINDOW_HEIGHT = 860;
+// Viewport of a page that has never been on screen.
+const DEFAULT_WIDTH = 1280;
+const DEFAULT_HEIGHT = 860;
 const DEFAULT_SCROLL_AMOUNT = 400;
-const CONTROL_BADGE_ID = '__minimalist_agent_control_badge__';
-const CLOSE_TIMEOUT_MS = 3_000;
 const WAIT_POLL_MS = 250;
 // No request in flight and none started/finished for this long = idle.
 const NETWORK_IDLE_MS = 500;
+const FREEZE_JPEG_QUALITY = 80;
+// Input right after an agent command can still be the agent's own echo.
+const AGENT_INPUT_GRACE_MS = 300;
+// How long the activity bar keeps the last action after a command ends.
+const ACTIVITY_LINGER_MS = 3_000;
+// Unthrottled background pages cost CPU and memory; past this, opening one
+// closes the least recently used idle page.
+const MAX_OPEN_PAGES = 6;
+const POPOUT_WIDTH = 1100;
+const POPOUT_HEIGHT = 800;
+
+/** App shortcuts that must still work while a page has keyboard focus. */
+function forwardedShortcut(input: Electron.Input): boolean {
+  if (input.type !== 'keyDown' || !(input.meta || input.control) || input.alt) return false;
+  const key = input.key.toLowerCase();
+  return (key === 'o' && input.shift) || (key === 'l' && !input.shift) || key === 'k';
+}
 
 export type WaitCondition =
   | { kind: 'text'; text: string }
   | { kind: 'url'; text: string }
   | { kind: 'idle' }
   | { kind: 'time'; ms: number };
-// file:/data:/chrome: etc. would let the agent read local files or
-// app-internal state back into its own tool output; about: is just the
-// window's initial blank state.
-const ALLOWED_NAVIGATE_SCHEMES = new Set(['http:', 'https:', 'about:']);
 
 export interface BrowserPaneState {
   sessionId: string;
@@ -49,17 +70,44 @@ export interface BrowserPaneState {
   url: string;
   title: string;
   agentControl: boolean;
+  canGoBack: boolean;
+  canGoForward: boolean;
+  loading: boolean;
+  /** What the agent is doing right now, in plain words; null when idle. */
+  activity: string | null;
+  /** The page lives in its own window instead of the side panel. */
+  poppedOut: boolean;
+}
+
+/** A shortcut pressed inside a page, replayed in the app's renderer. */
+export interface ForwardedKey {
+  key: string;
+  code: string;
+  shift: boolean;
+  alt: boolean;
+  meta: boolean;
+  control: boolean;
+}
+
+interface AgentActivity {
+  label: string | null;
+  /** Page input before this epoch-ms is the agent's; Infinity mid-command. */
+  actingUntil: number;
+  clearTimer?: ReturnType<typeof setTimeout>;
 }
 
 export type BrowserPaneStateListener = (state: BrowserPaneState) => void;
 
 interface PaneEntry {
-  window: BrowserWindow;
+  view: WebContentsView;
   cdp: BrowserCDP;
   network: NetworkLog;
   agentControl: boolean;
   /** Settles once the initial about:blank load has finished (or been aborted). */
   ready: Promise<unknown>;
+  docked: boolean;
+  popout: BaseWindow | null;
+  lastUsed: number;
 }
 
 function isReleaseShortcut(input: Electron.Input): boolean {
@@ -71,17 +119,18 @@ function isReleaseShortcut(input: Electron.Input): boolean {
   );
 }
 
-function isAllowedNavigateUrl(url: string): boolean {
-  try {
-    return ALLOWED_NAVIGATE_SCHEMES.has(new URL(url).protocol);
-  } catch {
-    return false;
-  }
-}
-
 class BrowserPaneManager {
   private readonly panes = new Map<string, PaneEntry>();
   private listener: BrowserPaneStateListener | null = null;
+  private host: BrowserWindow | null = null;
+  private surface: Surface = HIDDEN_SURFACE;
+  private readonly activity = new Map<string, AgentActivity>();
+  private readonly guardedSessions = new WeakSet<Session>();
+  private keyListener: ((key: ForwardedKey) => void) | null = null;
+
+  onForwardedKey(listener: (key: ForwardedKey) => void): void {
+    this.keyListener = listener;
+  }
 
   onStateChanged(listener: BrowserPaneStateListener): void {
     this.listener = listener;
@@ -92,47 +141,46 @@ class BrowserPaneManager {
     this.listener(this.getState(sessionId));
   }
 
-  getState(sessionId: string): BrowserPaneState {
+  private livePane(sessionId: string): PaneEntry | undefined {
     const entry = this.panes.get(sessionId);
-    const isLive = !!entry && !entry.window.isDestroyed();
+    return entry && !entry.view.webContents.isDestroyed() ? entry : undefined;
+  }
+
+  getState(sessionId: string): BrowserPaneState {
+    const entry = this.livePane(sessionId);
+    const wc = entry?.view.webContents;
     return {
       sessionId,
-      open: isLive,
-      url: isLive ? entry.window.webContents.getURL() : '',
-      title: isLive ? entry.window.webContents.getTitle() : '',
-      agentControl: isLive ? entry.agentControl : false,
+      open: !!entry,
+      url: wc?.getURL() ?? '',
+      title: wc?.getTitle() ?? '',
+      agentControl: entry?.agentControl ?? false,
+      canGoBack: wc?.navigationHistory.canGoBack() ?? false,
+      canGoForward: wc?.navigationHistory.canGoForward() ?? false,
+      loading: wc?.isLoading() ?? false,
+      activity: entry ? (this.activity.get(sessionId)?.label ?? null) : null,
+      poppedOut: !!entry?.popout,
     };
   }
 
-  /** True if `win` is one of the browser panes this manager owns, as opposed to
-   *  the app's own chat window — lets callers that need "the main app window"
-   *  (e.g. broadcasting an IPC event) skip past pane windows in
-   *  `BrowserWindow.getAllWindows()` instead of assuming index 0 is always it. */
-  isPaneWindow(win: BrowserWindow): boolean {
-    for (const entry of this.panes.values()) {
-      if (entry.window === win) return true;
-    }
-    return false;
-  }
-
   private requirePane(sessionId: string): PaneEntry {
-    const entry = this.panes.get(sessionId);
-    if (!entry || entry.window.isDestroyed()) {
-      throw new Error('No browser window open for this session — run "open" first.');
+    const entry = this.livePane(sessionId);
+    if (!entry) {
+      throw new Error('No browser open for this session — run "open" first.');
     }
     return entry;
   }
 
-  /** Like `requirePane`, but also rejects once the user has `release`d control
-   *  — every command that acts *on the page* (as opposed to just reading it)
-   *  must go through this, or a released pane would still be silently
-   *  clickable/fillable/navigable by the agent while the badge tells the user
+  /** Like `requirePane`, but also rejects once the user has taken over —
+   *  every command that acts *on the page* (as opposed to just reading it)
+   *  must go through this, or a taken-over page would still be silently
+   *  clickable/fillable/navigable by the agent while the pane tells the user
    *  otherwise. Call `open` again to reclaim control before retrying. */
   private requireControlledPane(sessionId: string): PaneEntry {
     const entry = this.requirePane(sessionId);
     if (!entry.agentControl) {
       throw new Error(
-        'The user deliberately took control of this window — they may be actively using it right now. ' +
+        'The user deliberately took control of this browser — they may be actively using it right now. ' +
           'Do not call "open" to reclaim it as routine error recovery. Stop and tell the user what you were ' +
           'trying to do, and only reclaim if they explicitly ask you to continue.',
       );
@@ -140,44 +188,89 @@ class BrowserPaneManager {
     return entry;
   }
 
-  private async injectControlBadge(entry: PaneEntry): Promise<void> {
-    if (!entry.agentControl) return;
-    try {
-      await entry.cdp.evaluate(`(() => {
-        const id = ${JSON.stringify(CONTROL_BADGE_ID)};
-        if (document.getElementById(id)) return;
-        const badge = document.createElement('div');
-        badge.id = id;
-        badge.textContent = '\\u{1F916} Agent is controlling this window \\u2014 Cmd/Ctrl+Shift+R to take over';
-        badge.style.cssText = 'position:fixed;bottom:8px;left:8px;z-index:${MAX_Z_INDEX};padding:4px 10px;border-radius:6px;font:12px -apple-system,sans-serif;background:rgba(15,23,42,0.85);color:#fff;pointer-events:none;';
-        document.documentElement.appendChild(badge);
-      })()`);
-    } catch (err) {
-      log.warn(
-        `control badge injection failed: ${err instanceof Error ? err.message : String(err)}`,
-      );
+  /* ---------------------------- surface ----------------------------- */
+
+  /**
+   * Called by the renderer whenever the side panel's page slot moves,
+   * resizes, shows, hides, freezes, or switches chat. Cheap and idempotent,
+   * so it can run every animation frame.
+   */
+  setSurface(host: BrowserWindow, surface: Surface): void {
+    if (this.host !== host) {
+      this.detachAll();
+      this.host = host;
+      host.once('closed', () => {
+        if (this.host === host) {
+          this.host = null;
+          for (const entry of this.panes.values()) entry.docked = false;
+        }
+      });
+    }
+    this.surface = { ...surface, bounds: roundBounds(surface.bounds) };
+    for (const [sessionId, entry] of this.panes) this.applySurface(sessionId, entry);
+  }
+
+  private applySurface(sessionId: string, entry: PaneEntry): void {
+    const host = this.host;
+    if (!host || host.isDestroyed() || entry.view.webContents.isDestroyed()) return;
+    if (entry.popout) return;
+    if (shouldDock(sessionId, this.surface)) {
+      entry.lastUsed = Date.now();
+      entry.view.setBounds(this.surface.bounds);
+      if (!entry.docked) {
+        host.contentView.addChildView(entry.view);
+        entry.docked = true;
+        entry.cdp.setPainting(true);
+      }
+    } else if (entry.docked) {
+      // Detached pages keep their last bounds as the viewport and keep
+      // running (backgroundThrottling is off) — see BROWSER-PANE.md §4.6.
+      host.contentView.removeChildView(entry.view);
+      entry.docked = false;
+      entry.cdp.setPainting(false);
     }
   }
 
-  private open(sessionId: string): PaneEntry {
-    const existing = this.panes.get(sessionId);
-    if (existing && !existing.window.isDestroyed()) {
-      if (!existing.agentControl) {
-        existing.agentControl = true;
-        void this.injectControlBadge(existing);
-        this.emitState(sessionId);
+  private detachAll(): void {
+    for (const entry of this.panes.values()) {
+      if (entry.popout) continue;
+      if (entry.docked && this.host && !this.host.isDestroyed()) {
+        this.host.contentView.removeChildView(entry.view);
       }
+      entry.docked = false;
+    }
+  }
+
+  /** Still image standing in for the page while an overlay covers it. */
+  async freezeImage(sessionId: string): Promise<string | null> {
+    const entry = this.livePane(sessionId);
+    if (!entry) return null;
+    try {
+      return await entry.cdp.captureFrame(FREEZE_JPEG_QUALITY);
+    } catch (err) {
+      log.debug(`freeze image failed: ${err instanceof Error ? err.message : String(err)}`);
+      return null;
+    }
+  }
+
+  /* --------------------------- lifecycle ---------------------------- */
+
+  private open(sessionId: string): PaneEntry {
+    const existing = this.livePane(sessionId);
+    if (existing) {
+      if (!existing.agentControl) this.setControl(sessionId, existing, true);
       return existing;
     }
 
-    const window = new BrowserWindow({
-      width: WINDOW_WIDTH,
-      height: WINDOW_HEIGHT,
-      title: 'Browser — Minimalist Agent',
-      show: false,
+    this.enforcePageCap();
+    const view = new WebContentsView({
       webPreferences: {
         sandbox: true,
         contextIsolation: true,
+        // Detached pages must keep normal timer speed: throttled to ~1 tick/s
+        // they'd stall SPAs and `wait`. Costs Electron's capturePage for
+        // detached views, so every image goes through CDP instead.
+        backgroundThrottling: false,
         // Never Electron's defaultSession (the app shell's own cookies). Per
         // chat by default; one shared jar when the user opts in so sign-ins
         // carry across chats.
@@ -186,16 +279,31 @@ class BrowserPaneManager {
           : `persist:browser-pane-${sessionId}`,
       },
     });
+    view.setBounds({ x: 0, y: 0, width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT });
+    view.setBackgroundColor('#ffffff');
+    const wc = view.webContents;
+    const cdp = new BrowserCDP(wc);
+    // Gives the page a renderer target before any CDP command races it — see
+    // BrowserCDP.setReady.
+    const blankLoaded = wc.loadURL('about:blank').catch(() => undefined);
+    cdp.setReady(blankLoaded);
     const entry: PaneEntry = {
-      window,
-      cdp: new BrowserCDP(window.webContents),
-      network: new NetworkLog(window.webContents.session, window.webContents.id),
+      view,
+      cdp,
+      network: new NetworkLog(wc.session, wc.id),
       agentControl: true,
-      // Gives the window a renderer target before any CDP command or
-      // loadURL races it — see BrowserCDP.setReady.
-      ready: window.loadURL('about:blank').catch(() => undefined),
+      // Every first real load waits on this, so the dialog guard is
+      // registered before any page script can call alert().
+      ready: blankLoaded.then(() =>
+        cdp.init().catch((err) => {
+          log.warn(`CDP init failed: ${err instanceof Error ? err.message : String(err)}`);
+        }),
+      ),
+      docked: false,
+      popout: null,
+      lastUsed: Date.now(),
     };
-    entry.cdp.setReady(entry.ready);
+    this.denyPermissions(wc.session);
     this.panes.set(sessionId, entry);
 
     // `navigate` validates its own argument, but a redirect, link, or
@@ -204,40 +312,180 @@ class BrowserPaneManager {
     const blockDisallowedNavigation = (event: Electron.Event, url: string): void => {
       if (!isAllowedNavigateUrl(url)) event.preventDefault();
     };
-    window.webContents.on('will-navigate', blockDisallowedNavigation);
-    window.webContents.on('will-redirect', blockDisallowedNavigation);
-    // Without this, target=_blank / window.open() spawn an unmanaged
-    // BrowserWindow with none of the guards above.
-    window.webContents.setWindowOpenHandler(({ url }) => {
+    wc.on('will-navigate', blockDisallowedNavigation);
+    wc.on('will-redirect', blockDisallowedNavigation);
+    // target=_blank / window.open() would spawn an unmanaged window with
+    // none of the guards above; load it in this page instead.
+    wc.setWindowOpenHandler(({ url }) => {
       if (isAllowedNavigateUrl(url)) {
-        this.navigate(sessionId, url).catch((err) => {
-          log.warn(
-            `window-open navigate failed: ${err instanceof Error ? err.message : String(err)}`,
-          );
-        });
+        void entry.ready.then(() => wc.loadURL(url)).catch(() => undefined);
       }
       return { action: 'deny' };
     });
-    window.webContents.on('did-finish-load', () => {
-      void this.injectControlBadge(entry);
+    const emit = (): void => {
+      if (entry.popout && !entry.popout.isDestroyed()) {
+        entry.popout.setTitle(this.popoutTitle(entry));
+      }
       this.emitState(sessionId);
+    };
+    wc.on('did-start-loading', emit);
+    wc.on('did-stop-loading', emit);
+    wc.on('page-title-updated', emit);
+    wc.on('did-navigate', emit);
+    wc.on('did-navigate-in-page', emit);
+    wc.on('before-input-event', (event, input) => {
+      if (isReleaseShortcut(input)) {
+        this.release(sessionId);
+      } else if (forwardedShortcut(input) && this.host && !entry.popout) {
+        event.preventDefault();
+        this.host.webContents.focus();
+        this.keyListener?.({
+          key: input.key,
+          code: input.code,
+          shift: input.shift,
+          alt: input.alt,
+          meta: input.meta,
+          control: input.control,
+        });
+      }
     });
-    window.webContents.on('page-title-updated', () => this.emitState(sessionId));
-    window.webContents.on('did-navigate', () => this.emitState(sessionId));
-    window.webContents.on('did-navigate-in-page', () => this.emitState(sessionId));
-    window.webContents.on('before-input-event', (_event, input) => {
-      if (isReleaseShortcut(input)) this.release(sessionId);
+    // CDP input never fires before-input-event, but does fire input-event —
+    // so the agent-acting window is what tells the agent's clicks and keys
+    // from the user's. A physical click or keystroke means the user wants to
+    // act now; letting the agent carry on would fight them. Scroll/hover
+    // don't count, and neither do modifier shortcuts.
+    wc.on('input-event', (_event, input) => {
+      const pressed =
+        input.type === 'mouseDown' ||
+        ((input.type === 'rawKeyDown' || input.type === 'keyDown') &&
+          !input.modifiers?.some((m) => m === 'meta' || m === 'control'));
+      if (!pressed || !entry.agentControl) return;
+      const acting = this.activity.get(sessionId);
+      if (acting && Date.now() < acting.actingUntil) return;
+      this.release(sessionId);
     });
-    window.on('closed', () => {
+    wc.once('destroyed', () => {
+      if (entry.docked && this.host && !this.host.isDestroyed()) {
+        this.host.contentView.removeChildView(view);
+      }
+      if (entry.popout && !entry.popout.isDestroyed()) entry.popout.destroy();
       entry.cdp.detach();
       entry.network.dispose();
-      this.panes.delete(sessionId);
-      this.emitState(sessionId);
+      if (this.panes.get(sessionId) === entry) this.panes.delete(sessionId);
+      emit();
     });
 
-    window.minimize();
-
+    this.applySurface(sessionId, entry);
+    emit();
     return entry;
+  }
+
+  /** Pages get no camera, mic, location, notifications, etc. */
+  private denyPermissions(session: Session): void {
+    if (this.guardedSessions.has(session)) return;
+    this.guardedSessions.add(session);
+    session.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
+    session.setPermissionCheckHandler(() => false);
+  }
+
+  /** Before opening another page, close the least recently used idle one. */
+  private enforcePageCap(): void {
+    const live = [...this.panes.entries()].filter(([, e]) => !e.view.webContents.isDestroyed());
+    if (live.length < MAX_OPEN_PAGES) return;
+    const idle = live
+      .filter(([id, e]) => !e.docked && !e.popout && !this.activity.get(id)?.label)
+      .sort(([, a], [, b]) => a.lastUsed - b.lastUsed);
+    const victim = idle[0];
+    if (!victim) return;
+    log.info(`closing least recently used browser page to stay under ${MAX_OPEN_PAGES}`);
+    void this.close(victim[0]);
+  }
+
+  /* ------------------------- agent activity -------------------------- */
+
+  beginAgentCommand(sessionId: string, label: string | null): void {
+    const current = this.activity.get(sessionId);
+    if (current?.clearTimer) clearTimeout(current.clearTimer);
+    this.activity.set(sessionId, {
+      label: label ?? current?.label ?? null,
+      actingUntil: Number.POSITIVE_INFINITY,
+    });
+    const entry = this.livePane(sessionId);
+    if (entry) entry.lastUsed = Date.now();
+    if (label) this.emitState(sessionId);
+  }
+
+  endAgentCommand(sessionId: string): void {
+    const current = this.activity.get(sessionId);
+    if (!current) return;
+    current.actingUntil = Date.now() + AGENT_INPUT_GRACE_MS;
+    current.clearTimer = setTimeout(() => {
+      if (this.activity.get(sessionId) !== current) return;
+      this.activity.delete(sessionId);
+      this.emitState(sessionId);
+    }, ACTIVITY_LINGER_MS);
+    this.emitState(sessionId);
+  }
+
+  describeRef(sessionId: string, ref: string): string | null {
+    return this.livePane(sessionId)?.cdp.describeRef(ref) ?? null;
+  }
+
+  drainDialogs(sessionId: string): PageDialog[] {
+    return this.livePane(sessionId)?.cdp.drainDialogs() ?? [];
+  }
+
+  /* ---------------------------- pop out ------------------------------ */
+
+  popOut(sessionId: string): BrowserPaneState {
+    const entry = this.requirePane(sessionId);
+    if (entry.popout) {
+      entry.popout.focus();
+      return this.getState(sessionId);
+    }
+    if (entry.docked && this.host && !this.host.isDestroyed()) {
+      this.host.contentView.removeChildView(entry.view);
+      entry.docked = false;
+      entry.cdp.setPainting(false);
+    }
+    const win = new BaseWindow({
+      width: POPOUT_WIDTH,
+      height: POPOUT_HEIGHT,
+      title: this.popoutTitle(entry),
+    });
+    entry.popout = win;
+    win.contentView.addChildView(entry.view);
+    entry.cdp.setPainting(true);
+    const fit = (): void => {
+      const [width, height] = win.getContentSize();
+      entry.view.setBounds({ x: 0, y: 0, width, height });
+    };
+    fit();
+    win.on('resize', fit);
+    // Closing the window docks the page back; it doesn't close the page.
+    win.on('close', () => {
+      if (!entry.view.webContents.isDestroyed()) win.contentView.removeChildView(entry.view);
+      entry.popout = null;
+      entry.cdp.setPainting(false);
+      this.applySurface(sessionId, entry);
+      this.emitState(sessionId);
+    });
+    this.emitState(sessionId);
+    return this.getState(sessionId);
+  }
+
+  dock(sessionId: string): BrowserPaneState {
+    this.livePane(sessionId)?.popout?.close();
+    return this.getState(sessionId);
+  }
+
+  private popoutTitle(entry: PaneEntry): string {
+    const page = entry.view.webContents.getTitle() || 'Browser';
+    return `${page} — ${entry.agentControl ? 'Agent can drive' : 'You are in control'}`;
+  }
+
+  openDevTools(sessionId: string): void {
+    this.requirePane(sessionId).view.webContents.openDevTools({ mode: 'detach' });
   }
 
   async navigate(sessionId: string, url: string): Promise<{ url: string; title: string }> {
@@ -249,7 +497,7 @@ class BrowserPaneManager {
         `navigate: "${url}" is not a valid absolute URL (include the scheme, e.g. "https://...").`,
       );
     }
-    if (!ALLOWED_NAVIGATE_SCHEMES.has(parsed.protocol)) {
+    if (!isAllowedNavigateUrl(parsed.toString())) {
       throw new Error(
         `navigate: scheme "${parsed.protocol}" is not allowed — only http:, https:, and about: are permitted.`,
       );
@@ -257,18 +505,15 @@ class BrowserPaneManager {
 
     const entry = this.controlledOrOpen(sessionId);
     // A loadURL issued while the initial about:blank is still loading can
-    // lose the race and leave the window on about:blank.
+    // lose the race and leave the page on about:blank.
     await entry.ready;
-    await entry.window.loadURL(url);
-    return { url: entry.window.webContents.getURL(), title: entry.window.webContents.getTitle() };
+    await entry.view.webContents.loadURL(url);
+    return { url: entry.view.webContents.getURL(), title: entry.view.webContents.getTitle() };
   }
 
-  /** Commands that set the window up (navigate, emulation) open it on demand. */
+  /** Commands that set the page up (navigate, emulation) open it on demand. */
   private controlledOrOpen(sessionId: string): PaneEntry {
-    const existing = this.panes.get(sessionId);
-    return existing && !existing.window.isDestroyed()
-      ? this.requireControlledPane(sessionId)
-      : this.open(sessionId);
+    return this.livePane(sessionId) ? this.requireControlledPane(sessionId) : this.open(sessionId);
   }
 
   ensureOpen(sessionId: string): BrowserPaneState {
@@ -277,12 +522,59 @@ class BrowserPaneManager {
   }
 
   back(sessionId: string): void {
-    this.requireControlledPane(sessionId).window.webContents.navigationHistory.goBack();
+    this.requireControlledPane(sessionId).view.webContents.navigationHistory.goBack();
   }
 
   forward(sessionId: string): void {
-    this.requireControlledPane(sessionId).window.webContents.navigationHistory.goForward();
+    this.requireControlledPane(sessionId).view.webContents.navigationHistory.goForward();
   }
+
+  /* ------------------------ user (pane chrome) ----------------------- */
+  // The chrome navigates regardless of who controls the page: the user can
+  // always steer their own browser. Opening from the chrome leaves the page
+  // usable by the agent.
+
+  userOpen(sessionId: string): BrowserPaneState {
+    if (!this.livePane(sessionId)) this.open(sessionId);
+    return this.getState(sessionId);
+  }
+
+  async userNavigate(sessionId: string, input: string): Promise<BrowserPaneState> {
+    const url = normalizeUserUrl(input);
+    if (!url) throw new Error(`"${input}" isn't an http(s) address.`);
+    const entry = this.livePane(sessionId) ?? this.open(sessionId);
+    await entry.ready;
+    // Failed loads (DNS, refused) render Chromium's error page; that's the
+    // feedback the user needs, so don't surface the rejection.
+    await entry.view.webContents.loadURL(url).catch(() => undefined);
+    return this.getState(sessionId);
+  }
+
+  userHistory(sessionId: string, action: 'back' | 'forward' | 'reload' | 'stop'): void {
+    const wc = this.requirePane(sessionId).view.webContents;
+    if (action === 'back') wc.navigationHistory.goBack();
+    else if (action === 'forward') wc.navigationHistory.goForward();
+    else if (action === 'reload') wc.reload();
+    else wc.stop();
+  }
+
+  handToAgent(sessionId: string): BrowserPaneState {
+    const entry = this.livePane(sessionId);
+    if (entry && !entry.agentControl) this.setControl(sessionId, entry, true);
+    return this.getState(sessionId);
+  }
+
+  /** Native page dialogs while the user is in control; non-blocking for the agent. */
+  private setControl(sessionId: string, entry: PaneEntry, agent: boolean): void {
+    entry.agentControl = agent;
+    void entry.cdp.setNativeDialogs(!agent).catch(() => undefined);
+    if (entry.popout && !entry.popout.isDestroyed()) {
+      entry.popout.setTitle(this.popoutTitle(entry));
+    }
+    this.emitState(sessionId);
+  }
+
+  /* -------------------------- agent commands ------------------------- */
 
   snapshot(sessionId: string, options?: SnapshotOptions): Promise<AccessibilitySnapshot> {
     return this.requirePane(sessionId).cdp.getAccessibilitySnapshot(options);
@@ -330,7 +622,7 @@ class BrowserPaneManager {
       const entry = this.requirePane(sessionId);
       switch (condition.kind) {
         case 'url':
-          return entry.window.webContents
+          return entry.view.webContents
             .getURL()
             .toLowerCase()
             .includes(condition.text.toLowerCase());
@@ -408,46 +700,26 @@ class BrowserPaneManager {
   }
 
   release(sessionId: string): BrowserPaneState {
-    const entry = this.panes.get(sessionId);
-    if (entry && !entry.window.isDestroyed()) {
-      entry.agentControl = false;
-      void entry.cdp
-        .evaluate(
-          `(() => { const el = document.getElementById(${JSON.stringify(CONTROL_BADGE_ID)}); if (el) el.remove(); })()`,
-        )
-        .catch(() => {});
-    }
-    this.emitState(sessionId);
+    const entry = this.livePane(sessionId);
+    if (entry && entry.agentControl) this.setControl(sessionId, entry, false);
     return this.getState(sessionId);
   }
 
-  /** Un-minimizes and brings the pane to the front — for the "Show" button in
-   *  the chat header pill, so a minimized/backgrounded window doesn't have to
-   *  be hunted down manually. */
-  focus(sessionId: string): void {
-    const entry = this.requirePane(sessionId);
-    if (entry.window.isMinimized()) entry.window.restore();
-    entry.window.show();
-    entry.window.focus();
-  }
-
-  close(sessionId: string): Promise<BrowserPaneState> {
-    const entry = this.panes.get(sessionId);
-    if (!entry || entry.window.isDestroyed()) return Promise.resolve(this.getState(sessionId));
-
-    return new Promise((resolve) => {
-      // beforeunload can delay/cancel window.close(), so wait for the real
-      // 'closed' event; force-destroy past the timeout so a blocked close
-      // can't leave a stale, still-usable pane.
-      const timeout = setTimeout(() => {
-        if (!entry.window.isDestroyed()) entry.window.destroy();
-      }, CLOSE_TIMEOUT_MS);
-      entry.window.once('closed', () => {
-        clearTimeout(timeout);
-        resolve(this.getState(sessionId));
-      });
-      entry.window.close();
-    });
+  async close(sessionId: string): Promise<BrowserPaneState> {
+    const entry = this.livePane(sessionId);
+    if (!entry) return this.getState(sessionId);
+    if (entry.docked && this.host && !this.host.isDestroyed()) {
+      this.host.contentView.removeChildView(entry.view);
+      entry.docked = false;
+    }
+    if (entry.popout && !entry.popout.isDestroyed()) {
+      entry.popout.removeAllListeners('close');
+      entry.popout.destroy();
+      entry.popout = null;
+    }
+    // Skips beforeunload: a page can't veto the user or agent closing it.
+    entry.view.webContents.close();
+    return this.getState(sessionId);
   }
 
   destroyForSession(sessionId: string): void {

@@ -38,6 +38,7 @@ export default function App() {
     panels.toggleTerminal,
     panels.toggleFileExplorer,
     panels.toggleContextPanel,
+    panels.toggleBrowserPanel,
     sessionState.handleNewSession,
     panels.terminalOpenRef,
     panels.terminalPanelRef,

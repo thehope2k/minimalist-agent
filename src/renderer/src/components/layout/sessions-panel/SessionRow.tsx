@@ -10,6 +10,7 @@ import {
 import type { Project, SessionMeta } from '@/lib/electron';
 import { Tooltip } from '../../ui';
 import { RunningDot } from './RunningDot';
+import { BrowsingBadge } from './BrowsingBadge';
 import { SessionRowActions } from './SessionRowActions';
 import { relativeTime } from './utils';
 
@@ -187,6 +188,7 @@ export function SessionRow({
                 >
                   {regenerating ? 'Regenerating title…' : session.title}
                 </span>
+                <BrowsingBadge sessionId={session.id} />
                 <span
                   className={cn(
                     'shrink-0 text-xs group-hover/session:invisible',

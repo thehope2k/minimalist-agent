@@ -2,6 +2,8 @@ import { ipcRenderer } from 'electron';
 import type {
   AppApi,
   BrowserPaneState,
+  BrowserForwardedKey,
+  BrowserSurface,
   GitCommitRequest,
   TerminalTabInfo,
 } from '../../shared/electron-api';
@@ -119,7 +121,38 @@ export function createToolsApi(): Pick<AppApi, 'git' | 'terminal' | 'voice' | 'b
       getState: (sessionId: string): Promise<BrowserPaneState> =>
         ipcRenderer.invoke('browser:getState', sessionId),
 
-      focus: (sessionId: string): Promise<void> => ipcRenderer.invoke('browser:focus', sessionId),
+      setSurface: (surface: BrowserSurface): void =>
+        ipcRenderer.send('browser:setSurface', surface),
+
+      freezeImage: (sessionId: string): Promise<string | null> =>
+        ipcRenderer.invoke('browser:freezeImage', sessionId),
+
+      open: (sessionId: string): Promise<BrowserPaneState> =>
+        ipcRenderer.invoke('browser:open', sessionId),
+
+      navigate: (sessionId: string, input: string): Promise<BrowserPaneState> =>
+        ipcRenderer.invoke('browser:navigate', sessionId, input),
+
+      history: (sessionId: string, action: 'back' | 'forward' | 'reload' | 'stop'): Promise<void> =>
+        ipcRenderer.invoke('browser:history', sessionId, action),
+
+      handToAgent: (sessionId: string): Promise<BrowserPaneState> =>
+        ipcRenderer.invoke('browser:handToAgent', sessionId),
+
+      popOut: (sessionId: string): Promise<BrowserPaneState> =>
+        ipcRenderer.invoke('browser:popOut', sessionId),
+
+      dock: (sessionId: string): Promise<BrowserPaneState> =>
+        ipcRenderer.invoke('browser:dock', sessionId),
+
+      openDevTools: (sessionId: string): Promise<void> =>
+        ipcRenderer.invoke('browser:openDevTools', sessionId),
+
+      onForwardedKey: (cb: (key: BrowserForwardedKey) => void): (() => void) => {
+        const h = (_e: unknown, key: BrowserForwardedKey) => cb(key);
+        ipcRenderer.on('browser-forwarded-key', h);
+        return () => ipcRenderer.removeListener('browser-forwarded-key', h);
+      },
 
       release: (sessionId: string): Promise<BrowserPaneState> =>
         ipcRenderer.invoke('browser:release', sessionId),
