@@ -3,6 +3,51 @@
 All notable changes are documented here.  
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.11.0] — 2026-10-19
+
+Docked browser, Sync to Claude Code, and UI improvements.
+
+### Added
+
+**Browser**
+
+- The browser now sits in the right side panel next to the chat instead of a separate window. Each chat keeps its own page, switching chats swaps it without reloading, and pages keep running at full speed in the background.
+- A toolbar with back, forward, reload, an address bar (`Cmd/Ctrl+L`), an **Agent / You** control, pop out to a window, DevTools, and close. Show or hide it from the globe in the chat header or with `Cmd/Ctrl+Shift+O`; it opens on its own the first time the agent browses in a chat.
+- See what the agent is doing: an activity bar ("Agent is clicking …"), an accent frame around the page, and a globe on the chat's row in the session list. Click or type in the page to take over, and hand it back from the control chip.
+- The agent's browser tool is faster and cheaper on tokens: `find`, interactive and scoped snapshots, page text, size-capped and croppable screenshots, batched commands under one approval, a network log, viewport and dark-mode emulation, `wait`, `hover`, `click-at`, and much faster form filling.
+- Page `alert` / `confirm` / `prompt` dialogs no longer block the agent; they're answered automatically and reported to it.
+- Optional: share browser sign-ins across chats (Settings → App → Browser).
+
+**Sync to Other Apps**
+
+- Settings → App → **Sync to Other Apps** copies your skills, agents, and extensions into Claude Code (the CLI and the Claude Desktop Code tab): your own into your Claude setup, and each project's into that project, kept out of git. Preview first, pick what to include, and secrets stay in MA unless you opt in.
+
+**Context**
+
+- Click the context badge to see what fills the context window: conversation, built-in and MCP tools, system prompt, project instructions, and the compaction reserve. The badge also shows usage as a fill.
+
+**Chat and files**
+
+- Bash commands show a short label describing what they do; hover for the command itself.
+- Tool calls grouped together now read as one joined list, with larger text.
+- Files open in the right side panel next to the chat instead of a modal, with Back and Full screen.
+
+**Connections**
+
+- Unofficial Claude Pro/Max sign-in with plan usage tracking. Note: Anthropic now bills third-party apps to your extra usage rather than your plan limits.
+
+### Changed
+
+- Session info no longer shows cumulative token totals; the context badge covers usage.
+- Per-tool context badges only appear for calls that add 5k+ tokens, and each round's output tokens moved into the expanded Thinking view.
+
+### Fixed
+
+- Browser commands no longer hang when run right after the browser opens.
+- Browser clicks are fully processed before the agent's next command reads the page.
+
+---
+
 ## [2.10.0] — 2026-10-17
 
 Quality of life improvements to error recovery and retry feedback.
