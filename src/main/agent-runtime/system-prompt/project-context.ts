@@ -13,7 +13,7 @@ const MAX_WALK_DEPTH = 3;
  * Directories to exclude when searching for context files.
  * These are common build output, dependency, and cache directories.
  */
-const EXCLUDED_DIRECTORIES = new Set([
+export const EXCLUDED_DIRECTORIES = new Set([
   'node_modules',
   '.git',
   'dist',

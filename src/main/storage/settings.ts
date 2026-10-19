@@ -44,6 +44,8 @@ export interface AiSettings {
    * to once stays signed in. Off by default: each chat gets its own.
    */
   browserSharedProfile?: boolean;
+  /** Folders added through Sync to Other Apps → "Add folder…". */
+  syncFolders?: string[];
 }
 
 export const DEFAULT_CONTEXT_FILE_NAMES: readonly string[] = [

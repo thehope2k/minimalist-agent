@@ -17,6 +17,7 @@ import { registerGitIpc } from './git-ipc';
 import { registerTerminalIpc } from './terminal-ipc';
 import { registerBrowserIpc } from './browser-ipc';
 import { registerVoiceIpc } from './voice-ipc';
+import { registerClaudeSyncIpc } from './claude-sync-ipc';
 
 export type { ChatSendRequest } from './chat-ipc';
 
@@ -36,4 +37,5 @@ export function registerIpc(): void {
   registerTerminalIpc();
   registerBrowserIpc();
   registerVoiceIpc();
+  registerClaudeSyncIpc();
 }

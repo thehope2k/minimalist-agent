@@ -7,6 +7,7 @@ import {
   setPetSoundEnabled,
 } from '@/lib/app-settings';
 import { setBrowserSharedProfile, setSessionRetentionDays } from '@/lib/connections';
+import { SyncToClaudeDialog } from '@/components/claude-sync/SyncToClaudeDialog';
 import { useAiData } from '@/hooks/useAiData';
 import {
   SettingsCard,
@@ -74,6 +75,7 @@ export function AppPanel() {
     setChecking(false);
   };
 
+  const [syncOpen, setSyncOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const handleRevealLogs = () => {
     void window.api.logs.reveal();
@@ -146,6 +148,21 @@ export function AppPanel() {
           />
         </SettingsCard>
       </SettingsSection>
+
+      <SettingsSection title="Sync to Other Apps">
+        <SettingsCard>
+          <SettingsRow
+            label="Claude Code"
+            description="Copy your skills, agents, and extensions into Claude Code, including the Claude Desktop Code tab. One way; shows what will change first."
+            control={
+              <Button variant="outline" onClick={() => setSyncOpen(true)}>
+                Sync…
+              </Button>
+            }
+          />
+        </SettingsCard>
+      </SettingsSection>
+      {syncOpen && <SyncToClaudeDialog onClose={() => setSyncOpen(false)} />}
 
       <SettingsSection title="Fun">
         <SettingsCard>

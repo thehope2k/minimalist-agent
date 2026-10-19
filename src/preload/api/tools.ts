@@ -4,11 +4,16 @@ import type {
   BrowserPaneState,
   BrowserForwardedKey,
   BrowserSurface,
+  ClaudeSyncPlan,
+  ClaudeSyncResult,
   GitCommitRequest,
   TerminalTabInfo,
 } from '../../shared/electron-api';
 
-export function createToolsApi(): Pick<AppApi, 'git' | 'terminal' | 'voice' | 'browser'> {
+export function createToolsApi(): Pick<
+  AppApi,
+  'git' | 'terminal' | 'voice' | 'browser' | 'claudeSync'
+> {
   return {
     git: {
       status: (cwd: string) => ipcRenderer.invoke('git:status', cwd),
@@ -116,6 +121,20 @@ export function createToolsApi(): Pick<AppApi, 'git' | 'terminal' | 'voice' | 'b
         ipcRenderer.on('voice:downloadProgress', h);
         return () => ipcRenderer.removeListener('voice:downloadProgress', h);
       },
+    },
+    claudeSync: {
+      preview: (
+        includeSecrets: boolean,
+        excluded?: Record<string, string[]>,
+      ): Promise<ClaudeSyncPlan> =>
+        ipcRenderer.invoke('claudeSync:preview', includeSecrets, excluded),
+      run: (
+        includeSecrets: boolean,
+        excluded: Record<string, string[]>,
+      ): Promise<ClaudeSyncResult> =>
+        ipcRenderer.invoke('claudeSync:run', includeSecrets, excluded),
+      addFolder: (): Promise<{ added: string[] } | null> =>
+        ipcRenderer.invoke('claudeSync:addFolder'),
     },
     browser: {
       getState: (sessionId: string): Promise<BrowserPaneState> =>

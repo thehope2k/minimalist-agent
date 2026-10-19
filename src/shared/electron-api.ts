@@ -299,6 +299,45 @@ export interface ContextBreakdown {
   }>;
 }
 
+/* ---------- Sync to Claude ---------- */
+
+export type ClaudeSyncKind = 'skill' | 'agent' | 'mcp' | 'env';
+export type ClaudeSyncAction = 'add' | 'update' | 'unchanged' | 'remove' | 'skip' | 'excluded';
+
+export interface ClaudeSyncItem {
+  key: string;
+  kind: ClaudeSyncKind;
+  name: string;
+  source: string;
+  action: ClaudeSyncAction;
+  reason?: string;
+  warnings: string[];
+  selectable: boolean;
+  excluded: boolean;
+}
+
+export interface ClaudeSyncGroup {
+  /** 'user', or the project's root path. */
+  id: string;
+  kind: 'user' | 'project';
+  label: string;
+  claudeDir: string;
+  excluded: string[];
+  items: ClaudeSyncItem[];
+}
+
+export interface ClaudeSyncPlan {
+  cliPath: string | null;
+  includeSecrets: boolean;
+  secretGated: number;
+  groups: ClaudeSyncGroup[];
+}
+
+export interface ClaudeSyncResult {
+  plan: ClaudeSyncPlan;
+  failed: Array<{ group: string; kind: ClaudeSyncKind; name: string; error: string }>;
+}
+
 export interface CopilotQuota {
   /** Percentage of usage allowance *remaining* this month (0–100). */
   percentRemaining: number;
@@ -423,6 +462,8 @@ export interface AiSettings {
    * to once stays signed in. Off by default: each chat gets its own.
    */
   browserSharedProfile?: boolean;
+  /** Folders added through Sync to Other Apps → "Add folder…". */
+  syncFolders?: string[];
 }
 
 export type OtelExporterType = 'file' | 'otlp' | 'console';
@@ -1487,6 +1528,16 @@ export interface AppApi {
     onExit: (cb: (tabId: string, exitCode: number) => void) => () => void;
     /** Returns an unsubscribe function. */
     onTitleChange: (cb: (tabId: string, title: string) => void) => () => void;
+  };
+  claudeSync: {
+    /** Changes nothing; `excluded` (per group id) overrides the remembered exclusions for this preview only. */
+    preview: (
+      includeSecrets: boolean,
+      excluded?: Record<string, string[]>,
+    ) => Promise<ClaudeSyncPlan>;
+    run: (includeSecrets: boolean, excluded: Record<string, string[]>) => Promise<ClaudeSyncResult>;
+    /** Pick a folder and scan three levels down for MA project assets; found folders are remembered. */
+    addFolder: () => Promise<{ added: string[] } | null>;
   };
   browser: {
     getState: (sessionId: string) => Promise<BrowserPaneState>;
