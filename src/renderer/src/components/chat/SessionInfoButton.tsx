@@ -32,9 +32,10 @@ export function SessionInfoButton({ sessionId, title }: SessionInfoButtonProps) 
           size="sm"
           icon={Info}
           disabled={disabled}
+          title="Session info"
           className="text-fg-muted hover:text-fg"
         >
-          Info
+          <span className="@max-2xl:hidden">Info</span>
         </Button>
       </Popover.Trigger>
       <Popover.Portal>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Tooltip } from '@/components/ui';
+import { UsagePill } from '@/components/ui';
 import type { RollingQuota } from '@/lib/electron';
 import {
   useQuota,
@@ -64,18 +64,14 @@ export function RollingQuotaPill({
   const headline = quota.primary ?? quota.secondary;
   if (!headline) {
     return (
-      <Tooltip
-        content={['No rate-limit data reported', ...failureNote, 'click to refresh'].join(' · ')}
+      <UsagePill
+        tooltip={['No rate-limit data reported', ...failureNote, 'click to refresh'].join(' · ')}
+        onClick={refresh}
+        disabled={isRefreshing}
+        tone="border-border text-fg-subtle"
       >
-        <button
-          type="button"
-          onClick={refresh}
-          disabled={isRefreshing}
-          className="inline-flex items-center rounded-full border border-border px-1.5 py-0.5 text-[10px] leading-none text-fg-subtle transition-opacity cursor-pointer hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          ?
-        </button>
-      </Tooltip>
+        ?
+      </UsagePill>
     );
   }
 
@@ -106,16 +102,14 @@ export function RollingQuotaPill({
   tooltipParts.push('click to refresh');
 
   return (
-    <Tooltip content={tooltipParts.join(' · ')}>
-      <button
-        type="button"
-        onClick={refresh}
-        disabled={isRefreshing}
-        className={`inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] leading-none tabular-nums transition-opacity cursor-pointer hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50 ${refreshFailed ? 'border-orange-400/40 text-orange-400' : colorClass}`}
-      >
-        {isRefreshing ? '…' : `${displayPct}%`}
-        {refreshFailed && !isRefreshing ? ' ⚠' : ''}
-      </button>
-    </Tooltip>
+    <UsagePill
+      tooltip={tooltipParts.join(' · ')}
+      onClick={refresh}
+      disabled={isRefreshing}
+      tone={refreshFailed ? 'border-orange-400/40 text-orange-400' : colorClass}
+    >
+      {isRefreshing ? '…' : `${displayPct}%`}
+      {refreshFailed && !isRefreshing ? ' ⚠' : ''}
+    </UsagePill>
   );
 }

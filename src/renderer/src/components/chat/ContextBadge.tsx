@@ -60,16 +60,18 @@ export function ContextBadge({ messages, contextWindow, reserveTokens, className
           />
           <span className="relative inline-flex items-center gap-1.5">
             <span>{pct}%</span>
-            <span className="opacity-60">·</span>
-            <span>
-              {compact(usage.total)} / {compact(contextWindow)}
+            <span className="inline-flex items-center gap-1.5 @max-lg:hidden">
+              <span className="opacity-60">·</span>
+              <span>
+                {compact(usage.total)} / {compact(contextWindow)}
+              </span>
+              {compactionCount > 0 && (
+                <>
+                  <span className="opacity-40">·</span>
+                  <span className="opacity-70">{compactionCount}×</span>
+                </>
+              )}
             </span>
-            {compactionCount > 0 && (
-              <>
-                <span className="opacity-40">·</span>
-                <span className="opacity-70">{compactionCount}×</span>
-              </>
-            )}
           </span>
         </button>
       </Popover.Trigger>

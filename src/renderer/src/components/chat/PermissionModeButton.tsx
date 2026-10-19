@@ -13,7 +13,7 @@ import { Check, ChevronDown, Compass, Zap } from 'lucide-react';
 import { Button, Tooltip } from '../ui';
 import type { PermissionMode } from '@/lib/electron';
 import { cn } from '@/lib/utils';
-import { describeAutonomy, silentRiskCeiling } from '../../../../shared/autonomy';
+import { describeAutonomy } from '../../../../shared/autonomy';
 
 type Props = {
   mode: PermissionMode;
@@ -107,29 +107,84 @@ export function PermissionModeButton({
 
       {/* Autonomy Slider (only in Auto mode) */}
       {mode === 'auto' && (
-        <div className="flex items-center gap-2 px-2 py-1 rounded-full border border-border bg-elevated-1">
-          <span className="text-xs text-fg-subtle whitespace-nowrap">Autonomy:</span>
+        <>
           <Tooltip content={describeAutonomy(autonomyLevel)}>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={autonomyLevel}
-              onChange={(e) => onAutonomyChange(Number(e.target.value))}
-              disabled={disabled}
-              className="w-24 h-1 bg-border rounded-full appearance-none cursor-pointer accent-amber-400 disabled:opacity-50 disabled:cursor-not-allowed"
-            />
+            <div className="flex items-center gap-2 px-2 py-1 rounded-full border border-border bg-elevated-1 @max-2xl:hidden">
+              <span className="text-xs text-fg-subtle whitespace-nowrap @max-3xl:hidden">
+                Autonomy:
+              </span>
+              <AutonomySlider
+                value={autonomyLevel}
+                onChange={onAutonomyChange}
+                disabled={disabled}
+              />
+            </div>
           </Tooltip>
-          <span className="text-xs font-medium text-fg tabular-nums min-w-[2.5rem] text-right">
-            {autonomyLevel}%
-          </span>
-          <Tooltip content={describeAutonomy(autonomyLevel)}>
-            <span className="cursor-help text-[10px] text-fg-subtle decoration-fg-subtle/50 decoration-dotted underline-offset-2 hover:underline whitespace-nowrap tabular-nums">
-              acts ≤{silentRiskCeiling(autonomyLevel)}
-            </span>
-          </Tooltip>
-        </div>
+          {/* Narrow column: the slider folds into a popover behind the % chip. */}
+          <Popover.Root>
+            <Popover.Trigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={disabled}
+                title={`Autonomy ${autonomyLevel}% · ${describeAutonomy(autonomyLevel)}`}
+                className="rounded-full px-2.5 tabular-nums @2xl:hidden"
+              >
+                {autonomyLevel}%
+              </Button>
+            </Popover.Trigger>
+            <Popover.Portal>
+              <Popover.Content
+                align="start"
+                side="top"
+                sideOffset={6}
+                collisionPadding={8}
+                className="z-50 w-64 rounded-lg border border-border bg-panel p-3 shadow-2xl"
+              >
+                <div className="mb-2 text-[10px] uppercase tracking-wider text-fg-subtle">
+                  Autonomy
+                </div>
+                <AutonomySlider
+                  value={autonomyLevel}
+                  onChange={onAutonomyChange}
+                  disabled={disabled}
+                />
+                <p className="mt-2 text-xs leading-snug text-fg-subtle">
+                  {describeAutonomy(autonomyLevel)}
+                </p>
+              </Popover.Content>
+            </Popover.Portal>
+          </Popover.Root>
+        </>
       )}
+    </div>
+  );
+}
+
+function AutonomySlider({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: number;
+  onChange: (level: number) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        type="range"
+        min="0"
+        max="100"
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        disabled={disabled}
+        aria-label="Autonomy"
+        className="w-24 flex-1 h-1 bg-border rounded-full appearance-none cursor-pointer accent-amber-400 disabled:opacity-50 disabled:cursor-not-allowed"
+      />
+      <span className="text-xs font-medium text-fg tabular-nums min-w-[2.5rem] text-right">
+        {value}%
+      </span>
     </div>
   );
 }

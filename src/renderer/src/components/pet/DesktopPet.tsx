@@ -20,8 +20,11 @@ import { getAppSettings, setPetLastX, setPetLastY } from '@/lib/app-settings';
 import { playPetSound, type PetSoundKind } from '@/lib/pet-sound';
 import { applyFriction, speedOf, type Velocity } from '@/lib/pet-motion';
 import { usePetDrag } from './usePetDrag';
+import { usePetOverText } from './usePetOverText';
 
 const POSITION_SAVE_INTERVAL_MS = 3000;
+/** Faded enough to read the text underneath, still visible enough to find and grab. */
+const OVER_TEXT_OPACITY = 0.25;
 
 /** Fraction of velocity retained after a full second of momentum decay — low value = a short, snappy flick, not an ice-rink slide. */
 const MOMENTUM_FRICTION_RETAINED_PER_SEC = 0.08;
@@ -123,6 +126,10 @@ export function DesktopPet({ isStreaming }: DesktopPetProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [momentumActive, isDragging]);
 
+  const [hovered, setHovered] = useState(false);
+  const overText = usePetOverText(xRef, yRef, !isDragging);
+  const faded = overText && !hovered && !isDragging;
+
   const displayState: PetBaseState = dashPhase || momentumActive ? 'walk' : baseState;
 
   const gazeEnabled =
@@ -203,11 +210,16 @@ export function DesktopPet({ isStreaming }: DesktopPetProps) {
     <div
       // Decorative and always on screen — mustn't freeze the browser pane.
       data-no-browser-freeze
-      className="pointer-events-none fixed top-0 left-0 z-50"
-      style={{ transform: `translate(${x}px, ${y}px) scaleX(${facing})` }}
+      className="pointer-events-none fixed top-0 left-0 z-50 transition-opacity duration-200"
+      style={{
+        transform: `translate(${x}px, ${y}px) scaleX(${facing})`,
+        opacity: faded ? OVER_TEXT_OPACITY : 1,
+      }}
     >
       <div
         className="pointer-events-auto"
+        onPointerEnter={() => setHovered(true)}
+        onPointerLeave={() => setHovered(false)}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}

@@ -23,7 +23,7 @@ export function MessageList({
   const retriableId = findLastRetriableId(messages);
 
   return (
-    <div className="mx-auto w-full max-w-240 space-y-6 py-8">
+    <div data-pet-avoid className="mx-auto w-full max-w-240 space-y-6 py-8">
       {messages.map((m) =>
         m.markerKind === 'compaction' ? (
           <CompactionDivider key={m.id} message={m} />

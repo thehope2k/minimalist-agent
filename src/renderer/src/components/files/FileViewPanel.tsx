@@ -106,7 +106,7 @@ export function FileViewPanel({
             {body}
           </ExpandModal>
         ) : (
-          <div className="flex h-full flex-col bg-panel">
+          <div data-pet-avoid className="flex h-full flex-col bg-panel">
             <div className="flex h-10 shrink-0 items-center gap-1 border-b border-border px-1.5">
               {onBack && <IconButton icon={ArrowLeft} label="Back" onClick={onBack} />}
               <FileText className="ml-1.5 h-4 w-4 shrink-0 text-accent" strokeWidth={1.75} />

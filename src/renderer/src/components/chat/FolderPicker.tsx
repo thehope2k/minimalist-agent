@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
-import { Check, Folder, FolderOpen, Lock, X } from 'lucide-react';
+import { Check, Folder, FolderOpen, X } from 'lucide-react';
 import { homedir } from '@/lib/path';
 import { useAiData } from '@/hooks/useAiData';
 import { pushRecentFolder, removeRecentFolder } from '@/lib/connections';
@@ -70,7 +70,7 @@ export function FolderPicker({ value, onChange, locked }: Props) {
           <Button
             variant="outline"
             size="sm"
-            icon={Lock}
+            icon={Folder}
             disabled
             className="ml-1 rounded-full !opacity-70"
           >

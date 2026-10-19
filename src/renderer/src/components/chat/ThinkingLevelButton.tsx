@@ -50,7 +50,7 @@ export function ThinkingLevelButton({ level, onLevelChange, disabled }: Props) {
           title={DESCRIPTIONS[level]}
           className="rounded-full px-2.5 border-violet-400/30 bg-violet-400/10 text-violet-300 hover:bg-violet-400/15 hover:text-violet-200"
         >
-          {LABELS[level]}
+          <span className="@max-lg:hidden">{LABELS[level]}</span>
         </Button>
       </Popover.Trigger>
       <Popover.Portal>

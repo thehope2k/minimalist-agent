@@ -41,11 +41,11 @@ export function ChatHeader({
   }, [cwd]);
 
   return (
-    <header className="relative flex h-10 shrink-0 items-center border-b border-border px-4">
-      <div className="mx-auto flex w-full max-w-240 items-center pr-28">
-        <h2 className="w-full min-w-0 truncate text-[15px] font-semibold text-fg">{title}</h2>
+    <header className="flex h-10 shrink-0 items-center gap-3 border-b border-border px-4">
+      <div className="min-w-0 flex-1">
+        <h2 className="mx-auto max-w-240 truncate text-[15px] font-semibold text-fg">{title}</h2>
       </div>
-      <div className="absolute right-4 top-1/2 flex -translate-y-1/2 items-center gap-1">
+      <div className="flex shrink-0 items-center gap-1">
         <BrowserStatusPill sessionId={sessionId} />
         {onToggleFileExplorer && (
           <IconButton

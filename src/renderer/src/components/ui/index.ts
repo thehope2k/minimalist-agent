@@ -7,6 +7,7 @@ export { Button } from './Button';
 export { ExpandModal, type ExpandModalProps } from './ExpandModal';
 export { IconButton } from './IconButton';
 export { Tooltip, TooltipProvider } from './Tooltip';
+export { UsagePill } from './UsagePill';
 export { ZoomPan } from './ZoomPan';
 export { Input, Textarea, FIELD_CHROME } from './Input';
 export { PasswordInput } from './PasswordInput';

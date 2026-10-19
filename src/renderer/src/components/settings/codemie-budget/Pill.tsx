@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Tooltip } from '@/components/ui';
+import { UsagePill } from '@/components/ui';
 import type { CodeMieBudget } from '@/lib/electron';
 import { useBudget, budgetCache, formatReset } from './shared';
 
@@ -77,16 +77,14 @@ export function CodeMieBudgetPill({
   tooltipParts.push('click to refresh');
 
   return (
-    <Tooltip content={tooltipParts.join(' · ')}>
-      <button
-        type="button"
-        onClick={refresh}
-        disabled={isRefreshing}
-        className={`inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] leading-none tabular-nums transition-opacity cursor-pointer hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50 ${refreshFailed ? 'border-orange-400/40 text-orange-400' : colorClass}`}
-      >
-        {isRefreshing ? '…' : label}
-        {refreshFailed && !isRefreshing ? ' ⚠' : ''}
-      </button>
-    </Tooltip>
+    <UsagePill
+      tooltip={tooltipParts.join(' · ')}
+      onClick={refresh}
+      disabled={isRefreshing}
+      tone={refreshFailed ? 'border-orange-400/40 text-orange-400' : colorClass}
+    >
+      {isRefreshing ? '…' : label}
+      {refreshFailed && !isRefreshing ? ' ⚠' : ''}
+    </UsagePill>
   );
 }
