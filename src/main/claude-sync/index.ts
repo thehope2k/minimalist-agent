@@ -6,6 +6,7 @@ import { loadAllSkills } from '../skills/storage';
 import { loadAllAgents } from '../agents/storage';
 import { loadAllExtensions } from '../extensions/storage';
 import { envLookupFor } from '../extensions/setup';
+import { loadExtensionSecrets } from '../extensions/secrets';
 import type { LoadedExtension } from '../extensions/types';
 import { createLogger } from '../logger';
 import type {
@@ -342,6 +343,7 @@ export async function runSync(
   includeSecrets: boolean,
   excluded: Record<string, string[]>,
 ): Promise<ClaudeSyncResult> {
+  await loadExtensionSecrets();
   const current = plan(includeSecrets, excluded);
   const failed: ClaudeSyncResult['failed'] = [];
   for (const g of current.groups) await runGroup(g, current.plan.cliPath, failed);

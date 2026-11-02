@@ -96,7 +96,7 @@ export async function resolveAuthForSlug(
   if (!conn) {
     throw new Error(`Connection "${slug}" not found. It may have been deleted from Settings → AI.`);
   }
-  const cred = getCredential(slug);
+  const cred = await getCredential(slug);
   if (!cred) {
     throw new Error(
       `No credential stored for connection "${slug}". Re-authenticate from Settings → AI.`,
@@ -202,7 +202,7 @@ async function performCopilotRefresh(slug: string, cred: OAuthCred): Promise<OAu
       expiresAt: fresh.expiresAt,
       scopes: cred.scopes,
     };
-    setCredential(slug, next);
+    await setCredential(slug, next);
     return next;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -212,7 +212,7 @@ async function performCopilotRefresh(slug: string, cred: OAuthCred): Promise<OAu
         msg,
       );
       try {
-        deleteCredential(slug);
+        await deleteCredential(slug);
       } catch {
         /* best effort */
       }
@@ -281,7 +281,7 @@ async function performPkceRefresh(
       expiresAt: fresh.expiresAt,
       scopes: cred.scopes,
     };
-    setCredential(slug, next);
+    await setCredential(slug, next);
     return next;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -291,7 +291,7 @@ async function performPkceRefresh(
         msg,
       );
       try {
-        deleteCredential(slug);
+        await deleteCredential(slug);
       } catch {
         /* best effort */
       }

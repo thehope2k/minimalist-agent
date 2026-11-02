@@ -46,9 +46,8 @@ export function registerConnectionsIpc(): void {
   );
   ipcMain.handle(
     'connections:save',
-    (_e, payload: { meta: ConnectionMeta; credential: Credential }) => {
-      saveConnection(payload.meta, payload.credential);
-    },
+    (_e, payload: { meta: ConnectionMeta; credential: Credential }) =>
+      saveConnection(payload.meta, payload.credential),
   );
   ipcMain.handle('connections:rename', (_e, args: { slug: string; name: string }) => {
     renameConnection(args.slug, args.name);
@@ -59,11 +58,9 @@ export function registerConnectionsIpc(): void {
   ipcMain.handle('connections:setDefaultModel', (_e, args: { slug: string; modelId: string }) => {
     return setConnectionDefaultModel(args.slug, args.modelId) != null;
   });
-  ipcMain.handle('connections:delete', (_e, slug: string) => {
-    deleteConnection(slug);
-  });
-  ipcMain.handle('connections:getCredential', (_e, slug: string) => {
-    const credential = getCredential(slug);
+  ipcMain.handle('connections:delete', (_e, slug: string) => deleteConnection(slug));
+  ipcMain.handle('connections:getCredential', async (_e, slug: string) => {
+    const credential = await getCredential(slug);
     return credential?.type === 'codemie_sso' ? null : credential;
   });
   ipcMain.handle('connections:isEncryptionAvailable', () => isEncryptionAvailable());
@@ -140,7 +137,7 @@ export function registerConnectionsIpc(): void {
     ) {
       return { error: 'Connection is not a CodeMie SSO connection.' };
     }
-    const credential = getCredential(connection.slug);
+    const credential = await getCredential(connection.slug);
     if (!credential || credential.type !== 'codemie_sso') {
       log.warn(
         `CodeMie budget lookup: no usable credential for "${connection.slug}" (present=${Boolean(credential)}, type=${credential?.type ?? 'none'}).`,

@@ -12,6 +12,8 @@ import { getAppIcon } from './app-icon';
 import { checkOnLaunch } from './auto-update';
 import { classifyExternalUrl, formatBlockedUrlError } from '../shared/url-safety';
 import { getSettings, DEFAULT_SESSION_RETENTION_DAYS } from './storage/settings';
+import { flushCredentials } from './storage/credentials';
+import { flushExtensionSecrets, loadExtensionSecrets } from './extensions/secrets';
 import {
   ASSET_PROTOCOL_SCHEME,
   registerAssetProtocolAsPrivileged,
@@ -201,6 +203,10 @@ function installMediaPermissions(): void {
 
 function createWindow(icon?: Electron.NativeImage | null) {
   const win = new BrowserWindow({
+    // Electron restores size, position and maximized/fullscreen per `name`,
+    // falling back to the defaults below on first launch or a missing display.
+    name: 'main',
+    windowStatePersistence: true,
     width: 1440,
     height: 900,
     minWidth: 960,
@@ -298,6 +304,9 @@ app.whenReady().then(async () => {
   }
 
   registerIpc();
+  // Warm the cache off the critical path so sync extension reads rarely wait on
+  // an entry point's load. Non-blocking: a Keychain prompt must not hold the window.
+  void loadExtensionSecrets();
   // Background stale-while-revalidate of model catalogs. Non-blocking so it
   // never delays window creation; updates broadcast to the renderer when done.
   void import('./storage/model-refresh').then((m) => m.revalidateStaleConnections());
@@ -322,6 +331,8 @@ app.on('window-all-closed', () => {
 // process exit. Without this, a kill-mid-stream loses the most recent
 // ~500ms of accumulated tokens (the debounce window) plus the final
 // `turn_done` write if main quits faster than the renderer can flush.
+// Queued encrypted writes drain too, so a token refreshed just before quit
+// (rotated refresh tokens are single-use) isn't lost.
 let drainedBeforeQuit = false;
 app.on('before-quit', async (e) => {
   if (drainedBeforeQuit) return;
@@ -331,8 +342,10 @@ app.on('before-quit', async (e) => {
   const FLUSH_TIMEOUT_MS = 1500;
   const wins = BrowserWindow.getAllWindows();
   await Promise.race([
-    Promise.all(
-      wins.map((w) =>
+    Promise.all([
+      flushCredentials(),
+      flushExtensionSecrets(),
+      ...wins.map((w) =>
         w.isDestroyed()
           ? Promise.resolve()
           : w.webContents
@@ -342,7 +355,7 @@ app.on('before-quit', async (e) => {
               )
               .catch(() => null),
       ),
-    ),
+    ]),
     new Promise((resolve) => setTimeout(resolve, FLUSH_TIMEOUT_MS)),
   ]);
   app.quit();

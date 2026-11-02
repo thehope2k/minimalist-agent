@@ -87,7 +87,7 @@ export function registerOAuthIpc(): void {
       try {
         let token = args.refreshToken;
         if (!token && args.connectionSlug) {
-          const cred = getCredential(args.connectionSlug);
+          const cred = await getCredential(args.connectionSlug);
           if (!cred || cred.type !== 'oauth' || !cred.refreshToken) {
             return { error: 'No GitHub refresh token stored for this connection.' };
           }
@@ -115,7 +115,7 @@ export function registerOAuthIpc(): void {
     try {
       // copilot_internal/user uses the GitHub OAuth token (long-lived,
       // stored as refreshToken) - same credential as /copilot_internal/v2/token.
-      const cred = getCredential(args.connectionSlug);
+      const cred = await getCredential(args.connectionSlug);
       if (!cred || cred.type !== 'oauth' || !cred.refreshToken) {
         return { error: 'No GitHub OAuth token stored for this connection.' };
       }

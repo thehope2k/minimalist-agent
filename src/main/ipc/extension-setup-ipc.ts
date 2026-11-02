@@ -4,7 +4,12 @@
 import { BrowserWindow, ipcMain } from 'electron';
 import { loadExtensionAtPath } from '../extensions/storage';
 import type { LoadedExtension } from '../extensions/types';
-import { deleteSecret, isSecretsEncryptionAvailable, setSecret } from '../extensions/secrets';
+import {
+  deleteSecret,
+  isSecretsEncryptionAvailable,
+  loadExtensionSecrets,
+  setSecret,
+} from '../extensions/secrets';
 import { deleteInput, setInput } from '../extensions/inputs';
 import { getSetupStatus } from '../extensions/setup';
 import {
@@ -39,12 +44,13 @@ function requireExtension(extensionPath: string): LoadedExtension {
 export function registerExtensionSetupIpc(): void {
   ipcMain.handle(
     'extensions:setup.status',
-    (_e, extensionPath: string): ExtensionSetupSnapshot | null => {
+    async (_e, extensionPath: string): Promise<ExtensionSetupSnapshot | null> => {
       const ext = loadExtensionAtPath(extensionPath);
       if (!ext) return null;
+      await loadExtensionSecrets();
       return {
         ...getSetupStatus(ext),
-        encryptionAvailable: isSecretsEncryptionAvailable(),
+        encryptionAvailable: await isSecretsEncryptionAvailable(),
         hasConsent: hasConsent(ext),
       };
     },
@@ -52,9 +58,9 @@ export function registerExtensionSetupIpc(): void {
 
   ipcMain.handle(
     'extensions:secrets.set',
-    (_e, extensionPath: string, keyName: string, value: string): void => {
+    async (_e, extensionPath: string, keyName: string, value: string): Promise<void> => {
       const ext = requireExtension(extensionPath);
-      setSecret(ext.slug, keyName, value);
+      await setSecret(ext.slug, keyName, value);
       // Saving a credential is itself the deliberate act of trust for a
       // credential-only extension; MCP servers keep the explicit Allow step
       // because running unreviewed code is a different decision.
@@ -65,8 +71,8 @@ export function registerExtensionSetupIpc(): void {
 
   ipcMain.handle(
     'extensions:secrets.delete',
-    (_e, extensionPath: string, keyName: string): void => {
-      deleteSecret(requireExtension(extensionPath).slug, keyName);
+    async (_e, extensionPath: string, keyName: string): Promise<void> => {
+      await deleteSecret(requireExtension(extensionPath).slug, keyName);
       broadcastMcpStatusChanged();
     },
   );
@@ -94,7 +100,10 @@ export function registerExtensionSetupIpc(): void {
     broadcastMcpStatusChanged();
   });
 
-  ipcMain.handle('extensions:mcp.status', (): McpExtensionStatus[] => listMcpExtensionsStatus());
+  ipcMain.handle('extensions:mcp.status', async (): Promise<McpExtensionStatus[]> => {
+    await loadExtensionSecrets();
+    return listMcpExtensionsStatus();
+  });
 
   ipcMain.handle(
     'extensions:mcp.test',

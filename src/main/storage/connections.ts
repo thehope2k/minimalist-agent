@@ -152,8 +152,8 @@ export function setDefaultSlug(slug: string | undefined): void {
 }
 
 /** Save metadata + secrets together. Either both succeed or we don't try to. */
-export function saveConnection(meta: ConnectionMeta, cred: Credential): void {
-  setCredential(meta.slug, cred); // do secrets first — failure leaves no orphan
+export async function saveConnection(meta: ConnectionMeta, cred: Credential): Promise<void> {
+  await setCredential(meta.slug, cred); // do secrets first — failure leaves no orphan
   const d = load(SCHEMA);
   d.connections = d.connections.filter((c) => c.slug !== meta.slug).concat(meta);
   if (!d.defaultSlug) d.defaultSlug = meta.slug;
@@ -242,12 +242,12 @@ export function reorderConnections(slugs: string[]): ConnectionMeta[] {
   return d.connections;
 }
 
-export function deleteConnection(slug: string): void {
+export async function deleteConnection(slug: string): Promise<void> {
   const d = load(SCHEMA);
   d.connections = d.connections.filter((c) => c.slug !== slug);
   if (d.defaultSlug === slug) d.defaultSlug = d.connections[0]?.slug;
   save(SCHEMA, d);
-  deleteCredential(slug); // secrets last — leaving an orphan secret is harmless
+  await deleteCredential(slug); // secrets last — leaving an orphan secret is harmless
 }
 
 export { getCredential };

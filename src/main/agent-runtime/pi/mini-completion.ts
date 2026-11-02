@@ -2,6 +2,7 @@
 import { send, type SubprocessHandle } from './subprocess-handle';
 import { ensureSubprocess, handles, killSubprocess, spawnSubprocess } from './chat-subprocess';
 import type { ChatRequest, MiniCompletionRequest } from './agent';
+import { loadExtensionSecrets } from '../../extensions/secrets';
 import type { MsgMiniCompletion, MsgMiniCompletionResult } from './protocol';
 
 /* ============================================================ */
@@ -30,6 +31,8 @@ export async function runMiniCompletion(
 
   let handle: SubprocessHandle;
   try {
+    // Spawning resolves MCP server env, which reads extension secrets synchronously.
+    await loadExtensionSecrets();
     handle = wouldHijackLiveModel ? spawnSubprocess(chatReq, '') : ensureSubprocess(chatReq, '');
     await handle.ready;
   } catch (e) {

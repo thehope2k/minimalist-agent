@@ -93,7 +93,7 @@ function minimalModel(id: string): ModelDef {
 }
 
 async function fetchForProvider(meta: ConnectionMeta): Promise<ModelDef[] | { error: string }> {
-  const cred = getCredential(meta.slug);
+  const cred = await getCredential(meta.slug);
 
   // ---- Copilot: authoritative tier-filtered list (replace, drop retired) ---
   if (meta.providerType === 'github-copilot') {

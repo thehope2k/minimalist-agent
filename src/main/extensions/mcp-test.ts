@@ -4,6 +4,7 @@
 import { probeMcpServers } from '../pi-server/mcp-diagnostics';
 import { hasConsent, recordMcpStatus, toResolvedConfig } from './mcp-config';
 import { envLookupFor, listMissingSetup } from './setup';
+import { loadExtensionSecrets } from './secrets';
 import type { McpTestResult } from '../../shared/electron-api';
 import { isSecretRef, type LoadedExtension } from './types';
 
@@ -31,6 +32,7 @@ function redact(text: string, secrets: string[]): string {
 export async function testMcpConnection(ext: LoadedExtension): Promise<McpTestResult> {
   if (!ext.config.mcp) return failure('This extension has no MCP server to test.');
   if (!hasConsent(ext)) return failure('Allow the extension to run its program first.');
+  await loadExtensionSecrets();
 
   const missing = listMissingSetup(ext);
   if (missing.length > 0) return failure(`Setup incomplete: ${missing.join(', ')}.`);

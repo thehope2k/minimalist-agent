@@ -5,6 +5,7 @@ import { parseError } from '../errors';
 import { buildPromptPrefix, buildSystemPromptAppend } from '../system-prompt';
 import { extractSkillPaths, formatSkillDirective } from '../../skills/directive';
 import { activateExtensions, loadSession } from '../../storage/sessions';
+import { loadExtensionSecrets } from '../../extensions/secrets';
 import { formatAttachmentsDirective } from '../attachments-directive';
 import { EventQueue, send, type SubprocessHandle } from './subprocess-handle';
 import { ensureSubprocess, handles } from './chat-subprocess';
@@ -18,6 +19,8 @@ import type { MsgManualCompact, MsgPrompt } from './protocol';
 
 export async function* runChat(req: ChatRequest): AsyncGenerator<AgentChatEvent> {
   ensureSessionScratchDir(req.chatSessionPath);
+  // The system prompt and MCP server env read extension secrets synchronously.
+  await loadExtensionSecrets();
   const request = {
     ...req,
     cwd: resolveChatWorkingDirectory(req.cwd, req.chatSessionPath),
@@ -163,6 +166,7 @@ export async function* runManualCompact(req: {
     }
 
     try {
+      await loadExtensionSecrets();
       const initAppend = buildSystemPromptAppend({
         cwd: req.initialize.cwd,
         sessionId: req.initialize.chatSessionId,

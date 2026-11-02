@@ -1,5 +1,6 @@
 import { BrowserWindow, dialog, ipcMain } from 'electron';
 import { previewSync, runSync } from '../claude-sync';
+import { loadExtensionSecrets } from '../extensions/secrets';
 import { addSyncFolders, scanForProjects } from '../claude-sync/targets';
 
 function asExcluded(value: unknown): Record<string, string[]> | undefined {
@@ -13,9 +14,10 @@ function asExcluded(value: unknown): Record<string, string[]> | undefined {
 }
 
 export function registerClaudeSyncIpc(): void {
-  ipcMain.handle('claudeSync:preview', (_e, includeSecrets: unknown, excluded?: unknown) =>
-    previewSync(includeSecrets === true, asExcluded(excluded)),
-  );
+  ipcMain.handle('claudeSync:preview', async (_e, includeSecrets: unknown, excluded?: unknown) => {
+    await loadExtensionSecrets();
+    return previewSync(includeSecrets === true, asExcluded(excluded));
+  });
   ipcMain.handle('claudeSync:run', (_e, includeSecrets: unknown, excluded?: unknown) =>
     runSync(includeSecrets === true, asExcluded(excluded) ?? {}),
   );
