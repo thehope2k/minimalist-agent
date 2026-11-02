@@ -1,4 +1,4 @@
-import { Archive, ArchiveRestore, Plus, Search, Trash2, X } from 'lucide-react';
+import { Archive, ArchiveArrowUp, Plus, Search, Trash2, X } from 'lucide-react';
 import { Button, IconButton, Input } from '../../ui';
 import type { Project } from '@/lib/electron';
 import type { ProjectFilter, View } from '../TopBar';
@@ -88,7 +88,7 @@ export function SessionsPanelHeader({
           <>
             <span className="px-1 text-xs text-fg-muted">{selectedCount} selected</span>
             <IconButton
-              icon={view === 'archived' ? ArchiveRestore : Archive}
+              icon={view === 'archived' ? ArchiveArrowUp : Archive}
               label={
                 view === 'archived' ? 'Restore selected sessions' : 'Archive selected sessions'
               }

@@ -1,6 +1,6 @@
 import {
   Archive,
-  ArchiveRestore,
+  ArchiveArrowUp,
   FolderOpen,
   Inbox,
   MoreHorizontal,
@@ -48,7 +48,7 @@ export function SessionRowActions({
     },
     {
       label: session.archived ? 'Restore' : 'Archive',
-      icon: session.archived ? ArchiveRestore : Archive,
+      icon: session.archived ? ArchiveArrowUp : Archive,
       onSelect: onArchiveToggle,
     },
     { label: revealLabel(), icon: FolderOpen, onSelect: onReveal },

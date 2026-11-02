@@ -385,8 +385,7 @@ async function handleInit(msg: MsgInit): Promise<void> {
     // Validate that the model resolved successfully
     if (!model) {
       // Show common models as examples
-      const exampleModels =
-        'gpt-5.5, gpt-5.4, claude-opus-4.7, claude-sonnet-4.6, gemini-3.5-flash';
+      const exampleModels = 'gpt-6.1-sol, claude-opus-5.5, claude-sonnet-5.5, gemini-3.8-flash';
 
       fatal(
         `Failed to resolve model "${msg.model}" for provider "${msg.auth.provider}". ` +

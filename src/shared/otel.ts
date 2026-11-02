@@ -13,33 +13,20 @@ import {
 import {
   BatchSpanProcessor,
   SimpleSpanProcessor,
+  TracerProvider,
   type SpanExporter,
-} from '@opentelemetry/sdk-trace-base';
-import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
+} from '@opentelemetry/sdk-trace';
 import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { W3CTraceContextPropagator } from '@opentelemetry/core';
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
 import { createLogger } from './sub-logger';
-import {
-  readOtelConfigFromEnv,
-  parseResourceAttributes,
-  perProcessOutfile,
-  TRACER_NAME,
-  type OtelConfig,
-} from './telemetry/config';
+import { readOtelConfigFromEnv, TRACER_NAME, type OtelConfig } from './telemetry/config';
 import { JsonlFileSpanExporter, StderrSpanExporter } from './telemetry/exporters';
 
 const log = createLogger('otel');
 
-export type { OtelConfig, OtelExporterType } from './telemetry/config';
-export {
-  parseResourceAttributes,
-  perProcessOutfile,
-  readOtelConfigFromEnv,
-} from './telemetry/config';
-
-let provider: NodeTracerProvider | undefined;
+let provider: TracerProvider | undefined;
 let activeConfig: OtelConfig | undefined;
 let initialized = false;
 
@@ -78,12 +65,14 @@ export async function initOtel(env: NodeJS.ProcessEnv = process.env): Promise<bo
   if (!exporter) return false;
 
   const processor =
-    cfg.exporter === 'otlp' ? new BatchSpanProcessor(exporter) : new SimpleSpanProcessor(exporter);
+    cfg.exporter === 'otlp'
+      ? new BatchSpanProcessor({ exporter })
+      : new SimpleSpanProcessor({ exporter });
   const contextManager = new AsyncLocalStorageContextManager();
   contextManager.enable();
   context.setGlobalContextManager(contextManager);
   propagation.setGlobalPropagator(new W3CTraceContextPropagator());
-  provider = new NodeTracerProvider({
+  provider = new TracerProvider({
     resource: resourceFromAttributes({
       ...cfg.resourceAttributes,
       [ATTR_SERVICE_NAME]: cfg.serviceName,
@@ -91,7 +80,7 @@ export async function initOtel(env: NodeJS.ProcessEnv = process.env): Promise<bo
     }),
     spanProcessors: [processor],
   });
-  provider.register();
+  trace.setGlobalTracerProvider(provider);
   log.info(`tracing enabled (exporter=${cfg.exporter}, captureContent=${cfg.captureContent})`);
   return true;
 }

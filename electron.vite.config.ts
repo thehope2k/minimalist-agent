@@ -19,7 +19,7 @@ export default defineConfig({
           'pi-server': r('src/main/pi-server/index.ts'),
         },
       },
-      rollupOptions: {
+      rolldownOptions: {
         // Native + heavy modules must stay external. Pi SDK pulls in a lot
         // (clipboard binaries, jiti, ...); externalising the @earendil-works
         // packages (and the still-@mariozechner/clipboard optional dep) keeps
@@ -55,14 +55,6 @@ export default defineConfig({
         output: {
           format: 'es',
           entryFileNames: '[name].js',
-          // Disable code-splitting completely - each entry must be self-contained
-          // without shared chunks (pi-server cannot import electron)
-          inlineDynamicImports: false,
-          manualChunks: (id, meta) => {
-            // Each entry point gets its own code (no shared chunks)
-            // This is critical because pi-server cannot import electron
-            return null;
-          },
         },
       },
     },
@@ -71,7 +63,7 @@ export default defineConfig({
     build: {
       outDir: r('out/preload'),
       lib: { entry: r('src/preload/index.ts'), formats: ['es'] },
-      rollupOptions: {
+      rolldownOptions: {
         // Side-effect-only (contextBridge.exposeInMainWorld) - must not tree-shake.
         treeshake: false,
         output: { entryFileNames: '[name].mjs' },
@@ -86,7 +78,7 @@ export default defineConfig({
       // real same-origin files instead of inlined data: URIs — the app's
       // production CSP only allows `script-src 'self'`, not `data:`.
       assetsInlineLimit: 0,
-      rollupOptions: {
+      rolldownOptions: {
         input: r('src/renderer/index.html'),
       },
     },

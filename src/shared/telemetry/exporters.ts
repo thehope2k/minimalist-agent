@@ -2,7 +2,7 @@ import { appendFileSync, mkdirSync, renameSync, statSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { SpanKind, SpanStatusCode } from '@opentelemetry/api';
 import { ExportResultCode, type ExportResult } from '@opentelemetry/core';
-import type { ReadableSpan, SpanExporter } from '@opentelemetry/sdk-trace-base';
+import type { ReadableSpan, SpanExporter } from '@opentelemetry/sdk-trace';
 import type { Logger } from '../log';
 import { DEFAULT_TRACES_MAX_BYTES } from './config';
 

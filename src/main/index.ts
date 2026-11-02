@@ -1,6 +1,6 @@
 import { app, BrowserWindow, session, shell } from 'electron';
 import { fileURLToPath } from 'node:url';
-import { dirname, join, sep } from 'node:path';
+import { join, sep } from 'node:path';
 import { registerIpc } from './ipc';
 import { cleanupPower } from './power';
 import { initLogging, createLogger } from './logger';
@@ -19,8 +19,6 @@ import {
 } from './protocols/asset-protocol';
 
 import { configureWorktreeLogger, isWorktreeSupported } from './agent-runtime/pi/worktree-manager';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const log = createLogger('app');
 const urlLog = createLogger('url-safety');
@@ -76,7 +74,7 @@ function isAppShellUrl(rawUrl: string): boolean {
     if (parsed.protocol !== 'file:') return false;
 
     const filePath = fileURLToPath(parsed);
-    const rendererRoot = join(__dirname, '..', 'renderer') + sep;
+    const rendererRoot = join(import.meta.dirname, '..', 'renderer') + sep;
     return filePath.startsWith(rendererRoot);
   } catch {
     return false;
@@ -213,7 +211,7 @@ function createWindow(icon?: Electron.NativeImage | null) {
     show: false,
     ...(icon ? { icon } : {}),
     webPreferences: {
-      preload: join(__dirname, '../preload/index.mjs'),
+      preload: join(import.meta.dirname, '../preload/index.mjs'),
       sandbox: false,
       contextIsolation: true,
     },
@@ -253,7 +251,7 @@ function createWindow(icon?: Electron.NativeImage | null) {
   if (process.env.ELECTRON_RENDERER_URL) {
     win.loadURL(process.env.ELECTRON_RENDERER_URL);
   } else {
-    win.loadFile(join(__dirname, '../renderer/index.html'));
+    win.loadFile(join(import.meta.dirname, '../renderer/index.html'));
   }
 }
 
