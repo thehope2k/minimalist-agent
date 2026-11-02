@@ -3,6 +3,27 @@
 All notable changes are documented here.  
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.12.0] — 2026-11-02
+
+Quality of life improvements, smoother secret storage, and UI fixes for narrow layouts.
+
+### Added
+
+- The main window remembers its size and position between launches.
+
+### Changed
+
+- Saved credentials and extension secrets are now decrypted in the background, so a pending Keychain prompt no longer freezes the app. If extension secrets can't be read, the extension shows as needing setup instead of blocking chat.
+- Updated the build toolchain, Electron, and tracing libraries, including security fixes.
+
+### Fixed
+
+**Composer and chat header**
+
+- The composer toolbar fits narrow columns: the autonomy slider folds into a % popover, labels drop away as space shrinks, and the row wraps instead of clipping.
+- Clearer icons for Compact, the locked folder chip, quota pills, and the new-session button; the chat title no longer slides under the header icons.
+- The desktop pet fades while it sits over chat or file-viewer text, and turns solid on hover.
+
 ## [2.11.0] — 2026-10-19
 
 Docked browser, Sync to Claude Code, and UI improvements.
