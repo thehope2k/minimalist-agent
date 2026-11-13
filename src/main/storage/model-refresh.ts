@@ -2,7 +2,8 @@
 // stale-while-revalidate cache rather than a fixed snapshot.
 //
 // A connection's model list is a *server-owned* resource: GitHub Copilot adds
-// and retires models, and OpenAI-compatible providers ship new ids over time.
+// and retires models, OpenAI-compatible providers ship new ids over time, and
+// ChatGPT/Claude lists follow pi-ai's bundled catalog across upgrades.
 // This module re-fetches per provider, writes the result back through the
 // store's atomic helper, and notifies the renderer so the UI updates live.
 //
@@ -93,6 +94,12 @@ function minimalModel(id: string): ModelDef {
 }
 
 async function fetchForProvider(meta: ConnectionMeta): Promise<ModelDef[] | { error: string }> {
+  // ---- ChatGPT / Claude subscriptions: pi-ai's bundled catalog (replace) ---
+  if (meta.providerType === 'openai-codex' || meta.providerType === 'anthropic') {
+    const { builtinCatalogModels } = await import('./builtin-catalog');
+    return builtinCatalogModels(meta.providerType);
+  }
+
   const cred = await getCredential(meta.slug);
 
   // ---- Copilot: authoritative tier-filtered list (replace, drop retired) ---

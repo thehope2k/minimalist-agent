@@ -6,6 +6,8 @@ export function supportsModelCatalogRefresh(providerType: ProviderType): boolean
     providerType === 'github-copilot' ||
     providerType === 'openai-compatible' ||
     providerType === 'local' ||
-    providerType === 'codemie-sso'
+    providerType === 'codemie-sso' ||
+    providerType === 'openai-codex' ||
+    providerType === 'anthropic'
   );
 }

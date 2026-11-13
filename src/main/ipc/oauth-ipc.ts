@@ -17,6 +17,7 @@ import {
 } from '../oauth/claude-flow';
 import { resolveAuthForSlug } from '../auth/resolve';
 import { getCredential, listConnections, type ModelDef } from '../storage/connections';
+import { builtinCatalogModels } from '../storage/builtin-catalog';
 import { createLogger } from '../logger';
 
 const log = createLogger('ipc:oauth');
@@ -181,55 +182,10 @@ export function registerOAuthIpc(): void {
     }
   });
 
-  // ---- ChatGPT (Codex) model discovery ---------------------------
+  // ---- Subscription model discovery (pi-ai bundled catalog) -------------
 
-  ipcMain.handle('chatgpt:getModels', async (): Promise<ModelDef[]> => {
-    const { getBuiltinModels } = await import('@earendil-works/pi-ai/providers/all');
-    const raw = getBuiltinModels('openai-codex') as Array<{
-      id: string;
-      name: string;
-      contextWindow: number;
-      reasoning?: boolean;
-    }>;
-    return raw
-      .sort((a, b) => b.id.localeCompare(a.id))
-      .map((m): ModelDef => ({
-        id: m.id,
-        name: m.name,
-        shortName: m.name,
-        description: 'Codex',
-        contextWindow: m.contextWindow ?? 272_000,
-        supportsReasoning: m.reasoning,
-      }));
-  });
-
-  // ---- Claude model discovery -------------------------------------------
-
-  ipcMain.handle('claude:getModels', async (): Promise<ModelDef[]> => {
-    const { getBuiltinModels } = await import('@earendil-works/pi-ai/providers/all');
-    const raw = getBuiltinModels('anthropic') as Array<{
-      id: string;
-      name: string;
-      contextWindow: number;
-      maxTokens?: number;
-      reasoning?: boolean;
-      input?: string[];
-    }>;
-    return (
-      raw
-        // Dated snapshots (claude-opus-4-5-20251101) duplicate their alias.
-        .filter((m) => !/-\d{8}$/.test(m.id))
-        .sort((a, b) => b.id.localeCompare(a.id))
-        .map((m): ModelDef => ({
-          id: m.id,
-          name: m.name.replace(/\s*\(latest\)$/, ''),
-          shortName: m.name.replace(/^Claude\s+/, '').replace(/\s*\(latest\)$/, ''),
-          description: 'Claude subscription',
-          contextWindow: m.contextWindow ?? 200_000,
-          maxOutputTokens: m.maxTokens,
-          supportsReasoning: m.reasoning,
-          supportsVision: m.input?.includes('image'),
-        }))
-    );
-  });
+  ipcMain.handle('chatgpt:getModels', (): Promise<ModelDef[]> =>
+    builtinCatalogModels('openai-codex'),
+  );
+  ipcMain.handle('claude:getModels', (): Promise<ModelDef[]> => builtinCatalogModels('anthropic'));
 }
