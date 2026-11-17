@@ -3,6 +3,20 @@
 All notable changes are documented here.  
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.13.0] — 2026-11-17
+
+Fresher model lists for ChatGPT and Claude subscriptions, plus dependency and security updates.
+
+### Added
+
+- ChatGPT (Codex) and Claude subscription connections now refresh their model lists on startup and from the refresh button, so newly supported models (like GPT-6.1 Terra and Claude Fable 5.2) appear without reconnecting.
+
+### Changed
+
+- Updated the agent runtime, tracing libraries, and build tooling, including security fixes.
+
+---
+
 ## [2.12.0] — 2026-11-02
 
 Quality of life improvements, smoother secret storage, and UI fixes for narrow layouts.
