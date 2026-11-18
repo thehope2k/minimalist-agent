@@ -3,6 +3,28 @@
 All notable changes are documented here.  
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.14.0] — 2026-11-18
+
+Native PDF reading for the agent, plus larger attachments and clearer oversize errors.
+
+### Added
+
+**PDF reading**
+
+- The agent can now read PDFs directly, page by page, and pick a single page or a range instead of falling back to shell tools.
+- Scanned pages without a text layer are sent as page images to vision-capable models, and pages whose drawings, tables or figures the extracted text misses are flagged so the agent can look at just those pages.
+- Attached PDFs are read the same way.
+
+### Changed
+
+- The attachment size limit is raised to 100MB.
+
+### Fixed
+
+- Files over the size limit picked from the file picker were silently dropped; they now show an error in the composer, the same as drag-and-drop.
+
+---
+
 ## [2.13.0] — 2026-11-17
 
 Fresher model lists for ChatGPT and Claude subscriptions, plus dependency and security updates.
