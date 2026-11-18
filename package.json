@@ -44,6 +44,7 @@
     "@earendil-works/pi-ai": "^1.5.2",
     "@earendil-works/pi-coding-agent": "^1.5.2",
     "@modelcontextprotocol/sdk": "^1.32.2",
+    "@napi-rs/canvas": "^1.1.1",
     "@opentelemetry/api": "^1.10.0",
     "@opentelemetry/context-async-hooks": "^3.1.1",
     "@opentelemetry/core": "^3.1.1",
@@ -57,11 +58,13 @@
     "ignore": "^7.0.14",
     "minimatch": "^11.0.8",
     "node-pty": "^1.0.0",
+    "pdfjs-dist": "~6.5.438",
     "sharp": "^0.35.4",
     "sherpa-onnx-node": "^2.0.1",
     "tar": "^7.5.23",
     "unbzip2-stream": "^1.4.3",
     "undici": "8.12.3",
+    "unpdf": "^2.2.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {

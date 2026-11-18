@@ -31,7 +31,6 @@ import {
   createFindToolDefinition,
   createGrepToolDefinition,
   createLsToolDefinition,
-  createReadToolDefinition,
   createWriteToolDefinition,
   createMcpExtension,
   createToolSearchExtension,
@@ -71,6 +70,7 @@ import {
   isLocalhostUrl,
 } from './model-utils';
 import { instrumentTool, requestBrowserTool } from './tool-wrapping';
+import { createReadToolWithPdf } from './pdf-read/read-tool';
 import { createCollaborationTools, promoteToAutoAfterApproval } from './collaboration-tools';
 import { createPlanningTools } from './planning-tools';
 import {
@@ -211,7 +211,7 @@ function buildTools(
   ];
 
   const gated: ToolDefinition<any, any>[] = [
-    createReadToolDefinition(cwd),
+    createReadToolWithPdf(cwd),
     bashTool,
     createEditToolDefinition(cwd),
     createWriteToolDefinition(cwd),

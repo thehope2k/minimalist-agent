@@ -21,8 +21,13 @@ files:
   - 'node_modules/sherpa-onnx-win-x64/**'
   - 'node_modules/sherpa-onnx-linux-x64/**'
   - 'node_modules/sherpa-onnx-linux-arm64/**'
+  # pdfjs-dist ships only the assets unpdf loads at runtime (cmaps, standard fonts,
+  # wasm decoders); unpdf bundles its own pdf.js code, so the builds are dead weight.
+  - '!node_modules/pdfjs-dist/{build,legacy,web,image_decoders,types}/**'
 
 asarUnpack:
+  # @napi-rs/canvas native addon (PDF page rendering in the Read tool) must be on disk.
+  - 'node_modules/@napi-rs/canvas-*/**'
   # rg must be a real executable on disk, not inside the asar virtual archive.
   - 'node_modules/@vscode/ripgrep-*/bin/**'
   # node-pty native addon must also be on disk (not inside asar).
@@ -46,6 +51,9 @@ publish:
 
 mac:
   category: public.app-category.developer-tools
+  # CI installs both darwin canvas binaries (see release.yml); pack only this build's arch.
+  files:
+    - '!node_modules/@napi-rs/canvas-darwin-!(${arch})/**'
   target:
     # zip is REQUIRED by electron-updater for macOS auto-update.
     # dmg is shipped for first-time install convenience.

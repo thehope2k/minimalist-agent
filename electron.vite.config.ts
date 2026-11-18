@@ -28,6 +28,11 @@ export default defineConfig({
           'sharp',
           'node-pty',
           'sherpa-onnx-node',
+          // PDF reading in the Read tool: canvas is a per-platform native binary, and
+          // unpdf resolves pdf.js assets (cmaps, standard fonts) from the pdfjs-dist
+          // package in node_modules at runtime — without them CJK text comes back empty.
+          'unpdf',
+          /^@napi-rs\/canvas/,
           'electron',
           /^@earendil-works\//,
           /^@mariozechner\//,

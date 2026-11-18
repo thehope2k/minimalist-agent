@@ -31,3 +31,17 @@ describe('browser_tool summary', () => {
     ).toBe('navigate http://x → find Login');
   });
 });
+
+describe('Read summary', () => {
+  it('shows a line range for text files', () => {
+    expect(summarizeToolCall('read', { file_path: 'notes.txt', offset: 10, limit: 5 })).toBe(
+      'notes.txt:10-15',
+    );
+  });
+
+  it('shows the page range for PDFs', () => {
+    expect(summarizeToolCall('read', { file_path: 'report.pdf', pages: '3-12' })).toBe(
+      'report.pdf p.3-12',
+    );
+  });
+});

@@ -119,8 +119,9 @@ absolute file path — the model never has to reconstruct the path itself from t
 `formatSkillDirective()` and `formatAttachmentsDirective()` sit outside
 `getSystemPrompt()`/`buildPromptPrefix()` — the runtime joins them into the user message directly, rather
 than through the shared assembly functions above. Attachments are never inlined or sent as native content blocks; the
-model gets a reference (path + type) and reads it itself with its own tools. See `agent/attachments-directive.ts` for
-the exact format.
+model gets a reference (path + type) and reads it itself with its own tools. Read covers text, images and PDFs (page
+text, plus page images for scanned pages or on request — `pi-server/pdf-read/`); other binary types get a "use Bash"
+note. See `agent/attachments-directive.ts` for the exact format.
 
 ---
 

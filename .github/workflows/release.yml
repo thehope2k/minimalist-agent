@@ -54,6 +54,12 @@ jobs:
       - name: Install
         run: npm ci
 
+      # The macOS job packages arm64 and x64 on an arm64 runner, but npm installs
+      # only the host's native binary; add the x64 canvas binary for the Intel build.
+      - name: Add x64 canvas binary for the Intel Mac build
+        if: runner.os == 'macOS'
+        run: npm install --no-save --force "@napi-rs/canvas-darwin-x64@$(node -p "require('@napi-rs/canvas/package.json').version")"
+
       - name: Typecheck
         run: npm run typecheck
 

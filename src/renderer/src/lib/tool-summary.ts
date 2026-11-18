@@ -91,7 +91,10 @@ export function summarizeToolCall(name: string, input: unknown, cwd?: string): s
       const offset = typeof o.offset === 'number' ? o.offset : null;
       const limit = typeof o.limit === 'number' ? o.limit : null;
       if (!p) return '';
-      const range = offset != null ? `:${offset}${limit != null ? `-${offset + limit}` : ''}` : '';
+      const pages = typeof o.pages === 'string' ? o.pages : null;
+      const lineRange =
+        offset != null ? `:${offset}${limit != null ? `-${offset + limit}` : ''}` : '';
+      const range = pages != null ? ` p.${pages}` : lineRange;
       return clip(p + range);
     }
 

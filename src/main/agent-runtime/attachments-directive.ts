@@ -8,11 +8,11 @@
 import type { AttachmentType, StoredAttachment } from '../storage/sessions';
 
 // Every AttachmentType the harness's Read tool can open directly (per its own
-// description: text files and images). Anything not in this set — currently
-// 'pdf' and 'office' — needs Bash instead. Expressed as "what Read supports"
+// description: text files, images and PDFs). Anything not in this set — currently
+// 'office' — needs Bash instead. Expressed as "what Read supports"
 // rather than "which types don't" so a future binary attachment type gets the
 // Bash note automatically, without anyone remembering to update this file.
-const READ_TOOL_TYPES: ReadonlySet<AttachmentType> = new Set(['image', 'text', 'snippet']);
+const READ_TOOL_TYPES: ReadonlySet<AttachmentType> = new Set(['image', 'pdf', 'text', 'snippet']);
 
 /**
  * Build the attachments directive for a turn. Empty string when there are
