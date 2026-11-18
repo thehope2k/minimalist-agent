@@ -2,6 +2,7 @@ import type { Api, ImageContent, Model, TextContent } from '@earendil-works/pi-a
 import { DEFAULT_MAX_BYTES, formatSize, truncateHead } from '@earendil-works/pi-coding-agent';
 import { createLogger } from '../../../shared/sub-logger';
 import { formatPdfRead, type ReadPdfPage } from './format-pdf-read';
+import { GraphicsCheck } from './page-graphics';
 import { probePageRendering, renderPageImage, type PageImageResult } from './page-image';
 import { resolvePageRange, type PageRange } from './page-range';
 import { countVisibleCharacters, extractPageText, openPdf, type PdfDocument } from './pdf-document';
@@ -78,6 +79,7 @@ async function extractPagesWithinBudget(
   { pageImages, imagesRender, signal }: ExtractionOptions,
 ): Promise<ExtractedPage[]> {
   const pages: ExtractedPage[] = [];
+  const graphicsCheck = new GraphicsCheck();
   let usedBytes = 0;
   let usedImages = 0;
   for (let number = range.first; number <= range.last; number++) {
@@ -91,10 +93,14 @@ async function extractPagesWithinBudget(
     if (pages.length > 0 && overBudget) break;
 
     const truncation = truncateHead(text);
+    const graphics =
+      imagesRender && !wantsImage ? await graphicsCheck.check(pdf, number) : undefined;
     pages.push({
       number,
       text: truncation.content,
       textTruncatedAt: truncation.truncated ? formatSize(truncation.outputBytes) : undefined,
+      unseenGraphics: graphics?.kind === 'hint' ? graphics.unseen : undefined,
+      graphicsUnchecked: graphics?.kind === 'out-of-time',
       wantsImage,
     });
     usedBytes += bytes;

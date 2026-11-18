@@ -14,6 +14,8 @@ const VISION_MODEL = { input: ['text', 'image'] };
 const TEXT_ONLY_MODEL = { input: ['text'] };
 const LONG_PDF_PAGES = 25;
 const IMAGE_CAP_PDF_PAGES = 12;
+const DRAWING_SHAPES = 600;
+const RULING_SHAPES = 20;
 // Fits inside the page width at a 1pt font, so pdf.js keeps every character.
 const HEAVY_PAGE_CHARS_PER_LINE = 500;
 
@@ -81,6 +83,55 @@ describe('Read tool on PDFs', () => {
 
     expect(images).toHaveLength(0);
     expect(text).toContain("[Page image unavailable: the current model doesn't accept images.]");
+  });
+
+  it('flags a drawing whose shapes the text misses', async () => {
+    const path = await writePdf('drawing.pdf', [
+      { ...textPage(1), vectorShapes: DRAWING_SHAPES },
+      textPage(2),
+    ]);
+    const { text, images } = await read({ path });
+
+    expect(images).toHaveLength(0);
+    expect(text).toContain(
+      `[Page 1 has drawings or figures the text doesn't capture (${DRAWING_SHAPES} vector shapes). ` +
+        'Re-read with pages="1" and page_images: true to see it.]',
+    );
+    expect(text.match(/has drawings or figures/g)).toHaveLength(1);
+  });
+
+  it('flags a figure image but not a small logo', async () => {
+    const path = await writePdf('figures-and-logos.pdf', [
+      { ...textPage(1), image: { width: 400, height: 300 } },
+      { ...textPage(2), image: { width: 40, height: 40 } },
+    ]);
+    const { text } = await read({ path });
+
+    expect(text).toContain("[Page 1 has drawings or figures the text doesn't capture (1 image).");
+    expect(text).not.toContain('Page 2 has drawings');
+  });
+
+  it('judges images by the area they cover, not their pixel count', async () => {
+    const path = await writePdf('branding.pdf', [
+      { ...textPage(1), image: { width: 600, height: 600, drawnWidth: 72, drawnHeight: 72 } },
+      { ...textPage(2), image: { width: 800, height: 1000, drawnWidth: 612, drawnHeight: 792 } },
+    ]);
+    const { text } = await read({ path });
+    expect(text).not.toContain('has drawings or figures');
+  });
+
+  it('leaves a few ruling lines unflagged', async () => {
+    const path = await writePdf('ruled.pdf', [{ ...textPage(1), vectorShapes: RULING_SHAPES }]);
+    const { text } = await read({ path });
+    expect(text).not.toContain('has drawings or figures');
+  });
+
+  it('skips the drawing hint when the model cannot view images', async () => {
+    const path = await writePdf('drawing-text-model.pdf', [
+      { ...textPage(1), vectorShapes: DRAWING_SHAPES },
+    ]);
+    const { text } = await read({ path }, TEXT_ONLY_MODEL);
+    expect(text).not.toContain('has drawings or figures');
   });
 
   it('attaches every page image when page_images is set', async () => {

@@ -1,7 +1,23 @@
 import { open, readFile, stat } from 'node:fs/promises';
-import { getDocumentProxy } from 'unpdf';
+import { getDocumentProxy, getResolvedPDFJS } from 'unpdf';
 
 export type PdfDocument = Awaited<ReturnType<typeof getDocumentProxy>>;
+
+/** What a page paints besides text: filled or stroked paths, and raster images. */
+export interface PageGraphics {
+  vectorShapes: number;
+  images: PaintedImage[];
+}
+
+export interface PaintedImage {
+  pixels: number;
+  /** Share of the page area the image is drawn over, 0 to 1. */
+  pageCoverage: number;
+}
+
+type PdfJsOps = Awaited<ReturnType<typeof getResolvedPDFJS>>['OPS'];
+type PdfPage = Awaited<ReturnType<PdfDocument['getPage']>>;
+type OperatorList = Awaited<ReturnType<PdfPage['getOperatorList']>>;
 
 const PDF_SIGNATURE = Buffer.from('%PDF-');
 const PDF_EXTENSION = '.pdf';
@@ -56,6 +72,70 @@ export async function extractPageText(pdf: PdfDocument, pageNumber: number): Pro
   } finally {
     page.cleanup();
   }
+}
+
+export async function inspectPageGraphics(
+  pdf: PdfDocument,
+  pageNumber: number,
+): Promise<PageGraphics> {
+  const { OPS } = await getResolvedPDFJS();
+  const page = await pdf.getPage(pageNumber);
+  try {
+    const operators = await page.getOperatorList();
+    const [x0, y0, x1, y1] = page.view;
+    return collectGraphics(operators, OPS, Math.abs((x1 - x0) * (y1 - y0)));
+  } finally {
+    page.cleanup();
+  }
+}
+
+// An image fills the unit square under the current transform, so its drawn area
+// is that transform's determinant; tracking the determinant through save/restore,
+// cm and form XObjects is enough.
+function collectGraphics(
+  { fnArray, argsArray }: OperatorList,
+  OPS: PdfJsOps,
+  pageArea: number,
+): PageGraphics {
+  const graphics: PageGraphics = { vectorShapes: 0, images: [] };
+  const savedScales: number[] = [];
+  let areaScale = 1;
+  const paint = (width: number, height: number) =>
+    graphics.images.push({ pixels: width * height, pageCoverage: Math.abs(areaScale) / pageArea });
+
+  fnArray.forEach((fn, index) => {
+    const args = argsArray[index];
+    switch (fn) {
+      case OPS.constructPath:
+        graphics.vectorShapes++;
+        break;
+      case OPS.save:
+        savedScales.push(areaScale);
+        break;
+      case OPS.paintFormXObjectBegin:
+        savedScales.push(areaScale);
+        if (args[0]) areaScale *= determinant(args[0]);
+        break;
+      case OPS.restore:
+      case OPS.paintFormXObjectEnd:
+        areaScale = savedScales.pop() ?? 1;
+        break;
+      case OPS.transform:
+        areaScale *= determinant(args);
+        break;
+      case OPS.paintImageXObject:
+        paint(args[1], args[2]);
+        break;
+      case OPS.paintInlineImageXObject:
+        paint(args[0].width, args[0].height);
+        break;
+    }
+  });
+  return graphics;
+}
+
+function determinant([a, b, c, d]: number[]): number {
+  return a * d - b * c;
 }
 
 export function countVisibleCharacters(text: string): number {

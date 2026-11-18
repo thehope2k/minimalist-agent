@@ -7,6 +7,14 @@ export interface ReadPdfPage {
   text: string;
   textTruncatedAt?: string;
   image?: PageImageResult;
+  unseenGraphics?: UnseenGraphics;
+  /** The drawing check ran out of time before reaching this page. */
+  graphicsUnchecked?: boolean;
+}
+
+export interface UnseenGraphics {
+  vectorShapes: number;
+  figureImages: number;
 }
 
 export interface PdfReadView {
@@ -29,6 +37,8 @@ export function formatPdfRead(view: PdfReadView): (TextContent | ImageContent)[]
     }
   }
 
+  const unchecked = formatUncheckedGraphics(view.pages);
+  if (unchecked) pendingText += `\n\n${unchecked}`;
   const continuation = formatContinuation(view);
   if (continuation) pendingText += `\n\n${continuation}`;
   if (pendingText) blocks.push(textBlock(pendingText));
@@ -49,7 +59,43 @@ function formatPageText(page: ReadPdfPage): string {
   lines.push(page.text || '[No text layer: likely a scanned or image-only page.]');
   if (page.textTruncatedAt) lines.push(`[Page text truncated at ${page.textTruncatedAt}.]`);
   if (page.image && !page.image.ok) lines.push(`[Page image unavailable: ${page.image.reason}.]`);
+  if (page.unseenGraphics) lines.push(formatUnseenGraphics(page.number, page.unseenGraphics));
   return lines.join('\n');
+}
+
+function formatUnseenGraphics(
+  pageNumber: number,
+  { vectorShapes, figureImages }: UnseenGraphics,
+): string {
+  const parts = [
+    vectorShapes > 0 ? plural(vectorShapes, 'vector shape') : undefined,
+    figureImages > 0 ? plural(figureImages, 'image') : undefined,
+  ].filter(Boolean);
+  return (
+    `[Page ${pageNumber} has drawings or figures the text doesn't capture (${parts.join(', ')}). ` +
+    `Re-read with pages="${pageNumber}" and page_images: true to see it.]`
+  );
+}
+
+function formatUncheckedGraphics(pages: ReadPdfPage[]): string | undefined {
+  const unchecked = pages.filter((page) => page.graphicsUnchecked).map((page) => page.number);
+  if (unchecked.length === 0) return undefined;
+  const subject = unchecked.length === 1 ? "Page {list} wasn't" : "Pages {list} weren't";
+  return `[${subject.replace('{list}', formatPageList(unchecked))} checked for drawings or figures (time limit).]`;
+}
+
+function formatPageList(numbers: number[]): string {
+  const runs: PageRange[] = [];
+  for (const number of numbers) {
+    const last = runs.at(-1);
+    if (last && number === last.last + 1) last.last = number;
+    else runs.push({ first: number, last: number });
+  }
+  return runs.map(formatPageRange).join(', ');
+}
+
+function plural(count: number, noun: string): string {
+  return `${count.toLocaleString('en-US')} ${noun}${count === 1 ? '' : 's'}`;
 }
 
 function formatContinuation({

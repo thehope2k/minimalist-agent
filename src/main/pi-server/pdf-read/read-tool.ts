@@ -23,7 +23,12 @@ const readWithPdfSchema = Type.Object({
   ),
   page_images: Type.Optional(
     Type.Boolean({
-      description: `PDF only: also attach an image of every page read, for charts, diagrams, tables or layout the text loses. At most ${MAX_PDF_PAGE_IMAGES_PER_READ} page images per call.`,
+      description:
+        'PDF only: also attach an image of each page read. Set it when the answer depends on how the page looks, ' +
+        'not just its words: drawings, diagrams, charts, maps, forms, slides, or tables whose layout matters; ' +
+        'when the text comes out as scattered labels and numbers; or when the page mentions a figure you need. ' +
+        'Leave it off for prose. Images cost far more context than text, so re-read only the pages that need ' +
+        `them (pages="4"). At most ${MAX_PDF_PAGE_IMAGES_PER_READ} page images per call.`,
     }),
   ),
 });
@@ -33,7 +38,8 @@ const ABORTED_MESSAGE = 'Operation aborted';
 
 const PDF_DESCRIPTION =
   `PDFs are read page by page: text with page markers, up to ${MAX_PDF_PAGES_PER_READ} pages per call (use pages to pick them). ` +
-  'Pages without a text layer (scans) are attached as page images automatically; set page_images to see every page read.';
+  'Pages without a text layer (scans) are attached as page images automatically; pages whose drawings or figures ' +
+  'the text misses are flagged so you can re-read them with page_images.';
 
 // The base read's TUI renderers are left out: they're typed to its narrower
 // arguments, and this app renders tool calls in its own UI.

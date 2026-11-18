@@ -3,12 +3,24 @@
 // rectangle only, which reads like a scanned page (no text layer). Text past
 // the page edge is clipped by pdf.js, so large pages need a small font size.
 // `japanese` text uses a non-embedded CID font with the predefined UniJIS-UCS2-H
-// CMap, which pdf.js can only decode with its CMap files.
+// CMap, which pdf.js can only decode with its CMap files. `vectorShapes` strokes
+// that many separate small rectangles (a drawing), and `image` paints a gray
+// raster image of the given pixel size; both combine with text.
 
 export interface FixturePage {
   lines?: string[];
   fontSize?: number;
   japanese?: string;
+  vectorShapes?: number;
+  image?: FixtureImage;
+}
+
+/** Pixel size of the image; drawn at that many points unless a drawn size is given. */
+export interface FixtureImage {
+  width: number;
+  height: number;
+  drawnWidth?: number;
+  drawnHeight?: number;
 }
 
 const PAGE_WIDTH = 612;
@@ -16,6 +28,9 @@ const PAGE_HEIGHT = 792;
 const MARGIN = 72;
 const DEFAULT_FONT_SIZE = 12;
 const LINE_SPACING = 1.2;
+const GRID_COLUMNS = 40;
+const GRID_CELL = 10;
+const GRAY = 0x80;
 
 export function buildPdf(pages: FixturePage[]): Buffer {
   const objects: string[] = [];
@@ -28,12 +43,11 @@ export function buildPdf(pages: FixturePage[]): Buffer {
 
   const pageIds = pages.map((page) => {
     const stream = pageStream(page);
-    const contentId = add(
-      `<< /Length ${Buffer.byteLength(stream, 'latin1')} >>\nstream\n${stream}\nendstream`,
-    );
+    const contentId = add(streamObject('', stream));
+    const xObjects = page.image ? `/XObject << /Im1 ${add(imageObject(page.image))} 0 R >>` : '';
     return add(
       `<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${PAGE_WIDTH} ${PAGE_HEIGHT}] ` +
-        `/Resources << /Font << /F1 ${fontId} 0 R /F2 ${cjkFontId} 0 R >> >> /Contents ${contentId} 0 R >>`,
+        `/Resources << /Font << /F1 ${fontId} 0 R /F2 ${cjkFontId} 0 R >> ${xObjects} >> /Contents ${contentId} 0 R >>`,
     );
   });
 
@@ -52,9 +66,44 @@ const CJK_FONT =
   '/FontBBox [0 0 1000 1000] /ItalicAngle 0 /Ascent 880 /Descent -120 /CapHeight 700 /StemV 80 >> >>] >>';
 
 function pageStream(page: FixturePage): string {
-  if (page.japanese) return japaneseStream(page.japanese);
-  if (page.lines) return textStream(page.lines, page.fontSize ?? DEFAULT_FONT_SIZE);
-  return shapeStream();
+  const parts = [
+    page.japanese ? japaneseStream(page.japanese) : undefined,
+    page.lines ? textStream(page.lines, page.fontSize ?? DEFAULT_FONT_SIZE) : undefined,
+    page.vectorShapes ? gridStream(page.vectorShapes) : undefined,
+    page.image ? imagePaint(page.image) : undefined,
+  ].filter(Boolean);
+  return parts.length > 0 ? parts.join('\n') : shapeStream();
+}
+
+function gridStream(count: number): string {
+  return Array.from({ length: count }, (_, i) => {
+    const x = MARGIN + (i % GRID_COLUMNS) * GRID_CELL;
+    const y = MARGIN + Math.floor(i / GRID_COLUMNS) * GRID_CELL;
+    return `${x} ${y} ${GRID_CELL / 2} ${GRID_CELL / 2} re S`;
+  }).join('\n');
+}
+
+function imagePaint({
+  width,
+  height,
+  drawnWidth = width,
+  drawnHeight = height,
+}: FixtureImage): string {
+  const x = drawnWidth >= PAGE_WIDTH ? 0 : MARGIN;
+  const y = drawnHeight >= PAGE_HEIGHT ? 0 : MARGIN;
+  return `q ${drawnWidth} 0 0 ${drawnHeight} ${x} ${y} cm /Im1 Do Q`;
+}
+
+function imageObject({ width, height }: FixtureImage): string {
+  const pixels = String.fromCharCode(GRAY).repeat(width * height);
+  return streamObject(
+    `/Type /XObject /Subtype /Image /Width ${width} /Height ${height} /ColorSpace /DeviceGray /BitsPerComponent 8 `,
+    pixels,
+  );
+}
+
+function streamObject(dictionaryEntries: string, data: string): string {
+  return `<< ${dictionaryEntries}/Length ${Buffer.byteLength(data, 'latin1')} >>\nstream\n${data}\nendstream`;
 }
 
 function japaneseStream(text: string): string {
