@@ -123,6 +123,11 @@ export type AttachmentType = 'image' | 'pdf' | 'text' | 'snippet' | 'office';
  * Draft attachment — picked / pasted / dropped, not yet persisted.
  * Lives only in renderer state until the user hits Send.
  */
+export interface PickedAttachments {
+  drafts: DraftAttachment[];
+  errors: string[];
+}
+
 export interface DraftAttachment {
   type: AttachmentType;
   /** Original absolute path, or 'clipboard' for pasted images. */
@@ -1439,11 +1444,7 @@ export interface AppApi {
     onMcpStatus: (cb: () => void) => () => void;
   };
   attachments: {
-    /**
-     * Open the system file picker (multi-select) and return draft
-     * attachments for everything the user picked.
-     */
-    pickFiles: () => Promise<DraftAttachment[]>;
+    pickFiles: () => Promise<PickedAttachments>;
     /** Read a single absolute path (drag-drop / pasted file URI) into a draft. */
     readPath: (path: string) => Promise<DraftAttachment | null>;
     /** Persist a draft into the session's attachments dir. */

@@ -54,8 +54,9 @@ export function useAttachments(connection: ConnectionMeta | null, model: string 
   const handlePickFiles = async () => {
     setError(null);
     try {
-      const drafts = await pickAttachments();
+      const { drafts, errors } = await pickAttachments();
       addDrafts(drafts);
+      if (errors.length > 0) setError(errors.join(' '));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to read files.');
     }

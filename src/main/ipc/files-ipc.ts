@@ -7,6 +7,7 @@ import {
   storeDraft,
 } from '../storage/attachments';
 import type { StoredAttachment } from '../storage/sessions';
+import type { PickedAttachments } from '../../shared/electron-api';
 import { type FileSearchEntry, searchFiles } from '../files/search';
 import { buildFileTree, listDirectory } from '../files/list-directory';
 import {
@@ -19,7 +20,7 @@ import {
 export function registerFilesIpc(): void {
   // ---- Attachments -------------------------------------------------------
 
-  ipcMain.handle('attachments:pickFiles', async (event): Promise<DraftAttachment[]> => {
+  ipcMain.handle('attachments:pickFiles', async (event): Promise<PickedAttachments> => {
     const win = BrowserWindow.fromWebContents(event.sender);
     const opts = {
       properties: ['openFile', 'multiSelections'] as Array<'openFile' | 'multiSelections'>,
@@ -50,18 +51,17 @@ export function registerFilesIpc(): void {
       ],
     };
     const res = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
-    if (res.canceled) return [];
-    const out: DraftAttachment[] = [];
+    const picked: PickedAttachments = { drafts: [], errors: [] };
+    if (res.canceled) return picked;
     for (const p of res.filePaths) {
       try {
         const d = readPathAsDraft(p);
-        if (d) out.push(d);
-      } catch {
-        // Skip unreadable / oversize files. Errors surfaced per-path on
-        // explicit drag-and-drop / paste paths instead.
+        if (d) picked.drafts.push(d);
+      } catch (e) {
+        picked.errors.push(e instanceof Error ? e.message : String(e));
       }
     }
-    return out;
+    return picked;
   });
 
   ipcMain.handle('attachments:readPath', (_e, p: string): DraftAttachment | null => {

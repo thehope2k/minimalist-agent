@@ -14,6 +14,7 @@ import { randomUUID } from 'node:crypto';
 import { Paths } from './paths';
 import { IMAGE_LIMITS, generateImageThumbnail, inspectImage, resizeImageForAPI } from './images';
 import type { StoredAttachment, AttachmentType } from './sessions';
+import { MAX_ATTACHMENT_BYTES, attachmentTooLargeMessage } from '../../shared/attachment-limits';
 
 export interface DraftAttachment {
   type: AttachmentType;
@@ -29,7 +30,6 @@ export interface DraftAttachment {
   lineCount?: number;
 }
 
-const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const MAX_TEXT_SIZE = 100 * 1024;
 
 const IMAGE_MIME: Record<string, string> = {
@@ -137,13 +137,10 @@ export function readPathAsDraft(absPath: string): DraftAttachment | null {
   const fs = require('node:fs') as typeof import('node:fs');
   const stats = fs.statSync(absPath);
   if (!stats.isFile()) return null;
-  if (stats.size > MAX_FILE_SIZE) {
-    throw new Error(
-      `File too large: ${absPath} (${Math.round(stats.size / 1024 / 1024)}MB > 20MB limit)`,
-    );
-  }
-
   const name = absPath.split(/[\\/]/).pop() ?? 'file';
+  if (stats.size > MAX_ATTACHMENT_BYTES) {
+    throw new Error(attachmentTooLargeMessage(name, stats.size));
+  }
   const klass = classify(name);
   const mimeType = mimeFor(name, klass);
   const draft: DraftAttachment = {

@@ -10,6 +10,7 @@ import type {
   LoadedSkill,
   McpExtensionStatus,
   McpTestResult,
+  PickedAttachments,
   SkillFileNode,
   StoredAttachment,
 } from '../../shared/electron-api';
@@ -128,7 +129,7 @@ export function createAssetsApi(): Pick<
       },
     },
     attachments: {
-      pickFiles: (): Promise<DraftAttachment[]> => ipcRenderer.invoke('attachments:pickFiles'),
+      pickFiles: (): Promise<PickedAttachments> => ipcRenderer.invoke('attachments:pickFiles'),
       readPath: (path: string): Promise<DraftAttachment | null> =>
         ipcRenderer.invoke('attachments:readPath', path),
       store: (sessionId: string, draft: DraftAttachment): Promise<StoredAttachment> =>

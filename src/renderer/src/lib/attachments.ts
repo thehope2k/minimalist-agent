@@ -1,8 +1,9 @@
 // Renderer-side attachment helpers: classify, paste-from-clipboard, drop-list
 // → DraftAttachment, plus thin wrappers around the IPC bridge.
 
-import type { DraftAttachment, StoredAttachment } from './electron';
+import type { DraftAttachment, PickedAttachments, StoredAttachment } from './electron';
 import { detectLanguage } from './language-detect';
+import { MAX_ATTACHMENT_BYTES, attachmentTooLargeMessage } from '../../../shared/attachment-limits';
 
 // Legacy/OOXML office formats — opaque binary, stored the same way as PDFs
 // (raw base64), never decoded as UTF-8 text. Matches OFFICE_MIME in
@@ -26,10 +27,8 @@ function extOf(name: string): string {
 /** Read a File (drag-drop or <input type="file">) into a DraftAttachment. */
 export async function fileToDraft(file: File): Promise<DraftAttachment> {
   const ext = extOf(file.name);
-  if (file.size > 20 * 1024 * 1024) {
-    throw new Error(
-      `File too large: ${file.name} (${Math.round(file.size / 1024 / 1024)}MB > 20MB).`,
-    );
+  if (file.size > MAX_ATTACHMENT_BYTES) {
+    throw new Error(attachmentTooLargeMessage(file.name, file.size));
   }
 
   const isImage = file.type.startsWith(IMAGE_MIME_PREFIX);
@@ -89,8 +88,8 @@ function fileToBase64(file: File): Promise<string> {
 
 /* -------- IPC wrappers -------- */
 
-export async function pickAttachments(): Promise<DraftAttachment[]> {
-  return (await window.api.attachments.pickFiles()) as DraftAttachment[];
+export function pickAttachments(): Promise<PickedAttachments> {
+  return window.api.attachments.pickFiles();
 }
 
 export async function readAttachmentPath(path: string): Promise<DraftAttachment | null> {
